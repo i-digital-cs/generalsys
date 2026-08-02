@@ -1,0 +1,79 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Contract;
+use App\Models\EmployeeProfile;
+use App\Models\OfficialHoliday;
+use App\Models\Setting;
+use App\Models\User;
+use Illuminate\Database\Seeder;
+
+class DatabaseSeeder extends Seeder
+{
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
+    {
+        $this->seedEmployee(User::factory()->manager(), [
+            'name_ar' => 'مدير النظام',
+            'name_en' => 'System Admin',
+            'email' => 'admin@hrpro.test',
+        ]);
+
+        $leader = $this->seedEmployee(User::factory()->teamLeader(), [
+            'name_ar' => 'قائد الفريق',
+            'name_en' => 'Team Leader',
+            'email' => 'leader@hrpro.test',
+        ]);
+
+        $this->seedEmployee(User::factory()->employee(), [
+            'name_ar' => 'رضوى',
+            'name_en' => 'Radwa',
+            'email' => 'radwa@hrpro.test',
+            'currency' => 'EGP',
+            'team_leader_id' => $leader->id,
+            'base_salary' => 6000,
+            'online_half_day_rate' => 100,
+            'online_full_day_rate' => 200,
+            'overtime_hourly_rate' => 50,
+        ]);
+
+        $this->seedEmployee(User::factory()->employee(), [
+            'name_ar' => 'منى',
+            'name_en' => 'Mona',
+            'email' => 'mona@hrpro.test',
+            'currency' => 'AED',
+            'base_salary' => 8000,
+            'online_half_day_rate' => 150,
+            'online_full_day_rate' => 300,
+            'overtime_hourly_rate' => 60,
+        ]);
+
+        OfficialHoliday::insert([
+            ['date' => '2026-01-07', 'name_ar' => 'عيد الميلاد المجيد', 'name_en' => 'Coptic Christmas', 'created_at' => now(), 'updated_at' => now()],
+            ['date' => '2026-01-25', 'name_ar' => 'عيد الشرطة', 'name_en' => 'Police Day', 'created_at' => now(), 'updated_at' => now()],
+            ['date' => '2026-04-25', 'name_ar' => 'عيد تحرير سيناء', 'name_en' => 'Sinai Liberation Day', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        Setting::insert([
+            ['key' => 'default_language', 'value' => 'ar', 'created_at' => now(), 'updated_at' => now()],
+            ['key' => 'default_currency', 'value' => 'EGP', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+    }
+
+    /**
+     * Create a user (password: "password") with a profile and an active contract.
+     */
+    private function seedEmployee($factory, array $attributes): User
+    {
+        /** @var User $user */
+        $user = $factory->create(array_merge(['password' => 'password'], $attributes));
+
+        EmployeeProfile::factory()->create(['user_id' => $user->id]);
+        Contract::factory()->create(['user_id' => $user->id]);
+
+        return $user;
+    }
+}
