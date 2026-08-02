@@ -38,6 +38,8 @@ class DatabaseSeeder extends Seeder
             'online_half_day_rate' => 100,
             'online_full_day_rate' => 200,
             'overtime_hourly_rate' => 50,
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
         ]);
 
         $this->seedEmployee(User::factory()->employee(), [
@@ -49,6 +51,8 @@ class DatabaseSeeder extends Seeder
             'online_half_day_rate' => 150,
             'online_full_day_rate' => 300,
             'overtime_hourly_rate' => 60,
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
         ]);
 
         OfficialHoliday::insert([

@@ -2,9 +2,11 @@
 
 return [
     'language' => 'العربية',
+    'switch_language' => 'Switch language',
     'dashboard_title' => 'Dashboard',
     'save' => 'Save',
     'create' => 'Create',
+    'edit' => 'Edit',
     'cancel' => 'Cancel',
     'actions' => 'Actions',
     'search' => 'Search',

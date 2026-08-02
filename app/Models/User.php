@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     public const ROLE_MANAGER = 'MANAGER';
@@ -43,7 +44,8 @@ class User extends Authenticatable
         'online_full_day_rate',
         'overtime_hourly_rate',
         'shift_type_default',
-        'dynamic_day_off',
+        'work_start_time',
+        'work_end_time',
         'status',
     ];
 
@@ -71,6 +73,19 @@ class User extends Authenticatable
             'online_full_day_rate' => 'decimal:2',
             'overtime_hourly_rate' => 'decimal:2',
         ];
+    }
+
+    /**
+     * TIME columns come back as "H:i:s" — normalize to "H:i" for forms/API.
+     */
+    public function getWorkStartTimeAttribute(?string $value): ?string
+    {
+        return $value === null ? null : substr($value, 0, 5);
+    }
+
+    public function getWorkEndTimeAttribute(?string $value): ?string
+    {
+        return $value === null ? null : substr($value, 0, 5);
     }
 
     public function isManager(): bool
@@ -121,6 +136,36 @@ class User extends Authenticatable
     public function activeContract(): HasOne
     {
         return $this->hasOne(Contract::class)->where('is_active', true);
+    }
+
+    public function restDays(): HasMany
+    {
+        return $this->hasMany(RestDay::class);
+    }
+
+    public function attendanceRecords(): HasMany
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
+    public function permissions(): HasMany
+    {
+        return $this->hasMany(Permission::class);
+    }
+
+    public function vacations(): HasMany
+    {
+        return $this->hasMany(Vacation::class);
+    }
+
+    public function vacationBalances(): HasMany
+    {
+        return $this->hasMany(VacationBalance::class);
+    }
+
+    public function shiftAssignments(): HasMany
+    {
+        return $this->hasMany(ShiftAssignment::class);
     }
 
     public function teamLeader(): BelongsTo

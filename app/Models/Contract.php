@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\ContractFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Contract extends Model
 {
-    /** @use HasFactory<\Database\Factories\ContractFactory> */
+    /** @use HasFactory<ContractFactory> */
     use HasFactory;
 
     protected $fillable = [

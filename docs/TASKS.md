@@ -61,66 +61,66 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 ### T-1.1 — Migrations: users, profiles, quals, docs, contacts, contracts, holidays, settings
 - Depends on: T-0.3
 - Unlocks: T-1.2, T-2.1, T-4.1
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] `migrate:fresh --seed` (scratch) PASS
-  - [ ] UI/UX: N/A
+- [x] Task complete
+  - [x] Code done
+  - [x] `migrate:fresh --seed` (scratch) PASS
+  - [x] UI/UX: N/A
 
 ### T-1.2 — Auth login/logout + language preference
 - Depends on: T-1.1
 - Unlocks: T-1.3, T-2.3, T-2.7
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 1.3 tests PASS
-  - [ ] UI/UX gate (login → dashboard; AR↔EN)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 1.3 tests PASS
+  - [x] UI/UX gate (login → dashboard; AR↔EN)
 
 ### T-1.3 — Policies + middleware for 3 roles
 - Depends on: T-1.2
 - Unlocks: T-1.4
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Feature 403 matrix smoke PASS
-  - [ ] UI/UX gate (wrong role blocked)
+- [x] Task complete
+  - [x] Code done
+  - [x] Feature 403 matrix smoke PASS
+  - [x] UI/UX gate (wrong role blocked)
 
 ### T-1.4 — Admin: Employee CRUD (account + profile + contract)
 - Depends on: T-1.3
 - Unlocks: T-1.5, T-1.7, T-1.8
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 1.4 tests PASS
-  - [ ] UI/UX gate (create/edit/list; pagination; validation)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 1.4 tests PASS
+  - [x] UI/UX gate (create/edit/list; pagination; validation)
 
 ### T-1.5 — Admin: rates + currency per employee
 - Depends on: T-1.4
 - Unlocks: T-1.6
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 1.5 tests PASS
-  - [ ] UI/UX gate (Admin rates; TL never sees money)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 1.5 tests PASS
+  - [x] UI/UX gate (Admin rates; TL never sees money)
 
 ### T-1.6 — Employee documents upload/download (authorized)
 - Depends on: T-1.5
 - Unlocks: T-1.7
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 1.6 tests PASS
-  - [ ] UI/UX gate (upload/reject mime/download)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 1.6 tests PASS
+  - [x] UI/UX gate (upload/reject mime/download)
 
 ### T-1.7 — Admin company dashboard (basic stats)
 - Depends on: T-1.4
 - Unlocks: T-2.1
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Feature smoke PASS
-  - [ ] UI/UX gate (cards; empty state)
+- [x] Task complete
+  - [x] Code done
+  - [x] Feature smoke PASS
+  - [x] UI/UX gate (cards; empty state)
 
 ### T-1.8 — Employee self profile view (read-only)
 - Depends on: T-1.4
 - Unlocks: T-2.1
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Feature self-only PASS
-  - [ ] UI/UX gate (own data only)
+- [x] Task complete
+  - [x] Code done
+  - [x] Feature self-only PASS
+  - [x] UI/UX gate (own data only)
 
 ---
 
@@ -129,23 +129,23 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 ### T-2.1 — Migrations: attendance, permissions, vacations, balances, credit logs, shift_assignments
 - Depends on: T-1.1
 - Unlocks: T-2.2, T-2.7, T-2.10, T-2.12, T-2.14
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] migrate scratch PASS
-  - [ ] UI/UX: N/A
+- [x] Task complete
+  - [x] Code done
+  - [x] migrate scratch PASS
+  - [x] UI/UX: N/A
 
 ### T-2.2 — `AttendanceService` clock-in/out + overnight + day flags
 - Depends on: T-2.1
 - Unlocks: T-2.3, T-3.5, T-4.3
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 2.1–2.2 tests PASS
-  - [ ] UI/UX: N/A
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 2.1–2.2 tests PASS
+  - [x] UI/UX: N/A
 
 ### T-2.3 — Employee Clock screen (FT/Online; OT only if assigned)
 - Depends on: T-2.2, T-1.2 _(OT UX also needs T-2.14)_
 - Unlocks: T-2.4, T-2.5, T-2.13
-- [ ] Task complete
+- [ ] Task complete **in_progress**
   - [ ] Code done
   - [ ] Gate 2.3–2.5 tests PASS
   - [ ] UI/UX gate (big CTA; timer; mobile; linked from dashboard)
@@ -430,6 +430,25 @@ T-0.1 → T-0.2 → T-0.3
 - [x] 2026-08-02 T-0.1 PASS — Laravel 11.55 installed (merged into web root without touching existing files), .env (sqlite fallback, queue=database, cache/SESSION=file), Sanctum + Pint, phpunit sqlite :memory:, `artisan about` + migrate OK
 - [x] 2026-08-02 T-0.2 PASS — Vite builds LTR+RTL SCSS + JS (24.6 KB gz); Bootstrap 5.3 + bootstrap-icons self-hosted; Cairo/Tajawal woff2 in public/fonts (no CDN); layouts app/auth + partials; lang ar+en; login shell + /locale/{locale} toggle + SetLocale middleware
 - [x] 2026-08-02 T-0.3 PASS — config/menu.php (MANAGER/TEAM_LEADER/EMPLOYEE; payroll only under MANAGER); MenuConfigTest + SmokeTest green (7 tests, 133 assertions)
+- [x] 2026-08-02 T-1.1 PASS — users migration replaced per schema doc §1; new migrations: profiles/quals/docs/contacts, contracts/holidays/settings; `settings` table added to schema doc §19; thin models + User/Profile/Contract factories; DatabaseSeeder (admin/leader/radwa/mona@hrpro.test, password `password`); `migrate:fresh --seed` PASS on sqlite dev DB
+- [x] 2026-08-02 T-1.2 PASS — LoginRequest (RateLimiter 5 attempts) + AuthenticatedSessionController; role redirect via PostLoginRedirector (MANAGER→admin.dashboard, TL→/dashboard, EMPLOYEE→/profile); language_preference applied to session on login; AuthTest green
+- [x] 2026-08-02 T-1.3 PASS — EnsureRole middleware (`role:` alias), EmployeePolicy (viewAny/create/update/updateRates/view/downloadDocument) registered in AppServiceProvider; RoleAccessTest 403 matrix green
+- [x] 2026-08-02 T-1.4 PASS — admin.employees CRUD (index paginate 25 + search name/code + status filter + empty state; create/edit wizard form: account+profile+contract+qualifications+contacts in one DB transaction via EmployeeService); StoreEmployeeRequest/UpdateEmployeeRequest; EmployeeCrudTest green
+- [x] 2026-08-02 T-1.5 PASS — rates+currency section on admin employee form; RatesPrivacyTest: MANAGER sees rates, TL/EMPLOYEE 403, self profile renders no money fields, policy denies updateRates to non-managers
+- [x] 2026-08-02 T-1.6 PASS — DocumentService upload (whitelist jpg/jpeg/png/pdf, 5MB max, random filename, `local` disk) on employee edit; authorized download route (MANAGER or owner); EmployeeDocumentTest green (bad mime/oversize/type rejected, 403 matrix)
+- [x] 2026-08-02 T-1.7 PASS — admin.dashboard with 4 `<x-stat-card>` aggregates (total/active/inactive staff, contracts expiring ≤60d) via DashboardStatsService (aggregate SQL only); DashboardTest green incl. empty state
+- [x] 2026-08-02 T-1.8 PASS — employee self profile (/profile + /employees/{user}/profile guarded by policy view) read-only: profile, contract, qualifications, contacts, document downloads; no rates; EmployeeProfileTest green (A→B 403, TL 403)
+- [x] 2026-08-02 Gate 1 PASS — 57 tests / 304 assertions green; route:list + config:clear clean; pint clean; php -l clean; admin.settings screen (language/currency defaults) added to make settings table used; navbar user dropdown (profile+logout); lang AR/EN parity test
+- [x] 2026-08-02 Phase-1 revisions PASS (amends T-1.1/T-1.4/T-1.6/T-1.8 — boxes stay checked):
+  1. **Rest days = monthly quota per date** (was `dynamic_day_off` weekday enum — removed everywhere): docs first (schema §20 `rest_days`, users +`work_start_time`/`work_end_time`; MASTER_CONTEXT §2.1/§2.18/§11-r6; API doc). New `rest_days` migration + `RestDay` model; admin Rest Days section on employee edit (add/list/delete, `RestDayService`, duplicate rejected via whereDate closure — sqlite stores date casts with time); work-schedule time inputs on form; seeded 10:00–18:00. Zero `dynamic_day_off` hits repo-wide.
+  2. **Multi-file documents**: `documents[]` batch (type applies to batch), per-file whitelist ≤5MB, `DocumentService::storeMany` in one transaction; tests: 3-files batch stored, one-bad-file rejects whole batch.
+  3. **Personal photo**: jpg/png ≤2MB → `employee_profiles.personal_photo_path` (local disk, random name) on create/edit; avatar served via authorized `employees.photo` route (MANAGER or self) and shown on admin edit + self profile; religion + work times + rest days added to self profile (field audit vs `docs/Employee-inputes.xlsx` — all present; vacation fields deferred to Phase 2 by design).
+  Result: 78 tests / 372 assertions green; migrate:fresh --seed, route:list, config:clear, pint, php -l all clean.
+- [x] 2026-08-02 Phase-1 revisions (cont.) PASS (amends T-1.4/T-1.6): dynamic add/remove rows for qualifications + emergency contacts on employee create/edit — bracket names `qualifications[][degree]` / `contacts[][name]` (no JS reindexing), server-rendered rows from old()/DB (one blank row when none), hidden `<template>` cloned by new vanilla page JS `resources/js/pages/employee-form.js` (registered as Vite input, loaded only on create/edit via `@vite`+`@push('scripts')`; no-JS fallback intact). EmployeeService drops fully-blank rows (all fields empty); `required_with` rules force degree on touched qualification rows and name+phone on touched contact rows. Document delete: `DELETE admin.employees.documents.destroy` (scoped 404 cross-employee), `DocumentService::delete` removes file+row in one transaction, confirm-on-submit button in `_documents`. Lang keys AR+EN (`employees.rows.*`, `documents.delete/confirm_delete/flash.deleted`). Also restored `px-3` on sidebar nav-link (parallel agent's test expects `nav-link px-3 active`). Result: 87 tests / 405 assertions green; `npm run build` OK (employee-form.js 0.39 kB); migrate/pint/php -l/route:list clean.
+- [x] 2026-08-02 Validation UX fix PASS (closes Kimi unfinished todo): `EmployeeRequest::prepareForValidation` strips fully blank qual/contact placeholder rows before `required_with`; AR+EN `lang/*/validation.php` custom messages + friendly attributes (no raw `qualifications.1.degree`); `autocomplete=off` on dynamic row inputs; ValidationLangTest + blank-placeholder store test green.
+- [x] 2026-08-02 Dynamic-row PHP array bug PASS: `qualifications[][degree]` / `contacts[][name]` caused PHP to allocate a new index per field (one visual row → 3 partial rows after validation redirect). Fixed to indexed names `qualifications[0][degree]` + JS reindex on add/remove; create-form assertion guards against empty `[]` names.
+- [x] 2026-08-02 T-2.1 PASS — Phase 2 schema migration `2026_08_02_000004_create_attendance_and_requests_tables`: attendance, permissions, vacations, vacation_balances, vacation_credit_logs, shift_assignments per DATABASE_SCHEMA §7–§11/§17; thin models + factories; User relations; AttendanceSchemaTest (tables/uniques/overnight clock_out/relations); `migrate:fresh --seed` PASS; 96 tests / 450 assertions green.
+- [x] 2026-08-02 T-2.2 PASS — `ShiftConfig` (8/4/12 planned hours) + `AttendanceService` clockIn/clockOut: Friday/rest_days/official_holiday flags; overnight real datetimes (no +12h hack); late/early minutes vs work_start/end or shift_assignment; EXTRA/OT require SCHEDULED assignment; one open punch; attendance_score; AttendanceException for rule breaks; AttendanceServiceTest Gate 2.1–2.2 green. 105 tests / 478 assertions.
 
 <!--
 Example:

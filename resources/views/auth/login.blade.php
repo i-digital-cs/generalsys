@@ -37,8 +37,11 @@
     </div>
 
     <div class="text-center mt-3">
-        <a href="{{ route('locale', app()->getLocale() === 'ar' ? 'en' : 'ar') }}" class="link-secondary">
-            <i class="bi bi-translate me-1" aria-hidden="true"></i>{{ __('general.language') }}
+        <a href="{{ route('locale', app()->getLocale() === 'ar' ? 'en' : 'ar') }}"
+           class="link-secondary"
+           title="{{ __('general.language') }}"
+           aria-label="{{ __('general.switch_language') }}">
+            <i class="bi bi-globe me-1" aria-hidden="true"></i>{{ __('general.language') }}
         </a>
     </div>
 @endsection

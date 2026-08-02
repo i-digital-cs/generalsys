@@ -7,6 +7,7 @@ return [
     'qualifications' => 'المؤهلات',
     'emergency_contacts' => 'جهات اتصال الطوارئ',
     'documents' => 'المستندات',
+    'rest_days' => 'أيام الراحة',
     'age' => 'العمر',
     'years' => 'سنة',
     'no_qualifications' => 'لا توجد مؤهلات مسجلة.',

@@ -13,13 +13,19 @@ use Illuminate\View\View;
  */
 class ProfileController extends Controller
 {
-    public function show(Request $request, ?User $user = null): View
+    public function showSelf(Request $request): View
     {
-        $user ??= $request->user();
+        return $this->show($request->user());
+    }
 
+    public function show(User $user): View
+    {
         $this->authorize('view', $user);
 
-        $user->load(['profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents']);
+        $user->load([
+            'profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents',
+            'restDays' => fn ($query) => $query->orderBy('date'),
+        ]);
 
         return view('employee.profile', ['employee' => $user]);
     }

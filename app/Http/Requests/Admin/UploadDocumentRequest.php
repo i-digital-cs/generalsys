@@ -14,7 +14,7 @@ class UploadDocumentRequest extends FormRequest
     }
 
     /**
-     * Whitelist jpg/jpeg/png/pdf, max 5MB (AGENTS.md §5.5).
+     * Batch upload: every file whitelisted jpg/jpeg/png/pdf, max 5MB each (AGENTS.md §5.5).
      *
      * @return array<string, mixed>
      */
@@ -22,7 +22,8 @@ class UploadDocumentRequest extends FormRequest
     {
         return [
             'type' => ['required', Rule::in(EmployeeDocument::TYPES)],
-            'document' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'documents' => ['required', 'array', 'min:1'],
+            'documents.*' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ];
     }
 }

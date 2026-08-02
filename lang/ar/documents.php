@@ -6,7 +6,9 @@ return [
     'uploaded_at' => 'تاريخ الرفع',
     'upload' => 'رفع',
     'download' => 'تنزيل',
-    'choose_file' => 'اختر ملفًا',
+    'delete' => 'حذف المستند',
+    'confirm_delete' => 'هل تريد حذف هذا المستند نهائيًا؟',
+    'choose_files' => 'اختر ملفات',
     'allowed_types' => 'المسموح: jpg, jpeg, png, pdf — بحد أقصى 5 ميجابايت.',
     'no_documents' => 'لا توجد مستندات مرفوعة بعد.',
     'types' => [
@@ -19,5 +21,6 @@ return [
     ],
     'flash' => [
         'uploaded' => 'تم رفع المستند بنجاح.',
+        'deleted' => 'تم حذف المستند بنجاح.',
     ],
 ];

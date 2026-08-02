@@ -12,6 +12,9 @@ class DashboardController extends Controller
 
     public function index(): View
     {
-        return view('admin.dashboard', ['stats' => $this->stats->stats()]);
+        return view('admin.dashboard', [
+            'stats' => $this->stats->stats(),
+            'expiringContracts' => $this->stats->expiringContracts(),
+        ]);
     }
 }

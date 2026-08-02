@@ -136,7 +136,8 @@ users
 ├── overtime_hourly_rate (decimal)        -- ADMIN sets per employee
 ├── monthly_vacation_accrual (decimal)    -- TL can update dynamically
 ├── shift_type_default (FULL_TIME, ONLINE_HALF, ONLINE_FULL)
-├── dynamic_day_off (enum: SAT, SUN, MON, TUE, WED, THU, FRI)
+├── work_start_time (time, nullable)      -- مواعيد العمل: حضور
+├── work_end_time (time, nullable)        -- مواعيد العمل: انصراف
 ├── status (ACTIVE, INACTIVE)
 ├── created_at / updated_at
 ```
@@ -149,7 +150,7 @@ attendance
 ├── date
 ├── shift_type (enum: FULL_TIME, ONLINE_HALF, ONLINE_FULL, EXTRA_SHIFT, OVERTIME)
 ├── is_friday_work (boolean)              -- Auto-detected
-├── is_day_off_work (boolean)             -- Compared to dynamic_day_off
+├── is_day_off_work (boolean)             -- Compared to rest_days table
 ├── assigned_by_tl_id (FK, nullable)    -- For EXTRA_SHIFT / OVERTIME
 ├── clock_in (timestamp)
 ├── clock_out (timestamp)
@@ -380,6 +381,20 @@ vacation_credit_logs
 ├── reason (text)
 ├── created_at
 ```
+
+### 2.18 Rest Days Table (monthly quota, marked per date)
+```sql
+rest_days
+├── id (PK)
+├── user_id (FK → users, cascade)
+├── date                                  -- UNIQUE(user_id, date)
+├── created_by (FK → users, nullable)
+├── created_at / updated_at
+```
+> Rest days are NOT a fixed weekday: an employee gets X rest days per month (4 one month,
+> 5 another) and the dates vary, so Admin marks each date. Phase-2 attendance computes
+> `is_day_off_work` against this table; working a marked rest day earns the §1.2 multipliers
+> (FT = 2×, Online = 1.5×).
 
 > ⚠️ Excel-trace notes folded into schema: attendance must support **overnight shifts** (RADWA sheet uses a 12:00 "modify TIME" offset), daily TL evaluation scores are stored **per attendance day** then averaged monthly, and `payroll_records` must also store `official_holiday_work_days`, `hours_deduction`, and per-row commission entries (see `docs/PAYROLL_CALCULATION.md`).
 
@@ -712,7 +727,7 @@ Admin approves → Employee can view payslip
 | 3 | Excused Absence = 1× day salary | Standard deduction |
 | 4 | Unexcused Absence = 3× day salary | Heavy penalty for no-shows |
 | 5 | Friday work: FT=1×, Online=0.5× | Weekend compensation |
-| 6 | Day-off work: FT=2×, Online=1.5× | Rest day compensation |
+| 6 | Rest-day work (date marked in `rest_days`): FT=2×, Online=1.5× | Rest day compensation |
 | 7 | FT→Online change (non-Fri): hour × 0.5 | Rate adjustment |
 | 8 | TL cannot see payroll | Data privacy |
 | 9 | Admin sets all rates per employee | Flexibility |

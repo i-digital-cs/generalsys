@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreEmployeeRequest;
 use App\Http\Requests\Admin\UpdateEmployeeRequest;
 use App\Models\User;
 use App\Services\Employees\EmployeeService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -35,6 +36,7 @@ class EmployeeController extends Controller
 
         return view('admin.employees.create', [
             'teamLeaders' => $this->teamLeaders(),
+            'nextEmployeeCode' => $this->employees->nextEmployeeCode(),
         ]);
     }
 
@@ -42,7 +44,7 @@ class EmployeeController extends Controller
     {
         $this->authorize('create', User::class);
 
-        $employee = $this->employees->create($request->validated());
+        $employee = $this->employees->create($request->validated(), $request->file('photo'));
 
         return redirect()
             ->route('admin.employees.edit', $employee)
@@ -53,7 +55,10 @@ class EmployeeController extends Controller
     {
         $this->authorize('update', $employee);
 
-        $employee->load(['profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents']);
+        $employee->load([
+            'profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents',
+            'restDays' => fn ($query) => $query->orderBy('date'),
+        ]);
 
         return view('admin.employees.edit', [
             'employee' => $employee,
@@ -65,7 +70,7 @@ class EmployeeController extends Controller
     {
         $this->authorize('update', $employee);
 
-        $this->employees->update($employee, $request->validated());
+        $this->employees->update($employee, $request->validated(), $request->file('photo'));
 
         return redirect()
             ->route('admin.employees.edit', $employee)
@@ -73,7 +78,7 @@ class EmployeeController extends Controller
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, User>
+     * @return Collection<int, User>
      */
     private function teamLeaders()
     {

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
+ * @extends Factory<User>
  */
 class UserFactory extends Factory
 {
@@ -38,7 +38,8 @@ class UserFactory extends Factory
             'online_full_day_rate' => 0,
             'overtime_hourly_rate' => 0,
             'shift_type_default' => 'FULL_TIME',
-            'dynamic_day_off' => null,
+            'work_start_time' => null,
+            'work_end_time' => null,
             'status' => User::STATUS_ACTIVE,
             'remember_token' => Str::random(10),
         ];

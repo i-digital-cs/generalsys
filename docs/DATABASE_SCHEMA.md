@@ -26,7 +26,8 @@ CREATE TABLE users (
     online_full_day_rate    DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin sets per employee
     overtime_hourly_rate    DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin sets per employee
     shift_type_default      ENUM('FULL_TIME','ONLINE_HALF','ONLINE_FULL') NOT NULL DEFAULT 'FULL_TIME',
-    dynamic_day_off         ENUM('SAT','SUN','MON','TUE','WED','THU','FRI') NULL,
+    work_start_time         TIME NULL,                          -- مواعيد العمل: حضور
+    work_end_time           TIME NULL,                          -- مواعيد العمل: انصراف
     status                  ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
     remember_token          VARCHAR(100) NULL,
     created_at              TIMESTAMP NULL,
@@ -141,7 +142,7 @@ CREATE TABLE attendance (
     date                     DATE NOT NULL,
     shift_type               ENUM('FULL_TIME','ONLINE_HALF','ONLINE_FULL','EXTRA_SHIFT','OVERTIME') NOT NULL,
     is_friday_work           TINYINT(1) NOT NULL DEFAULT 0,   -- auto-detected
-    is_day_off_work          TINYINT(1) NOT NULL DEFAULT 0,   -- vs users.dynamic_day_off
+    is_day_off_work          TINYINT(1) NOT NULL DEFAULT 0,   -- vs rest_days table
     is_official_holiday_work TINYINT(1) NOT NULL DEFAULT 0,   -- vs official_holidays
     assigned_by_tl_id        BIGINT UNSIGNED NULL,            -- EXTRA_SHIFT / OVERTIME only
     clock_in                 DATETIME NULL,
@@ -440,6 +441,30 @@ CREATE TABLE settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
+## 20. rest_days
+
+Rest days are a **monthly quota marked per date** (4 one month, 5 another — which dates vary),
+not a fixed weekday. Admin marks each rest-day date per employee.
+
+```sql
+CREATE TABLE rest_days (
+    id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT UNSIGNED NOT NULL,
+    date       DATE NOT NULL,
+    created_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    CONSTRAINT fk_rd_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_rd_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE KEY uq_rd_user_date (user_id, date),
+    INDEX idx_rd_user_date (user_id, date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+> `attendance.is_day_off_work` (Phase 2) is computed against this table; the day-off-work
+> multipliers (MASTER_CONTEXT §1.2: FT = 2×, Online = 1.5×) apply when an employee works a
+> marked rest day.
+
 ---
 
 ## Entity Relationship Overview
@@ -450,6 +475,7 @@ users ─┬─ employee_profiles (1:1)
        ├─ employee_documents (1:N) ── contracts (N:1 via document_id)
        ├─ emergency_contacts (1:N)
        ├─ contracts (1:N)
+       ├─ rest_days (1:N) ── monthly rest-day dates, marked per date
        ├─ users.team_leader_id (self FK, TL → team members)
        ├─ attendance (1:N) ── daily TL scores
        ├─ permissions (1:N)

@@ -6,7 +6,9 @@ return [
     'uploaded_at' => 'Uploaded At',
     'upload' => 'Upload',
     'download' => 'Download',
-    'choose_file' => 'Choose file',
+    'delete' => 'Delete document',
+    'confirm_delete' => 'Delete this document permanently?',
+    'choose_files' => 'Choose files',
     'allowed_types' => 'Allowed: jpg, jpeg, png, pdf — max 5MB.',
     'no_documents' => 'No documents uploaded yet.',
     'types' => [
@@ -19,5 +21,6 @@ return [
     ],
     'flash' => [
         'uploaded' => 'Document uploaded successfully.',
+        'deleted' => 'Document deleted successfully.',
     ],
 ];

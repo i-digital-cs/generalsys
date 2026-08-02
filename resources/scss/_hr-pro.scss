@@ -1,0 +1,201 @@
+// HR-Pro design layer — shared by LTR (app.scss) and RTL (app.rtl.scss) entries.
+// Plain CSS + logical properties only, so it works on top of both the compiled
+// Bootstrap sass build and the prebuilt bootstrap.rtl.min.css.
+
+:root {
+    --hp-primary: #0d6efd;
+    --hp-primary-soft: rgba(13, 110, 253, .1);
+    --hp-card-border: rgba(0, 0, 0, .06);
+    --hp-shadow-sm: 0 .125rem .375rem rgba(15, 23, 42, .06);
+    --hp-shadow-hover: 0 .5rem 1.25rem rgba(15, 23, 42, .12);
+}
+
+body {
+    background-color: #f4f6f9;
+}
+
+// ---- Sidebar -------------------------------------------------------------
+// On lg+ the offcanvas renders as a static column: pin it full-height so the
+// menu always fills the viewport and stays visible while the page scrolls.
+@media (min-width: 992px) {
+    #sidebarNav {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+    }
+}
+
+#sidebarNav {
+    background-color: #fff;
+
+    // Bootstrap .nav defaults to flex-wrap:wrap; with flex-column that
+    // shrinks each link to content width (~70%). Force full sidebar width.
+    .nav {
+        flex-wrap: nowrap;
+        width: 100%;
+    }
+
+    .nav-item,
+    .nav-link {
+        width: 100%;
+    }
+
+    .nav-link {
+        margin: 0;
+        border-radius: 0;
+        padding: .65rem 1rem;
+        color: #495057;
+        transition: background-color .15s ease, color .15s ease;
+
+        &:hover {
+            background-color: var(--hp-primary-soft);
+            color: var(--hp-primary);
+        }
+
+        &.active {
+            background-color: var(--hp-primary-soft);
+            color: var(--hp-primary);
+            box-shadow: inset 3px 0 0 0 var(--hp-primary);
+        }
+    }
+}
+
+[dir='rtl'] #sidebarNav .nav-link.active {
+    box-shadow: inset -3px 0 0 0 var(--hp-primary);
+}
+
+// ---- Navbar ---------------------------------------------------------------
+.navbar.bg-primary {
+    overflow: visible;
+    box-shadow: 0 .125rem .5rem rgba(15, 23, 42, .15);
+
+    .container-fluid {
+        overflow: visible;
+    }
+
+    .navbar-brand {
+        min-width: 0;
+        max-width: min(55vw, 16rem);
+    }
+
+    .nav-link {
+        white-space: nowrap;
+    }
+
+    .hp-user-menu {
+        max-width: 12rem;
+        box-shadow: none;
+
+        .hp-user-menu-name {
+            max-width: 8rem;
+        }
+
+        // Keep caret next to the label (text-truncate on the whole toggle
+        // was shoving ::after to the far edge in RTL).
+        &::after {
+            margin-inline-start: .35rem;
+            flex-shrink: 0;
+        }
+    }
+
+    .dropdown-menu {
+        min-width: 12rem;
+        z-index: 1080;
+    }
+}
+
+// ---- Employee clock CTA (touch-friendly, UI_FRAMEWORK § touch min ~44px) ----
+.clock-cta {
+    min-height: 3rem;
+    font-size: 1.15rem;
+}
+
+// ---- Cards ----------------------------------------------------------------
+.card {
+    border-color: var(--hp-card-border);
+    box-shadow: var(--hp-shadow-sm);
+}
+
+// ---- Stat card ------------------------------------------------------------
+.stat-card {
+    transition: transform .15s ease, box-shadow .15s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--hp-shadow-hover);
+    }
+
+    .stat-icon {
+        width: 3rem;
+        height: 3rem;
+        border-radius: .75rem;
+        flex-shrink: 0;
+    }
+
+    .stat-value {
+        font-size: 1.6rem;
+        line-height: 1.2;
+    }
+}
+
+// ---- Welcome hero ----------------------------------------------------------
+.welcome-hero {
+    background: linear-gradient(120deg, #0d6efd 0%, #3d8bfd 55%, #6ea8fe 100%);
+    color: #fff;
+    border: 0;
+    border-radius: .75rem;
+
+    .hero-date {
+        background: rgba(255, 255, 255, .18);
+        border-radius: 2rem;
+        padding: .35rem .9rem;
+        font-size: .85rem;
+        white-space: nowrap;
+    }
+}
+
+// ---- Quick action tiles ----------------------------------------------------
+.quick-action {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .8rem 1rem;
+    border: 1px solid var(--hp-card-border);
+    border-radius: .625rem;
+    background: #fff;
+    color: #212529;
+    text-decoration: none;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+
+    &:hover {
+        border-color: var(--hp-primary);
+        box-shadow: var(--hp-shadow-sm);
+        transform: translateY(-1px);
+        color: var(--hp-primary);
+    }
+
+    .quick-action-icon {
+        width: 2.4rem;
+        height: 2.4rem;
+        border-radius: .5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 1.1rem;
+    }
+}
+
+// ---- Expiring contracts list ------------------------------------------------
+.contract-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .7rem 0;
+
+    + .contract-row {
+        border-top: 1px solid var(--hp-card-border);
+    }
+}

@@ -19,7 +19,10 @@
 → `200 { "token": "...", "user": { "id", "name_ar", "name_en", "role", "currency", "language_preference" } }`
 
 ### POST /auth/logout · GET /auth/me
-`GET /auth/me` → current user + `team_leader_id`, `shift_type_default`, `dynamic_day_off`.
+`GET /auth/me` → current user + `team_leader_id`, `shift_type_default`, `work_start_time`, `work_end_time`.
+
+> Rest days are managed **per date** (monthly quota, not a fixed weekday): Admin marks dates
+> in `rest_days`; Phase-2 attendance computes `is_day_off_work` against them.
 
 ---
 
@@ -47,7 +50,8 @@
 {
   "id": 7, "employee_code": "EMP-007", "name_ar": "رضوى", "name_en": "RADWA",
   "role": "EMPLOYEE", "status": "ACTIVE", "currency": "EGP",
-  "team_leader_id": 3, "shift_type_default": "ONLINE_FULL", "dynamic_day_off": "FRI",
+  "team_leader_id": 3, "shift_type_default": "ONLINE_FULL",
+  "work_start_time": "10:00", "work_end_time": "18:00",
   "rates": { "base_salary": "5000.00", "online_half_day_rate": "83.33",
              "online_full_day_rate": "166.67", "overtime_hourly_rate": "31.25" },
   "profile": { "national_id": "...", "birth_date": "1998-04-12", "age": 28,

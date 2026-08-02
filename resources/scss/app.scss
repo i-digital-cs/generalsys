@@ -5,5 +5,8 @@ $border-radius: .5rem;
 
 @import 'bootstrap/scss/bootstrap';
 
-$bootstrap-icons-font-dir: '/fonts';
+// Relative to this file so Vite can emit the font into public/build/assets.
+$bootstrap-icons-font-dir: '../../node_modules/bootstrap-icons/font/fonts';
 @import 'bootstrap-icons/font/bootstrap-icons.scss';
+
+@import 'hr-pro';

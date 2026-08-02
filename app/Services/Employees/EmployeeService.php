@@ -2,9 +2,13 @@
 
 namespace App\Services\Employees;
 
+use App\Models\EmployeeProfile;
 use App\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Employee account + profile + contract + qualifications + contacts,
@@ -13,15 +17,33 @@ use Illuminate\Support\Facades\DB;
 class EmployeeService
 {
     /**
+     * Next sequential code: EMP-001, EMP-002, … (skips non-numeric suffixes).
+     */
+    public function nextEmployeeCode(): string
+    {
+        $max = EmployeeProfile::query()
+            ->where('employee_code', 'like', 'EMP-%')
+            ->pluck('employee_code')
+            ->map(function (string $code): int {
+                return preg_match('/^EMP-(\d+)$/', $code, $matches) ? (int) $matches[1] : 0;
+            })
+            ->max();
+
+        return 'EMP-'.str_pad((string) (($max ?? 0) + 1), 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * @param  array<string, mixed>  $data  validated payload (see StoreEmployeeRequest)
      */
-    public function create(array $data): User
+    public function create(array $data, ?UploadedFile $photo = null): User
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $photo) {
             /** @var User $user */
             $user = User::create($this->userAttributes($data));
 
-            $user->profile()->create($data['profile']);
+            $profile = $this->profileAttributes($user, $data, $photo);
+            $profile['employee_code'] = $this->nextEmployeeCode();
+            $user->profile()->create($profile);
             $user->contracts()->create($data['contract'] + ['is_active' => true]);
 
             $this->syncQualifications($user, $data['qualifications'] ?? []);
@@ -34,9 +56,9 @@ class EmployeeService
     /**
      * @param  array<string, mixed>  $data  validated payload (see UpdateEmployeeRequest)
      */
-    public function update(User $user, array $data): User
+    public function update(User $user, array $data, ?UploadedFile $photo = null): User
     {
-        return DB::transaction(function () use ($user, $data) {
+        return DB::transaction(function () use ($user, $data, $photo) {
             $attributes = $this->userAttributes($data);
 
             if (empty($attributes['password'])) {
@@ -45,7 +67,10 @@ class EmployeeService
 
             $user->update($attributes);
 
-            $user->profile()->updateOrCreate(['user_id' => $user->id], $data['profile']);
+            $user->profile()->updateOrCreate(
+                ['user_id' => $user->id],
+                $this->profileAttributes($user, $data, $photo),
+            );
             $user->contracts()->updateOrCreate(
                 ['user_id' => $user->id, 'is_active' => true],
                 $data['contract'] + ['is_active' => true],
@@ -61,7 +86,7 @@ class EmployeeService
     /**
      * Paginated, filtered employee list — aggregates/search run in SQL.
      *
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator<User>
+     * @return LengthAwarePaginator<User>
      */
     public function paginate(?string $search, ?string $status, int $perPage = 25)
     {
@@ -89,11 +114,35 @@ class EmployeeService
         return array_merge(
             Arr::only($data, [
                 'name_ar', 'name_en', 'email', 'role', 'currency', 'language_preference',
-                'team_leader_id', 'shift_type_default', 'dynamic_day_off', 'status',
+                'team_leader_id', 'shift_type_default', 'work_start_time', 'work_end_time', 'status',
                 'base_salary', 'online_half_day_rate', 'online_full_day_rate', 'overtime_hourly_rate',
             ]),
             ['password' => $data['password'] ?? null],
         );
+    }
+
+    /**
+     * Profile payload; stores the personal photo on the `local` disk when present.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function profileAttributes(User $user, array $data, ?UploadedFile $photo): array
+    {
+        $profile = $data['profile'] ?? [];
+
+        // Code is system-assigned on create and never overwritten from the form.
+        unset($profile['employee_code']);
+
+        if ($photo !== null) {
+            $profile['personal_photo_path'] = $photo->storeAs(
+                "employee-photos/{$user->id}",
+                Str::random(40).'.'.$photo->extension(),
+                'local',
+            );
+        }
+
+        return $profile;
     }
 
     /**
@@ -106,7 +155,7 @@ class EmployeeService
         $user->qualifications()->delete();
 
         foreach ($rows as $row) {
-            if (empty($row['degree'])) {
+            if ($this->rowIsBlank($row, ['degree', 'specialization', 'graduation_year'])) {
                 continue;
             }
 
@@ -122,11 +171,30 @@ class EmployeeService
         $user->emergencyContacts()->delete();
 
         foreach ($rows as $row) {
-            if (empty($row['name'])) {
+            if ($this->rowIsBlank($row, ['name', 'phone', 'relationship'])) {
                 continue;
             }
 
             $user->emergencyContacts()->create($row);
         }
+    }
+
+    /**
+     * A dynamic-form row is blank when every one of its fields is empty.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array<int, string>  $fields
+     */
+    private function rowIsBlank(array $row, array $fields): bool
+    {
+        foreach ($fields as $field) {
+            $value = $row[$field] ?? null;
+
+            if ($value !== null && trim((string) $value) !== '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

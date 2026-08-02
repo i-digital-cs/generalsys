@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Dashboard\DashboardService;
 use Illuminate\View\View;
 
 /**
@@ -10,8 +11,13 @@ use Illuminate\View\View;
  */
 class DashboardController extends Controller
 {
+    public function __construct(private readonly DashboardService $dashboard) {}
+
     public function __invoke(): View
     {
-        return view('dashboard');
+        return view('dashboard', [
+            'quickActions' => $this->dashboard->quickActionsFor(auth()->user()->role),
+            'upcomingHolidays' => $this->dashboard->upcomingHolidays(),
+        ]);
     }
 }

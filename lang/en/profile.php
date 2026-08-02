@@ -7,6 +7,7 @@ return [
     'qualifications' => 'Qualifications',
     'emergency_contacts' => 'Emergency Contacts',
     'documents' => 'Documents',
+    'rest_days' => 'Rest Days',
     'age' => 'Age',
     'years' => 'years',
     'no_qualifications' => 'No qualifications recorded.',

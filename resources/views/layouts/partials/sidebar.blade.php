@@ -14,8 +14,16 @@
         <ul class="nav flex-column py-2">
             @foreach ($items as $item)
                 @php
-                    $groupPattern = preg_replace('/\.[^.]+$/', '.*', $item['route']);
-                    $isActive = request()->routeIs($item['route']) || request()->routeIs($groupPattern);
+                    // Group matching only for CRUD resources: "admin.employees.index"
+                    // also highlights on .create/.edit — but "admin.dashboard" or
+                    // "admin.settings" must match their exact route only, otherwise
+                    // every admin.* page would light up the whole menu.
+                    $segments = explode('.', $item['route']);
+                    $isCrud = in_array(end($segments), ['index', 'create', 'edit', 'show'], true);
+                    $pattern = $isCrud
+                        ? implode('.', array_slice($segments, 0, -1)) . '.*'
+                        : $item['route'];
+                    $isActive = request()->routeIs($pattern);
                 @endphp
                 <li class="nav-item">
                     <a class="nav-link px-3 {{ $isActive ? 'active fw-semibold' : 'text-body' }}"

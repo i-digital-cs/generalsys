@@ -28,7 +28,8 @@ return new class extends Migration
             $table->decimal('online_full_day_rate', 12, 2)->default(0);
             $table->decimal('overtime_hourly_rate', 12, 2)->default(0);
             $table->enum('shift_type_default', ['FULL_TIME', 'ONLINE_HALF', 'ONLINE_FULL'])->default('FULL_TIME');
-            $table->enum('dynamic_day_off', ['SAT', 'SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI'])->nullable();
+            $table->time('work_start_time')->nullable();
+            $table->time('work_end_time')->nullable();
             $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE')->index();
             $table->rememberToken();
             $table->timestamps();

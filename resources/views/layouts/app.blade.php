@@ -12,13 +12,13 @@
     <link rel="stylesheet" href="{{ asset('fonts/fonts.css') }}">
     @vite([$dir === 'rtl' ? 'resources/scss/app.rtl.scss' : 'resources/scss/app.scss'])
 </head>
-<body class="bg-body-tertiary">
+<body class="bg-body-tertiary d-flex flex-column min-vh-100">
     @include('layouts.partials.navbar')
 
-    <div class="d-flex">
+    <div class="d-flex flex-grow-1">
         @include('layouts.partials.sidebar')
 
-        <main class="flex-grow-1 p-3 p-md-4">
+        <main class="flex-grow-1 p-3 p-md-4" style="min-width: 0;">
             @include('layouts.partials.breadcrumbs')
             @include('layouts.partials.flash')
             @yield('content')
