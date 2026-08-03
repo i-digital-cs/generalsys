@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\OfficialHoliday;
+use App\Models\ShiftAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -46,12 +47,56 @@ class DashboardTest extends TestCase
     {
         $user = User::factory()->teamLeader()->create();
 
-        // TEAM_LEADER menu routes are Phase-2 placeholders (not registered yet),
-        // so the list must filter them out instead of linking to '#'.
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertOk()
             ->assertViewHas('quickActions', fn (array $actions) => collect($actions)
                 ->every(fn (array $action) => $action['url'] !== '#'));
+    }
+
+    public function test_team_leader_sees_all_team_shift_intervals(): void
+    {
+        app()->setLocale('en');
+
+        $leader = User::factory()->teamLeader()->create();
+        $radwa = User::factory()->employee()->create([
+            'team_leader_id' => $leader->id,
+            'name_en' => 'Radwa',
+        ]);
+        $mona = User::factory()->employee()->create([
+            'team_leader_id' => $leader->id,
+            'name_en' => 'Mona',
+        ]);
+        $outsider = User::factory()->employee()->create(['name_en' => 'Outsider']);
+
+        ShiftAssignment::factory()->fullTime()->create([
+            'user_id' => $radwa->id,
+            'assigned_by_tl_id' => $leader->id,
+            'date' => now()->toDateString(),
+            'expected_start_time' => '10:00',
+            'expected_end_time' => '18:00',
+        ]);
+        ShiftAssignment::factory()->onlineHalf()->create([
+            'user_id' => $mona->id,
+            'assigned_by_tl_id' => $leader->id,
+            'date' => now()->toDateString(),
+            'expected_start_time' => '10:00',
+            'expected_end_time' => '14:00',
+        ]);
+        ShiftAssignment::factory()->fullTime()->create([
+            'user_id' => $outsider->id,
+            'assigned_by_tl_id' => User::factory()->teamLeader()->create()->id,
+            'date' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($leader)
+            ->get(route('team-leader.dashboard'))
+            ->assertOk()
+            ->assertSee(__('dashboard.team_intervals.title'), false)
+            ->assertSee('Radwa', false)
+            ->assertSee('Mona', false)
+            ->assertSee('10:00–18:00', false)
+            ->assertSee('10:00–14:00', false)
+            ->assertDontSee('Outsider', false);
     }
 }

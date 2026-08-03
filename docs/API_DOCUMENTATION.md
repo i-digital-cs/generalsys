@@ -77,10 +77,23 @@
 | PUT | /attendance/{id}/report-response | TEAM_LEADER, MANAGER | TL response to report |
 | PUT | /attendance/{id}/scores | TEAM_LEADER | Daily scores `{ performance, behavior, productivity, interest_return }` (0–100 each); `attendance` is server-computed |
 
-**Clock-in rules enforced server-side (422 on violation):**
-- `EXTRA_SHIFT` / `OVERTIME` rejected without a `SCHEDULED` shift_assignment for that date (TL pre-assign rule).
+**Shipped web routes (Blade session auth — primary UI):**
+
+| Method | Route name | Path | Role |
+|--------|------------|------|------|
+| GET | `employee.clock` | `/clock` | EMPLOYEE |
+| POST | `employee.clock.in` | `/clock/in` | EMPLOYEE — `{ shift_type }` |
+| POST | `employee.clock.out` | `/clock/out` | EMPLOYEE |
+
+**Clock-in rules enforced server-side (422 / session errors on violation):**
+- Preferred shift = today’s SCHEDULED `shift_assignment` if still available; else `shift_type_default` / first remaining type.
+- FT / Online ½ / Online full always offered **until already recorded for that date** (unique `user_id + date + shift_type`).
+- Employee may switch FT↔Online even when TL assigned a base type.
+- `EXTRA_SHIFT` / `OVERTIME` appear only with a SCHEDULED assignment for that date; rejected without one.
 - One open record per user at a time.
+- Same `shift_type` twice on the same day → 422 (`clock.errors.shift_already_recorded`).
 - Overnight shifts allowed — `clock_out` may be next calendar day.
+- Planned hours from matching assignment `expected_hours`, else 8 / 4 / 12 (`ShiftConfig`).
 
 ```json
 // POST /attendance/clock-in → 201
@@ -125,12 +138,28 @@
 
 ## 6. Shift Assignments (TL pre-assign)
 
+Daily rotation **and** premium shifts. `shift_type` ∈ `FULL_TIME` | `ONLINE_HALF` | `ONLINE_FULL` | `EXTRA_SHIFT` | `OVERTIME`.
+
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| POST | /shift-assignments | TEAM_LEADER(team), MANAGER | `{ "user_id", "date", "shift_type": "EXTRA_SHIFT", "expected_start_time", "expected_end_time", "expected_hours", "multiplier": 1.5, "notes" }` |
-| GET | /shift-assignments | ALL | Scope by role: self / team / all |
-| PUT | /shift-assignments/{id}/cancel | TL(owner), MANAGER | |
-| GET | /employees/{id}/upcoming-shifts | ALL | For clock screen shift selector |
+| POST | /shift-assignments | TEAM_LEADER(team), MANAGER | `{ "user_id", "date", "shift_type", "expected_start_time", "expected_end_time", "expected_hours", "multiplier"?, "notes"? }` |
+| GET | /shift-assignments | TL(team), MANAGER | Filter `date`; paginated. Employees: not exposed in web UI yet |
+| PUT/POST | /shift-assignments/{id}/cancel | TL(team of assignee), MANAGER | Sets `CANCELLED` (only if `SCHEDULED`) |
+
+**Shipped web routes (T-2.14):**
+
+| Method | Route name | Path | Role |
+|--------|------------|------|------|
+| GET | `team-leader.shifts` | `/team-leader/shifts?date=` | TEAM_LEADER, MANAGER |
+| POST | `team-leader.shifts.store` | `/team-leader/shifts` | TEAM_LEADER, MANAGER |
+| POST | `team-leader.shifts.cancel` | `/team-leader/shifts/{shiftAssignment}/cancel` | TEAM_LEADER(team), MANAGER |
+
+**Rules:**
+- TL may assign only employees with `team_leader_id = self`. Manager: any active employee.
+- Duplicate SCHEDULED for same `user_id + date + shift_type` → 422.
+- Default multiplier: `1.0` (base types), `1.5` (EXTRA / OT) if omitted.
+- EMPLOYEE → 403 on all shift-assignment write/list UI routes.
+- Clock screen prefers today’s SCHEDULED assignment; employee may still choose another unused FT/Online type.
 
 ---
 

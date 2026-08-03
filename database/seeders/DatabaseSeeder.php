@@ -47,6 +47,7 @@ class DatabaseSeeder extends Seeder
             'name_en' => 'Mona',
             'email' => 'mona@hrpro.test',
             'currency' => 'AED',
+            'team_leader_id' => $leader->id,
             'base_salary' => 8000,
             'online_half_day_rate' => 150,
             'online_full_day_rate' => 300,

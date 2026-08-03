@@ -31,6 +31,10 @@ class AttendanceService
             throw AttendanceException::openAttendanceExists();
         }
 
+        if ($this->hasAttendanceForShift($user, $date, $shiftType)) {
+            throw AttendanceException::shiftAlreadyRecorded();
+        }
+
         $assignment = $this->resolveAssignment($user, $shiftType, $date);
 
         return DB::transaction(function () use ($user, $shiftType, $at, $date, $assignment) {
@@ -109,7 +113,8 @@ class AttendanceService
 
     /**
      * Shift types the employee may pick on the clock screen for $at's date.
-     * FT / Online always; EXTRA / OT only when a SCHEDULED assignment exists.
+     * FT / Online always (employee may switch); EXTRA / OT only when assigned.
+     * Types already recorded for that date are excluded (unique user+date+shift).
      *
      * @return list<string>
      */
@@ -117,34 +122,90 @@ class AttendanceService
     {
         $date = Carbon::parse($at ?? now())->toDateString();
 
-        $types = [
-            Attendance::SHIFT_FULL_TIME,
-            Attendance::SHIFT_ONLINE_HALF,
-            Attendance::SHIFT_ONLINE_FULL,
-        ];
+        $types = ShiftAssignment::BASE_TYPES;
 
-        $assigned = ShiftAssignment::query()
+        $premium = ShiftAssignment::query()
             ->where('user_id', $user->id)
             ->whereDate('date', $date)
             ->where('status', ShiftAssignment::STATUS_SCHEDULED)
-            ->whereIn('shift_type', [Attendance::SHIFT_EXTRA, Attendance::SHIFT_OVERTIME])
+            ->whereIn('shift_type', ShiftAssignment::PREMIUM_TYPES)
             ->pluck('shift_type')
             ->all();
 
-        return array_values(array_unique([...$types, ...$assigned]));
+        $used = Attendance::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->pluck('shift_type')
+            ->all();
+
+        return array_values(array_diff(array_unique([...$types, ...$premium]), $used));
+    }
+
+    /**
+     * Preferred clock selection: today’s SCHEDULED assignment, else profile default.
+     * Falls back to the first still-available type when the preferred one was already used.
+     */
+    public function preferredShiftType(User $user, ?CarbonInterface $at = null): string
+    {
+        $available = $this->availableShiftTypes($user, $at);
+
+        if ($available === []) {
+            return Attendance::SHIFT_FULL_TIME;
+        }
+
+        $assignment = $this->todaysPrimaryAssignment($user, $at);
+
+        if ($assignment !== null && in_array($assignment->shift_type, $available, true)) {
+            return $assignment->shift_type;
+        }
+
+        $default = $user->shift_type_default;
+
+        if (in_array($default, $available, true)) {
+            return $default;
+        }
+
+        return $available[0];
+    }
+
+    public function hasAttendanceForShift(User $user, string $date, string $shiftType): bool
+    {
+        return Attendance::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->where('shift_type', $shiftType)
+            ->exists();
+    }
+
+    public function todaysPrimaryAssignment(User $user, ?CarbonInterface $at = null): ?ShiftAssignment
+    {
+        $date = Carbon::parse($at ?? now())->toDateString();
+
+        $priority = [
+            Attendance::SHIFT_FULL_TIME,
+            Attendance::SHIFT_ONLINE_HALF,
+            Attendance::SHIFT_ONLINE_FULL,
+            Attendance::SHIFT_EXTRA,
+            Attendance::SHIFT_OVERTIME,
+        ];
+
+        $assignments = ShiftAssignment::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->where('status', ShiftAssignment::STATUS_SCHEDULED)
+            ->get();
+
+        return $assignments
+            ->sortBy(function (ShiftAssignment $row) use ($priority) {
+                $pos = array_search($row->shift_type, $priority, true);
+
+                return $pos === false ? 99 : $pos;
+            })
+            ->first();
     }
 
     private function resolveAssignment(User $user, string $shiftType, string $date): ?ShiftAssignment
     {
-        $needsAssignment = in_array($shiftType, [
-            Attendance::SHIFT_EXTRA,
-            Attendance::SHIFT_OVERTIME,
-        ], true);
-
-        if (! $needsAssignment) {
-            return null;
-        }
-
         $assignment = ShiftAssignment::query()
             ->where('user_id', $user->id)
             ->whereDate('date', $date)
@@ -152,7 +213,9 @@ class AttendanceService
             ->where('status', ShiftAssignment::STATUS_SCHEDULED)
             ->first();
 
-        if ($assignment === null) {
+        $needsAssignment = in_array($shiftType, ShiftAssignment::PREMIUM_TYPES, true);
+
+        if ($needsAssignment && $assignment === null) {
             throw AttendanceException::shiftAssignmentRequired($shiftType);
         }
 

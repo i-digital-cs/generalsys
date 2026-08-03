@@ -25,7 +25,8 @@ class ClockController extends Controller
         return view('employee.clock', [
             'open' => $this->attendance->openAttendance($user),
             'shiftTypes' => $this->attendance->availableShiftTypes($user),
-            'defaultShift' => $user->shift_type_default,
+            'preferredShift' => $this->attendance->preferredShiftType($user),
+            'todaysAssignment' => $this->attendance->todaysPrimaryAssignment($user),
         ]);
     }
 

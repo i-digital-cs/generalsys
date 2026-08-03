@@ -9,8 +9,10 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\Employee\ClockController;
+use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
 use App\Http\Controllers\Employee\ProfileController;
 use App\Http\Controllers\EmployeePhotoController;
+use App\Http\Controllers\TeamLeader\ShiftAssignmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -35,6 +37,11 @@ Route::get('/locale/{locale}', function (string $locale) {
 // Generic authenticated landing (TEAM_LEADER home until Phase 2 team dashboard)
 Route::get('/dashboard', DashboardController::class)
     ->middleware('auth')->name('dashboard');
+
+// Alias so TL sidebar `team-leader.dashboard` always resolves
+Route::get('/team-leader/dashboard', DashboardController::class)
+    ->middleware(['auth', 'role:TEAM_LEADER,MANAGER'])
+    ->name('team-leader.dashboard');
 
 // Authorized document download: MANAGER or owning employee (T-1.6)
 Route::get('/documents/{document}/download', [DocumentDownloadController::class, 'show'])
@@ -62,12 +69,22 @@ Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->gr
     Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
 });
 
-// Employee self (T-1.8 profile · T-2.3 clock)
+// Employee self (T-1.8 profile · T-2.3 clock · T-2.4 dashboard)
 Route::middleware(['auth', 'role:EMPLOYEE'])->group(function () {
+    Route::get('/employee/dashboard', EmployeeDashboardController::class)->name('employee.dashboard');
     Route::get('/profile', [ProfileController::class, 'showSelf'])->name('employee.profile');
     Route::get('/employees/{user}/profile', [ProfileController::class, 'show'])->name('employee.profile.show');
 
     Route::get('/clock', [ClockController::class, 'show'])->name('employee.clock');
     Route::post('/clock/in', [ClockController::class, 'clockIn'])->name('employee.clock.in');
     Route::post('/clock/out', [ClockController::class, 'clockOut'])->name('employee.clock.out');
+});
+
+// Team Leader (+ Manager for roster override) — T-2.14 shift assignment
+Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER'])->prefix('team-leader')->name('team-leader.')->group(function () {
+    Route::get('/shifts', [ShiftAssignmentController::class, 'index'])->name('shifts');
+    Route::post('/shifts', [ShiftAssignmentController::class, 'store'])->name('shifts.store');
+    Route::get('/shifts/{shiftAssignment}/edit', [ShiftAssignmentController::class, 'edit'])->name('shifts.edit');
+    Route::put('/shifts/{shiftAssignment}', [ShiftAssignmentController::class, 'update'])->name('shifts.update');
+    Route::post('/shifts/{shiftAssignment}/cancel', [ShiftAssignmentController::class, 'cancel'])->name('shifts.cancel');
 });

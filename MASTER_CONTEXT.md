@@ -101,10 +101,18 @@
 - **NOT** automatic 50% or 100% of base salary
 - Stored per user, per currency
 
-### 1.7 Extra Shift / Overtime
-- **Team Leader pre-assigns** before shift starts
-- Employee CANNOT self-select at clock-in
-- TL assigns: shift type, date, expected hours, multiplier
+### 1.7 Shift rotation & overtime (locked 2026-08-02)
+- Shifts are **rotational**, not fixed every day.
+- **Team Leader** (or Manager) pre-assigns via UI `/team-leader/shifts` → `shift_assignments` (FT / Online ½ / Online full / EXTRA / OT).
+- **Clock-in rules** (`AttendanceService` + `/clock`):
+  1. If TL assigned a SCHEDULED shift for today → that type is the **preferred** option (banner on clock).
+  2. If nothing is assigned → employee uses **`shift_type_default`** or **chooses** FT / Online ½ / Online full.
+  3. Employee **may still switch** among FT / Online ½ / Online full even when a base shift was assigned.
+  4. **EXTRA_SHIFT / OVERTIME** — cannot self-select; SCHEDULED assignment required.
+  5. **One attendance row per `(user, date, shift_type)`** — after clock-out, that type is unavailable the same day; pick a different type for another session.
+  6. One open punch at a time; overnight `clock_out` uses real next-day datetime.
+- TL assigns: shift type, date, expected start/end/hours, multiplier (default 1.0 base / 1.5 premium), optional notes. Cancel sets `CANCELLED` (only while `SCHEDULED`). Duplicate SCHEDULED same user+date+shift_type rejected.
+- Planned hours: matching assignment’s `expected_hours`, else profile defaults 8 / 4 / 12 (`ShiftConfig`).
 
 ### 1.8 Payroll Visibility — CRITICAL
 | Role | Can View Payroll? |
@@ -293,17 +301,18 @@ advances
 shift_assignments
 ├── id (PK)
 ├── user_id (FK)
-├── assigned_by_tl_id (FK)
+├── assigned_by_tl_id (FK)               -- TL or Manager who assigned
 ├── date
-├── shift_type (EXTRA_SHIFT, OVERTIME)
+├── shift_type (FULL_TIME, ONLINE_HALF, ONLINE_FULL, EXTRA_SHIFT, OVERTIME)
 ├── expected_start_time
 ├── expected_end_time
 ├── expected_hours (decimal)
-├── multiplier (decimal)                  -- 1.5, 2.0, etc.
+├── multiplier (decimal)                  -- 1.0 base; typically 1.5 for OT/EXTRA
 ├── notes (text)
 ├── status (SCHEDULED, COMPLETED, CANCELLED)
 ├── created_at / updated_at
 ```
+> UI: `team-leader/shifts` (T-2.14). Team-scoped for TL; Manager may assign any employee.
 
 ### 2.11 Employee Profiles Table (from Employee-inputes.xlsx)
 HR personal data lives here — `users` stays auth/work config only.

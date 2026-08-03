@@ -145,18 +145,18 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 ### T-2.3 — Employee Clock screen (FT/Online; OT only if assigned)
 - Depends on: T-2.2, T-1.2 _(OT UX also needs T-2.14)_
 - Unlocks: T-2.4, T-2.5, T-2.13
-- [ ] Task complete **in_progress**
-  - [ ] Code done
-  - [ ] Gate 2.3–2.5 tests PASS
-  - [ ] UI/UX gate (big CTA; timer; mobile; linked from dashboard)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 2.3–2.5 tests PASS
+  - [x] UI/UX gate (big CTA; timer; mobile; linked from dashboard)
 
 ### T-2.4 — Employee dashboard (today status + clock CTA)
 - Depends on: T-2.3
 - Unlocks: T-2.5, T-5.4
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Feature tests PASS
-  - [ ] UI/UX gate (CTA → clock)
+- [x] Task complete
+  - [x] Code done
+  - [x] Feature tests PASS
+  - [x] UI/UX gate (CTA → clock)
 
 ### T-2.5 — Daily report submit + view TL response
 - Depends on: T-2.3
@@ -230,13 +230,13 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [ ] Gate 2.11 tests PASS
   - [ ] UI/UX gate (team list; no money)
 
-### T-2.14 — TL: pre-assign EXTRA_SHIFT / OVERTIME
+### T-2.14 — TL: pre-assign daily rotation + EXTRA / OVERTIME
 - Depends on: T-2.1
-- Unlocks: _(required before T-2.3 OT UX is complete)_
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Feature assignment PASS
-  - [ ] UI/UX gate (form; shown on employee clock)
+- Unlocks: _(completes roster UX for T-2.3)_
+- [x] Task complete
+  - [x] Code done
+  - [x] Feature assignment PASS (FT/Online/EXTRA/OT)
+  - [x] UI/UX gate (form; preferred on employee clock)
 
 ---
 
@@ -449,6 +449,13 @@ T-0.1 → T-0.2 → T-0.3
 - [x] 2026-08-02 Dynamic-row PHP array bug PASS: `qualifications[][degree]` / `contacts[][name]` caused PHP to allocate a new index per field (one visual row → 3 partial rows after validation redirect). Fixed to indexed names `qualifications[0][degree]` + JS reindex on add/remove; create-form assertion guards against empty `[]` names.
 - [x] 2026-08-02 T-2.1 PASS — Phase 2 schema migration `2026_08_02_000004_create_attendance_and_requests_tables`: attendance, permissions, vacations, vacation_balances, vacation_credit_logs, shift_assignments per DATABASE_SCHEMA §7–§11/§17; thin models + factories; User relations; AttendanceSchemaTest (tables/uniques/overnight clock_out/relations); `migrate:fresh --seed` PASS; 96 tests / 450 assertions green.
 - [x] 2026-08-02 T-2.2 PASS — `ShiftConfig` (8/4/12 planned hours) + `AttendanceService` clockIn/clockOut: Friday/rest_days/official_holiday flags; overnight real datetimes (no +12h hack); late/early minutes vs work_start/end or shift_assignment; EXTRA/OT require SCHEDULED assignment; one open punch; attendance_score; AttendanceException for rule breaks; AttendanceServiceTest Gate 2.1–2.2 green. 105 tests / 478 assertions.
+- [x] 2026-08-02 T-2.3 PASS — Employee clock screen (`/clock`): FT/Online½/Online-full always selectable; EXTRA/OT only when SCHEDULED assignment for today; big CTA + live elapsed timer; ClockController thin + ClockInRequest Rule::in(available); AttendanceException → ValidationException (session errors / 422 JSON); ClockTest Gate 2.3–2.5 (happy path, second open rejected, OT without assign rejected, FT→Online after out, TL/Manager 403); AR+EN `lang/*/clock.php`. 113 tests / 522 assertions; `npm run build` OK.
+- [x] 2026-08-02 Rotation rules (user lock) — TL assigns day shift; no assign → default or choose; employee may still switch FT↔Online; EXTRA/OT still need assignment. Docs: MASTER_CONTEXT §1.7, schema §17 + migrate `000005`. Clock prefers assignment then `shift_type_default`; banner + AR/EN hint. Unit/feature coverage for prefer/switch/assigned hours.
+- [x] 2026-08-02 T-2.14 PASS — TL/Manager shift roster at `/team-leader/shifts`: `ShiftAssignmentService` assign/cancel/list (team-scoped); Policy; StoreShiftAssignmentRequest; create FT/Online/EXTRA/OT + cancel SCHEDULED; duplicate blocked; employee 403; assigned FT preferred on employee clock. AR+EN `lang/*/shifts.php`. ShiftAssignmentTest Gate 3.7. 131 tests / 583 assertions.
+- [x] 2026-08-02 Docs sync — MASTER_CONTEXT §1.7/§2.10; DATABASE_SCHEMA §7/§17 notes; API §3/§6 web routes + rotation rules; UI_FRAMEWORK clock/shifts screens; BUILD_AND_TEST_GATES Gate 2.1–2.5 + 3.1/3.7 status; Credential smoke path; PAYROLL_CALCULATION ShiftConfig row.
+- [x] 2026-08-02 T-2.4 PASS — Employee dashboard `/employee/dashboard`: status + preferred/assigned shift + hours/sessions today + CTA → clock; login lands on dashboard; AR+EN; EmployeeDashboardTest. 135 tests / 598 assertions.
+- [x] 2026-08-03 T-2.14 amend — TL shifts: **My team** roster + **Edit** SCHEDULED assignments; Mona seeded under leader; 137 tests / 606 assertions.
+- [x] 2026-08-03 Dashboard UX — Employee **My assigned shifts** list + month calendar on employee / TL / admin dashboards (shifts + holidays markers).
 
 <!--
 Example:

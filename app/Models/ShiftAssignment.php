@@ -7,11 +7,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** TL pre-assignment of EXTRA_SHIFT / OVERTIME (schema doc §17). */
+/** TL daily rotation + EXTRA/OT pre-assignment (schema doc §17). */
 class ShiftAssignment extends Model
 {
     /** @use HasFactory<ShiftAssignmentFactory> */
     use HasFactory;
+
+    public const TYPE_FULL_TIME = 'FULL_TIME';
+
+    public const TYPE_ONLINE_HALF = 'ONLINE_HALF';
+
+    public const TYPE_ONLINE_FULL = 'ONLINE_FULL';
 
     public const TYPE_EXTRA = 'EXTRA_SHIFT';
 
@@ -22,6 +28,19 @@ class ShiftAssignment extends Model
     public const STATUS_COMPLETED = 'COMPLETED';
 
     public const STATUS_CANCELLED = 'CANCELLED';
+
+    /** Base rotation types employees may also self-select / switch. */
+    public const BASE_TYPES = [
+        self::TYPE_FULL_TIME,
+        self::TYPE_ONLINE_HALF,
+        self::TYPE_ONLINE_FULL,
+    ];
+
+    /** Premium types that always require a SCHEDULED assignment. */
+    public const PREMIUM_TYPES = [
+        self::TYPE_EXTRA,
+        self::TYPE_OVERTIME,
+    ];
 
     protected $fillable = [
         'user_id',

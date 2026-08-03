@@ -18,7 +18,7 @@
     <div class="d-flex flex-grow-1">
         @include('layouts.partials.sidebar')
 
-        <main class="flex-grow-1 p-3 p-md-4" style="min-width: 0;">
+        <main class="flex-grow-1 p-3" style="min-width: 0;">
             @include('layouts.partials.breadcrumbs')
             @include('layouts.partials.flash')
             @yield('content')

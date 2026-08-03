@@ -30,6 +30,7 @@ class DashboardTest extends TestCase
         $this->actingAs($manager)
             ->get(route('admin.dashboard'))
             ->assertOk()
+            ->assertSee(__('dashboard.calendar.title'), false)
             ->assertViewHas('stats', fn (array $stats) => $stats === [
                 'total' => 6,
                 'active' => 5,

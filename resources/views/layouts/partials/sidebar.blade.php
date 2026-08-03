@@ -4,7 +4,7 @@
     $items = config("menu.{$role}", config('menu.EMPLOYEE'));
 @endphp
 <div class="offcanvas-lg offcanvas-start bg-body-tertiary border-end flex-shrink-0"
-     tabindex="-1" id="sidebarNav" style="width: 250px;">
+     tabindex="-1" id="sidebarNav" style="width: 210px;">
     <div class="offcanvas-header d-lg-none">
         <span class="offcanvas-title fw-semibold">{{ config('app.name') }}</span>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas"

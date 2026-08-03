@@ -22,17 +22,17 @@ return [
 
     'TEAM_LEADER' => [
         ['key' => 'nav.dashboard', 'route' => 'team-leader.dashboard', 'icon' => 'bi-speedometer2'],
+        ['key' => 'nav.shifts', 'route' => 'team-leader.shifts', 'icon' => 'bi-calendar3'],
         ['key' => 'nav.approvals', 'route' => 'team-leader.approvals', 'icon' => 'bi-check2-square'],
         ['key' => 'nav.reports_review', 'route' => 'team-leader.reports', 'icon' => 'bi-journal-text'],
         ['key' => 'nav.evaluations', 'route' => 'team-leader.evaluations', 'icon' => 'bi-star'],
         ['key' => 'nav.vacation_credit', 'route' => 'team-leader.vacation-credit', 'icon' => 'bi-calendar-plus'],
-        ['key' => 'nav.shifts', 'route' => 'team-leader.shifts', 'icon' => 'bi-calendar3'],
     ],
 
     'EMPLOYEE' => [
-        ['key' => 'nav.profile', 'route' => 'employee.profile', 'icon' => 'bi-person'],
         ['key' => 'nav.dashboard', 'route' => 'employee.dashboard', 'icon' => 'bi-speedometer2'],
         ['key' => 'nav.clock', 'route' => 'employee.clock', 'icon' => 'bi-clock'],
+        ['key' => 'nav.profile', 'route' => 'employee.profile', 'icon' => 'bi-person'],
         ['key' => 'nav.daily_report', 'route' => 'employee.report', 'icon' => 'bi-journal-text'],
         ['key' => 'nav.requests', 'route' => 'employee.requests', 'icon' => 'bi-inbox'],
         ['key' => 'nav.salary', 'route' => 'employee.salary', 'icon' => 'bi-wallet2'],

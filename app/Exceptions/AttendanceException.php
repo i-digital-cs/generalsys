@@ -26,4 +26,9 @@ class AttendanceException extends RuntimeException
     {
         return new self('clock.errors.invalid_shift');
     }
+
+    public static function shiftAlreadyRecorded(): self
+    {
+        return new self('clock.errors.shift_already_recorded');
+    }
 }

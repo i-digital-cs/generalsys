@@ -60,6 +60,8 @@ $border-radius: .5rem;
 // RTL: import "bootstrap/dist/css/bootstrap.rtl.min.css" when dir=rtl
 ```
 
+**Compact density (modern scale)** — defined once in `resources/scss/_hr-pro.scss` as plain CSS so it applies to both builds: base type 14px (`--bs-body-font-size: .875rem`), buttons/inputs/tables at .875rem with tighter padding, card spacers .85rem/1rem, card radius .65rem, headings one step smaller, navbar padding .45rem. Sidebar width 210px; main content padding `p-3`.
+
 - Currency display: `<x-money :amount="$record->net_pay" :currency="$record->currency"/>` → `2,808.00 ج.م` / `2,808.00 AED`.
 - Dates via Carbon `->translatedFormat()` so Arabic month names render.
 - Status colors: PRESENT=success, LATE=warning, ABSENT=danger, PENDING=secondary, FORCED=dark.
@@ -70,8 +72,8 @@ $border-radius: .5rem;
 | Screen | View | Key components |
 |--------|------|----------------|
 | Login | `auth/login` | language toggle, RTL card |
-| Dashboard | `employee/dashboard` | today's shift card, big Clock In/Out button, mini stats |
-| Clock | `employee/clock` | shift selector (TL-assigned only), live timer, status |
+| Dashboard | `employee/dashboard` **(shipped T-2.4)** | today status cards, preferred/assigned shift, sessions list, big CTA → `/clock` |
+| Clock | `employee/clock` | FT/Online always (until used today); EXTRA/OT if assigned; preferred = TL assignment or default; banner; live timer; big CTA |
 | Daily Report | `employee/report` | textarea, TL response read-only below |
 | My Requests | `employee/requests` | tabs: permissions / vacations; status badges; TL marks forced (not employee) |
 | My Salary | `employee/salary` | payslip card (APPROVED/PAID only), PDF download |
@@ -85,9 +87,10 @@ $border-radius: .5rem;
 | Reports Review | `team-leader/reports` | report + response form + daily 4-score inputs (perf/behavior/productivity/interest return) |
 | Monthly Evaluation | `team-leader/evaluations` | 5 averages from daily + monthly text (editable before lock) |
 | Vacation Credit | `team-leader/vacation-credit` | balance card + add-credit modal + history |
-| Shift Assignment | `team-leader/shifts` | calendar-ish form, multiplier select |
+| Shift Assignment | `team-leader/shifts` **(shipped T-2.14)** | **My team** roster for date; assign form; list with **Edit** + Cancel; edit page for SCHEDULED |
 
 > TL layout **never** shows money. Sidebar has no payroll item. Any URL hack → 403 page.
+> Manager may also open `/team-leader/shifts` (role middleware) to assign any employee; item is not on Manager sidebar.
 
 ### Admin/Manager (`admin/`)
 | Screen | View | Key components |

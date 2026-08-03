@@ -63,7 +63,8 @@ class RoleAccessTest extends TestCase
         $leader = User::factory()->teamLeader()->create();
 
         $this->actingAs($leader)
-            ->get(route('dashboard'))
-            ->assertOk();
+            ->get(route('team-leader.dashboard'))
+            ->assertOk()
+            ->assertSee(__('dashboard.calendar.title'), false);
     }
 }

@@ -29,17 +29,17 @@ class AuthTest extends TestCase
         $this->post(route('login.store'), [
             'email' => $leader->email,
             'password' => 'password',
-        ])->assertRedirect(route('dashboard'));
+        ])->assertRedirect(route('team-leader.dashboard'));
     }
 
-    public function test_employee_logs_in_and_lands_on_self_profile(): void
+    public function test_employee_logs_in_and_lands_on_dashboard(): void
     {
         $employee = User::factory()->employee()->create();
 
         $this->post(route('login.store'), [
             'email' => $employee->email,
             'password' => 'password',
-        ])->assertRedirect(route('employee.profile'));
+        ])->assertRedirect(route('employee.dashboard'));
     }
 
     public function test_language_preference_is_applied_on_login(): void

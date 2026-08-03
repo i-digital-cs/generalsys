@@ -6,8 +6,8 @@ use App\Models\Attendance;
 use App\Models\ShiftAssignment;
 
 /**
- * Planned-hours profiles as data (PAYROLL_CALCULATION.md §1 / §7) —
- * EXTRA_SHIFT / OVERTIME come from the TL assignment, not this map.
+ * Planned-hours profiles as data (PAYROLL_CALCULATION.md §1 / §7).
+ * When a TL assignment exists for the chosen type, use its expected_hours.
  */
 class ShiftConfig
 {
@@ -20,8 +20,8 @@ class ShiftConfig
 
     public function plannedHours(string $shiftType, ?ShiftAssignment $assignment = null): float
     {
-        if (in_array($shiftType, [Attendance::SHIFT_EXTRA, Attendance::SHIFT_OVERTIME], true)) {
-            return (float) ($assignment?->expected_hours ?? 0);
+        if ($assignment !== null && $assignment->shift_type === $shiftType) {
+            return (float) $assignment->expected_hours;
         }
 
         if (! array_key_exists($shiftType, self::BASE_PLANNED_HOURS)) {

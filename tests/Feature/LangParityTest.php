@@ -31,7 +31,7 @@ class LangParityTest extends TestCase
 
     public function test_ar_and_en_lang_files_have_identical_keys(): void
     {
-        $files = ['auth', 'general', 'nav', 'employees', 'dashboard', 'documents', 'settings', 'profile', 'validation'];
+        $files = ['auth', 'general', 'nav', 'employees', 'dashboard', 'documents', 'settings', 'profile', 'validation', 'clock', 'shifts'];
 
         foreach ($files as $file) {
             $ar = $this->flatten(require lang_path("ar/{$file}.php"));

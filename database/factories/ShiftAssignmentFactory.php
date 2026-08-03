@@ -25,4 +25,26 @@ class ShiftAssignmentFactory extends Factory
             'status' => ShiftAssignment::STATUS_SCHEDULED,
         ];
     }
+
+    public function fullTime(): static
+    {
+        return $this->state(fn () => [
+            'shift_type' => ShiftAssignment::TYPE_FULL_TIME,
+            'expected_start_time' => '10:00',
+            'expected_end_time' => '18:00',
+            'expected_hours' => 8,
+            'multiplier' => 1.00,
+        ]);
+    }
+
+    public function onlineHalf(): static
+    {
+        return $this->state(fn () => [
+            'shift_type' => ShiftAssignment::TYPE_ONLINE_HALF,
+            'expected_start_time' => '10:00',
+            'expected_end_time' => '14:00',
+            'expected_hours' => 4,
+            'multiplier' => 1.00,
+        ]);
+    }
 }

@@ -52,25 +52,34 @@
 
                 <form method="POST" action="{{ route('employee.clock.in') }}" class="mb-3">
                     @csrf
-                    <div class="mb-3">
-                        <label for="shift_type" class="form-label">{{ __('clock.shift_type') }}</label>
-                        <select id="shift_type" name="shift_type"
-                                class="form-select form-select-lg @error('shift_type') is-invalid @enderror" required>
-                            @foreach ($shiftTypes as $type)
-                                <option value="{{ $type }}" @selected(old('shift_type', $defaultShift) === $type)>
-                                    {{ __('clock.shifts.'.$type) }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('shift_type')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                        <div class="form-text">{{ __('clock.no_ot_hint') }}</div>
-                    </div>
+                    @if ($todaysAssignment)
+                        <div class="alert alert-info py-2">
+                            {{ __('clock.assigned_today', ['shift' => __('clock.shifts.'.$todaysAssignment->shift_type)]) }}
+                        </div>
+                    @endif
+                    @if ($shiftTypes === [])
+                        <div class="alert alert-warning">{{ __('clock.no_shifts_left') }}</div>
+                    @else
+                        <div class="mb-3">
+                            <label for="shift_type" class="form-label">{{ __('clock.shift_type') }}</label>
+                            <select id="shift_type" name="shift_type"
+                                    class="form-select form-select-lg @error('shift_type') is-invalid @enderror" required>
+                                @foreach ($shiftTypes as $type)
+                                    <option value="{{ $type }}" @selected(old('shift_type', $preferredShift) === $type)>
+                                        {{ __('clock.shifts.'.$type) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('shift_type')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">{{ __('clock.rotation_hint') }}</div>
+                        </div>
 
-                    <button type="submit" class="btn btn-primary btn-lg w-100 clock-cta">
-                        <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>{{ __('clock.clock_in') }}
-                    </button>
+                        <button type="submit" class="btn btn-primary btn-lg w-100 clock-cta">
+                            <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>{{ __('clock.clock_in') }}
+                        </button>
+                    @endif
                 </form>
             @endif
         </div>

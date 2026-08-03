@@ -66,4 +66,82 @@
             </div>
         </div>
     </div>
+
+    <div class="row g-3 mt-1">
+        @if ($showTeamIntervals ?? false)
+            <div class="col-12 col-xl-5">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <h2 class="h6 mb-0">{{ __('dashboard.team_intervals.title') }}</h2>
+                            <a href="{{ route('team-leader.shifts', ['date' => now()->toDateString()]) }}"
+                               class="btn btn-sm btn-outline-primary">
+                                {{ __('dashboard.team_intervals.manage') }}
+                            </a>
+                        </div>
+                        <p class="small text-body-secondary mb-3">
+                            {{ __('dashboard.team_intervals.hint', ['month' => $calendar['label'] ?? '']) }}
+                        </p>
+
+                        @if (($teamShifts ?? collect())->isEmpty())
+                            <x-empty-state
+                                :title="__('dashboard.team_intervals.empty_title')"
+                                :text="__('dashboard.team_intervals.empty_text')"
+                                icon="bi-people"
+                            />
+                        @else
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">{{ __('shifts.employee') }}</th>
+                                            <th scope="col">{{ __('shifts.date') }}</th>
+                                            <th scope="col">{{ __('shifts.shift_type') }}</th>
+                                            <th scope="col">{{ __('dashboard.team_intervals.interval') }}</th>
+                                            <th scope="col">{{ __('shifts.status') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($teamShifts as $shift)
+                                            <tr>
+                                                <td class="fw-semibold">
+                                                    {{ app()->getLocale() === 'ar' ? $shift->user?->name_ar : $shift->user?->name_en }}
+                                                </td>
+                                                <td>{{ $shift->date->translatedFormat('d M') }}</td>
+                                                <td>{{ __('shifts.types.'.$shift->shift_type) }}</td>
+                                                <td dir="ltr" class="text-nowrap">
+                                                    {{ $shift->expected_start_time }}–{{ $shift->expected_end_time }}
+                                                    <span class="text-body-secondary">({{ $shift->expected_hours }}h)</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge text-bg-{{ $shift->status === 'SCHEDULED' ? 'primary' : 'success' }}">
+                                                        {{ __('shifts.statuses.'.$shift->status) }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-7">
+                <x-month-calendar
+                    :calendar="$calendar"
+                    :prev-url="$calPrevUrl"
+                    :next-url="$calNextUrl"
+                />
+            </div>
+        @else
+            <div class="col-12">
+                <x-month-calendar
+                    :calendar="$calendar"
+                    :prev-url="$calPrevUrl"
+                    :next-url="$calNextUrl"
+                />
+            </div>
+        @endif
+    </div>
 @endsection

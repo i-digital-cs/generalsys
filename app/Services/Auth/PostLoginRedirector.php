@@ -13,9 +13,8 @@ class PostLoginRedirector
     {
         return match ($user->role) {
             User::ROLE_MANAGER => 'admin.dashboard',
-            // TL team dashboard ships in Phase 2 (T-2.13) — generic dashboard until then.
-            User::ROLE_TEAM_LEADER => 'dashboard',
-            default => 'employee.profile',
+            User::ROLE_TEAM_LEADER => 'team-leader.dashboard',
+            default => 'employee.dashboard',
         };
     }
 

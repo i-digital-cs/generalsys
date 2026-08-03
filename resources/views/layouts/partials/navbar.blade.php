@@ -4,6 +4,12 @@
     $displayName = $authUser
         ? (app()->getLocale() === 'ar' ? $authUser->name_ar : $authUser->name_en)
         : '';
+    $homeRoute = match (true) {
+        $authUser?->isManager() => 'admin.dashboard',
+        $authUser?->isTeamLeader() => 'team-leader.dashboard',
+        $authUser?->isEmployee() => 'employee.dashboard',
+        default => 'dashboard',
+    };
 @endphp
 <nav class="navbar navbar-dark bg-primary">
     <div class="container-fluid flex-nowrap gap-2">
@@ -13,7 +19,8 @@
             <i class="bi bi-list"></i>
         </button>
 
-        <a class="navbar-brand text-truncate mb-0 me-auto" href="#">{{ config('app.name') }}</a>
+        <a class="navbar-brand text-truncate mb-0 me-auto"
+           href="{{ Route::has($homeRoute) ? route($homeRoute) : route('dashboard') }}">{{ config('app.name') }}</a>
 
         <div class="d-flex flex-nowrap flex-shrink-0 align-items-center gap-1">
             <a class="nav-link text-white px-2"

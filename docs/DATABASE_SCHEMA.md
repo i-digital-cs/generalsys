@@ -144,7 +144,7 @@ CREATE TABLE attendance (
     is_friday_work           TINYINT(1) NOT NULL DEFAULT 0,   -- auto-detected
     is_day_off_work          TINYINT(1) NOT NULL DEFAULT 0,   -- vs rest_days table
     is_official_holiday_work TINYINT(1) NOT NULL DEFAULT 0,   -- vs official_holidays
-    assigned_by_tl_id        BIGINT UNSIGNED NULL,            -- EXTRA_SHIFT / OVERTIME only
+    assigned_by_tl_id        BIGINT UNSIGNED NULL,            -- set when clocking a matching TL assignment
     clock_in                 DATETIME NULL,
     clock_out                DATETIME NULL,                   -- overnight: next-day datetime, no offset hacks
     planned_hours            DECIMAL(4,2) NOT NULL DEFAULT 0, -- 8 / 4 / 12 / assigned hours
@@ -173,6 +173,8 @@ CREATE TABLE attendance (
 ```
 
 > Overnight shifts (e.g. 10:00 → 06:00 next day): store real datetimes. The Excel "modify TIME +12:00" hack is **not** carried into the app (see `docs/PAYROLL_CALCULATION.md` §3).
+>
+> Unique `(user_id, date, shift_type)`: one punch cycle per shift type per day. After clock-out, that type is hidden on `/clock`; employee may still clock a **different** type the same day.
 
 ## 8. permissions
 
@@ -392,13 +394,15 @@ CREATE TABLE advances (
 
 ## 17. shift_assignments
 
+Daily roster / rotation + premium shifts. TL assigns FT/Online as well as EXTRA/OT.
+
 ```sql
 CREATE TABLE shift_assignments (
     id                  BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id             BIGINT UNSIGNED NOT NULL,
     assigned_by_tl_id   BIGINT UNSIGNED NOT NULL,
     date                DATE NOT NULL,
-    shift_type          ENUM('EXTRA_SHIFT','OVERTIME') NOT NULL,
+    shift_type          ENUM('FULL_TIME','ONLINE_HALF','ONLINE_FULL','EXTRA_SHIFT','OVERTIME') NOT NULL,
     expected_start_time TIME NOT NULL,
     expected_end_time   TIME NOT NULL,
     expected_hours      DECIMAL(4,2) NOT NULL,
@@ -413,6 +417,10 @@ CREATE TABLE shift_assignments (
     INDEX idx_sa_tl (assigned_by_tl_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
+
+> Clock rules: preferred = today’s SCHEDULED assignment if any (still available); else `users.shift_type_default` or employee choice among remaining FT/Online types. EXTRA/OT still require assignment. Employee may switch FT↔Online even when a base shift was assigned. App rejects a second SCHEDULED row for the same `user_id + date + shift_type`. Cancel = status `CANCELLED`. Completing a matching clock-out may mark the assignment `COMPLETED`.
+>
+> Web UI (shipped T-2.14): `GET/POST /team-leader/shifts`, `POST /team-leader/shifts/{id}/cancel` — TL team-scoped; Manager all employees. Service: `ShiftAssignmentService`.
 
 ## 18. official_holidays
 

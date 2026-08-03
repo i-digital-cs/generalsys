@@ -8,10 +8,79 @@
     --hp-card-border: rgba(0, 0, 0, .06);
     --hp-shadow-sm: 0 .125rem .375rem rgba(15, 23, 42, .06);
     --hp-shadow-hover: 0 .5rem 1.25rem rgba(15, 23, 42, .12);
+
+    // Compact density: 14px base type instead of Bootstrap's 16px.
+    // Both builds (compiled LTR + prebuilt RTL) read this var in `body`.
+    --bs-body-font-size: .875rem;
 }
 
 body {
     background-color: #f4f6f9;
+}
+
+// ---- Compact density (modern SaaS scale) -----------------------------------
+// Everything here is plain CSS on top of Bootstrap's CSS vars / base classes,
+// so it applies identically to the LTR sass build and the prebuilt RTL CSS.
+
+.btn {
+    --bs-btn-padding-y: .35rem;
+    --bs-btn-padding-x: .8rem;
+    --bs-btn-font-size: .875rem;
+    --bs-btn-border-radius: .45rem;
+}
+
+// :not() keeps .form-control-sm/-lg padding intact.
+.form-control:not(.form-control-sm):not(.form-control-lg),
+.form-select:not(.form-select-sm):not(.form-select-lg) {
+    padding: .35rem .65rem;
+    font-size: .875rem;
+    border-radius: .45rem;
+}
+
+.form-label {
+    margin-bottom: .25rem;
+    font-size: .85rem;
+    font-weight: 500;
+}
+
+.input-group-text {
+    font-size: .875rem;
+}
+
+.table {
+    --bs-table-cell-padding-y: .5rem;
+    --bs-table-cell-padding-x: .625rem;
+    font-size: .875rem;
+}
+
+.card {
+    --bs-card-spacer-y: .85rem;
+    --bs-card-spacer-x: 1rem;
+    --bs-card-border-radius: .65rem;
+}
+
+// Headings one step smaller than Bootstrap defaults.
+h1, .h1 { font-size: 1.75rem; }
+h2, .h2 { font-size: 1.5rem; }
+h3, .h3 { font-size: 1.3rem; }
+h4, .h4 { font-size: 1.1rem; }
+h5, .h5 { font-size: 1rem; }
+h6, .h6 { font-size: .9rem; }
+
+.navbar {
+    --bs-navbar-padding-y: .45rem;
+    --bs-navbar-brand-font-size: 1.1rem;
+}
+
+.dropdown-menu { font-size: .875rem; }
+.dropdown-item { padding: .35rem 1rem; }
+.breadcrumb { margin-bottom: .75rem; font-size: .85rem; }
+.alert { padding: .65rem 1rem; font-size: .875rem; }
+
+.pagination {
+    --bs-pagination-padding-y: .3rem;
+    --bs-pagination-padding-x: .65rem;
+    --bs-pagination-font-size: .85rem;
 }
 
 // ---- Sidebar -------------------------------------------------------------
@@ -44,7 +113,8 @@ body {
     .nav-link {
         margin: 0;
         border-radius: 0;
-        padding: .65rem 1rem;
+        padding: .5rem .9rem;
+        font-size: .875rem;
         color: #495057;
         transition: background-color .15s ease, color .15s ease;
 
@@ -127,14 +197,15 @@ body {
     }
 
     .stat-icon {
-        width: 3rem;
-        height: 3rem;
-        border-radius: .75rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: .625rem;
         flex-shrink: 0;
+        font-size: 1.15rem; // beats the fs-4 utility (later in source order)
     }
 
     .stat-value {
-        font-size: 1.6rem;
+        font-size: 1.35rem;
         line-height: 1.2;
     }
 }
@@ -149,8 +220,8 @@ body {
     .hero-date {
         background: rgba(255, 255, 255, .18);
         border-radius: 2rem;
-        padding: .35rem .9rem;
-        font-size: .85rem;
+        padding: .3rem .8rem;
+        font-size: .8rem;
         white-space: nowrap;
     }
 }
@@ -159,12 +230,13 @@ body {
 .quick-action {
     display: flex;
     align-items: center;
-    gap: .75rem;
-    padding: .8rem 1rem;
+    gap: .6rem;
+    padding: .6rem .85rem;
     border: 1px solid var(--hp-card-border);
     border-radius: .625rem;
     background: #fff;
     color: #212529;
+    font-size: .875rem;
     text-decoration: none;
     transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
 
@@ -176,14 +248,14 @@ body {
     }
 
     .quick-action-icon {
-        width: 2.4rem;
-        height: 2.4rem;
+        width: 2.1rem;
+        height: 2.1rem;
         border-radius: .5rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 }
 
@@ -192,10 +264,125 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: .7rem 0;
+    gap: .75rem;
+    padding: .55rem 0;
 
     + .contract-row {
         border-top: 1px solid var(--hp-card-border);
+    }
+}
+
+// ---- Month calendar ---------------------------------------------------------
+.month-cal-weekdays,
+.month-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: .25rem;
+}
+
+.month-cal-weekday {
+    font-size: .7rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--bs-secondary-color);
+    padding: .25rem 0;
+}
+
+.month-cal-cell {
+    min-height: 4.25rem;
+    border: 1px solid var(--hp-card-border);
+    border-radius: .4rem;
+    padding: .25rem .3rem;
+    background: #fff;
+
+    &.is-outside {
+        background: transparent;
+        border-color: transparent;
+    }
+
+    &.is-today {
+        border-color: var(--hp-primary);
+        box-shadow: inset 0 0 0 1px var(--hp-primary);
+    }
+
+    &.has-markers {
+        background: rgba(13, 110, 253, .04);
+    }
+}
+
+.month-cal-day {
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.month-cal-markers {
+    list-style: none;
+    margin: .2rem 0 0;
+    padding: 0;
+}
+
+.month-cal-marker {
+    font-size: .62rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: .25rem;
+    padding: .1rem .25rem;
+    margin-bottom: .15rem;
+
+    &--shift {
+        background: rgba(13, 110, 253, .12);
+        color: #0a58ca;
+    }
+
+    &--holiday {
+        background: rgba(25, 135, 84, .12);
+        color: #146c43;
+    }
+}
+
+.month-cal-more {
+    font-size: .62rem;
+    color: var(--bs-secondary-color);
+}
+
+.month-cal-legend {
+    display: inline-block;
+    width: .65rem;
+    height: .65rem;
+    border-radius: .15rem;
+    margin-inline-end: .3rem;
+    vertical-align: middle;
+
+    &--shift {
+        background: #0d6efd;
+    }
+
+    &--holiday {
+        background: #198754;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .month-cal-cell {
+        min-height: 2.75rem;
+        padding: .15rem;
+    }
+
+    .month-cal-marker {
+        display: none;
+    }
+
+    .month-cal-cell.has-markers .month-cal-day::after {
+        content: '';
+        display: inline-block;
+        width: .35rem;
+        height: .35rem;
+        border-radius: 50%;
+        background: var(--hp-primary);
+        margin-inline-start: .2rem;
+        vertical-align: middle;
     }
 }

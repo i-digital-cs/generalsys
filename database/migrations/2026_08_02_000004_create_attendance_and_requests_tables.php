@@ -116,7 +116,9 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('assigned_by_tl_id')->constrained('users')->cascadeOnDelete();
             $table->date('date');
-            $table->enum('shift_type', ['EXTRA_SHIFT', 'OVERTIME']);
+            $table->enum('shift_type', [
+                'FULL_TIME', 'ONLINE_HALF', 'ONLINE_FULL', 'EXTRA_SHIFT', 'OVERTIME',
+            ]);
             $table->time('expected_start_time');
             $table->time('expected_end_time');
             $table->decimal('expected_hours', 4, 2);

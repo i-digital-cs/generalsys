@@ -61,19 +61,21 @@ Never run tests against production.
 
 **Build:** clock in/out · daily report + TL reply · permissions · vacations + credit · shift assignment check for OT/extra.
 
-| # | Must verify |
-|---|-------------|
-| 2.1 | Unit: `AttendanceService` planned/actual hours; overnight clock-out next day |
-| 2.2 | Unit: late_minutes / early_departure_minutes |
-| 2.3 | Feature: clock-in / clock-out happy path; second open clock-in → 422 |
-| 2.4 | Feature: EXTRA_SHIFT / OVERTIME without `shift_assignments` → 422 |
-| 2.5 | Feature: FT → Online selectable at clock-in by employee |
-| 2.6 | Feature: permission accept → normal penalty path; reject → no force yet |
-| 2.7 | Feature: TL **Mark as forced** → `FORCED` + double penalty flag |
-| 2.8 | Feature: vacation request shows remaining credit; reject if remaining &lt; requested |
-| 2.9 | Feature: TL can add vacation credit; employee sees updated remaining |
-| 2.10 | Feature: daily report + TL response (XSS escaped in Blade) |
-| 2.11 | Feature: team-scoped lists — TL cannot see other teams |
+| # | Must verify | Status |
+|---|-------------|--------|
+| 2.1 | Unit: `AttendanceService` planned/actual hours; overnight clock-out next day | ✅ T-2.2 |
+| 2.2 | Unit: late_minutes / early_departure_minutes | ✅ T-2.2 |
+| 2.3 | Feature: clock-in / clock-out happy path; second open clock-in → 422 | ✅ T-2.3 |
+| 2.4 | Feature: EXTRA_SHIFT / OVERTIME without `shift_assignments` → 422 | ✅ T-2.3 |
+| 2.5 | Feature: FT → Online selectable at clock-in by employee | ✅ T-2.3 |
+| 2.6 | Feature: permission accept → normal penalty path; reject → no force yet | ⬜ |
+| 2.7 | Feature: TL **Mark as forced** → `FORCED` + double penalty flag | ⬜ |
+| 2.8 | Feature: vacation request shows remaining credit; reject if remaining &lt; requested | ⬜ |
+| 2.9 | Feature: TL can add vacation credit; employee sees updated remaining | ⬜ |
+| 2.10 | Feature: daily report + TL response (XSS escaped in Blade) | ⬜ |
+| 2.11 | Feature: team-scoped lists — TL cannot see other teams | ⬜ (partial: T-2.14 shifts list) |
+
+**Also covered with clock (2026-08-02):** same `shift_type` twice same day → 422; used types hidden on `/clock`; rotation preferred = TL assignment then default.
 
 **Exit:** all Gate 2 tests green → may start Gate 3.
 
@@ -83,15 +85,15 @@ Never run tests against production.
 
 **Build:** daily 4 TL scores + Interest Return · daily auto attendance % · monthly text · monthly avg of **5** · Friday / day-off flags · OT pre-assign.
 
-| # | Must verify |
-|---|-------------|
-| 3.1 | Unit: daily `attendance_score = min(100, actual/planned*100)` |
-| 3.2 | Unit: `EvaluationService::monthlyFromDaily` averages 5 metrics; `total = sum/5` |
-| 3.3 | Unit: Excel legacy 4-metric sample still averages correctly where applicable (0.97375 on those four) |
-| 3.4 | Feature: TL PUT daily scores `{ performance, behavior, productivity, interest_return }` |
-| 3.5 | Feature: monthly evaluation creates text + computed averages |
-| 3.6 | Feature: employee can view own evaluation; cannot edit scores |
-| 3.7 | Feature: TL shift assignment create/cancel; employee cannot self-assign OT |
+| # | Must verify | Status |
+|---|-------------|--------|
+| 3.1 | Unit: daily `attendance_score = min(100, actual/planned*100)` | ✅ (via T-2.2 clock-out) |
+| 3.2 | Unit: `EvaluationService::monthlyFromDaily` averages 5 metrics; `total = sum/5` | ⬜ |
+| 3.3 | Unit: Excel legacy 4-metric sample still averages correctly where applicable (0.97375 on those four) | ⬜ |
+| 3.4 | Feature: TL PUT daily scores `{ performance, behavior, productivity, interest_return }` | ⬜ |
+| 3.5 | Feature: monthly evaluation creates text + computed averages | ⬜ |
+| 3.6 | Feature: employee can view own evaluation; cannot edit scores | ⬜ |
+| 3.7 | Feature: TL shift assignment create/cancel; employee cannot self-assign OT | ✅ T-2.14 (also FT/Online rotation) |
 
 **Exit:** all Gate 3 tests green → may start Gate 4.
 
