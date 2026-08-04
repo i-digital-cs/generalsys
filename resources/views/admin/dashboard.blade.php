@@ -70,14 +70,20 @@
                     <h2 class="h6 mb-0">{{ __('dashboard.quick_actions') }}</h2>
                 </div>
                 <div class="card-body pt-2 d-grid gap-2">
-                    <a class="quick-action" href="{{ route('admin.employees.create') }}">
+                    <a class="quick-action" href="{{ route('team-leader.shifts', ['date' => now()->toDateString()]) }}">
                         <span class="quick-action-icon bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-calendar3" aria-hidden="true"></i>
+                        </span>
+                        <span class="fw-semibold">{{ __('nav.shifts') }}</span>
+                    </a>
+                    <a class="quick-action" href="{{ route('admin.employees.create') }}">
+                        <span class="quick-action-icon bg-success bg-opacity-10 text-success">
                             <i class="bi bi-person-plus" aria-hidden="true"></i>
                         </span>
                         <span class="fw-semibold">{{ __('employees.add_new') }}</span>
                     </a>
                     <a class="quick-action" href="{{ route('admin.employees.index') }}">
-                        <span class="quick-action-icon bg-success bg-opacity-10 text-success">
+                        <span class="quick-action-icon bg-info bg-opacity-10 text-info">
                             <i class="bi bi-people" aria-hidden="true"></i>
                         </span>
                         <span class="fw-semibold">{{ __('nav.employees') }}</span>
@@ -88,6 +94,71 @@
                         </span>
                         <span class="fw-semibold">{{ __('nav.settings') }}</span>
                     </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @php
+        $leaderShiftsToday = ($teamShifts ?? collect())
+            ->filter(fn ($row) => $row->user
+                && $row->user->isTeamLeader()
+                && $row->date->toDateString() === now()->toDateString())
+            ->values();
+    @endphp
+
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <div>
+                            <h2 class="h6 mb-0">{{ __('dashboard.leader_shifts.title') }}</h2>
+                            <p class="small text-body-secondary mb-0">{{ __('dashboard.leader_shifts.hint') }}</p>
+                        </div>
+                        <a href="{{ route('team-leader.shifts', ['date' => now()->toDateString()]) }}"
+                           class="btn btn-sm btn-outline-primary">
+                            {{ __('dashboard.team_intervals.manage') }}
+                        </a>
+                    </div>
+
+                    @if ($leaderShiftsToday->isEmpty())
+                        <x-empty-state
+                            :title="__('dashboard.leader_shifts.empty_title')"
+                            :text="__('dashboard.leader_shifts.empty_text')"
+                            icon="bi-calendar3"
+                        />
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">{{ __('shifts.employee') }}</th>
+                                        <th scope="col">{{ __('shifts.shift_type') }}</th>
+                                        <th scope="col">{{ __('shifts.start_time') }}</th>
+                                        <th scope="col">{{ __('shifts.end_time') }}</th>
+                                        <th scope="col" class="text-end">{{ __('shifts.expected_hours') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($leaderShiftsToday as $shift)
+                                        @php
+                                            $name = app()->getLocale() === 'ar'
+                                                ? $shift->user->name_ar
+                                                : $shift->user->name_en;
+                                        @endphp
+                                        <tr>
+                                            <td class="fw-semibold">{{ $name }}</td>
+                                            <td>{{ __('clock.shifts.'.$shift->shift_type) }}</td>
+                                            <td dir="ltr">{{ \Illuminate\Support\Str::of($shift->expected_start_time)->substr(0, 5) }}</td>
+                                            <td dir="ltr">{{ \Illuminate\Support\Str::of($shift->expected_end_time)->substr(0, 5) }}</td>
+                                            <td class="text-end" dir="ltr">{{ number_format((float) $shift->expected_hours, 2) }}h</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

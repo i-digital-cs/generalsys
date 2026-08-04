@@ -19,6 +19,7 @@ class PayrollCalculator
     {
         $divisor = (float) config('payroll.month_divisor', 30);
         $dayRate = $this->dayRate($input->baseSalary, $divisor);
+        $autoPenalties = (bool) config('payroll.auto_penalties', false);
 
         $fullTimePay = $this->dayRatePay($input->baseSalary, $divisor, $input->fullTimeDays);
         $onlineHalfPay = $this->onlineHalfPay($input, $divisor);
@@ -34,44 +35,44 @@ class PayrollCalculator
         $dayOffBonus = $this->dayOffBonus($input, $dayRate);
         $overtimePay = $this->overtimePay($input);
 
-        $excused = $this->absencePenalty(
+        $excused = $autoPenalties ? $this->absencePenalty(
             $input->currency,
             PenaltyRule::TYPE_EXCUSED_ABSENCE,
             $dayRate,
             $input->excusedAbsenceDays,
             1.0,
-        );
-        $unexcused = $this->absencePenalty(
+        ) : 0.0;
+        $unexcused = $autoPenalties ? $this->absencePenalty(
             $input->currency,
             PenaltyRule::TYPE_UNEXCUSED_ABSENCE,
             $dayRate,
             $input->unexcusedAbsenceDays,
             3.0,
-        );
+        ) : 0.0;
 
-        $latePenalty = $this->minutePenalty(
+        $latePenalty = $autoPenalties ? $this->minutePenalty(
             $input->currency,
             PenaltyRule::TYPE_LATE_ARRIVAL,
             $input->lateMinutesTotal,
-        );
-        $leavePermissionPenalty = $this->minutePenalty(
+        ) : 0.0;
+        $leavePermissionPenalty = $autoPenalties ? $this->minutePenalty(
             $input->currency,
             PenaltyRule::TYPE_LEAVE_PERMISSION,
             $input->leavePermissionMinutes,
-        );
-        $latePermissionPenalty = $this->minutePenalty(
+        ) : 0.0;
+        $latePermissionPenalty = $autoPenalties ? $this->minutePenalty(
             $input->currency,
             PenaltyRule::TYPE_LATE_PERMISSION,
             $input->latePermissionMinutes,
-        );
+        ) : 0.0;
 
-        $forcedSurcharge = $this->forcedSurcharge($input);
+        $forcedSurcharge = $autoPenalties ? $this->forcedSurcharge($input) : 0.0;
 
-        $hoursDeductionAmount = $this->hoursDeductionAmount(
+        $hoursDeductionAmount = $autoPenalties ? $this->hoursDeductionAmount(
             $input->baseSalary,
             $divisor,
             $input->hoursDeduction,
-        );
+        ) : 0.0;
 
         [$commissions, $bonuses, $advances] = $this->splitAdjustments($input->adjustments);
 

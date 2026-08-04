@@ -21,6 +21,7 @@ class PayrollCalculatorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['payroll.auto_penalties' => true]);
         $this->calculator = app(PayrollCalculator::class);
     }
 
@@ -164,5 +165,35 @@ class PayrollCalculatorTest extends TestCase
 
         $this->assertSame(300.0, $custom->onlineHalfPay);
         $this->assertSame(250.0, $custom->onlineFullPay);
+    }
+
+    public function test_auto_penalties_off_zeros_money_keeps_advances(): void
+    {
+        config(['payroll.auto_penalties' => false]);
+
+        PenaltyRule::factory()->create([
+            'type' => PenaltyRule::TYPE_EXCUSED_ABSENCE,
+            'currency' => 'EGP',
+            'amount_per_unit' => 1.00,
+            'unit' => PenaltyRule::UNIT_DAY,
+        ]);
+
+        $result = $this->calculator->calculate(new PayrollCalculationInput(
+            baseSalary: 5000,
+            currency: 'EGP',
+            fullTimeDays: 20,
+            excusedAbsenceDays: 1,
+            lateMinutesTotal: 30,
+            hoursDeduction: 2,
+            adjustments: [
+                ['type' => PayrollAdjustment::TYPE_ADVANCE, 'amount' => 100],
+            ],
+        ));
+
+        $this->assertSame(0.0, $result->excusedAbsencePenalty);
+        $this->assertSame(0.0, $result->latePenalty);
+        $this->assertSame(0.0, $result->hoursDeductionAmount);
+        $this->assertSame(100.0, $result->advanceDeductions);
+        $this->assertSame(3333.33, $result->fullTimePay);
     }
 }

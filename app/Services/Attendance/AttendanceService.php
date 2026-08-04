@@ -38,6 +38,10 @@ class AttendanceService
             throw AttendanceException::shiftAlreadyRecorded();
         }
 
+        if (! in_array($shiftType, $this->plannedAllowedTypes($user, $date), true)) {
+            throw AttendanceException::planMismatch();
+        }
+
         $assignment = $this->resolveAssignment($user, $shiftType, $date);
 
         return DB::transaction(function () use ($user, $shiftType, $at, $date, $assignment) {
@@ -116,24 +120,15 @@ class AttendanceService
 
     /**
      * Shift types the employee may pick on the clock screen for $at's date.
-     * FT / Online always (employee may switch); EXTRA / OT only when assigned.
-     * Types already recorded for that date are excluded (unique user+date+shift).
+     * Phase 6: must match day’s plan (base assignment); EXTRA/OT only if assigned.
+     * No plan → profile default only. Types already recorded that day are excluded.
      *
      * @return list<string>
      */
     public function availableShiftTypes(User $user, ?CarbonInterface $at = null): array
     {
         $date = Carbon::parse($at ?? now())->toDateString();
-
-        $types = ShiftAssignment::BASE_TYPES;
-
-        $premium = ShiftAssignment::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', $date)
-            ->where('status', ShiftAssignment::STATUS_SCHEDULED)
-            ->whereIn('shift_type', ShiftAssignment::PREMIUM_TYPES)
-            ->pluck('shift_type')
-            ->all();
+        $allowed = $this->plannedAllowedTypes($user, $date);
 
         $used = Attendance::query()
             ->where('user_id', $user->id)
@@ -141,7 +136,36 @@ class AttendanceService
             ->pluck('shift_type')
             ->all();
 
-        return array_values(array_diff(array_unique([...$types, ...$premium]), $used));
+        return array_values(array_diff($allowed, $used));
+    }
+
+    /**
+     * Types allowed by today’s roster (ignores already-used punches).
+     *
+     * @return list<string>
+     */
+    public function plannedAllowedTypes(User $user, string $date): array
+    {
+        $scheduled = ShiftAssignment::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->where('status', ShiftAssignment::STATUS_SCHEDULED)
+            ->pluck('shift_type')
+            ->all();
+
+        $baseScheduled = array_values(array_intersect($scheduled, ShiftAssignment::BASE_TYPES));
+        $premiumScheduled = array_values(array_intersect($scheduled, ShiftAssignment::PREMIUM_TYPES));
+
+        if ($baseScheduled !== []) {
+            return array_values(array_unique([...$baseScheduled, ...$premiumScheduled]));
+        }
+
+        $default = $user->shift_type_default ?: Attendance::SHIFT_FULL_TIME;
+        if (! in_array($default, ShiftAssignment::BASE_TYPES, true)) {
+            $default = Attendance::SHIFT_FULL_TIME;
+        }
+
+        return array_values(array_unique([$default, ...$premiumScheduled]));
     }
 
     /**

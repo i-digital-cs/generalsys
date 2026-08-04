@@ -136,50 +136,14 @@
                        value="{{ $val('work_end_time') }}" class="form-control @error('work_end_time') is-invalid @enderror">
                 @error('work_end_time') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
-            <div class="col-12">
-                @if ($editing)
-                    <span class="form-label d-block">{{ __('employees.rest_days.title') }}</span>
-                    <p class="small text-body-secondary">{{ __('employees.rest_days.hint') }}</p>
-                    <form method="POST" action="{{ route('admin.employees.rest-days.store', $employee) }}"
-                          class="row g-2 align-items-end mb-3">
-                        @csrf
-                        <div class="col-auto">
-                            <label for="rest_day_date" class="form-label">{{ __('employees.rest_days.fields.date') }}</label>
-                            <input type="date" name="date" id="rest_day_date" dir="ltr"
-                                   class="form-control @error('date') is-invalid @enderror"
-                                   value="{{ old('date') }}" required>
-                            @error('date') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="col-auto">
-                            <button type="submit" class="btn btn-sm btn-primary">{{ __('employees.rest_days.add') }}</button>
-                        </div>
-                    </form>
-                    @php $restDays = $employee->restDays()->orderBy('date')->get(); @endphp
-                    @if ($restDays->isEmpty())
-                        <p class="text-body-secondary mb-0">{{ __('employees.rest_days.empty') }}</p>
-                    @else
-                        <ul class="list-group list-group-flush">
-                            @foreach ($restDays as $restDay)
-                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                                    <span dir="ltr">{{ $restDay->date->toDateString() }}</span>
-                                    <form method="POST"
-                                          action="{{ route('admin.employees.rest-days.destroy', [$employee, $restDay]) }}"
-                                          onsubmit="return confirm(@json(__('employees.rest_days.remove').'?'))">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                            {{ __('employees.rest_days.remove') }}
-                                        </button>
-                                    </form>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-                @else
+            @unless ($editing)
+                <div class="col-12">
                     <p class="small text-body-secondary mb-0">{{ __('employees.rest_days.hint') }}</p>
-                    <p class="small text-body-secondary">{{ __('employees.rest_days.empty') }} — {{ __('general.save') }} {{ __('employees.edit_title') }}</p>
-                @endif
-            </div>
+                    <p class="small text-body-secondary mb-0">
+                        {{ __('employees.rest_days.empty') }} — {{ __('general.save') }} {{ __('employees.edit_title') }}
+                    </p>
+                </div>
+            @endunless
         </div>
     </div>
 </div>

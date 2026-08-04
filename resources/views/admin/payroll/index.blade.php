@@ -12,6 +12,14 @@
 
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-body">
+            @if (session('success') || session('error'))
+                @if (session('success'))
+                    <div class="alert alert-success" role="status">{{ session('success') }}</div>
+                @endif
+                @if (session('error'))
+                    <div class="alert alert-warning" role="status">{{ session('error') }}</div>
+                @endif
+            @endif
             <form method="GET" action="{{ route('admin.payroll.index') }}" class="row g-2 align-items-end mb-3">
                 <div class="col-6 col-md-3">
                     <label for="month" class="form-label">{{ __('payroll.fields.month') }}</label>
@@ -54,6 +62,20 @@
                         {{ __('payroll.generate') }}
                     </button>
                 </div>
+                <div class="col-6 col-md-auto">
+                    <a href="{{ route('admin.payroll.export.xlsx', ['month' => $month, 'year' => $year]) }}"
+                       class="btn btn-outline-secondary w-100">
+                        {{ __('payroll.export_excel') }}
+                    </a>
+                </div>
+                @if (! empty($exportReady))
+                    <div class="col-6 col-md-auto">
+                        <a href="{{ route('admin.payroll.export.download', ['month' => $month, 'year' => $year]) }}"
+                           class="btn btn-outline-success w-100">
+                            {{ __('payroll.download_excel') }}
+                        </a>
+                    </div>
+                @endif
             </form>
         </div>
     </div>

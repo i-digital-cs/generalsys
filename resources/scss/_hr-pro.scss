@@ -423,4 +423,29 @@ h6, .h6 { font-size: .9rem; }
         margin-inline-start: .2rem;
         vertical-align: middle;
     }
+
+    // Employee mobile polish (T-5.4): larger primary actions, no clipped tabs
+    .clock-cta {
+        min-height: 3.25rem;
+        font-size: 1.2rem;
+    }
+
+    .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: .25rem;
+    }
+
+    .nav-tabs .nav-link {
+        white-space: nowrap;
+    }
+
+    .employee-mobile-stack .btn {
+        min-height: 2.75rem;
+    }
+
+    main.flex-grow-1 {
+        padding-bottom: 1.25rem;
+    }
 }

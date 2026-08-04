@@ -26,7 +26,11 @@ class PayrollDraftTest extends TestCase
             ->assertOk()
             ->assertSee(__('payroll.breakdown'), false)
             ->assertSee(__('payroll.approve'), false)
-            ->assertSee(__('payroll.save_counts'), false);
+            ->assertSee(__('payroll.save_counts'), false)
+            ->assertSee(__('payroll.evaluation.title'), false)
+            ->assertSee(__('evaluation.fields.performance'), false)
+            ->assertSee(__('evaluation.fields.interest_return'), false)
+            ->assertSee(__('payroll.evaluation.monthly_total'), false);
 
         $this->actingAs($manager)
             ->put(route('admin.payroll.update', $payroll), $this->countPayload([
@@ -38,6 +42,35 @@ class PayrollDraftTest extends TestCase
         $payroll->refresh();
         $this->assertSame(18, (int) $payroll->full_time_days);
         $this->assertSame(3000.0, (float) $payroll->full_time_pay); // 5000/30*18
+    }
+
+    public function test_payroll_show_displays_five_monthly_score_averages(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+        $employee = $payroll->user;
+
+        Attendance::query()->where('user_id', $employee->id)->update([
+            'performance_score' => 80,
+            'behavior_score' => 90,
+            'productivity_score' => 70,
+            'interest_return_score' => 60,
+            'attendance_score' => 100,
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.show', $payroll))
+            ->assertOk()
+            ->assertSee(__('payroll.evaluation.title'), false)
+            ->assertSee(__('payroll.evaluation.monthly_total'), false)
+            ->assertSee(__('payroll.evaluation.year_total'), false)
+            ->assertSee(__('payroll.attendance_summary.title'), false)
+            ->assertSee(__('payroll.hours.title'), false)
+            ->assertSee('80.00%', false)
+            ->assertSee('90.00%', false)
+            ->assertSee('70.00%', false)
+            ->assertSee('60.00%', false)
+            ->assertSee('100.00%', false)
+            ->assertSee('80.00%', false); // monthly total = 400/5
     }
 
     public function test_manager_can_add_and_remove_adjustment(): void
@@ -110,6 +143,23 @@ class PayrollDraftTest extends TestCase
                 'amount' => 50,
             ])
             ->assertForbidden();
+    }
+
+    public function test_save_recalculate_refreshes_base_salary_from_employee(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+        $payroll->update(['base_salary' => 0, 'gross_pay' => 0, 'net_pay' => 0, 'full_time_pay' => 0]);
+        $payroll->user->update(['base_salary' => 6000]);
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'full_time_days' => 20,
+            ]))
+            ->assertRedirect(route('admin.payroll.show', $payroll));
+
+        $payroll->refresh();
+        $this->assertSame(6000.0, (float) $payroll->base_salary);
+        $this->assertSame(4000.0, (float) $payroll->full_time_pay); // 6000/30*20
     }
 
     /**

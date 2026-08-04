@@ -101,18 +101,19 @@
 - **NOT** automatic 50% or 100% of base salary
 - Stored per user, per currency
 
-### 1.7 Shift rotation & overtime (locked 2026-08-02)
+### 1.7 Shift rotation & overtime (locked 2026-08-02; **tightened 2026-08-04 Phase 6**)
 - Shifts are **rotational**, not fixed every day.
-- **Team Leader** (or Manager) pre-assigns via UI `/team-leader/shifts` → `shift_assignments` (FT / Online ½ / Online full / EXTRA / OT).
-- **Clock-in rules** (`AttendanceService` + `/clock`):
-  1. If TL assigned a SCHEDULED shift for today → that type is the **preferred** option (banner on clock).
-  2. If nothing is assigned → employee uses **`shift_type_default`** or **chooses** FT / Online ½ / Online full.
-  3. Employee **may still switch** among FT / Online ½ / Online full even when a base shift was assigned.
-  4. **EXTRA_SHIFT / OVERTIME** — cannot self-select; SCHEDULED assignment required.
-  5. **One attendance row per `(user, date, shift_type)`** — after clock-out, that type is unavailable the same day; pick a different type for another session.
-  6. One open punch at a time; overnight `clock_out` uses real next-day datetime.
-- TL assigns: shift type, date, expected start/end/hours, multiplier (default 1.0 base / 1.5 premium), optional notes. Cancel sets `CANCELLED` (only while `SCHEDULED`). Duplicate SCHEDULED same user+date+shift_type rejected.
-- Planned hours: matching assignment’s `expected_hours`, else profile defaults 8 / 4 / 12 (`ShiftConfig`).
+- **Team Leader** (or Manager) pre-assigns via UI `/team-leader/shifts` → `shift_assignments`:
+  **Full time (8h)** · **Online ½ (4h)** · **Online full (12h)** · **Additional (EXTRA)** · **Overtime**.
+- **Month plan:** TL/Admin should fill the roster at the start of the month (each work day = one planned type; rest/holiday via rest days / holidays).
+- **Clock-in rules** (`AttendanceService` + `/clock`) — Phase 6:
+  1. If a **SCHEDULED base** shift exists for today (FT / Online ½ / Online full) → employee **must** clock that type (no free switch).
+  2. **EXTRA / OVERTIME** — only when SCHEDULED for that day (in addition to the base plan).
+  3. If **no** base assignment → only **`shift_type_default`** (not a free pick among all three).
+  4. **One attendance row per `(user, date, shift_type)`**; one open punch at a time; overnight `clock_out` uses real next-day datetime.
+- Planned hours: matching assignment’s `expected_hours`, else profile defaults **8 / 4 / 12** (`ShiftConfig`).
+- **Hours facts:** planned vs actual (and shortfall by date/shift) via `HoursComparisonService` / dashboards — **informational**.
+- **Penalties (Phase 6):** money penalties are **100% manual** on the Admin payroll draft (`payroll_adjustments` / manual lines). The system **does not** auto-apply EGP for late / absence / permission / hours gap / forced surcharge when `payroll.auto_penalties=false` (default). Facts (minutes, days, hours) still appear on the payslip for Admin review.
 
 ### 1.7b Daily report (locked 2026-08-03)
 - Any role (Employee / TL / Manager) may clock and submit **one report per calendar day** on the day’s **first** attendance row (earliest `clock_in`).
@@ -741,7 +742,7 @@ Admin approves → Employee can view payslip
 - Multi-currency full support
 - Multi-language full coverage (AR/EN)
 - Mobile responsiveness polish
-- Notifications (email/push for approvals)
+- In-app notifications for approvals (no email)
 
 ---
 

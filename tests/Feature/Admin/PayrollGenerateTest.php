@@ -42,8 +42,6 @@ class PayrollGenerateTest extends TestCase
 
     public function test_manager_generates_draft_and_approves(): void
     {
-        Queue::fake();
-
         $manager = User::factory()->manager()->create();
         $leader = User::factory()->teamLeader()->create(['base_salary' => 4000]);
         $employee = User::factory()->employee()->create([
@@ -60,14 +58,8 @@ class PayrollGenerateTest extends TestCase
                 'year' => 2026,
                 'team_leader_id' => $leader->id,
             ])
-            ->assertRedirect(route('admin.payroll.index', ['month' => 6, 'year' => 2026]));
-
-        Queue::assertPushed(GeneratePayrollJob::class, 1);
-
-        /** @var GeneratePayrollJob $job */
-        $job = Queue::pushed(GeneratePayrollJob::class)->first();
-        $this->assertLessThanOrEqual(PayrollGenerator::CHUNK_SIZE, count($job->userIds));
-        $job->handle(app(PayrollGenerator::class));
+            ->assertRedirect(route('admin.payroll.index', ['month' => 6, 'year' => 2026]))
+            ->assertSessionHas('success');
 
         $draft = PayrollRecord::query()
             ->where('user_id', $employee->id)
@@ -86,8 +78,37 @@ class PayrollGenerateTest extends TestCase
         $this->assertSame(PayrollRecord::STATUS_APPROVED, $draft->fresh()->status);
     }
 
-    public function test_month_coverage_failure_blocks_payroll(): void
+    public function test_generate_creates_draft_when_coverage_incomplete(): void
     {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create(['base_salary' => 5000]);
+
+        Attendance::factory()->create([
+            'user_id' => $employee->id,
+            'date' => '2026-06-01',
+            'shift_type' => Attendance::SHIFT_FULL_TIME,
+            'planned_hours' => 8,
+            'actual_hours' => 8,
+            'status' => Attendance::STATUS_PRESENT,
+        ]);
+
+        $this->actingAs($manager)
+            ->post(route('admin.payroll.generate'), [
+                'month' => 6,
+                'year' => 2026,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success')
+            ->assertSessionHas('error');
+
+        $this->assertSame(1, PayrollRecord::query()->count());
+        $this->assertSame(PayrollRecord::STATUS_DRAFT, PayrollRecord::query()->first()->status);
+    }
+
+    public function test_strict_coverage_blocks_payroll_when_enabled(): void
+    {
+        config(['payroll.require_full_month_coverage' => true]);
+
         $manager = User::factory()->manager()->create();
         $employee = User::factory()->employee()->create(['base_salary' => 5000]);
 
@@ -107,6 +128,7 @@ class PayrollGenerateTest extends TestCase
 
     public function test_generation_chunks_at_most_100_employees(): void
     {
+        config(['payroll.generate_inline' => false]);
         Queue::fake();
 
         $manager = User::factory()->manager()->create();

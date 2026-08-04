@@ -31,4 +31,9 @@ class AttendanceException extends RuntimeException
     {
         return new self('clock.errors.shift_already_recorded');
     }
+
+    public static function planMismatch(): self
+    {
+        return new self('clock.errors.plan_mismatch');
+    }
 }

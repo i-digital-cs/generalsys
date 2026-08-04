@@ -5,6 +5,7 @@ return [
     'subtitle' => 'Approved and paid payslips only. Drafts are hidden until Admin approves them.',
     'list' => 'Payslips',
     'open' => 'View',
+    'export_pdf' => 'Download PDF',
     'empty_title' => 'No payslips yet',
     'empty_text' => 'When Admin approves your monthly salary, it will appear here.',
     'breakdown' => 'Payslip',

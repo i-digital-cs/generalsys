@@ -61,6 +61,9 @@
                class="btn btn-outline-secondary">
                 {{ __('payroll.back_to_list') }}
             </a>
+            <a href="{{ route('admin.payroll.export.pdf', $payroll) }}" class="btn btn-outline-primary">
+                {{ __('payroll.export_pdf') }}
+            </a>
             @if ($editable)
                 <form method="POST" action="{{ route('admin.payroll.approve', $payroll) }}">
                     @csrf
@@ -107,6 +110,31 @@
             </div>
         </div>
     </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-6">
+            @include('payroll._monthly_evaluation', [
+                'scores' => $scores ?? null,
+                'evaluationText' => $evaluationText ?? null,
+                'yearAverage' => $yearAverage ?? null,
+            ])
+        </div>
+        <div class="col-12 col-lg-6">
+            @include('payroll._attendance_summary', [
+                'payroll' => $payroll,
+                'attendanceSummary' => $attendanceSummary ?? null,
+            ])
+        </div>
+    </div>
+
+    @include('payroll._annual_evaluation', [
+        'monthlyTotals' => $monthlyTotals ?? null,
+        'yearAverage' => $yearAverage ?? null,
+    ])
+
+    @include('payroll._hours_comparison', [
+        'hoursMonth' => $hoursMonth ?? null,
+    ])
 
     <div class="row g-3">
         <div class="col-12 col-lg-6">

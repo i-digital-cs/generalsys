@@ -114,7 +114,7 @@ Never run tests against production.
 | 4.7 | Feature: **TEAM_LEADER → every payroll route 403** (API + web) |
 | 4.8 | Feature: EMPLOYEE sees only own APPROVED/PAID; DRAFT hidden |
 | 4.9 | Feature: UI sidebar has **no** payroll menu for TL |
-| 4.10 | Feature: month coverage validation fails payroll if unclassified days |
+| 4.10 | Feature: incomplete month coverage warns; drafts still created (strict block only if `require_full_month_coverage`) |
 | 4.11 | Job: payroll generation chunks ≤ 100 employees; completes under test fakes |
 
 **Exit:** all Gate 4 tests green → may start Gate 5.
@@ -123,7 +123,7 @@ Never run tests against production.
 
 ## Gate 5 — Reports & polish (Phase 5)
 
-**Build:** annual report · Excel/PDF export · full AR/EN · currency display · notifications if in scope.
+**Build:** annual report · Excel/PDF export · full AR/EN · currency display.
 
 | # | Must verify |
 |---|-------------|

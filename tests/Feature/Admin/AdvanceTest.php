@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Jobs\GeneratePayrollJob;
 use App\Models\Advance;
 use App\Models\Attendance;
 use App\Models\PayrollRecord;
@@ -10,7 +9,6 @@ use App\Models\User;
 use App\Services\Payroll\PayrollGenerator;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -88,8 +86,6 @@ class AdvanceTest extends TestCase
 
     public function test_payroll_generate_pulls_advance_and_approve_decrements_remaining(): void
     {
-        Queue::fake();
-
         $manager = User::factory()->manager()->create();
         $leader = User::factory()->teamLeader()->create(['base_salary' => 4000]);
         $employee = User::factory()->employee()->create([
@@ -115,10 +111,6 @@ class AdvanceTest extends TestCase
                 'team_leader_id' => $leader->id,
             ])
             ->assertRedirect();
-
-        /** @var GeneratePayrollJob $job */
-        $job = Queue::pushed(GeneratePayrollJob::class)->first();
-        $job->handle(app(PayrollGenerator::class));
 
         $draft = PayrollRecord::query()
             ->where('user_id', $employee->id)

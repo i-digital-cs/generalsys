@@ -100,8 +100,8 @@ class PayrollDraftService
         ])->all();
 
         $result = $this->calculator->calculate(new PayrollCalculationInput(
-            baseSalary: (float) $record->base_salary,
-            currency: $record->currency,
+            baseSalary: (float) $user->base_salary,
+            currency: $user->currency ?: ($record->currency ?: 'EGP'),
             fullTimeDays: (int) $record->full_time_days,
             onlineHalfDays: (int) $record->online_half_days,
             onlineFullDays: (int) $record->online_full_days,
@@ -125,7 +125,10 @@ class PayrollDraftService
             adjustments: $adjustments,
         ));
 
-        $record->update($result->toPayrollAttributes());
+        $record->update(array_merge(
+            $result->toPayrollAttributes(),
+            ['currency' => $user->currency ?: ($record->currency ?: 'EGP')],
+        ));
 
         return $record->fresh(['adjustments', 'user']);
     }

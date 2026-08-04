@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use Tests\TestCase;
 
 /**
- * Gate 1.7 — every shipped screen must have AR + EN keys.
+ * Gate 1.7 / 5.3 — every lang file has AR + EN key parity; no empty values.
  */
 class LangParityTest extends TestCase
 {
@@ -22,18 +22,43 @@ class LangParityTest extends TestCase
             if (is_array($value)) {
                 $flat += $this->flatten($value, $fullKey);
             } else {
-                $flat[$fullKey] = $value;
+                $flat[$fullKey] = is_scalar($value) ? (string) $value : '';
             }
         }
 
         return $flat;
     }
 
+    /**
+     * @return list<string>
+     */
+    private function langFiles(): array
+    {
+        $files = glob(lang_path('en/*.php')) ?: [];
+
+        return array_values(array_map(
+            fn (string $path): string => basename($path, '.php'),
+            $files,
+        ));
+    }
+
     public function test_ar_and_en_lang_files_have_identical_keys(): void
     {
-        $files = ['auth', 'general', 'nav', 'employees', 'dashboard', 'documents', 'settings', 'profile', 'validation', 'clock', 'shifts', 'report'];
+        $enFiles = $this->langFiles();
+        sort($enFiles);
+        $arFiles = array_values(array_map(
+            fn (string $path): string => basename($path, '.php'),
+            glob(lang_path('ar/*.php')) ?: [],
+        ));
+        sort($arFiles);
 
-        foreach ($files as $file) {
+        $this->assertSame(
+            $enFiles,
+            $arFiles,
+            'lang/en and lang/ar must contain the same PHP files.',
+        );
+
+        foreach ($enFiles as $file) {
             $ar = $this->flatten(require lang_path("ar/{$file}.php"));
             $en = $this->flatten(require lang_path("en/{$file}.php"));
 
@@ -45,6 +70,11 @@ class LangParityTest extends TestCase
                 .'] / missing in en: ['
                 .implode(', ', array_diff(array_keys($ar), array_keys($en))).']'
             );
+
+            foreach ($en as $key => $value) {
+                $this->assertNotSame('', trim($value), "Empty EN value: {$file}.{$key}");
+                $this->assertNotSame('', trim($ar[$key] ?? ''), "Empty AR value: {$file}.{$key}");
+            }
         }
     }
 }

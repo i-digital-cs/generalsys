@@ -29,7 +29,7 @@ class ShiftAssignment extends Model
 
     public const STATUS_CANCELLED = 'CANCELLED';
 
-    /** Base rotation types employees may also self-select / switch. */
+    /** Base rotation types for the monthly plan (FT / Online ½ / Online full). */
     public const BASE_TYPES = [
         self::TYPE_FULL_TIME,
         self::TYPE_ONLINE_HALF,

@@ -92,7 +92,7 @@ Excel stores clock-out as `time + 12:00` ("modify TIME", columns U/V). **The app
 **Rules extracted:**
 1. Per-month, per-shift-type: `basic_hours = days × planned_hours`; `hours_deduction = max(0, basic − actual)`.
 2. Expected-hours profile varies by department → store as a per-employee/department setting, not hardcoded.
-3. Day-count validation must pass (سليم) before payroll: `classified days == days elapsed in month`.
+3. Day-count validation (Excel G10): by default Admin may generate drafts with a warning when days are incomplete; set `PAYROLL_REQUIRE_FULL_MONTH_COVERAGE=true` to block like Excel «خطأ».
 
 ## 5. Monthly Evaluation (HR-Data.xlsx, I6:J10)
 
@@ -166,7 +166,7 @@ All logic lives in services (never controllers) — see `AGENTS.md`:
 | B5…B8 COUNTIFs | `PayrollAggregator::dayCounts(user, month)` — one grouped query | `attendance.status` |
 | C7/C10 hour deduction | `PayrollAggregator::hoursDeduction()` — `max(0, days×planned − Σactual)` | counts + hours |
 | D8 department switch | `ExpectedHoursStrategy` per employee profile config | employee setting |
-| G10 validation | `PayrollGenerator::validateMonthCoverage()` — throws if unclassified days | calendar |
+| G10 validation | `PayrollGenerator::coverageGap()` — warn by default; throw only when `payroll.require_full_month_coverage=true` | calendar |
 | J6–J9 + Interest Return avgs | `EvaluationService::monthlyFromDaily()` — `AVG` of daily score columns | `attendance` scores |
 | Total | `EvaluationService` — `array_sum($scores)/5` | 5 scores (Excel J10 was /4) |
 | D39/D41 `base/30×days` | `PayrollCalculator::dayRatePay()` — `base / divisor × days` (divisor from `penalty_rules`/settings, default 30) | counts, base |

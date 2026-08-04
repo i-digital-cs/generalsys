@@ -20,7 +20,41 @@
                     icon="bi-wallet2"
                 />
             @else
-                <div class="table-responsive">
+                {{-- Mobile: stacked cards (T-5.4) --}}
+                <div class="d-md-none employee-mobile-stack vstack gap-3">
+                    @foreach ($records as $row)
+                        @php
+                            $period = \Carbon\Carbon::create($row->year, $row->month, 1)->translatedFormat('F Y');
+                        @endphp
+                        <div class="border rounded-3 p-3">
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                <div class="fw-semibold">{{ $period }}</div>
+                                <span @class([
+                                    'badge',
+                                    'text-bg-success' => $row->status === 'APPROVED',
+                                    'text-bg-primary' => $row->status === 'PAID',
+                                ])>
+                                    {{ __('payroll.status.'.$row->status) }}
+                                </span>
+                            </div>
+                            <div class="small text-body-secondary mb-1">{{ __('salary.fields.gross') }}</div>
+                            <div class="mb-2" dir="ltr">
+                                <x-money :amount="$row->gross_pay" :currency="$row->currency" />
+                            </div>
+                            <div class="small text-body-secondary mb-1">{{ __('salary.fields.net') }}</div>
+                            <div class="fw-semibold mb-3" dir="ltr">
+                                <x-money :amount="$row->net_pay" :currency="$row->currency" />
+                            </div>
+                            <a href="{{ route('employee.salary.show', $row) }}"
+                               class="btn btn-outline-primary w-100">
+                                {{ __('salary.open') }}
+                            </a>
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Desktop / tablet table --}}
+                <div class="table-responsive d-none d-md-block">
                     <table class="table table-hover align-middle mb-0">
                         <thead>
                             <tr>

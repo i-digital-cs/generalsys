@@ -14,4 +14,8 @@ return [
     'all' => 'الكل',
     'none' => 'لا يوجد',
     'not_available' => '—',
+    'currencies' => [
+        'EGP' => 'ج.م',
+        'AED' => 'د.إ',
+    ],
 ];

@@ -14,4 +14,8 @@ return [
     'all' => 'All',
     'none' => 'None',
     'not_available' => '—',
+    'currencies' => [
+        'EGP' => 'EGP',
+        'AED' => 'AED',
+    ],
 ];

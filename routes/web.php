@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdvanceController as AdminAdvanceController;
+use App\Http\Controllers\Admin\AnnualReportController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\EmployeeDocumentController;
@@ -95,17 +96,22 @@ Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->gr
 
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
     Route::post('/payroll/generate', [PayrollController::class, 'generate'])->name('payroll.generate');
+    Route::get('/payroll/export.xlsx', [PayrollController::class, 'queueExcelExport'])->name('payroll.export.xlsx');
+    Route::get('/payroll/export/download', [PayrollController::class, 'downloadExcel'])->name('payroll.export.download');
     Route::get('/payroll/{payroll}', [PayrollController::class, 'show'])->name('payroll.show');
     Route::put('/payroll/{payroll}', [PayrollController::class, 'update'])->name('payroll.update');
     Route::post('/payroll/{payroll}/adjustments', [PayrollController::class, 'storeAdjustment'])->name('payroll.adjustments.store');
     Route::delete('/payroll/{payroll}/adjustments/{adjustment}', [PayrollController::class, 'destroyAdjustment'])->name('payroll.adjustments.destroy');
     Route::put('/payroll/{payroll}/approve', [PayrollController::class, 'approve'])->name('payroll.approve');
+    Route::get('/payroll/{payroll}/export.pdf', [PayrollController::class, 'exportPdf'])->name('payroll.export.pdf');
 
     Route::get('/advances', [AdminAdvanceController::class, 'index'])->name('advances.index');
     Route::get('/advances/create', [AdminAdvanceController::class, 'create'])->name('advances.create');
     Route::post('/advances', [AdminAdvanceController::class, 'store'])->name('advances.store');
     Route::get('/advances/{advance}/edit', [AdminAdvanceController::class, 'edit'])->name('advances.edit');
     Route::put('/advances/{advance}', [AdminAdvanceController::class, 'update'])->name('advances.update');
+
+    Route::get('/reports/annual', [AnnualReportController::class, 'index'])->name('reports.annual');
 });
 
 // Employee profile (EMPLOYEE only)
@@ -115,6 +121,7 @@ Route::middleware(['auth', 'role:EMPLOYEE'])->group(function () {
     Route::get('/employees/{user}/profile', [ProfileController::class, 'show'])->name('employee.profile.show');
     Route::get('/salary', [SalaryController::class, 'index'])->name('employee.salary');
     Route::get('/salary/{payroll}', [SalaryController::class, 'show'])->name('employee.salary.show');
+    Route::get('/salary/{payroll}/export.pdf', [SalaryController::class, 'exportPdf'])->name('employee.salary.export.pdf');
     Route::get('/advances/my', [EmployeeAdvanceController::class, 'index'])->name('employee.advances');
 });
 

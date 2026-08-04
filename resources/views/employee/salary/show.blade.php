@@ -39,7 +39,12 @@
             </p>
             <p class="small text-body-secondary mb-0 mt-1">{{ __('salary.read_only_hint') }}</p>
         </div>
-        <a href="{{ route('employee.salary') }}" class="btn btn-outline-secondary">{{ __('salary.back') }}</a>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('employee.salary') }}" class="btn btn-outline-secondary">{{ __('salary.back') }}</a>
+            <a href="{{ route('employee.salary.export.pdf', $payroll) }}" class="btn btn-outline-primary">
+                {{ __('salary.export_pdf') }}
+            </a>
+        </div>
     </div>
 
     <div class="row g-3 mb-3">
@@ -74,6 +79,27 @@
             </div>
         </div>
     </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-6">
+            @include('payroll._monthly_evaluation', [
+                'scores' => $scores ?? null,
+                'evaluationText' => $evaluationText ?? null,
+                'yearAverage' => $yearAverage ?? null,
+            ])
+        </div>
+        <div class="col-12 col-lg-6">
+            @include('payroll._attendance_summary', [
+                'payroll' => $payroll,
+                'attendanceSummary' => $attendanceSummary ?? null,
+            ])
+        </div>
+    </div>
+
+    @include('payroll._annual_evaluation', [
+        'monthlyTotals' => $monthlyTotals ?? null,
+        'yearAverage' => $yearAverage ?? null,
+    ])
 
     <div class="row g-3">
         <div class="col-12 col-lg-6">

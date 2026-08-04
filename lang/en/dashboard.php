@@ -93,4 +93,10 @@ return [
         'empty_title' => 'No shifts this month',
         'empty_text' => 'Assign shifts from Shift Assignment to see them here.',
     ],
+    'leader_shifts' => [
+        'title' => 'Team leaders — today’s shifts',
+        'hint' => 'Scheduled and completed shifts for team leaders today.',
+        'empty_title' => 'No team-leader shifts today',
+        'empty_text' => 'Assign a shift for a team leader from Shift Assignment.',
+    ],
 ];

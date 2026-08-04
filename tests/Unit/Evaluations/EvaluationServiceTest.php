@@ -3,6 +3,7 @@
 namespace Tests\Unit\Evaluations;
 
 use App\Models\Attendance;
+use App\Models\Evaluation;
 use App\Models\User;
 use App\Services\Evaluations\EvaluationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -91,6 +92,7 @@ class EvaluationServiceTest extends TestCase
         $this->assertSame(80.0, $result['interest_return_score']);
         $this->assertSame(75.0, $result['attendance_score']);
         // (90+90+80+80+75)/5 = 83
+        $this->assertSame(415.0, $result['scores_sum']);
         $this->assertSame(83.0, $result['total_score']);
     }
 
@@ -164,5 +166,39 @@ class EvaluationServiceTest extends TestCase
             'month' => 8,
             'year' => 2026,
         ]);
+    }
+
+    public function test_summary_for_payslip_includes_year_average_of_monthly_totals(): void
+    {
+        $leader = User::factory()->teamLeader()->create();
+        $employee = User::factory()->employee()->create(['team_leader_id' => $leader->id]);
+
+        Attendance::factory()->create([
+            'user_id' => $employee->id,
+            'date' => '2026-05-01',
+            'performance_score' => 100,
+            'behavior_score' => 100,
+            'productivity_score' => 100,
+            'interest_return_score' => 100,
+            'attendance_score' => 100,
+        ]);
+
+        $this->service->saveMonthly($leader, $employee, 2, 2026, null);
+        Evaluation::query()->where('user_id', $employee->id)->where('month', 2)->update([
+            'total_score' => 96.00,
+            'performance_score' => 96,
+            'behavior_score' => 96,
+            'productivity_score' => 96,
+            'interest_return_score' => 96,
+            'attendance_score' => 96,
+        ]);
+
+        $summary = $this->service->summaryForPayslip($employee, 5, 2026);
+
+        $this->assertSame(100.0, $summary['scores']['total_score']);
+        $this->assertSame(96.0, $summary['monthly_totals'][2]);
+        $this->assertSame(100.0, $summary['monthly_totals'][5]);
+        // year = (96 + 100) / 2
+        $this->assertSame(98.0, $summary['year_average']);
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Contract;
+use App\Models\ShiftAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -72,6 +73,33 @@ class DashboardTest extends TestCase
             ->assertViewHas('expiringContracts', fn ($contracts) => $contracts->count() === 1
                 && $contracts->first()->user_id === $expiringSoon->id
                 && $contracts->first()->relationLoaded('user'));
+    }
+
+    public function test_manager_dashboard_shows_team_leader_shifts_and_hides_self_service_nav(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $leader = User::factory()->teamLeader()->create(['name_ar' => 'قائد الاختبار', 'name_en' => 'Test Leader']);
+
+        ShiftAssignment::factory()->fullTime()->create([
+            'user_id' => $leader->id,
+            'assigned_by_tl_id' => $manager->id,
+            'date' => now()->toDateString(),
+            'expected_start_time' => '10:00',
+            'expected_end_time' => '18:00',
+            'expected_hours' => 8,
+        ]);
+
+        $html = $this->actingAs($manager)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee(__('dashboard.leader_shifts.title'), false)
+            ->assertSee($leader->name_ar, false)
+            ->assertSee(__('clock.shifts.FULL_TIME'), false)
+            ->getContent();
+
+        $this->assertStringNotContainsString('href="'.route('employee.clock').'"', $html);
+        $this->assertStringNotContainsString('href="'.route('employee.report').'"', $html);
+        $this->assertStringNotContainsString('href="'.route('employee.requests').'"', $html);
     }
 
     public function test_only_the_current_menu_item_is_active(): void

@@ -12,15 +12,12 @@
 return [
     'MANAGER' => [
         ['key' => 'nav.dashboard', 'route' => 'admin.dashboard', 'icon' => 'bi-speedometer2'],
-        ['key' => 'nav.clock', 'route' => 'employee.clock', 'icon' => 'bi-clock'],
-        ['key' => 'nav.daily_report', 'route' => 'employee.report', 'icon' => 'bi-journal-check'],
-        ['key' => 'nav.requests', 'route' => 'employee.requests', 'icon' => 'bi-inbox'],
         ['key' => 'nav.employees', 'route' => 'admin.employees.index', 'icon' => 'bi-people'],
+        ['key' => 'nav.shifts', 'route' => 'team-leader.shifts', 'icon' => 'bi-calendar3'],
         ['key' => 'nav.rest_days', 'route' => 'team-leader.rest-days', 'icon' => 'bi-calendar-week'],
         ['key' => 'nav.approvals', 'route' => 'team-leader.approvals', 'icon' => 'bi-check2-square'],
         ['key' => 'nav.reports_review', 'route' => 'team-leader.reports', 'icon' => 'bi-journal-text'],
         ['key' => 'nav.evaluations', 'route' => 'team-leader.evaluations', 'icon' => 'bi-star'],
-        ['key' => 'nav.evaluation', 'route' => 'employee.evaluation', 'icon' => 'bi-star-half'],
         ['key' => 'nav.penalties', 'route' => 'admin.config.penalties', 'icon' => 'bi-slash-circle'],
         ['key' => 'nav.holidays', 'route' => 'admin.config.holidays', 'icon' => 'bi-calendar-event'],
         ['key' => 'nav.payroll', 'route' => 'admin.payroll.index', 'icon' => 'bi-cash-stack'],

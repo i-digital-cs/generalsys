@@ -26,6 +26,7 @@ class EvaluationService
      *     productivity_score: float,
      *     interest_return_score: float,
      *     attendance_score: float,
+     *     scores_sum: float,
      *     total_score: float,
      *     legacy_four_average_0_1: float
      * }
@@ -60,6 +61,10 @@ class EvaluationService
             'productivity_score' => $productivity,
             'interest_return_score' => $interestReturn,
             'attendance_score' => $attendance,
+            'scores_sum' => round(
+                $performance + $behavior + $productivity + $interestReturn + $attendance,
+                2,
+            ),
             'total_score' => $this->totalFromFive(
                 $performance,
                 $behavior,
@@ -226,6 +231,66 @@ class EvaluationService
             ->where('month', $month)
             ->where('year', $year)
             ->first();
+    }
+
+    /**
+     * Payslip block: five monthly averages, monthly total (/5), and year total
+     * (average of monthly totals — Excel L33 / “total of total”).
+     *
+     * @return array{
+     *     scores: array{
+     *         performance_score: float,
+     *         behavior_score: float,
+     *         productivity_score: float,
+     *         interest_return_score: float,
+     *         attendance_score: float,
+     *         scores_sum: float,
+     *         total_score: float,
+     *         legacy_four_average_0_1: float
+     *     },
+     *     evaluation_text: ?string,
+     *     monthly_totals: array<int, float|null>,
+     *     year_average: ?float
+     * }
+     */
+    public function summaryForPayslip(User $user, int $month, int $year): array
+    {
+        $this->assertMonthYear($month, $year);
+
+        $scores = $this->monthlyFromDaily($user, $month, $year);
+        $saved = $this->findForUserMonth($user, $month, $year);
+
+        $byMonth = Evaluation::query()
+            ->where('user_id', $user->id)
+            ->where('year', $year)
+            ->get()
+            ->keyBy('month');
+
+        $monthlyTotals = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $row = $byMonth->get($m);
+            if ($row !== null) {
+                $monthlyTotals[$m] = round((float) $row->total_score, 2);
+            } elseif ($m === $month) {
+                $monthlyTotals[$m] = $scores['total_score'];
+            } else {
+                $monthlyTotals[$m] = null;
+            }
+        }
+
+        $present = array_values(array_filter(
+            $monthlyTotals,
+            static fn (?float $v) => $v !== null,
+        ));
+
+        return [
+            'scores' => $scores,
+            'evaluation_text' => $saved?->evaluation_text,
+            'monthly_totals' => $monthlyTotals,
+            'year_average' => $present === []
+                ? null
+                : round(array_sum($present) / count($present), 2),
+        ];
     }
 
     private function assertMonthYear(int $month, int $year): void

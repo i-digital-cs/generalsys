@@ -275,4 +275,33 @@ class ShiftAssignmentTest extends TestCase
             'shift_type' => ShiftAssignment::TYPE_ONLINE_HALF,
         ]);
     }
+
+    public function test_manager_roster_includes_team_leaders_and_can_assign_them(): void
+    {
+        $manager = User::factory()->manager()->create();
+
+        $this->actingAs($manager)
+            ->get(route('team-leader.shifts', ['date' => '2026-08-04']))
+            ->assertOk()
+            ->assertSee($this->leader->name_ar, false)
+            ->assertSee($this->employee->name_ar, false);
+
+        $this->actingAs($manager)
+            ->post(route('team-leader.shifts.store'), [
+                'user_id' => $this->leader->id,
+                'date' => '2026-08-04',
+                'shift_type' => ShiftAssignment::TYPE_FULL_TIME,
+                'expected_start_time' => '10:00',
+                'expected_end_time' => '18:00',
+                'expected_hours' => 8,
+            ])
+            ->assertRedirect(route('team-leader.shifts', ['date' => '2026-08-04']));
+
+        $this->assertDatabaseHas('shift_assignments', [
+            'user_id' => $this->leader->id,
+            'assigned_by_tl_id' => $manager->id,
+            'shift_type' => ShiftAssignment::TYPE_FULL_TIME,
+            'status' => ShiftAssignment::STATUS_SCHEDULED,
+        ]);
+    }
 }

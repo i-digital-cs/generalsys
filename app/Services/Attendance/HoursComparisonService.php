@@ -215,16 +215,13 @@ class HoursComparisonService
             return true;
         }
 
-        if (! $employee->isEmployee()) {
-            return false;
-        }
-
         if ($actor->isManager()) {
-            return true;
+            return $employee->isEmployee() || $employee->isTeamLeader();
         }
 
         if ($actor->isTeamLeader()) {
-            return (int) $employee->team_leader_id === (int) $actor->id;
+            return $employee->isEmployee()
+                && (int) $employee->team_leader_id === (int) $actor->id;
         }
 
         return false;
@@ -233,18 +230,24 @@ class HoursComparisonService
     /** @return Collection<int, User> */
     public function visibleEmployees(User $actor): Collection
     {
-        $query = User::query()
-            ->where('role', User::ROLE_EMPLOYEE)
-            ->where('status', User::STATUS_ACTIVE)
-            ->orderBy('name_en');
-
-        if ($actor->isTeamLeader()) {
-            $query->where('team_leader_id', $actor->id);
-        } elseif (! $actor->isManager()) {
-            return collect();
+        if ($actor->isManager()) {
+            return User::query()
+                ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
+                ->where('status', User::STATUS_ACTIVE)
+                ->orderBy('name_en')
+                ->get();
         }
 
-        return $query->get();
+        if ($actor->isTeamLeader()) {
+            return User::query()
+                ->where('role', User::ROLE_EMPLOYEE)
+                ->where('status', User::STATUS_ACTIVE)
+                ->where('team_leader_id', $actor->id)
+                ->orderBy('name_en')
+                ->get();
+        }
+
+        return collect();
     }
 
     public function profilePlannedHours(User $user): float

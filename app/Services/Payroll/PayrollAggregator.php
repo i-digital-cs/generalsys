@@ -83,6 +83,48 @@ class PayrollAggregator
             ->value('c');
     }
 
+    /**
+     * Excel G5–G9 style tallies for the payslip attendance panel.
+     *
+     * @return array{
+     *     vacation_days: int,
+     *     official_holiday_days: int,
+     *     excused_absence_days: int,
+     *     unexcused_absence_days: int
+     * }
+     */
+    public function monthStatusSummary(User $user, int $month, int $year): array
+    {
+        $rows = Attendance::query()
+            ->where('user_id', $user->id)
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->get(['date', 'status']);
+
+        $vacation = [];
+        $holiday = [];
+        $excused = [];
+        $unexcused = [];
+
+        foreach ($rows as $row) {
+            $key = $row->date->toDateString();
+            match ($row->status) {
+                Attendance::STATUS_VACATION => $vacation[$key] = true,
+                Attendance::STATUS_OFFICIAL_HOLIDAY => $holiday[$key] = true,
+                Attendance::STATUS_EXCUSED_ABSENCE => $excused[$key] = true,
+                Attendance::STATUS_UNEXCUSED_ABSENCE => $unexcused[$key] = true,
+                default => null,
+            };
+        }
+
+        return [
+            'vacation_days' => count($vacation),
+            'official_holiday_days' => count($holiday),
+            'excused_absence_days' => count($excused),
+            'unexcused_absence_days' => count($unexcused),
+        ];
+    }
+
     public function expectedDayCount(int $month, int $year): int
     {
         return Carbon::create($year, $month, 1)->daysInMonth;

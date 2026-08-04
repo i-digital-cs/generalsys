@@ -35,10 +35,11 @@ class ClockTest extends TestCase
             ->assertOk()
             ->assertSee(__('clock.clock_in'), false)
             ->assertSee(__('clock.shifts.FULL_TIME'), false)
-            ->assertSee(__('clock.shifts.ONLINE_HALF'), false)
-            ->assertSee(__('clock.shifts.ONLINE_FULL'), false)
+            ->assertDontSee('value="ONLINE_HALF"', false)
+            ->assertDontSee('value="ONLINE_FULL"', false)
             ->assertDontSee('value="OVERTIME"', false)
-            ->assertDontSee('value="EXTRA_SHIFT"', false);
+            ->assertDontSee('value="EXTRA_SHIFT"', false)
+            ->assertSee(__('clock.rotation_hint'), false);
     }
 
     public function test_clock_in_and_clock_out_happy_path(): void
@@ -124,7 +125,7 @@ class ClockTest extends TestCase
         ]);
     }
 
-    public function test_employee_can_switch_ft_to_online_after_clock_out(): void
+    public function test_employee_cannot_clock_second_base_type_without_plan(): void
     {
         $this->actingAs($this->employee)
             ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
@@ -135,14 +136,12 @@ class ClockTest extends TestCase
             ->assertRedirect();
 
         $this->actingAs($this->employee)
+            ->from(route('employee.clock'))
             ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_ONLINE_HALF])
-            ->assertRedirect(route('employee.clock'));
+            ->assertRedirect(route('employee.clock'))
+            ->assertSessionHasErrors('shift_type');
 
-        $this->assertSame(2, Attendance::where('user_id', $this->employee->id)->count());
-        $this->assertDatabaseHas('attendance', [
-            'user_id' => $this->employee->id,
-            'shift_type' => Attendance::SHIFT_ONLINE_HALF,
-        ]);
+        $this->assertSame(1, Attendance::where('user_id', $this->employee->id)->count());
     }
 
     public function test_team_leader_can_access_clock(): void
@@ -178,7 +177,7 @@ class ClockTest extends TestCase
         ]);
     }
 
-    public function test_tl_assignment_is_preferred_but_employee_may_switch_to_online(): void
+    public function test_tl_assignment_is_required_for_clock_type(): void
     {
         $leader = User::factory()->teamLeader()->create();
         $this->employee->update([
@@ -197,8 +196,7 @@ class ClockTest extends TestCase
             ->assertOk()
             ->assertSee(__('clock.assigned_today', [
                 'shift' => __('clock.shifts.FULL_TIME'),
-            ]), false)
-            ->assertSee('selected', false);
+            ]), false);
 
         $html = $this->actingAs($this->employee)
             ->get(route('employee.clock'))
@@ -209,16 +207,21 @@ class ClockTest extends TestCase
             '/option value="FULL_TIME"[^>]*selected/s',
             $html,
         );
+        $this->assertStringNotContainsString('value="ONLINE_HALF"', $html);
 
         $this->actingAs($this->employee)
             ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_ONLINE_HALF])
+            ->assertRedirect(route('employee.clock'))
+            ->assertSessionHasErrors('shift_type');
+
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('attendance', [
             'user_id' => $this->employee->id,
-            'shift_type' => Attendance::SHIFT_ONLINE_HALF,
-            'planned_hours' => '4.00',
+            'shift_type' => Attendance::SHIFT_FULL_TIME,
         ]);
     }
 
@@ -255,7 +258,8 @@ class ClockTest extends TestCase
             ->getContent();
 
         $this->assertDoesNotMatchRegularExpression('/option value="FULL_TIME"/', $html);
-        $this->assertMatchesRegularExpression('/option value="ONLINE_HALF"/', $html);
+        $this->assertDoesNotMatchRegularExpression('/option value="ONLINE_HALF"/', $html);
+        $this->assertStringContainsString(__('clock.no_shifts_left'), $html);
 
         $this->actingAs($this->employee)
             ->from(route('employee.clock'))

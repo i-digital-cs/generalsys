@@ -188,7 +188,7 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 
 ### T-2.8 — TL: approve/reject permissions
 - Depends on: T-2.7
-- Unlocks: T-2.9, T-5.5
+- Unlocks: T-2.9
 - [x] Task complete
   - [x] Code done
   - [x] Gate 2.6 tests PASS
@@ -213,7 +213,7 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 
 ### T-2.11 — TL: approve/reject vacation (see credit)
 - Depends on: T-2.10
-- Unlocks: T-2.12, T-5.5
+- Unlocks: T-2.12
 - Note: Admin decides TL/Manager vacation requests; TL decides team employees only (AGENTS.md §0b locked).
 - [x] Task complete
   - [x] Code done
@@ -364,49 +364,70 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 ### T-5.1 — Admin annual report screen
 - Depends on: T-3.4, T-4.5
 - Unlocks: T-5.2
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 5.1 tests PASS
-  - [ ] UI/UX gate (year grid; admin menu)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 5.1 tests PASS
+  - [x] UI/UX gate (year grid; admin menu)
 
 ### T-5.2 — PDF / Excel export (payslip + payroll)
 - Depends on: T-4.7, T-4.5
 - Unlocks: T-5.3
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 5.2 tests PASS
-  - [ ] UI/UX gate (download buttons; auth only)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 5.2 tests PASS
+  - [x] UI/UX gate (download buttons; auth only)
 
 ### T-5.3 — Full AR/EN pass on all shipped screens
 - Depends on: all UI tasks above
 - Unlocks: T-5.4
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 5.3 tests PASS
-  - [ ] UI/UX gate (toggle every screen; no missing keys)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 5.3 tests PASS
+  - [x] UI/UX gate (toggle every screen; no missing keys)
 
 ### T-5.4 — Mobile polish employee flows
 - Depends on: T-2.4, T-2.7, T-4.7
-- Unlocks: T-5.5
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Manual UI review PASS
-  - [ ] UI/UX gate (clock/requests/salary on phone)
-
-### T-5.5 — Notifications (email) for pending approvals — optional
-- Depends on: T-2.8, T-2.11
 - Unlocks: —
-- [ ] Task complete **or** [ ] Deferred (N/A)
-  - [ ] Code done (if in scope)
-  - [ ] Feature fake mail PASS (if in scope)
-  - [ ] UI/UX: N/A or gate if UI added
+- [x] Task complete
+  - [x] Code done
+  - [x] Manual UI review PASS
+  - [x] UI/UX gate (clock/requests/salary on phone)
 
 ### T-5.6 — Regression: Gate 4 fixtures + TL 403
 - Depends on: T-4.6, T-4.3
 - Unlocks: —
-- [ ] Task complete
-  - [ ] Gate 5.5 / payroll fixtures PASS
-  - [ ] UI/UX spot-check Admin vs TL payroll
+- [x] Task complete
+  - [x] Gate 5.5 / payroll fixtures PASS
+  - [x] UI/UX spot-check Admin vs TL payroll
+
+---
+
+## Phase 6 — Simple roster / clock / manual penalties (2026-08-04 product lock)
+
+### T-6.1 — Clock must match day’s plan
+- Depends on: T-2.14, T-2.2
+- Unlocks: T-6.3
+- [x] Task complete
+  - [x] Code: no free FT↔Online switch when base assignment exists; no plan → `shift_type_default` only; EXTRA/OT if assigned
+  - [x] Unit/feature tests PASS
+  - [x] UI/UX gate (clock banner + available types AR/EN)
+
+### T-6.2 — Payroll auto money penalties off (facts only)
+- Depends on: T-4.3, T-4.5
+- Unlocks: T-6.3
+- [x] Task complete
+  - [x] `payroll.auto_penalties` default false; calculator zeros late/absence/permission/forced/hours EGP
+  - [x] Fixture/regression tests enable auto when asserting Excel 2808
+  - [x] Payslip still shows fact fields (minutes/days/hours)
+  - [x] UI/UX: N/A (behavior) + copy if needed
+
+### T-6.3 — Hours planned vs actual on payroll review
+- Depends on: T-6.1, T-6.2, T-2.13
+- Unlocks: —
+- [x] Task complete
+  - [x] Admin payroll show: planned / actual / shortfall list (reuse `HoursComparisonService`)
+  - [x] Feature test PASS
+  - [x] UI/UX gate (AR+EN, RTL/LTR, responsive)
 
 ---
 
@@ -428,6 +449,9 @@ T-0.1 → T-0.2 → T-0.3
                    → T-4.3 → T-4.4 → T-4.5 → T-4.6 / T-4.7 → T-4.8
                  ↓
               T-5.1 → T-5.2 → T-5.3 → T-5.4 → T-5.6
+                 ↓
+              T-6.1 → T-6.3
+              T-6.2 → T-6.3
 ```
 
 ---
@@ -497,6 +521,17 @@ T-0.1 → T-0.2 → T-0.3
 - [x] 2026-08-04 T-4.6 PASS — PayrollPrivacyTest: TL 403 on all payroll routes; sidebar has no payroll; Manager menu keeps it. Gate 4.7/4.9. Unlocks T-4.7, T-5.6.
 - [x] 2026-08-04 T-4.7 PASS — `/salary` My Salary: APPROVED/PAID list + read-only breakdown; DRAFT + others 403; `<x-money>`; MySalaryTest. Gate 4.8. Unlocks T-4.8, T-5.2, T-5.4.
 - [x] 2026-08-04 T-4.8 PASS — Advances CRUD (`/admin/advances`); employee `/advances/my`; generate pulls monthly deduction; approve decrements remaining → FULLY_DEDUCTED; AdvanceTest. Phase 4 complete. Unlocks T-5.1.
+- [x] 2026-08-04 T-5.1 PASS — `ReportService::annualEvaluation` (AVG total_score) + annual year grid; `/admin/reports/annual`; contract/vacation/penalties/bonuses/net; AnnualReportTest. Gate 5.1. Unlocks T-5.2.
+- [x] 2026-08-04 T-5.2 PASS — Payslip PDF (Dompdf); monthly Excel (PhpSpreadsheet, queued/chunked); Manager + employee own APPROVED/PAID; TL 403; PayrollExportTest. Gate 5.2. Unlocks T-5.3.
+- [x] 2026-08-04 T-5.6 PASS — PayrollRegressionTest: Excel net 2808 + TL 403 on payroll/exports/advances/annual. Gate 5.5.
+- [x] 2026-08-04 Removed T-5.5 — Email notifications out of scope; in-app DB notifications remain.
+- [x] 2026-08-04 T-5.3 PASS — LangParity all AR/EN files; LocaleToggleTest RTL/LTR; localized `<x-money>` + payslip PDF keys. Gate 5.3.
+- [x] 2026-08-04 T-5.4 PASS — Mobile polish: salary stacked cards, scrollable request tabs, larger clock CTA; MobileEmployeeUiTest. Phase 5 complete.
+- [x] 2026-08-04 Payroll UX — monthly 5 scores (Performance/Behavior/Productivity/Interest Return/Attendance + total) on Admin payroll + Employee My Salary breakdown; draft recalc refreshes base salary from employee; generate allows incomplete attendance with warning.
+- [x] 2026-08-04 Phase 6 locked — clock matches plan (FT + Online ½ + Online full + EXTRA/OT); penalties manual-only (`auto_penalties` default off); hours facts informational.
+- [x] 2026-08-04 T-6.1 PASS — Clock enforces day’s plan; default only when unassigned; EXTRA/OT if assigned. ClockTest + AttendanceServiceTest.
+- [x] 2026-08-04 T-6.2 PASS — `payroll.auto_penalties=false` by default; Excel 2808 tests force true; advances still auto.
+- [x] 2026-08-04 T-6.3 PASS — Admin payroll Review shows planned vs actual hours + shortfall by date/shift/time.
 - [x] 2026-08-03 UX — Approvals RTL: replaced misaligned table with labeled cards; in-app DB notifications (permission submit/decision, report submit/reply) + navbar bell; NotificationTest. 187 tests / 793 assertions.
 
 <!--

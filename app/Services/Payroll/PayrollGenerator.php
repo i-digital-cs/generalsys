@@ -44,6 +44,65 @@ class PayrollGenerator
     }
 
     /**
+     * Generate drafts in-process (Hostinger-safe for small teams).
+     * Incomplete attendance: warn (default) or skip when require_full_month_coverage.
+     *
+     * @return array{
+     *     created: int,
+     *     skipped: list<array{name: string, classified: int, expected: int}>,
+     *     incomplete: list<array{name: string, classified: int, expected: int}>,
+     *     first_id: int|null
+     * }
+     */
+    public function generateMonthInline(
+        int $month,
+        int $year,
+        User $actor,
+        ?int $teamLeaderId = null,
+    ): array {
+        $created = 0;
+        $skipped = [];
+        $incomplete = [];
+        $firstId = null;
+        $strict = (bool) config('payroll.require_full_month_coverage', false);
+
+        foreach ($this->eligibleUserIds($teamLeaderId) as $userId) {
+            $user = User::query()->find($userId);
+            if ($user === null) {
+                continue;
+            }
+
+            $coverage = $this->coverageGap($user, $month, $year);
+            if ($coverage !== null) {
+                $row = [
+                    'name' => $user->name_en ?: $user->name_ar ?: $user->email,
+                    'classified' => $coverage['classified'],
+                    'expected' => $coverage['expected'],
+                ];
+
+                if ($strict) {
+                    $skipped[] = $row;
+
+                    continue;
+                }
+
+                $incomplete[] = $row;
+            }
+
+            $record = $this->generateForUser($user, $month, $year, $actor->id);
+            $created++;
+            $firstId ??= $record->id;
+        }
+
+        return [
+            'created' => $created,
+            'skipped' => $skipped,
+            'incomplete' => $incomplete,
+            'first_id' => $firstId,
+        ];
+    }
+
+    /**
      * @param  list<int>  $userIds
      * @return list<PayrollRecord>
      */
@@ -65,7 +124,9 @@ class PayrollGenerator
 
     public function generateForUser(User $user, int $month, int $year, int $createdBy): PayrollRecord
     {
-        $this->validateMonthCoverage($user, $month, $year);
+        if (config('payroll.require_full_month_coverage', false)) {
+            $this->validateMonthCoverage($user, $month, $year);
+        }
 
         $existing = PayrollRecord::query()
             ->where('user_id', $user->id)
@@ -143,18 +204,32 @@ class PayrollGenerator
 
     public function validateMonthCoverage(User $user, int $month, int $year): void
     {
-        $classified = $this->aggregator->classifiedDayCount($user, $month, $year);
-        $expected = $this->aggregator->expectedDayCount($month, $year);
+        $gap = $this->coverageGap($user, $month, $year);
 
-        if ($classified !== $expected) {
+        if ($gap !== null) {
             throw new MonthCoverageException(
                 $user->id,
                 $month,
                 $year,
-                $classified,
-                $expected,
+                $gap['classified'],
+                $gap['expected'],
             );
         }
+    }
+
+    /**
+     * @return array{classified: int, expected: int}|null
+     */
+    public function coverageGap(User $user, int $month, int $year): ?array
+    {
+        $classified = $this->aggregator->classifiedDayCount($user, $month, $year);
+        $expected = $this->aggregator->expectedDayCount($month, $year);
+
+        if ($classified === $expected) {
+            return null;
+        }
+
+        return ['classified' => $classified, 'expected' => $expected];
     }
 
     public function approve(PayrollRecord $record): PayrollRecord

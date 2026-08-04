@@ -176,6 +176,43 @@ class EmployeeCrudTest extends TestCase
         $this->assertTrue(Hash::check('password', $employee->password));
     }
 
+    public function test_edit_page_keeps_rates_inside_update_form_not_nested_rest_days(): void
+    {
+        $employee = User::factory()->employee()->create();
+        $employee->profile()->create(['employee_code' => 'EMP-NEST']);
+
+        $html = $this->actingAs($this->manager)
+            ->get(route('admin.employees.edit', $employee))
+            ->assertOk()
+            ->getContent();
+
+        $updateAction = route('admin.employees.update', $employee);
+        $restAction = route('admin.employees.rest-days.store', $employee);
+
+        $updatePos = strpos($html, 'action="'.e($updateAction).'"');
+        if ($updatePos === false) {
+            $updatePos = strpos($html, 'action="'.$updateAction.'"');
+        }
+        $baseSalaryPos = strpos($html, 'name="base_salary"');
+        $contractPos = strpos($html, 'name="contract[hire_date]"');
+        $restPos = strpos($html, 'action="'.e($restAction).'"');
+        if ($restPos === false) {
+            $restPos = strpos($html, 'action="'.$restAction.'"');
+        }
+
+        $this->assertNotFalse($updatePos);
+        $this->assertNotFalse($baseSalaryPos);
+        $this->assertNotFalse($contractPos);
+        $this->assertNotFalse($restPos);
+        $this->assertGreaterThan($updatePos, $baseSalaryPos);
+        $this->assertGreaterThan($baseSalaryPos, $restPos);
+        // Employee update </form> must close after rates/contract and before rest-days form.
+        $closeBeforeRest = strrpos(substr($html, 0, $restPos), '</form>');
+        $this->assertNotFalse($closeBeforeRest);
+        $this->assertGreaterThan($contractPos, $closeBeforeRest);
+        $this->assertGreaterThan($closeBeforeRest, $restPos);
+    }
+
     public function test_store_with_two_qualifications_and_two_contacts(): void
     {
         $payload = $this->validPayload([

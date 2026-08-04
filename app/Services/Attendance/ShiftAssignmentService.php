@@ -179,29 +179,34 @@ class ShiftAssignmentService
     /** @return EloquentCollection<int, User> */
     public function assignableEmployees(User $actor): EloquentCollection
     {
-        $query = User::query()
-            ->where('role', User::ROLE_EMPLOYEE)
-            ->where('status', User::STATUS_ACTIVE)
-            ->orderBy('name_en');
-
-        if ($actor->isTeamLeader()) {
-            $query->where('team_leader_id', $actor->id);
+        if ($actor->isManager()) {
+            return User::query()
+                ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
+                ->where('status', User::STATUS_ACTIVE)
+                ->orderBy('name_en')
+                ->get();
         }
 
-        return $query->get();
+        return User::query()
+            ->where('role', User::ROLE_EMPLOYEE)
+            ->where('status', User::STATUS_ACTIVE)
+            ->where('team_leader_id', $actor->id)
+            ->orderBy('name_en')
+            ->get();
     }
 
-    public function actorMayAssignTo(User $actor, User $employee): bool
+    public function actorMayAssignTo(User $actor, User $target): bool
     {
-        if (! $employee->isEmployee() || ! $employee->isActive()) {
+        if (! $target->isActive()) {
             return false;
         }
 
         if ($actor->isManager()) {
-            return true;
+            return $target->isEmployee() || $target->isTeamLeader();
         }
 
         return $actor->isTeamLeader()
-            && (int) $employee->team_leader_id === (int) $actor->id;
+            && $target->isEmployee()
+            && (int) $target->team_leader_id === (int) $actor->id;
     }
 }

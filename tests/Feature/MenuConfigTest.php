@@ -40,6 +40,10 @@ class MenuConfigTest extends TestCase
         $managerRoutes = array_column(config('menu.MANAGER'), 'route');
         $this->assertContains('admin.payroll.index', $managerRoutes);
         $this->assertContains('admin.advances.index', $managerRoutes);
+        $this->assertContains('team-leader.shifts', $managerRoutes);
+        $this->assertNotContains('employee.clock', $managerRoutes);
+        $this->assertNotContains('employee.report', $managerRoutes);
+        $this->assertNotContains('employee.requests', $managerRoutes);
     }
 
     public function test_every_menu_key_is_translated_in_ar_and_en(): void

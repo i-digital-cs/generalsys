@@ -5,8 +5,8 @@
 @section('content')
     <h1 class="h4 mb-3">{{ __('clock.title') }}</h1>
 
-    <div class="card border-0 shadow-sm">
-        <div class="card-body p-4">
+    <div class="card border-0 shadow-sm employee-mobile-stack">
+        <div class="card-body p-3 p-md-4">
             @if ($open)
                 <div class="text-center mb-4">
                     <span class="badge text-bg-success fs-6 px-3 py-2">{{ __('clock.status_open') }}</span>

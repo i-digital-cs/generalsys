@@ -145,10 +145,10 @@ class AttendanceServiceTest extends TestCase
     {
         $employee = User::factory()->employee()->create();
 
-        $this->service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, Carbon::parse('2026-08-03 06:00'));
+        $this->service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 06:00'));
 
         $this->expectException(AttendanceException::class);
-        $this->service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, Carbon::parse('2026-08-03 07:00'));
+        $this->service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 07:00'));
     }
 
     public function test_extra_shift_requires_scheduled_assignment(): void
@@ -199,6 +199,7 @@ class AttendanceServiceTest extends TestCase
         $employee = User::factory()->employee()->create([
             'work_start_time' => '10:00',
             'work_end_time' => '22:00',
+            'shift_type_default' => Attendance::SHIFT_ONLINE_FULL,
         ]);
 
         $row = $this->service->clockIn(
@@ -243,7 +244,7 @@ class AttendanceServiceTest extends TestCase
         );
     }
 
-    public function test_employee_may_clock_online_despite_ft_assignment(): void
+    public function test_employee_cannot_clock_online_when_ft_is_planned(): void
     {
         $leader = User::factory()->teamLeader()->create();
         $employee = User::factory()->employee()->create(['team_leader_id' => $leader->id]);
@@ -255,15 +256,47 @@ class AttendanceServiceTest extends TestCase
             'expected_hours' => 8,
         ]);
 
-        $row = $this->service->clockIn(
+        $this->expectException(AttendanceException::class);
+        $this->expectExceptionMessage('clock.errors.plan_mismatch');
+
+        $this->service->clockIn(
             $employee,
             Attendance::SHIFT_ONLINE_HALF,
             Carbon::parse('2026-08-03 10:00:00'),
         );
+    }
 
-        $this->assertSame(Attendance::SHIFT_ONLINE_HALF, $row->shift_type);
-        $this->assertSame('4.00', $row->planned_hours);
-        $this->assertNull($row->assigned_by_tl_id);
+    public function test_employee_may_clock_planned_ft_and_assigned_overtime(): void
+    {
+        $leader = User::factory()->teamLeader()->create();
+        $employee = User::factory()->employee()->create(['team_leader_id' => $leader->id]);
+
+        ShiftAssignment::factory()->fullTime()->create([
+            'user_id' => $employee->id,
+            'assigned_by_tl_id' => $leader->id,
+            'date' => '2026-08-03',
+            'expected_hours' => 8,
+        ]);
+        ShiftAssignment::factory()->create([
+            'user_id' => $employee->id,
+            'assigned_by_tl_id' => $leader->id,
+            'date' => '2026-08-03',
+            'shift_type' => Attendance::SHIFT_OVERTIME,
+            'expected_hours' => 2,
+        ]);
+
+        $available = $this->service->availableShiftTypes($employee, Carbon::parse('2026-08-03'));
+        $this->assertSame(
+            [Attendance::SHIFT_FULL_TIME, Attendance::SHIFT_OVERTIME],
+            $available,
+        );
+
+        $row = $this->service->clockIn(
+            $employee,
+            Attendance::SHIFT_FULL_TIME,
+            Carbon::parse('2026-08-03 10:00:00'),
+        );
+        $this->assertSame(Attendance::SHIFT_FULL_TIME, $row->shift_type);
     }
 
     public function test_same_shift_type_twice_same_day_is_rejected(): void
@@ -279,19 +312,16 @@ class AttendanceServiceTest extends TestCase
 
     public function test_used_shift_types_are_excluded_from_available(): void
     {
-        $employee = User::factory()->employee()->create();
+        $employee = User::factory()->employee()->create([
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
 
         $this->service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 10:00'));
         $this->service->clockOut($employee, Carbon::parse('2026-08-03 18:00'));
 
         $available = $this->service->availableShiftTypes($employee, Carbon::parse('2026-08-03'));
 
-        $this->assertNotContains(Attendance::SHIFT_FULL_TIME, $available);
-        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $available);
-        $this->assertSame(
-            Attendance::SHIFT_ONLINE_HALF,
-            $this->service->preferredShiftType($employee, Carbon::parse('2026-08-03')),
-        );
+        $this->assertSame([], $available);
     }
 
     public function test_matching_base_assignment_uses_expected_hours(): void

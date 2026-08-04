@@ -11,7 +11,7 @@ return [
     'elapsed' => 'Elapsed',
     'planned_hours' => 'Planned hours',
     'no_ot_hint' => 'Overtime / extra shift appear here only when your team leader assigns them for today.',
-    'rotation_hint' => 'Team leader may assign today’s rotation. You can still switch Full time ↔ Online. Overtime / extra need an assignment.',
+    'rotation_hint' => 'Clock the shift planned for today. Overtime / additional shift appear only when assigned.',
     'assigned_today' => 'Assigned today: :shift',
     'no_shifts_left' => 'You already recorded every available shift type for today.',
     'flags' => [
@@ -35,6 +35,7 @@ return [
         'no_open' => 'No open clock-in to clock out.',
         'assignment_required' => 'A scheduled overtime / extra shift assignment is required.',
         'invalid_shift' => 'Invalid shift type.',
-        'shift_already_recorded' => 'You already recorded this shift type today. Choose a different shift (e.g. Online) or wait until tomorrow.',
+        'shift_already_recorded' => 'You already recorded this shift type today.',
+        'plan_mismatch' => 'Clock-in must match today’s planned shift. Overtime / additional shift only when assigned.',
     ],
 ];
