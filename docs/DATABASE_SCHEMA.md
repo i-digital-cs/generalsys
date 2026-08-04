@@ -142,7 +142,7 @@ CREATE TABLE attendance (
     date                     DATE NOT NULL,
     shift_type               ENUM('FULL_TIME','ONLINE_HALF','ONLINE_FULL','EXTRA_SHIFT','OVERTIME') NOT NULL,
     is_friday_work           TINYINT(1) NOT NULL DEFAULT 0,   -- auto-detected
-    is_day_off_work          TINYINT(1) NOT NULL DEFAULT 0,   -- vs rest_days table
+    is_day_off_work          TINYINT(1) NOT NULL DEFAULT 0,   -- vs rest_days date marks
     is_official_holiday_work TINYINT(1) NOT NULL DEFAULT 0,   -- vs official_holidays
     assigned_by_tl_id        BIGINT UNSIGNED NULL,            -- set when clocking a matching TL assignment
     clock_in                 DATETIME NULL,
@@ -204,22 +204,28 @@ CREATE TABLE permissions (
 
 ```sql
 CREATE TABLE vacations (
-    id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id         BIGINT UNSIGNED NOT NULL,
-    type            ENUM('ANNUAL','SICK','EMERGENCY') NOT NULL,
-    start_date      DATE NOT NULL,
-    end_date        DATE NOT NULL,
-    days_requested  DECIMAL(4,1) NOT NULL,
-    status          ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
-    team_leader_id  BIGINT UNSIGNED NULL,
-    created_at      TIMESTAMP NULL,
-    updated_at      TIMESTAMP NULL,
+    id                   BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id              BIGINT UNSIGNED NOT NULL,
+    type                 ENUM('ANNUAL','SICK','EMERGENCY') NOT NULL,
+    start_date           DATE NOT NULL,
+    end_date             DATE NOT NULL,
+    days_requested       DECIMAL(4,1) NOT NULL,
+    replace_rest_date    DATE NULL,              -- rest day given up (swap)
+    replace_rest_day_id  BIGINT UNSIGNED NULL,  -- FK until approve (then null)
+    status               ENUM('PENDING','APPROVED','REJECTED','FORCED') NOT NULL DEFAULT 'PENDING',
+    -- FORCED = rejected then forced (product A): day off kept; rest day NOT consumed
+    team_leader_id       BIGINT UNSIGNED NULL,
+    created_at           TIMESTAMP NULL,
+    updated_at           TIMESTAMP NULL,
     CONSTRAINT fk_vac_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_vac_tl FOREIGN KEY (team_leader_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_vac_rest FOREIGN KEY (replace_rest_day_id) REFERENCES rest_days(id) ON DELETE SET NULL,
     INDEX idx_vac_user_status (user_id, status),
     INDEX idx_vac_dates (start_date, end_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
+
+> Product lock (2026-08-03): one day off per request; employee picks a `rest_days` row to **swap**. On approve the rest row is deleted; off date shows as vacation on the calendar.
 
 ## 10. vacation_balances
 
@@ -449,19 +455,19 @@ CREATE TABLE settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-## 20. rest_days
+## 20. Rest days (date-based)
 
-Rest days are a **monthly quota marked per date** (4 one month, 5 another — which dates vary),
-not a fixed weekday. Admin marks each rest-day date per employee.
+Per-employee rest dates (monthly quota marked per date — not weekly weekdays).
+`users.rest_weekdays` removed (2026-08-03).
 
 ```sql
 CREATE TABLE rest_days (
-    id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id    BIGINT UNSIGNED NOT NULL,
-    date       DATE NOT NULL,
-    created_by BIGINT UNSIGNED NULL,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL,
+    id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id     BIGINT UNSIGNED NOT NULL,
+    date        DATE NOT NULL,
+    created_by  BIGINT UNSIGNED NULL,
+    created_at  TIMESTAMP NULL,
+    updated_at  TIMESTAMP NULL,
     CONSTRAINT fk_rd_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_rd_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
     UNIQUE KEY uq_rd_user_date (user_id, date),
@@ -469,9 +475,9 @@ CREATE TABLE rest_days (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-> `attendance.is_day_off_work` (Phase 2) is computed against this table; the day-off-work
-> multipliers (MASTER_CONTEXT §1.2: FT = 2×, Online = 1.5×) apply when an employee works a
-> marked rest day.
+> `attendance.is_day_off_work` is true when a `rest_days` row exists for the clock-in date.
+> Working a rest day earns the §1.2 multipliers (FT = 2×, Online = 1.5×).
+> Admin/TL add dates; vacation/emergency **swaps** one rest date for the day off.
 
 ---
 
@@ -483,7 +489,7 @@ users ─┬─ employee_profiles (1:1)
        ├─ employee_documents (1:N) ── contracts (N:1 via document_id)
        ├─ emergency_contacts (1:N)
        ├─ contracts (1:N)
-       ├─ rest_days (1:N) ── monthly rest-day dates, marked per date
+       ├─ rest_days (1:N, date-based)
        ├─ users.team_leader_id (self FK, TL → team members)
        ├─ attendance (1:N) ── daily TL scores
        ├─ permissions (1:N)

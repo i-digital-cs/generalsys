@@ -60,8 +60,12 @@
         </div>
 
         <div class="d-flex flex-wrap gap-3 mt-3 small text-body-secondary">
-            <span><span class="month-cal-legend month-cal-legend--shift"></span> {{ __('dashboard.calendar.legend_shift') }}</span>
+            <span><span class="month-cal-legend month-cal-legend--shift"></span> {{ __('dashboard.calendar.legend_planned') }}</span>
+            <span><span class="month-cal-legend month-cal-legend--planned_default"></span> {{ __('dashboard.calendar.legend_default') }}</span>
+            <span><span class="month-cal-legend month-cal-legend--actual"></span> {{ __('dashboard.calendar.legend_actual') }}</span>
             <span><span class="month-cal-legend month-cal-legend--holiday"></span> {{ __('dashboard.calendar.legend_holiday') }}</span>
+            <span><span class="month-cal-legend month-cal-legend--rest_day"></span> {{ __('dashboard.calendar.legend_rest_day') }}</span>
+            <span><span class="month-cal-legend month-cal-legend--vacation"></span> {{ __('dashboard.calendar.legend_vacation') }}</span>
         </div>
     </div>
 </div>

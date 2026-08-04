@@ -29,7 +29,8 @@ class EmployeeDashboardService
      *     hoursToday: float,
      *     isClockedIn: bool,
      *     assignedShifts: Collection<int, ShiftAssignment>,
-     *     calendar: array
+     *     calendar: array,
+     *     hoursMonth: array
      * }
      */
     public function snapshot(User $user, ?Carbon $at = null, ?string $cal = null): array
@@ -57,6 +58,7 @@ class EmployeeDashboardService
             'isClockedIn' => $open !== null,
             'assignedShifts' => $calData['assignedShifts'],
             'calendar' => $calData['calendar'],
+            'hoursMonth' => $calData['hoursMonth'],
         ];
     }
 }

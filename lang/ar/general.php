@@ -8,6 +8,7 @@ return [
     'create' => 'إنشاء',
     'edit' => 'تعديل',
     'cancel' => 'إلغاء',
+    'close' => 'إغلاق',
     'actions' => 'إجراءات',
     'search' => 'بحث',
     'all' => 'الكل',

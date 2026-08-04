@@ -68,12 +68,12 @@ Never run tests against production.
 | 2.3 | Feature: clock-in / clock-out happy path; second open clock-in → 422 | ✅ T-2.3 |
 | 2.4 | Feature: EXTRA_SHIFT / OVERTIME without `shift_assignments` → 422 | ✅ T-2.3 |
 | 2.5 | Feature: FT → Online selectable at clock-in by employee | ✅ T-2.3 |
-| 2.6 | Feature: permission accept → normal penalty path; reject → no force yet | ⬜ |
-| 2.7 | Feature: TL **Mark as forced** → `FORCED` + double penalty flag | ⬜ |
-| 2.8 | Feature: vacation request shows remaining credit; reject if remaining &lt; requested | ⬜ |
-| 2.9 | Feature: TL can add vacation credit; employee sees updated remaining | ⬜ |
-| 2.10 | Feature: daily report + TL response (XSS escaped in Blade) | ⬜ |
-| 2.11 | Feature: team-scoped lists — TL cannot see other teams | ⬜ (partial: T-2.14 shifts list) |
+| 2.6 | Feature: permission accept → normal penalty path; reject → no force yet | ✅ T-2.8 |
+| 2.7 | Feature: **Mark as forced** → `FORCED` + double penalty flag | ✅ T-2.9 (employee self / TL team / Manager) |
+| 2.8 | Feature: vacation request shows remaining credit; allow submit with 0 remaining; reject date overlaps; **approve moves pending→used / reject releases pending** (credit visible on Approvals) | ✅ T-2.10 + T-2.11 |
+| 2.9 | Feature: TL can add vacation credit; employee sees updated remaining | ❌ Retired — vacation cost = rest-day swap; credit UI removed |
+| 2.10 | Feature: daily report + TL response (XSS escaped in Blade) | ✅ T-2.5 + T-2.6 |
+| 2.11 | Feature: team-scoped lists — TL cannot see other teams | ✅ T-2.6 reports, T-2.13 hours board, T-2.14 shifts |
 
 **Also covered with clock (2026-08-02):** same `shift_type` twice same day → 422; used types hidden on `/clock`; rotation preferred = TL assignment then default.
 
@@ -87,12 +87,12 @@ Never run tests against production.
 
 | # | Must verify | Status |
 |---|-------------|--------|
-| 3.1 | Unit: daily `attendance_score = min(100, actual/planned*100)` | ✅ (via T-2.2 clock-out) |
-| 3.2 | Unit: `EvaluationService::monthlyFromDaily` averages 5 metrics; `total = sum/5` | ⬜ |
-| 3.3 | Unit: Excel legacy 4-metric sample still averages correctly where applicable (0.97375 on those four) | ⬜ |
-| 3.4 | Feature: TL PUT daily scores `{ performance, behavior, productivity, interest_return }` | ⬜ |
-| 3.5 | Feature: monthly evaluation creates text + computed averages | ⬜ |
-| 3.6 | Feature: employee can view own evaluation; cannot edit scores | ⬜ |
+| 3.1 | Unit: daily `attendance_score = min(100, actual/planned*100)` | ✅ (via T-2.2 clock-out + T-3.1 50% fixture) |
+| 3.2 | Unit: `EvaluationService::monthlyFromDaily` averages 5 metrics; `total = sum/5` | ✅ T-3.2 |
+| 3.3 | Unit: Excel legacy 4-metric sample still averages correctly where applicable (0.97375 on those four) | ✅ T-3.2 |
+| 3.4 | Feature: TL PUT daily scores `{ performance, behavior, productivity, interest_return }` | ✅ T-3.1 |
+| 3.5 | Feature: monthly evaluation creates text + computed averages | ✅ T-3.3 |
+| 3.6 | Feature: employee can view own evaluation; cannot edit scores | ✅ T-3.4 |
 | 3.7 | Feature: TL shift assignment create/cancel; employee cannot self-assign OT | ✅ T-2.14 (also FT/Online rotation) |
 
 **Exit:** all Gate 3 tests green → may start Gate 4.

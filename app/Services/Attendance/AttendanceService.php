@@ -5,9 +5,9 @@ namespace App\Services\Attendance;
 use App\Exceptions\AttendanceException;
 use App\Models\Attendance;
 use App\Models\OfficialHoliday;
-use App\Models\RestDay;
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Services\Employees\RestDayService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +18,10 @@ use Illuminate\Support\Facades\DB;
  */
 class AttendanceService
 {
-    public function __construct(private readonly ShiftConfig $shifts) {}
+    public function __construct(
+        private readonly ShiftConfig $shifts,
+        private readonly RestDayService $restDays,
+    ) {}
 
     public function clockIn(User $user, string $shiftType, ?CarbonInterface $at = null): Attendance
     {
@@ -322,10 +325,7 @@ class AttendanceService
 
     private function isRestDay(User $user, string $date): bool
     {
-        return RestDay::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', $date)
-            ->exists();
+        return $this->restDays->isRestDate($user, $date);
     }
 
     private function isOfficialHoliday(string $date): bool

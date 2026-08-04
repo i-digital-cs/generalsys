@@ -145,22 +145,37 @@ class ClockTest extends TestCase
         ]);
     }
 
-    public function test_team_leader_cannot_access_clock(): void
+    public function test_team_leader_can_access_clock(): void
     {
-        $leader = User::factory()->teamLeader()->create();
+        $leader = User::factory()->teamLeader()->create([
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
 
         $this->actingAs($leader)
             ->get(route('employee.clock'))
-            ->assertForbidden();
+            ->assertOk()
+            ->assertSee(__('clock.clock_in'), false);
     }
 
-    public function test_manager_cannot_access_clock(): void
+    public function test_manager_can_clock_in(): void
     {
-        $manager = User::factory()->manager()->create();
+        $manager = User::factory()->manager()->create([
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
 
         $this->actingAs($manager)
             ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
-            ->assertForbidden();
+            ->assertRedirect(route('employee.clock'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('attendance', [
+            'user_id' => $manager->id,
+            'shift_type' => Attendance::SHIFT_FULL_TIME,
+        ]);
     }
 
     public function test_tl_assignment_is_preferred_but_employee_may_switch_to_online(): void

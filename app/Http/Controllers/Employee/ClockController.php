@@ -45,8 +45,6 @@ class ClockController extends Controller
 
     public function clockOut(Request $request): RedirectResponse
     {
-        abort_unless($request->user()?->isEmployee(), 403);
-
         try {
             $this->attendance->clockOut($request->user());
         } catch (AttendanceException $e) {

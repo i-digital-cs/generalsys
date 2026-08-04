@@ -24,16 +24,8 @@
                         data-clock-in="{{ $open->clock_in?->toIso8601String() }}">--:--:--</dd>
                 </dl>
 
-                <div class="d-flex flex-wrap gap-2 mb-4">
-                    @if ($open->is_friday_work)
-                        <span class="badge text-bg-primary">{{ __('clock.flags.friday') }}</span>
-                    @endif
-                    @if ($open->is_day_off_work)
-                        <span class="badge text-bg-warning text-dark">{{ __('clock.flags.rest_day') }}</span>
-                    @endif
-                    @if ($open->is_official_holiday_work)
-                        <span class="badge text-bg-info">{{ __('clock.flags.holiday') }}</span>
-                    @endif
+                <div class="mb-4">
+                    <x-attendance-flags :attendance="$open" class="mb-0 justify-content-center" />
                 </div>
 
                 <form method="POST" action="{{ route('employee.clock.out') }}">

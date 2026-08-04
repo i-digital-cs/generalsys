@@ -1,0 +1,36 @@
+<?php
+
+return [
+    'title' => 'Notifications',
+    'subtitle' => 'Updates about permissions and daily reports.',
+    'mark_all_read' => 'Mark all as read',
+    'unread' => 'New',
+    'empty_title' => 'No notifications',
+    'empty_text' => 'When something needs your attention, it will show here.',
+    'bell' => 'Notifications',
+    'view_all' => 'View all',
+    'flash' => [
+        'all_read' => 'All notifications marked as read.',
+    ],
+    'kinds' => [
+        'generic' => 'Notification',
+        'permission_submitted' => 'New permission request',
+        'permission_decision' => 'Permission :status',
+        'permission_forced' => 'Permission marked as forced',
+        'vacation_submitted' => 'New vacation request',
+        'vacation_decision' => 'Vacation :status',
+        'vacation_forced' => 'Vacation marked as forced',
+        'report_submitted' => 'New daily report',
+        'report_replied' => 'Report reply',
+    ],
+    'bodies' => [
+        'permission_submitted' => ':name submitted :type for :date.',
+        'permission_decision' => 'Your :type for :date was :status.',
+        'permission_forced' => ':type for :date was marked as forced (double penalty).',
+        'vacation_submitted' => ':name submitted :type vacation (:days days) :start → :end.',
+        'vacation_decision' => 'Your :type vacation (:days days) :start → :end was :status.',
+        'vacation_forced' => 'Your :type vacation :start → :end was marked as forced (rest day kept).',
+        'report_submitted' => ':name submitted a daily report for :date.',
+        'report_replied' => 'Your team leader replied to your report for :date.',
+    ],
+];

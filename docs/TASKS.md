@@ -5,6 +5,7 @@
 1. Check off a task only when **all nested boxes** under it are checked.
 2. Start a task only when every task listed in **Depends on** is checked.
 3. Follow `AGENTS.md` §0 · gates in `docs/BUILD_AND_TEST_GATES.md` · UI rules in `docs/UI_FRAMEWORK.md` §9.
+4. **Role chain (`AGENTS.md` §0b):** if a feature is Employee↔TL, **ask** whether TL↔Admin should match before implementing that path (except TL money privacy — never weaken without an explicit product change).
 
 Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 
@@ -23,6 +24,7 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 - [ ] Flow: reachable from previous screen
 - [ ] Feedback: flash / validation visible
 - [ ] Roles: wrong role 403 or hidden menu
+- [ ] Role chain: asked user if TL↔Admin applies; implemented only per their answer (AGENTS.md §0b)
 - [ ] Money: never shown to TEAM_LEADER (if applicable)
 - [ ] Empty state OK (if list screen)
 
@@ -161,74 +163,79 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 ### T-2.5 — Daily report submit + view TL response
 - Depends on: T-2.3
 - Unlocks: T-2.6
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 2.10 tests PASS
-  - [ ] UI/UX gate (form + flash; escaped response)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 2.10 tests PASS
+  - [x] UI/UX gate (form + flash; escaped response)
+
+> Locked rules (2026-08-03): report only after clock-out; **one report per day** on the day’s first (earliest `clock_in`) attendance row; locked once `team_leader_response` is set.
 
 ### T-2.6 — TL: respond to daily reports
 - Depends on: T-2.5
 - Unlocks: T-2.7, T-3.1
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 2.10–2.11 tests PASS
-  - [ ] UI/UX gate (queue → reply → employee sees it)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 2.10–2.11 tests PASS
+  - [x] UI/UX gate (queue → reply → employee sees it)
 
 ### T-2.7 — Employee: permission request (leave/late)
 - Depends on: T-2.1, T-1.2
 - Unlocks: T-2.8, T-5.4
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Feature create/list PASS
-  - [ ] UI/UX gate (form + status badges; My Requests)
+- [x] Task complete
+  - [x] Code done
+  - [x] Feature create/list PASS
+  - [x] UI/UX gate (form + status badges; My Requests)
 
 ### T-2.8 — TL: approve/reject permissions
 - Depends on: T-2.7
 - Unlocks: T-2.9, T-5.5
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 2.6 tests PASS
-  - [ ] UI/UX gate (Accept/Reject clear)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 2.6 tests PASS
+  - [x] UI/UX gate (Accept/Reject clear)
 
-### T-2.9 — TL: Mark as forced (double penalty)
+### T-2.9 — Mark as forced (double penalty)
 - Depends on: T-2.8
 - Unlocks: T-2.10
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 2.7 tests PASS
-  - [ ] UI/UX gate (button after Reject; confirm; FORCED)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 2.7 tests PASS
+  - [x] UI/UX gate (Force on REJECTED: employee self, TL team, Manager; confirm; FORCED)
 
 ### T-2.10 — Employee: vacation request
 - Depends on: T-2.1
 - Unlocks: T-2.11
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 2.8 tests PASS
-  - [ ] UI/UX gate (remaining credit on form)
+- Note: TL↔Admin self-service **yes** (locked). Rules: auto days editable; all types share balance; allow 0 credit; reject overlap; notify on submit.
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 2.8 tests PASS
+  - [x] UI/UX gate (remaining credit on form; Employee + TL + Admin)
 
 ### T-2.11 — TL: approve/reject vacation (see credit)
 - Depends on: T-2.10
 - Unlocks: T-2.12, T-5.5
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 2.8 tests PASS
-  - [ ] UI/UX gate (credit visible before decision)
+- Note: Admin decides TL/Manager vacation requests; TL decides team employees only (AGENTS.md §0b locked).
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 2.8 tests PASS
+  - [x] UI/UX gate (credit visible before decision)
 
 ### T-2.12 — TL: add vacation credit + history
 - Depends on: T-2.1
 - Unlocks: T-2.13
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 2.9 tests PASS
-  - [ ] UI/UX gate (add-credit modal; balance updates)
+- Note: **Retired 2026-08-04** — vacation cost is rest-day swap; credit UI/routes removed. Schema tables may remain unused until annual report needs them.
+- [x] Task complete _(retired — product superseded)_
+  - [x] Code done
+  - [x] Gate 2.9 tests PASS _(then UI removed)_
+  - [x] UI/UX gate (add-credit modal; balance updates) _(removed)_
 
 ### T-2.13 — TL: team attendance dashboard + %
 - Depends on: T-2.3
 - Unlocks: T-3.1
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 2.11 tests PASS
-  - [ ] UI/UX gate (team list; no money)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 2.11 tests PASS
+  - [x] UI/UX gate (team list; no money)
 
 ### T-2.14 — TL: pre-assign daily rotation + EXTRA / OVERTIME
 - Depends on: T-2.1
@@ -245,42 +252,42 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 ### T-3.1 — Daily scores on attendance (4 TL + auto attendance)
 - Depends on: T-2.6
 - Unlocks: T-3.2
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 3.1, 3.4 tests PASS
-  - [ ] UI/UX gate (4 inputs + auto attendance shown)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 3.1, 3.4 tests PASS
+  - [x] UI/UX gate (4 inputs + auto attendance shown)
 
 ### T-3.2 — `EvaluationService` monthly avg of 5 + monthly text
 - Depends on: T-3.1
 - Unlocks: T-3.3, T-4.3
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 3.2–3.3 tests PASS
-  - [ ] UI/UX: N/A
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 3.2–3.3 tests PASS
+  - [x] UI/UX: N/A
 
 ### T-3.3 — TL monthly evaluation screen (5 bars + text)
 - Depends on: T-3.2
 - Unlocks: T-3.4
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 3.5 tests PASS
-  - [ ] UI/UX gate (averages + text; AR/EN)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 3.5 tests PASS
+  - [x] UI/UX gate (averages + text; AR/EN)
 
 ### T-3.4 — Employee: My Evaluation view
 - Depends on: T-3.3
 - Unlocks: T-4.1, T-5.1
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 3.6 tests PASS
-  - [ ] UI/UX gate (5 score-bars + text; read-only)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 3.6 tests PASS
+  - [x] UI/UX gate (5 score-bars + text; read-only)
 
 ### T-3.5 — Friday / day-off flags on attendance (display)
 - Depends on: T-2.2
 - Unlocks: T-4.1
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Unit flags PASS
-  - [ ] UI/UX gate (badge visible when applicable)
+- [x] Task complete
+  - [x] Code done
+  - [x] Unit flags PASS
+  - [x] UI/UX gate (badge visible when applicable)
 
 ---
 
@@ -289,66 +296,66 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 ### T-4.1 — Migrations: penalty_rules, payroll_records, adjustments, advances
 - Depends on: T-1.1
 - Unlocks: T-4.2, T-4.3
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] migrate scratch PASS
-  - [ ] UI/UX: N/A
+- [x] Task complete
+  - [x] Code done
+  - [x] migrate scratch PASS
+  - [x] UI/UX: N/A
 
 ### T-4.2 — Admin: penalty rules UI (per currency, per minute)
 - Depends on: T-4.1
 - Unlocks: T-4.3
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Feature CRUD PASS
-  - [ ] UI/UX gate (grid; TL cannot open)
+- [x] Task complete
+  - [x] Code done
+  - [x] Feature CRUD PASS
+  - [x] UI/UX gate (grid; TL cannot open)
 
 ### T-4.3 — `PayrollCalculator` + Excel fixture net 2808.00
 - Depends on: T-4.1, T-2.2, T-3.2
 - Unlocks: T-4.4, T-4.8, T-5.6
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 4.1–4.5 tests PASS
-  - [ ] UI/UX: N/A
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 4.1–4.5 tests PASS
+  - [x] UI/UX: N/A
 
 ### T-4.4 — Admin: generate draft payroll (queued/chunked)
 - Depends on: T-4.3
 - Unlocks: T-4.5, T-4.6
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 4.6, 4.10–4.11 tests PASS
-  - [ ] UI/UX gate (month picker → draft table)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 4.6, 4.10–4.11 tests PASS
+  - [x] UI/UX gate (month picker → draft table)
 
 ### T-4.5 — Admin: review / edit draft / approve
 - Depends on: T-4.4
 - Unlocks: T-4.7, T-5.1, T-5.2
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 4.6 tests PASS
-  - [ ] UI/UX gate (breakdown; approve CTA; flash)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 4.6 tests PASS
+  - [x] UI/UX gate (breakdown; approve CTA; flash)
 
 ### T-4.6 — TL payroll blocked (routes + menu)
 - Depends on: T-4.4
 - Unlocks: T-4.7, T-5.6
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 4.7, 4.9 tests PASS
-  - [ ] UI/UX gate (no menu; URL → 403)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 4.7, 4.9 tests PASS
+  - [x] UI/UX gate (no menu; URL → 403)
 
 ### T-4.7 — Employee: My Salary (APPROVED/PAID only)
 - Depends on: T-4.5
 - Unlocks: T-4.8, T-5.2, T-5.4
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Gate 4.8 tests PASS
-  - [ ] UI/UX gate (payslip; DRAFT hidden; `<x-money>`)
+- [x] Task complete
+  - [x] Code done
+  - [x] Gate 4.8 tests PASS
+  - [x] UI/UX gate (payslip; DRAFT hidden; `<x-money>`)
 
 ### T-4.8 — Advances (سلف) admin CRUD + payroll deduction
 - Depends on: T-4.3
 - Unlocks: T-5.1
-- [ ] Task complete
-  - [ ] Code done
-  - [ ] Unit + feature PASS
-  - [ ] UI/UX gate (admin form; on draft)
+- [x] Task complete
+  - [x] Code done
+  - [x] Unit + feature PASS
+  - [x] UI/UX gate (admin form; on draft)
 
 ---
 
@@ -456,6 +463,41 @@ T-0.1 → T-0.2 → T-0.3
 - [x] 2026-08-02 T-2.4 PASS — Employee dashboard `/employee/dashboard`: status + preferred/assigned shift + hours/sessions today + CTA → clock; login lands on dashboard; AR+EN; EmployeeDashboardTest. 135 tests / 598 assertions.
 - [x] 2026-08-03 T-2.14 amend — TL shifts: **My team** roster + **Edit** SCHEDULED assignments; Mona seeded under leader; 137 tests / 606 assertions.
 - [x] 2026-08-03 Dashboard UX — Employee **My assigned shifts** list + month calendar on employee / TL / admin dashboards (shifts + holidays markers).
+- [x] 2026-08-03 T-2.5 PASS — Employee daily report `/report`: after clock-out only; one/day on first shift; locked after TL response; XSS escaped; DailyReportTest Gate 2.10. 146 tests / 643 assertions.
+- [x] 2026-08-03 T-2.6 PASS — TL report queue `/team-leader/reports`: pending/replied/all filters; reply locks employee report; team-scoped (other team 403); Manager can reply any; XSS escaped; ReportReviewTest Gate 2.10–2.11. 153 tests / 677 assertions.
+- [x] 2026-08-03 T-2.13 PASS — Planned vs actual hours on employee + TL/admin dashboards: day list, calendar (shift+hours), month totals; profile work-window fallback; today who’s-in board; team-scoped; HoursComparisonService + TeamAttendanceDashboardTest. 160 tests / 699 assertions.
+- [x] 2026-08-03 T-2.7 PASS — Employee My Requests `/requests`: leave/late permission form + paginated list + status badges; vacations tab placeholder; PermissionRequestTest. 168 tests / 727 assertions.
+- [x] 2026-08-03 T-2.8 PASS — TL Approvals `/team-leader/approvals`: Accept → ACCEPTED/0; Reject → REJECTED + penalty_amount (config rates); team-scoped; no money in UI; Gate 2.6. PermissionApprovalTest. 177 tests / 757 assertions.
+- [x] 2026-08-03 T-2.9 PASS — Force: REJECTED→FORCED, penalty×2, `is_double_penalty`; employee self + Manager; TL 403; Force button + confirm on My Requests; Gate 2.7. PermissionForceTest. 183 tests / 777 assertions.
+- [x] 2026-08-03 T-2.9 follow-up — TL may force team REJECTED (same ×2); Force on Approvals for TL; actor skipped in force notify; MASTER_CONTEXT matrix updated.
+- [x] 2026-08-03 Self-service follow-up — TL + Admin: Clock, Daily report, My Requests; Manager decides TL permissions & replies to TL reports; StaffSelfServiceTest.
+- [x] 2026-08-03 Rule locked — AGENTS.md §0b / MASTER_CONTEXT §1.7d: Employee↔TL flows must also exist TL↔Admin (except payroll money).
+- [x] 2026-08-03 Rule updated — §0b: agents must **ask** before applying Employee↔TL pattern to TL↔Admin (yes/no/partial); payroll money still never for TL.
+- [x] 2026-08-03 Fix — rest days (`rest_days`) show on dashboard calendar + day table; planned=0 unless shift assigned; legend AR/EN.
+- [x] 2026-08-03 UX — TL/Admin dashboard focus **Me** (own calendar + day table by default); switch to team member via picker.
+- [x] 2026-08-03 T-2.10 PASS — Vacation request on My Requests: credit card; ANNUAL/SICK/EMERGENCY; auto days editable; allow 0 remaining; overlap reject; pending on balance; notify TL+Admin; TL/Admin self-service. VacationRequestTest. Gate 2.8.
+- [x] 2026-08-03 Rest weekdays — per-employee ISO weekdays on `users.rest_weekdays`; drop date `rest_days`; Admin form + TL `/team-leader/rest-weekdays`; calendar/clock use weekly pattern. Suite green 202 tests / 937 assertions (HoursComparisonServiceTest cleared for Friday default rest).
+- [x] 2026-08-03 T-2.11 PASS — Approvals vacations section: remaining credit visible; Accept → pending→used; Reject → pending released; TL team / Manager all (incl. TL self); VacationDecisionNotification; VacationApprovalTest. Gate 2.8. 208 tests / 967 assertions.
+- [x] 2026-08-03 T-2.12 PASS — Vacation Credit `/team-leader/vacation-credit`: add days modal; accrued/remaining update; credit log history; TL team / Manager employees+TLs; employee sees remaining on My Requests; VacationCreditTest. Gate 2.9. 216 tests / 998 assertions.
+- [x] 2026-08-03 Product lock — Rest days back to **date-based** (`rest_days`); remove `rest_weekdays`. Vacation/emergency = **swap** one rest date for one day off (approve deletes rest row; calendar shows vacation). 214 tests / 989 assertions.
+- [x] 2026-08-04 Cleanup — remove Vacation Credit UI/routes/menu (obsolete after rest-day swap). Rest Days = the pool.
+- [x] 2026-08-04 Vacation Force (A) PASS — REJECTED→FORCED keeps rest day; day off still vacation; Force on Approvals + My Requests (self/TL/Manager); notify; VacationForceTest. Schema FORCED.
+- [x] 2026-08-04 T-4.1 PASS — Migrations `penalty_rules`, `payroll_records`, `payroll_adjustments`, `advances`; thin models/factories; PenaltyRuleSeeder; PermissionPenaltyCalculator reads DB rules (config fallback); PayrollSchemaTest.
+- [x] 2026-08-04 T-4.2 PASS — Admin `/admin/config/penalties` grid CRUD; Policy Manager-only; TL/employee 403; cached rules; AR+EN; `<x-money>`; PenaltyRuleTest.
+- [x] 2026-08-04 T-3.1 PASS — Daily scores on report review: 4 TL inputs (0–100) + read-only auto `attendance_score`; TL team / Manager any (same as reply); DailyScoreService; DailyScoreTest; Gate 3.1+3.4.
+- [x] 2026-08-04 UX — Employee Daily Report: remove date+Load; open on today; past days via history list only.
+- [x] 2026-08-04 UX — TL Daily reports queue: default **All reports**; filter by employee + status; paginated list.
+- [x] 2026-08-04 T-3.2 PASS — `evaluations` table; `EvaluationService::monthlyFromDaily` (/5) + legacy four-metric **0.97375**; `saveMonthly` text+avgs; EvaluationServiceTest. Gate 3.2–3.3. Unlocks T-3.3 + T-4.3.
+- [x] 2026-08-04 T-3.3 PASS — `/team-leader/evaluations`: month picker + team list; detail 5 score-bars + monthly text; TL team / Manager; `<x-score-bar>`; MonthlyEvaluationTest. Gate 3.5.
+- [x] 2026-08-04 T-3.4 PASS — `/evaluation` My Evaluation: read-only 5 bars + TL text; history; own only; MyEvaluationTest. Gate 3.6.
+- [x] 2026-08-04 T-3.5 PASS — Friday/rest/holiday work badges via `<x-attendance-flags>` on clock + dashboard sessions + hours day table; AttendanceFlagsDisplayTest.
+- [x] 2026-08-04 T-4.3 PASS — `PayrollCalculator` + Input/Result DTOs; `config/payroll.php` multipliers; absence day multipliers from `penalty_rules` (seed 1×/3×); Excel net **2808.00**; Gate 4.1–4.5 unit tests. Unlocks T-4.4, T-4.8, T-5.6.
+- [x] 2026-08-04 T-4.4 PASS — `PayrollAggregator` + `PayrollGenerator` + `GeneratePayrollJob` (chunk ≤100); `/admin/payroll` month picker → draft table + approve; coverage Gate 4.10; `PayrollPolicy` TL 403. Unlocks T-4.5, T-4.6.
+- [x] 2026-08-04 T-4.5 PASS — Draft show breakdown; edit counts + recalculate; adjustments CRUD; approve locks edit; `PayrollDraftService`; PayrollDraftTest. Gate 4.6. Unlocks T-4.7, T-5.1, T-5.2.
+- [x] 2026-08-04 T-4.6 PASS — PayrollPrivacyTest: TL 403 on all payroll routes; sidebar has no payroll; Manager menu keeps it. Gate 4.7/4.9. Unlocks T-4.7, T-5.6.
+- [x] 2026-08-04 T-4.7 PASS — `/salary` My Salary: APPROVED/PAID list + read-only breakdown; DRAFT + others 403; `<x-money>`; MySalaryTest. Gate 4.8. Unlocks T-4.8, T-5.2, T-5.4.
+- [x] 2026-08-04 T-4.8 PASS — Advances CRUD (`/admin/advances`); employee `/advances/my`; generate pulls monthly deduction; approve decrements remaining → FULLY_DEDUCTED; AdvanceTest. Phase 4 complete. Unlocks T-5.1.
+- [x] 2026-08-03 UX — Approvals RTL: replaced misaligned table with labeled cards; in-app DB notifications (permission submit/decision, report submit/reply) + navbar bell; NotificationTest. 187 tests / 793 assertions.
 
 <!--
 Example:

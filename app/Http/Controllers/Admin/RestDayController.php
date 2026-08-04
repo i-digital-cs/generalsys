@@ -9,9 +9,7 @@ use App\Models\User;
 use App\Services\Employees\RestDayService;
 use Illuminate\Http\RedirectResponse;
 
-/**
- * Rest-day marking — admin only (routes sit in the role:MANAGER group).
- */
+/** Rest-day marking on employee edit (Manager). */
 class RestDayController extends Controller
 {
     public function __construct(private readonly RestDayService $restDays) {}
@@ -19,9 +17,9 @@ class RestDayController extends Controller
     public function store(StoreRestDayRequest $request, User $employee): RedirectResponse
     {
         $this->restDays->add(
+            $request->user(),
             $employee,
             $request->string('date')->toString(),
-            $request->user(),
         );
 
         return redirect()
@@ -31,9 +29,9 @@ class RestDayController extends Controller
 
     public function destroy(User $employee, RestDay $restDay): RedirectResponse
     {
-        abort_unless($restDay->user_id === $employee->id, 404);
+        abort_unless((int) $restDay->user_id === (int) $employee->id, 404);
 
-        $this->restDays->remove($restDay);
+        $this->restDays->remove(request()->user(), $restDay);
 
         return redirect()
             ->route('admin.employees.edit', $employee)

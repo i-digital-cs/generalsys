@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\RestDay;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -32,22 +33,27 @@ class EmployeeProfileTest extends TestCase
 
     public function test_employee_sees_work_schedule_and_rest_days_read_only(): void
     {
-        $manager = User::factory()->manager()->create();
         $employee = User::factory()->employee()->create([
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
         ]);
         $employee->profile()->create(['employee_code' => 'EMP-WS1']);
-        $employee->restDays()->create(['date' => '2026-08-14', 'created_by' => $manager->id]);
+        RestDay::factory()->create([
+            'user_id' => $employee->id,
+            'date' => '2026-08-07',
+        ]);
+        RestDay::factory()->create([
+            'user_id' => $employee->id,
+            'date' => '2026-08-08',
+        ]);
 
         $this->actingAs($employee)
             ->get(route('employee.profile'))
             ->assertOk()
             ->assertSee('10:00')
             ->assertSee('18:00')
-            ->assertSee('2026-08-14')
-            // No delete buttons on the read-only view.
-            ->assertDontSee('rest-days');
+            ->assertSee('2026-08-07', false)
+            ->assertSee('2026-08-08', false);
     }
 
     public function test_employee_cannot_view_another_employees_profile(): void

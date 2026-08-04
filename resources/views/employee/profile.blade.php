@@ -144,16 +144,19 @@
         </div>
     </div>
 
-    {{-- Rest days (read-only) --}}
+    {{-- Weekly rest days (read-only) --}}
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-transparent fw-semibold">{{ __('profile.rest_days') }}</div>
         <div class="card-body">
-            @if ($employee->restDays->isEmpty())
+            @php
+                $restDays = $employee->restDays()->orderBy('date')->limit(20)->get();
+            @endphp
+            @if ($restDays->isEmpty())
                 <p class="text-body-secondary mb-0">{{ __('employees.rest_days.empty') }}</p>
             @else
                 <div class="d-flex flex-wrap gap-2">
-                    @foreach ($employee->restDays as $restDay)
-                        <span class="badge text-bg-secondary py-2 px-3" dir="ltr">{{ $restDay->date->translatedFormat('Y-m-d') }}</span>
+                    @foreach ($restDays as $restDay)
+                        <span class="badge text-bg-secondary py-2 px-3" dir="ltr">{{ $restDay->date->toDateString() }}</span>
                     @endforeach
                 </div>
             @endif

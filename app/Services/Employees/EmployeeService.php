@@ -111,7 +111,7 @@ class EmployeeService
      */
     private function userAttributes(array $data): array
     {
-        return array_merge(
+        $attributes = array_merge(
             Arr::only($data, [
                 'name_ar', 'name_en', 'email', 'role', 'currency', 'language_preference',
                 'team_leader_id', 'shift_type_default', 'work_start_time', 'work_end_time', 'status',
@@ -119,6 +119,8 @@ class EmployeeService
             ]),
             ['password' => $data['password'] ?? null],
         );
+
+        return $attributes;
     }
 
     /**

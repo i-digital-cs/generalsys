@@ -93,7 +93,8 @@ class EmployeeDashboardTest extends TestCase
         $this->actingAs($this->employee)
             ->get(route('employee.dashboard'))
             ->assertOk()
-            ->assertSee(__('dashboard.employee.my_shifts'), false)
+            ->assertSee(__('dashboard.hours.day_list_title'), false)
+            ->assertSee(__('dashboard.hours.month_planned'), false)
             ->assertSee(__('shifts.types.FULL_TIME'), false)
             ->assertSee(__('shifts.types.ONLINE_HALF'), false)
             ->assertSee(__('dashboard.calendar.title'), false);

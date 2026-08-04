@@ -114,7 +114,25 @@
 - TL assigns: shift type, date, expected start/end/hours, multiplier (default 1.0 base / 1.5 premium), optional notes. Cancel sets `CANCELLED` (only while `SCHEDULED`). Duplicate SCHEDULED same user+date+shift_type rejected.
 - Planned hours: matching assignment’s `expected_hours`, else profile defaults 8 / 4 / 12 (`ShiftConfig`).
 
-### 1.8 Payroll Visibility — CRITICAL
+### 1.7b Daily report (locked 2026-08-03)
+- Any role (Employee / TL / Manager) may clock and submit **one report per calendar day** on the day’s **first** attendance row (earliest `clock_in`).
+- Allowed **only after clock-out** on that main row.
+- Editable until a reviewer sets `team_leader_response`; then **locked**.
+- **Who replies:** Team Leader → own employees; Manager → employees + team leaders (+ other managers).
+- Blade must escape report + response (`{{ }}` only — never `{!! !!}`).
+
+### 1.7c Self-service leave/late (locked 2026-08-03)
+- **My Requests** (`/requests`) is available to Employee, TL, and Manager (self).
+- Employees require `team_leader_id` (TL decides). TL/Manager requests have null `team_leader_id` → **Manager** decides on Approvals.
+- Force (REJECTED → FORCED, ×2): self, TL (team), or Manager.
+
+### 1.7d Role chain — Employee↔TL vs TL↔Admin (locked 2026-08-03)
+- **Standing rule:** features between **Employee and Team Leader** are *candidates* for the same pattern between **Team Leader and Admin** — agents **must ask the user before applying** (yes / no / partial).
+- Do not auto-mirror TL↔Admin. Record the user’s answer in the task Progress log / this section when a decision is made.
+- Already decided **yes** (shipped): clock, daily report, leave/late submit + decide + force, Admin CC on notifications, **vacation submit/approve with rest-day swap**, vacation credit UI, date-based rest days (Admin+TL), **daily scores on report review**, **monthly evaluations screen** (TL team / Manager any).
+- Upcoming (e.g. employee My Evaluation is self-only): no TL↔Admin ask needed.
+- **Never weaken:** TL never sees monetary amounts; payroll generate/approve stays Admin-only unless the user explicitly changes that.
+
 | Role | Can View Payroll? |
 |------|-------------------|
 | Admin / Manager | ✅ All employees |
@@ -146,6 +164,8 @@ users
 ├── shift_type_default (FULL_TIME, ONLINE_HALF, ONLINE_FULL)
 ├── work_start_time (time, nullable)      -- مواعيد العمل: حضور
 ├── work_end_time (time, nullable)        -- مواعيد العمل: انصراف
+├── work_start_time / work_end_time
+├── status (ACTIVE / INACTIVE)
 ├── status (ACTIVE, INACTIVE)
 ├── created_at / updated_at
 ```
@@ -158,7 +178,7 @@ attendance
 ├── date
 ├── shift_type (enum: FULL_TIME, ONLINE_HALF, ONLINE_FULL, EXTRA_SHIFT, OVERTIME)
 ├── is_friday_work (boolean)              -- Auto-detected
-├── is_day_off_work (boolean)             -- Compared to rest_days table
+├── is_day_off_work (boolean)             -- vs rest_days date marks
 ├── assigned_by_tl_id (FK, nullable)    -- For EXTRA_SHIFT / OVERTIME
 ├── clock_in (timestamp)
 ├── clock_out (timestamp)
@@ -198,11 +218,12 @@ vacations
 ├── type (ANNUAL, SICK, EMERGENCY)
 ├── start_date / end_date
 ├── days_requested (decimal)
-├── status (PENDING, APPROVED, REJECTED)
+├── status (PENDING, APPROVED, REJECTED, FORCED)
+├── replace_rest_date / replace_rest_day_id
 ├── team_leader_id (FK)
 ├── created_at / updated_at
 ```
-
+> Force (product A): REJECTED → FORCED keeps the day off as vacation; rest day is **not** consumed.
 ### 2.5 Vacation Balance Table (Dynamic)
 ```sql
 vacation_balances
@@ -391,19 +412,16 @@ vacation_credit_logs
 ├── created_at
 ```
 
-### 2.18 Rest Days Table (monthly quota, marked per date)
+### 2.18 Rest days (date-based) + vacation swap
 ```sql
-rest_days
-├── id (PK)
-├── user_id (FK → users, cascade)
-├── date                                  -- UNIQUE(user_id, date)
-├── created_by (FK → users, nullable)
-├── created_at / updated_at
+rest_days (user_id, date, created_by)  -- unique(user_id, date)
+vacations.replace_rest_date / replace_rest_day_id  -- swap on submit
 ```
-> Rest days are NOT a fixed weekday: an employee gets X rest days per month (4 one month,
-> 5 another) and the dates vary, so Admin marks each date. Phase-2 attendance computes
-> `is_day_off_work` against this table; working a marked rest day earns the §1.2 multipliers
-> (FT = 2×, Online = 1.5×).
+> Admin/TL mark specific rest dates. Vacation/emergency request picks **one rest day to replace**
+> for **one day off**. On approve: rest row deleted; off date shows as vacation on the calendar.
+> On reject: rest day stays. On Force (A): REJECTED → FORCED; day off kept; rest day **not** consumed.
+> `attendance.is_day_off_work` when a `rest_days` row exists. Working a rest day earns §1.2 multipliers.
+> Weekly `users.rest_weekdays` removed (2026-08-03).
 
 > ⚠️ Excel-trace notes folded into schema: attendance must support **overnight shifts** (RADWA sheet uses a 12:00 "modify TIME" offset), daily TL evaluation scores are stored **per attendance day** then averaged monthly, and `payroll_records` must also store `official_holiday_work_days`, `hours_deduction`, and per-row commission entries (see `docs/PAYROLL_CALCULATION.md`).
 
@@ -419,7 +437,7 @@ rest_days
 | **Permissions** | | | |
 | Submit Permission | ✅ Self | ✅ Self | ✅ Self |
 | Approve/Reject Permission | ✅ All | ✅ Team Only | ❌ |
-| Force Rejected Permission | ✅ | ❌ | ✅ Self |
+| Force Rejected Permission | ✅ All | ✅ Team Only | ✅ Self |
 | **Vacations** | | | |
 | Submit Vacation | ✅ Self | ✅ Self | ✅ Self |
 | Approve/Reject Vacation | ✅ All | ✅ Team Only | ❌ |
@@ -736,10 +754,11 @@ Admin approves → Employee can view payslip
 | 3 | Excused Absence = 1× day salary | Standard deduction |
 | 4 | Unexcused Absence = 3× day salary | Heavy penalty for no-shows |
 | 5 | Friday work: FT=1×, Online=0.5× | Weekend compensation |
-| 6 | Rest-day work (date marked in `rest_days`): FT=2×, Online=1.5× | Rest day compensation |
+| 6 | Rest-day work (date in `rest_days`): FT=2×, Online=1.5× | Rest day compensation |
 | 7 | FT→Online change (non-Fri): hour × 0.5 | Rate adjustment |
 | 8 | TL cannot see payroll | Data privacy |
 | 9 | Admin sets all rates per employee | Flexibility |
 | 10 | TL adds vacation credit dynamically | Weekly/ad-hoc accrual |
 | 11 | TL pre-assigns extra shifts | Controlled overtime |
 | 12 | Evaluation = Average of 5 daily metrics (incl. Interest Return); text is monthly | Equal-weight scoring |
+| 13 | Employee↔TL may mirror TL↔Admin — **ask user first** before applying | Avoid wrong assumptions; payroll money still Admin-only |

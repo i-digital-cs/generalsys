@@ -175,7 +175,7 @@ All logic lives in services (never controllers) — see `AGENTS.md`:
 | G39/H39 absence | `dayRate × days × multiplier` — multiplier from `penalty_rules` (excused 1×, unexcused **3×** per spec §8) | counts, rules |
 | I39 hours deduction | `base / (divisor × 8) × hours_deduction` (hourly), or per-minute penalty per spec §1.1 — mode from settings | hours, rules |
 | J43–J49 manual lines | `payroll_adjustments` rows (commissions / bonuses / advances) | admin input |
-| J42 gross / J50 net | `PayrollCalculator::totals()` — `gross = Σ earnings`, `net = gross + Σ commissions − Σ deductions` | all above |
+| J42 gross / J50 net | `PayrollCalculator::calculate()` — `gross = Σ earnings`, `net = gross − Σ deductions` (commissions/bonuses in earnings) | all above |
 | Friday / day-off / OT multipliers (spec §1.2, not in these sheets) | `PayrollCalculator::multiplierPay()` — FT Friday 1×, online Friday 0.5×, day-off FT 2×, day-off online 1.5×, OT 1.5× | flags on `attendance`, `users.overtime_hourly_rate` |
 | L33 year average | `ReportService::annualEvaluation()` — `AVG(total_score)` | `evaluations` |
 

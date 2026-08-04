@@ -32,6 +32,56 @@
             </a>
 
             @auth
+                @php
+                    $unreadCount = $authUser->unreadNotifications()->count();
+                    $latestNotifications = $authUser->notifications()->limit(5)->get();
+                @endphp
+                <div class="dropdown">
+                    <button type="button"
+                            class="btn btn-primary position-relative px-2"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            aria-label="{{ __('notifications.bell') }}">
+                        <i class="bi bi-bell fs-5" aria-hidden="true"></i>
+                        @if ($unreadCount > 0)
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">
+                                {{ $unreadCount > 9 ? '9+' : $unreadCount }}
+                            </span>
+                        @endif
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 18rem;">
+                        <li class="dropdown-header d-flex justify-content-between align-items-center">
+                            <span>{{ __('notifications.bell') }}</span>
+                            @if ($unreadCount > 0)
+                                <form method="POST" action="{{ route('notifications.read-all') }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-link btn-sm p-0">{{ __('notifications.mark_all_read') }}</button>
+                                </form>
+                            @endif
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        @forelse ($latestNotifications as $item)
+                            <li>
+                                <a class="dropdown-item small @if ($item->read_at === null) fw-semibold @endif"
+                                   href="{{ route('notifications.open', $item->id) }}">
+                                    {{ \App\Support\NotificationMessage::title($item->data) }}
+                                    <div class="text-body-secondary text-wrap">
+                                        {{ \App\Support\NotificationMessage::body($item->data) }}
+                                    </div>
+                                </a>
+                            </li>
+                        @empty
+                            <li><span class="dropdown-item-text small text-body-secondary">{{ __('notifications.empty_title') }}</span></li>
+                        @endforelse
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-center" href="{{ route('notifications.index') }}">
+                                {{ __('notifications.view_all') }}
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
                 <div class="dropdown">
                     <button type="button"
                             class="btn btn-primary d-inline-flex align-items-center gap-2 px-2 dropdown-toggle hp-user-menu"

@@ -332,14 +332,35 @@ h6, .h6 { font-size: .9rem; }
     padding: .1rem .25rem;
     margin-bottom: .15rem;
 
-    &--shift {
+    &--shift,
+    &--planned {
         background: rgba(13, 110, 253, .12);
         color: #0a58ca;
+    }
+
+    &--planned_default {
+        background: rgba(108, 117, 125, .15);
+        color: #495057;
+    }
+
+    &--actual {
+        background: rgba(13, 202, 240, .15);
+        color: #087990;
     }
 
     &--holiday {
         background: rgba(25, 135, 84, .12);
         color: #146c43;
+    }
+
+    &--rest_day {
+        background: rgba(255, 193, 7, .22);
+        color: #997404;
+    }
+
+    &--vacation {
+        background: rgba(13, 202, 240, .2);
+        color: #087990;
     }
 }
 
@@ -356,12 +377,29 @@ h6, .h6 { font-size: .9rem; }
     margin-inline-end: .3rem;
     vertical-align: middle;
 
-    &--shift {
+    &--shift,
+    &--planned {
         background: #0d6efd;
+    }
+
+    &--planned_default {
+        background: #6c757d;
+    }
+
+    &--actual {
+        background: #0dcaf0;
     }
 
     &--holiday {
         background: #198754;
+    }
+
+    &--rest_day {
+        background: #ffc107;
+    }
+
+    &--vacation {
+        background: #0dcaf0;
     }
 }
 

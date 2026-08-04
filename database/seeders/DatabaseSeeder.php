@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Contract;
 use App\Models\EmployeeProfile;
 use App\Models\OfficialHoliday;
+use App\Models\RestDay;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -16,19 +17,27 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(PenaltyRuleSeeder::class);
+
         $this->seedEmployee(User::factory()->manager(), [
             'name_ar' => 'مدير النظام',
             'name_en' => 'System Admin',
             'email' => 'admin@hrpro.test',
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+            'shift_type_default' => 'FULL_TIME',
         ]);
 
         $leader = $this->seedEmployee(User::factory()->teamLeader(), [
             'name_ar' => 'قائد الفريق',
             'name_en' => 'Team Leader',
             'email' => 'leader@hrpro.test',
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+            'shift_type_default' => 'FULL_TIME',
         ]);
 
-        $this->seedEmployee(User::factory()->employee(), [
+        $radwa = $this->seedEmployee(User::factory()->employee(), [
             'name_ar' => 'رضوى',
             'name_en' => 'Radwa',
             'email' => 'radwa@hrpro.test',
@@ -42,7 +51,7 @@ class DatabaseSeeder extends Seeder
             'work_end_time' => '18:00',
         ]);
 
-        $this->seedEmployee(User::factory()->employee(), [
+        $mona = $this->seedEmployee(User::factory()->employee(), [
             'name_ar' => 'منى',
             'name_en' => 'Mona',
             'email' => 'mona@hrpro.test',
@@ -55,6 +64,27 @@ class DatabaseSeeder extends Seeder
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
         ]);
+
+        // Sample date-based rest days (Fridays in Aug 2026; Mona also Saturdays)
+        foreach (['2026-08-07', '2026-08-14', '2026-08-21', '2026-08-28'] as $friday) {
+            RestDay::query()->create([
+                'user_id' => $radwa->id,
+                'date' => $friday,
+                'created_by' => $leader->id,
+            ]);
+            RestDay::query()->create([
+                'user_id' => $mona->id,
+                'date' => $friday,
+                'created_by' => $leader->id,
+            ]);
+        }
+        foreach (['2026-08-08', '2026-08-15', '2026-08-22', '2026-08-29'] as $saturday) {
+            RestDay::query()->create([
+                'user_id' => $mona->id,
+                'date' => $saturday,
+                'created_by' => $leader->id,
+            ]);
+        }
 
         OfficialHoliday::insert([
             ['date' => '2026-01-07', 'name_ar' => 'عيد الميلاد المجيد', 'name_en' => 'Coptic Christmas', 'created_at' => now(), 'updated_at' => now()],

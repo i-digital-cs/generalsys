@@ -75,7 +75,7 @@ return new class extends Migration
             $table->date('start_date');
             $table->date('end_date');
             $table->decimal('days_requested', 4, 1);
-            $table->enum('status', ['PENDING', 'APPROVED', 'REJECTED'])->default('PENDING');
+            $table->enum('status', ['PENDING', 'APPROVED', 'REJECTED', 'FORCED'])->default('PENDING');
             $table->foreignId('team_leader_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 

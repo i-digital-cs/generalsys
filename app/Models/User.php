@@ -138,11 +138,6 @@ class User extends Authenticatable
         return $this->hasOne(Contract::class)->where('is_active', true);
     }
 
-    public function restDays(): HasMany
-    {
-        return $this->hasMany(RestDay::class);
-    }
-
     public function attendanceRecords(): HasMany
     {
         return $this->hasMany(Attendance::class);
@@ -158,6 +153,11 @@ class User extends Authenticatable
         return $this->hasMany(Vacation::class);
     }
 
+    public function restDays(): HasMany
+    {
+        return $this->hasMany(RestDay::class);
+    }
+
     public function vacationBalances(): HasMany
     {
         return $this->hasMany(VacationBalance::class);
@@ -166,6 +166,21 @@ class User extends Authenticatable
     public function shiftAssignments(): HasMany
     {
         return $this->hasMany(ShiftAssignment::class);
+    }
+
+    public function payrollRecords(): HasMany
+    {
+        return $this->hasMany(PayrollRecord::class);
+    }
+
+    public function advances(): HasMany
+    {
+        return $this->hasMany(Advance::class);
+    }
+
+    public function evaluations(): HasMany
+    {
+        return $this->hasMany(Evaluation::class);
     }
 
     public function teamLeader(): BelongsTo

@@ -12,9 +12,7 @@ class StoreRestDayRequest extends FormRequest
         return $this->user()?->isManager() ?? false;
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         /** @var User $employee */
@@ -22,15 +20,22 @@ class StoreRestDayRequest extends FormRequest
 
         return [
             'date' => [
-                'required', 'date',
-                // whereDate: the date cast may store "Y-m-d H:i:s" (sqlite), so a
-                // plain Rule::unique string comparison can miss duplicates.
+                'required',
+                'date',
                 function (string $attribute, mixed $value, \Closure $fail) use ($employee) {
                     if ($employee->restDays()->whereDate('date', $value)->exists()) {
-                        $fail('validation.unique')->translate();
+                        $fail(__('employees.rest_days.errors.duplicate'));
                     }
                 },
             ],
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function attributes(): array
+    {
+        return [
+            'date' => __('employees.rest_days.fields.date'),
         ];
     }
 }

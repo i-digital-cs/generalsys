@@ -91,11 +91,21 @@ return [
         'add' => 'Add Row',
         'remove' => 'Remove row',
     ],
-    'rest_days' => ['title' => 'Rest Days',
-        'date' => 'Date',
-        'add' => 'Add Rest Day',
-        'remove' => 'Remove rest day',
-        'empty' => 'No rest days marked yet.',
+    'rest_days' => [
+        'title' => 'Rest days',
+        'hint' => 'Pick specific dates off for this employee. They appear on the calendar. Vacation/emergency uses one rest day as a swap.',
+        'tl_title' => 'Team rest days',
+        'tl_subtitle' => 'Add or remove specific rest dates for each team member.',
+        'empty' => 'No rest days yet.',
+        'add' => 'Add rest day',
+        'remove' => 'Remove',
+        'fields' => [
+            'date' => 'Date',
+        ],
+        'errors' => [
+            'duplicate' => 'That date is already marked as a rest day.',
+            'reserved' => 'This rest day is reserved by a pending vacation request.',
+        ],
         'flash' => [
             'added' => 'Rest day added.',
             'removed' => 'Rest day removed.',

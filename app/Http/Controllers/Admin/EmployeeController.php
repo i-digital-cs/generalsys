@@ -57,7 +57,6 @@ class EmployeeController extends Controller
 
         $employee->load([
             'profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents',
-            'restDays' => fn ($query) => $query->orderBy('date'),
         ]);
 
         return view('admin.employees.edit', [

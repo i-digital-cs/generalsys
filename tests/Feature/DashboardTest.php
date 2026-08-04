@@ -54,7 +54,7 @@ class DashboardTest extends TestCase
                 ->every(fn (array $action) => $action['url'] !== '#'));
     }
 
-    public function test_team_leader_sees_all_team_shift_intervals(): void
+    public function test_team_leader_sees_team_hours_board_scoped(): void
     {
         app()->setLocale('en');
 
@@ -62,10 +62,14 @@ class DashboardTest extends TestCase
         $radwa = User::factory()->employee()->create([
             'team_leader_id' => $leader->id,
             'name_en' => 'Radwa',
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
         ]);
         $mona = User::factory()->employee()->create([
             'team_leader_id' => $leader->id,
             'name_en' => 'Mona',
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
         ]);
         $outsider = User::factory()->employee()->create(['name_en' => 'Outsider']);
 
@@ -92,11 +96,10 @@ class DashboardTest extends TestCase
         $this->actingAs($leader)
             ->get(route('team-leader.dashboard'))
             ->assertOk()
-            ->assertSee(__('dashboard.team_intervals.title'), false)
+            ->assertSee(__('dashboard.hours.today_board'), false)
+            ->assertSee(__('dashboard.hours.team_month'), false)
             ->assertSee('Radwa', false)
             ->assertSee('Mona', false)
-            ->assertSee('10:00–18:00', false)
-            ->assertSee('10:00–14:00', false)
             ->assertDontSee('Outsider', false);
     }
 }

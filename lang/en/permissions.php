@@ -1,0 +1,72 @@
+<?php
+
+return [
+    'title' => 'My requests',
+    'subtitle' => 'Submit leave or late permissions and track their status.',
+    'tabs' => [
+        'permissions' => 'Permissions',
+        'vacations' => 'Vacations',
+    ],
+    'vacations_soon' => 'Vacation requests arrive in a later step.',
+    'vacations_soon_text' => 'You can still submit leave/late permissions from the Permissions tab.',
+    'new' => 'New permission',
+    'list' => 'My permissions',
+    'empty_title' => 'No permission requests yet',
+    'empty_text' => 'Submit a leave or late permission using the form.',
+    'fields' => [
+        'type' => 'Type',
+        'request_date' => 'Date',
+        'from_time' => 'From',
+        'to_time' => 'To',
+        'reason' => 'Reason',
+        'status' => 'Status',
+        'interval' => 'Interval',
+    ],
+    'types' => [
+        'LEAVE_PERMISSION' => 'Leave permission',
+        'LATE_PERMISSION' => 'Late permission',
+    ],
+    'statuses' => [
+        'PENDING' => 'Pending',
+        'ACCEPTED' => 'Accepted',
+        'REJECTED' => 'Rejected',
+        'FORCED' => 'Forced',
+    ],
+    'submit' => 'Submit request',
+    'force' => 'Mark as forced',
+    'force_confirm' => 'Take this permission anyway? The penalty will be doubled for payroll (amount is not shown here).',
+    'force_hint' => 'After a rejection you may mark the request as forced (double penalty).',
+    'reason_hint' => 'Optional. Explain why you need this permission.',
+    'flash' => [
+        'submitted' => 'Permission request submitted.',
+        'forced' => 'Permission marked as forced (double penalty applies).',
+    ],
+    'errors' => [
+        'invalid_time_range' => 'End time must be after start time.',
+        'no_team_leader' => 'You must be assigned to a team leader before requesting permission.',
+        'not_pending' => 'This request is no longer pending.',
+        'not_team_member' => 'You can only decide requests for your team.',
+        'not_rejected' => 'Only a rejected permission can be marked as forced.',
+        'cannot_force' => 'You cannot mark this permission as forced.',
+    ],
+    'tl' => [
+        'title' => 'Approvals',
+        'subtitle' => 'Review leave/late permissions and vacation requests. Vacation remaining credit is shown before you decide. Money is never shown here.',
+        'section_permissions' => 'Permissions',
+        'empty_title' => 'No permission requests',
+        'empty_text' => 'When team members submit a permission request, it appears here.',
+        'filters' => [
+            'pending' => 'Pending',
+            'decided' => 'Decided',
+            'all' => 'All',
+        ],
+        'accept' => 'Accept',
+        'reject' => 'Reject',
+        'reject_confirm' => 'Reject this permission? A penalty will apply for payroll (amount is not shown here).',
+        'flash' => [
+            'accepted' => 'Permission accepted.',
+            'rejected' => 'Permission rejected.',
+            'forced' => 'Permission marked as forced.',
+        ],
+    ],
+];

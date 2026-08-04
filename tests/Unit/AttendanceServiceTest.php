@@ -27,7 +27,7 @@ class AttendanceServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->service = new AttendanceService(new ShiftConfig);
+        $this->service = app(AttendanceService::class);
     }
 
     public function test_planned_hours_profiles(): void
@@ -41,12 +41,15 @@ class AttendanceServiceTest extends TestCase
 
     public function test_clock_in_sets_planned_hours_and_day_flags(): void
     {
-        // 2026-08-07 is a Friday.
+        // 2026-08-07 is a Friday — also marked as a rest date.
         $employee = User::factory()->employee()->create([
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
         ]);
-        RestDay::create(['user_id' => $employee->id, 'date' => '2026-08-07', 'created_by' => $employee->id]);
+        RestDay::factory()->create([
+            'user_id' => $employee->id,
+            'date' => '2026-08-07',
+        ]);
         OfficialHoliday::create([
             'date' => '2026-08-07', 'name_ar' => 'تجربة', 'name_en' => 'Test',
         ]);
@@ -114,6 +117,28 @@ class AttendanceServiceTest extends TestCase
         $this->assertSame(20, $row->early_departure_minutes);
         $this->assertSame(Attendance::STATUS_LATE, $row->status);
         $this->assertSame('7.42', $row->actual_hours); // 7h25m
+    }
+
+    public function test_attendance_score_caps_at_planned_ratio(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+        ]);
+
+        $this->service->clockIn(
+            $employee,
+            Attendance::SHIFT_FULL_TIME,
+            Carbon::parse('2026-08-03 10:00:00'),
+        );
+
+        $row = $this->service->clockOut(
+            $employee,
+            Carbon::parse('2026-08-03 14:00:00'), // 4h of 8h planned = 50%
+        );
+
+        $this->assertSame('4.00', $row->actual_hours);
+        $this->assertSame('50.00', $row->attendance_score);
     }
 
     public function test_second_open_clock_in_is_rejected(): void

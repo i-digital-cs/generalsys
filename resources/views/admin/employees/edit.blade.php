@@ -11,8 +11,6 @@
         @include('admin.employees._form', ['submitLabel' => __('general.save')])
     </form>
 
-    @include('admin.employees._rest-days')
-
     @include('admin.employees._documents')
 @endsection
 

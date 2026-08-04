@@ -32,6 +32,24 @@ Next task allowed: yes/no
 
 ---
 
+## 0b. Role chain — Employee↔TL vs TL↔Admin (ask first)
+
+Many workflows that exist **between Employee and Team Leader** *may* also exist **between Team Leader and Admin (Manager)** — but **do not assume**.
+
+**Before** extending any Employee↔TL feature to TL↔Admin (routes, menus, services, policies, notifications, tests), **ask the user** in chat:
+
+> “Should this also apply between TL and Admin? (yes / no / partial — explain)”
+
+Only implement the TL↔Admin path after an explicit yes (or clear partial instructions). If the user says no, ship Employee↔TL only and note the exception in `MASTER_CONTEXT.md` / the task Progress log.
+
+**Typical candidates to ask about:** leave/late, vacation, daily report reply, force, clock/self-service, evaluations, notifications.
+
+**Hard exception (never ask to weaken):** payroll / money — TL never sees monetary amounts (AGENTS.md §5.1). Admin-only payroll stays Admin-only unless the user explicitly changes that product rule.
+
+Details: `MASTER_CONTEXT.md` §1.7d.
+
+---
+
 ## 1. Architecture
 
 1. **Service layer owns all business logic.** Controllers only: validate (Form Request) → authorize (Policy) → call a Service → return view/response. A controller with an `if` that encodes a business rule is a defect.

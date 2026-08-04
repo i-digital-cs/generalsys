@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Employee;
 
-use App\Models\Attendance;
 use App\Services\Attendance\AttendanceService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,7 +10,11 @@ class ClockInRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isEmployee() ?? false;
+        $user = $this->user();
+
+        return $user !== null && (
+            $user->isEmployee() || $user->isTeamLeader() || $user->isManager()
+        );
     }
 
     /**

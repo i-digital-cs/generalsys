@@ -25,15 +25,21 @@ class MenuConfigTest extends TestCase
 
     public function test_payroll_entries_exist_only_for_manager(): void
     {
-        foreach (['TEAM_LEADER', 'EMPLOYEE'] as $role) {
-            foreach (config("menu.{$role}") as $item) {
-                $this->assertStringNotContainsString('payroll', $item['route']);
-                $this->assertStringNotContainsString('payroll', $item['key']);
-            }
+        foreach (config('menu.TEAM_LEADER') as $item) {
+            $this->assertStringNotContainsString('payroll', $item['route']);
+            $this->assertStringNotContainsString('payroll', $item['key']);
+            $this->assertStringNotContainsString('advances', $item['route']);
+        }
+
+        foreach (config('menu.EMPLOYEE') as $item) {
+            $this->assertStringNotContainsString('payroll', $item['route']);
+            $this->assertStringNotContainsString('payroll', $item['key']);
+            $this->assertStringNotContainsString('admin.advances', $item['route']);
         }
 
         $managerRoutes = array_column(config('menu.MANAGER'), 'route');
         $this->assertContains('admin.payroll.index', $managerRoutes);
+        $this->assertContains('admin.advances.index', $managerRoutes);
     }
 
     public function test_every_menu_key_is_translated_in_ar_and_en(): void

@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A single rest-day date for an employee (schema doc §20) — monthly quota
- * marked per date, not a fixed weekday.
+ * A single rest-day date for an employee (schema doc §20) — marked per date.
  */
 class RestDay extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'user_id',
         'date',

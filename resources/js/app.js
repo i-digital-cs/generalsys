@@ -1,5 +1,7 @@
 import * as bootstrap from 'bootstrap';
 
+window.bootstrap = bootstrap;
+
 // Navbar user menu: Popper's bottom-end hugs the wrong edge under dir=rtl,
 // so pin placement from the document direction once at boot.
 document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((toggle) => {

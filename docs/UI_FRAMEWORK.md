@@ -72,21 +72,21 @@ $border-radius: .5rem;
 | Screen | View | Key components |
 |--------|------|----------------|
 | Login | `auth/login` | language toggle, RTL card |
-| Dashboard | `employee/dashboard` **(shipped T-2.4)** | today status cards, preferred/assigned shift, sessions list, big CTA → `/clock` |
-| Clock | `employee/clock` | FT/Online always (until used today); EXTRA/OT if assigned; preferred = TL assignment or default; banner; live timer; big CTA |
-| Daily Report | `employee/report` | textarea, TL response read-only below |
-| My Requests | `employee/requests` | tabs: permissions / vacations; status badges; TL marks forced (not employee) |
+| Dashboard | `employee/dashboard` **(shipped T-2.4 + T-2.13)** | today status/sessions; month planned/spent stats; day list planned vs actual; calendar markers (shift + hours) |
+| Clock | `employee/clock` **(T-3.5 flags)** | FT/Online always (until used today); EXTRA/OT if assigned; preferred = TL assignment or default; banner; live timer; big CTA; Friday/rest/holiday work badges |
+| Daily Report | `employee/report` **(shipped T-2.5)** | date picker; one report/day on first shift after clock-out; locked after TL reply; response read-only escaped |
+| My Requests | `employee/requests` **(shipped T-2.7 + T-2.9 + T-2.10)** | permissions + vacations; **Force** on REJECTED permissions |
 | My Salary | `employee/salary` | payslip card (APPROVED/PAID only), PDF download |
-| My Evaluation | `employee/evaluation` | 5 `<x-score-bar>` + monthly TL text |
+| My Evaluation | `employee/evaluation` **(shipped T-3.4)** | 5 `<x-score-bar>` + monthly TL text (read-only); history list |
 
 ### Team Leader (`team-leader/`)
 | Screen | View | Key components |
 |--------|------|----------------|
-| Team Dashboard | `team-leader/dashboard` | per-member status row + attendance % |
-| Pending Approvals | `team-leader/approvals` | queue list, approve/reject inline |
-| Reports Review | `team-leader/reports` | report + response form + daily 4-score inputs (perf/behavior/productivity/interest return) |
-| Monthly Evaluation | `team-leader/evaluations` | 5 averages from daily + monthly text (editable before lock) |
-| Vacation Credit | `team-leader/vacation-credit` | balance card + add-credit modal + history |
+| Team Dashboard | `team-leader/dashboard` **(shipped T-2.13)** | today who’s-in board + %; month team totals; employee filter; day list planned vs actual; calendar (selected employee, shift+hours) |
+| Pending Approvals | `team-leader/approvals` **(shipped T-2.8 + T-2.9 + T-2.11)** | permissions Accept/Reject/Force + vacations Accept/Reject with rest-day swap; team-scoped; **no money** |
+| Reports Review | `team-leader/reports` **(shipped T-2.6 + T-3.1)** | pending/replied/all queue; detail + reply form; locks employee report; daily 4-score inputs + auto attendance % |
+| Monthly Evaluation | `team-leader/evaluations` **(shipped T-3.3)** | 5 `<x-score-bar>` averages from daily + monthly text (editable); TL team / Manager |
+| Rest Days | `team-leader/rest-days` **(shipped)** | add/remove specific rest dates per team member |
 | Shift Assignment | `team-leader/shifts` **(shipped T-2.14)** | **My team** roster for date; assign form; list with **Edit** + Cancel; edit page for SCHEDULED |
 
 > TL layout **never** shows money. Sidebar has no payroll item. Any URL hack → 403 page.

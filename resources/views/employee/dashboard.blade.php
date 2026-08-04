@@ -16,7 +16,7 @@
     </div>
 
     <div class="row g-3 mb-3">
-        <div class="col-12 col-md-4">
+        <div class="col-6 col-md-3">
             <x-stat-card
                 :title="__('dashboard.employee.status')"
                 :value="$isClockedIn ? __('dashboard.employee.clocked_in') : __('dashboard.employee.clocked_out')"
@@ -24,6 +24,37 @@
                 :color="$isClockedIn ? 'success' : 'secondary'"
             />
         </div>
+        <div class="col-6 col-md-3">
+            <x-stat-card
+                :title="__('dashboard.employee.hours_today')"
+                :value="number_format($hoursToday, 2)"
+                icon="bi-hourglass-split"
+                color="info"
+                :subtitle="__('dashboard.employee.sessions_count', ['count' => $todaySessions->count()])"
+            />
+        </div>
+        <div class="col-6 col-md-3">
+            <x-stat-card
+                :title="__('dashboard.hours.month_planned')"
+                :value="number_format($hoursMonth['totals']['planned'], 2).'h'"
+                icon="bi-calendar-check"
+                color="primary"
+            />
+        </div>
+        <div class="col-6 col-md-3">
+            <x-stat-card
+                :title="__('dashboard.hours.month_actual')"
+                :value="number_format($hoursMonth['totals']['actual'], 2).'h'"
+                icon="bi-graph-up"
+                color="success"
+                :subtitle="$hoursMonth['totals']['pct'] === null
+                    ? '—'
+                    : number_format($hoursMonth['totals']['pct'], 1).'%'"
+            />
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
         <div class="col-12 col-md-4">
             <x-stat-card
                 :title="__('dashboard.employee.preferred_shift')"
@@ -35,19 +66,7 @@
                     : __('dashboard.employee.from_default')"
             />
         </div>
-        <div class="col-12 col-md-4">
-            <x-stat-card
-                :title="__('dashboard.employee.hours_today')"
-                :value="number_format($hoursToday, 2)"
-                icon="bi-hourglass-split"
-                color="info"
-                :subtitle="__('dashboard.employee.sessions_count', ['count' => $todaySessions->count()])"
-            />
-        </div>
-    </div>
-
-    <div class="row g-3 mb-3">
-        <div class="col-12 col-lg-7">
+        <div class="col-12 col-lg-8">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-4 text-center text-lg-start">
                     <h2 class="h5 mb-2">{{ __('dashboard.employee.clock_card_title') }}</h2>
@@ -75,7 +94,9 @@
                 </div>
             </div>
         </div>
+    </div>
 
+    <div class="row g-3 mb-3">
         <div class="col-12 col-lg-5">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
@@ -98,49 +119,12 @@
                                             →
                                             {{ $session->clock_out?->format('H:i') ?? __('dashboard.employee.open_session') }}
                                         </div>
+                                        <x-attendance-flags :attendance="$session" class="mt-1" />
                                     </div>
                                     <span class="badge text-bg-{{ $session->clock_out ? 'secondary' : 'success' }}">
                                         {{ $session->clock_out
                                             ? number_format((float) $session->actual_hours, 2).'h'
                                             : __('dashboard.employee.open_session') }}
-                                    </span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-3">
-        <div class="col-12 col-lg-5">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <h2 class="h6 mb-3">{{ __('dashboard.employee.my_shifts') }}</h2>
-                    <p class="small text-body-secondary mb-3">{{ __('dashboard.employee.my_shifts_hint') }}</p>
-
-                    @if ($assignedShifts->isEmpty())
-                        <x-empty-state
-                            :title="__('dashboard.employee.no_shifts')"
-                            :text="__('dashboard.employee.no_shifts_text')"
-                            icon="bi-calendar3"
-                        />
-                    @else
-                        <ul class="list-group list-group-flush">
-                            @foreach ($assignedShifts as $shift)
-                                <li class="list-group-item px-0 d-flex justify-content-between align-items-start gap-2">
-                                    <div>
-                                        <div class="fw-semibold">{{ __('shifts.types.'.$shift->shift_type) }}</div>
-                                        <div class="small text-body-secondary">
-                                            {{ $shift->date->translatedFormat('D d M Y') }}
-                                            <span dir="ltr">
-                                                · {{ $shift->expected_start_time }}–{{ $shift->expected_end_time }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <span class="badge text-bg-{{ $shift->status === 'SCHEDULED' ? 'primary' : 'success' }}">
-                                        {{ __('shifts.statuses.'.$shift->status) }}
                                     </span>
                                 </li>
                             @endforeach
@@ -155,6 +139,15 @@
                 :calendar="$calendar"
                 :prev-url="$calPrevUrl"
                 :next-url="$calNextUrl"
+            />
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <x-hours-day-table
+                :days="$hoursMonth['days']"
+                :totals="$hoursMonth['totals']"
             />
         </div>
     </div>
