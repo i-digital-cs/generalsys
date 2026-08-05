@@ -4,16 +4,20 @@ namespace App\Services\Payroll;
 
 use App\Models\PayrollAdjustment;
 use App\Models\PenaltyRule;
+use App\Services\Admin\SettingService;
 
 /**
  * Pure payroll math (T-4.3) — docs/PAYROLL_CALCULATION.md §6–§9.
  *
  * Absence day multipliers and per-minute rates come from active penalty_rules
- * (config fallback). Month divisor default 30.
+ * (config fallback). Pay multipliers come from Admin settings (config fallback).
  */
 class PayrollCalculator
 {
-    public function __construct(private readonly PenaltyRuleService $rules) {}
+    public function __construct(
+        private readonly PenaltyRuleService $rules,
+        private readonly SettingService $settings,
+    ) {}
 
     public function calculate(PayrollCalculationInput $input): PayrollCalculationResult
     {
@@ -28,27 +32,28 @@ class PayrollCalculator
         $officialHolidayBonus = $this->multiplierPay(
             $dayRate,
             $input->officialHolidayWorkDays,
-            (float) config('payroll.multipliers.official_holiday_work', 1.0),
+            $this->settings->multiplier('official_holiday_work'),
         );
 
         $fridayBonus = $this->fridayBonus($input, $dayRate);
         $dayOffBonus = $this->dayOffBonus($input, $dayRate);
         $overtimePay = $this->overtimePay($input);
+        $extraPay = $this->extraPay($input, $dayRate);
 
-        $excused = $autoPenalties ? $this->absencePenalty(
+        $excused = $this->absencePenalty(
             $input->currency,
             PenaltyRule::TYPE_EXCUSED_ABSENCE,
             $dayRate,
             $input->excusedAbsenceDays,
             1.0,
-        ) : 0.0;
-        $unexcused = $autoPenalties ? $this->absencePenalty(
+        );
+        $unexcused = $this->absencePenalty(
             $input->currency,
             PenaltyRule::TYPE_UNEXCUSED_ABSENCE,
             $dayRate,
             $input->unexcusedAbsenceDays,
             3.0,
-        ) : 0.0;
+        );
 
         $latePenalty = $autoPenalties ? $this->minutePenalty(
             $input->currency,
@@ -68,18 +73,20 @@ class PayrollCalculator
 
         $forcedSurcharge = $autoPenalties ? $this->forcedSurcharge($input) : 0.0;
 
-        $hoursDeductionAmount = $autoPenalties ? $this->hoursDeductionAmount(
+        // Excel «خصم ساعات» — always from hours count (like إضافي days).
+        $hoursDeductionAmount = $this->hoursDeductionAmount(
             $input->baseSalary,
             $divisor,
             $input->hoursDeduction,
-        ) : 0.0;
+        );
 
-        [$commissions, $bonuses, $advances] = $this->splitAdjustments($input->adjustments);
+        [$commissions, $bonuses, $advances, $otherDeductions] = $this->splitAdjustments($input->adjustments);
 
         $earnings = $fullTimePay
             + $onlineHalfPay
             + $onlineFullPay
             + $overtimePay
+            + $extraPay
             + $fridayBonus
             + $dayOffBonus
             + $officialHolidayBonus
@@ -93,7 +100,8 @@ class PayrollCalculator
             + $latePermissionPenalty
             + $forcedSurcharge
             + $hoursDeductionAmount
-            + $advances;
+            + $advances
+            + $otherDeductions;
 
         return new PayrollCalculationResult(
             baseSalary: $input->baseSalary,
@@ -104,6 +112,7 @@ class PayrollCalculator
             fridayBonus: $this->money($fridayBonus),
             dayOffBonus: $this->money($dayOffBonus),
             officialHolidayBonus: $this->money($officialHolidayBonus),
+            extraPay: $this->money($extraPay),
             latePenalty: $this->money($latePenalty),
             leavePermissionPenalty: $this->money($leavePermissionPenalty),
             latePermissionPenalty: $this->money($latePermissionPenalty),
@@ -171,11 +180,11 @@ class PayrollCalculator
         $ft = $this->multiplierPay(
             $dayRate,
             $input->fridayFullTimeDays,
-            (float) config('payroll.multipliers.friday_full_time', 1.0),
+            $this->settings->multiplier('friday_full_time'),
         );
 
         $onlineRate = $input->onlineHalfDayRate
-            ?? ($dayRate * (float) config('payroll.multipliers.friday_online', 0.5));
+            ?? ($dayRate * $this->settings->multiplier('friday_online'));
 
         $online = (float) $onlineRate * $input->fridayOnlineDays;
 
@@ -187,13 +196,13 @@ class PayrollCalculator
         $ft = $this->multiplierPay(
             $dayRate,
             $input->dayOffFullTimeDays,
-            (float) config('payroll.multipliers.day_off_full_time', 2.0),
+            $this->settings->multiplier('day_off_full_time'),
         );
 
         $onlineUnit = $input->onlineFullDayRate ?? $dayRate;
         $online = (float) $onlineUnit
             * $input->dayOffOnlineDays
-            * (float) config('payroll.multipliers.day_off_online', 1.5);
+            * $this->settings->multiplier('day_off_online');
 
         return $ft + $online;
     }
@@ -212,9 +221,25 @@ class PayrollCalculator
             $hourly = $this->dayRate($input->baseSalary, $divisor) / max($planned, 1);
         }
 
-        $mult = (float) config('payroll.multipliers.overtime', 1.5);
+        $mult = $input->overtimeMultiplier;
+        if ($mult === null || $mult <= 0) {
+            $mult = $this->settings->multiplier('overtime');
+        }
 
         return (float) $hourly * $hours * $mult;
+    }
+
+    /**
+     * Excel «إضافي»: days × day rate × multiplier when days > 0;
+     * otherwise use the typed amount (manual override with days = 0).
+     */
+    private function extraPay(PayrollCalculationInput $input, float $dayRate): float
+    {
+        if ($input->extraDays > 0) {
+            return $dayRate * $input->extraDays * $this->settings->multiplier('extra_pay');
+        }
+
+        return (float) $input->extraPay;
     }
 
     private function absencePenalty(
@@ -294,13 +319,14 @@ class PayrollCalculator
 
     /**
      * @param  list<array{type: string, amount: float}>  $adjustments
-     * @return array{0: float, 1: float, 2: float} commissions, bonuses, advances
+     * @return array{0: float, 1: float, 2: float, 3: float} commissions, bonuses, advances, otherDeductions
      */
     private function splitAdjustments(array $adjustments): array
     {
         $commissions = 0.0;
         $bonuses = 0.0;
         $advances = 0.0;
+        $otherDeductions = 0.0;
 
         foreach ($adjustments as $row) {
             $amount = (float) ($row['amount'] ?? 0);
@@ -314,14 +340,13 @@ class PayrollCalculator
                 $commissions += $amount;
             } elseif ($type === PayrollAdjustment::TYPE_BONUS) {
                 $bonuses += $amount;
-            } elseif (in_array($type, [
-                PayrollAdjustment::TYPE_ADVANCE,
-                PayrollAdjustment::TYPE_OTHER_DEDUCTION,
-            ], true)) {
+            } elseif ($type === PayrollAdjustment::TYPE_ADVANCE) {
                 $advances += abs($amount);
+            } elseif ($type === PayrollAdjustment::TYPE_OTHER_DEDUCTION) {
+                $otherDeductions += abs($amount);
             }
         }
 
-        return [$commissions, $bonuses, $advances];
+        return [$commissions, $bonuses, $advances, $otherDeductions];
     }
 }

@@ -78,7 +78,7 @@ return [
         'currency' => 'currency',
         'language_preference' => 'language',
         'team_leader_id' => 'team leader',
-        'shift_type_default' => 'default shift type',
+        'shift_type_default' => 'default work type',
         'work_start_time' => 'work start time',
         'work_end_time' => 'work end time',
         'base_salary' => 'base salary',

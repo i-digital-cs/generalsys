@@ -153,6 +153,7 @@ CREATE TABLE attendance (
                                   'EXCUSED_ABSENCE','UNEXCUSED_ABSENCE','VACATION') NOT NULL DEFAULT 'PRESENT',
     late_minutes             INT UNSIGNED NOT NULL DEFAULT 0,
     early_departure_minutes  INT UNSIGNED NOT NULL DEFAULT 0,
+    is_auto_clock_out        TINYINT(1) NOT NULL DEFAULT 0,   -- true when closed by scheduler (end + grace)
     daily_report             TEXT NULL,
     team_leader_response     TEXT NULL,
     -- daily evaluation scores (averaged into monthly evaluation)
@@ -321,12 +322,17 @@ CREATE TABLE payroll_records (
     online_half_days              SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     online_full_days              SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     rest_days                     SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-    extra_shift_hours             DECIMAL(6,2) NOT NULL DEFAULT 0,
-    overtime_hours                DECIMAL(6,2) NOT NULL DEFAULT 0,
+    extra_shift_hours             DECIMAL(6,2) NOT NULL DEFAULT 0,  -- legacy; folded into overtime_hours (same OT formula)
+    overtime_hours                DECIMAL(6,2) NOT NULL DEFAULT 0,  -- total OT hours (EXTRA + OT attendance)
+    overtime_multiplier           DECIMAL(5,2) NOT NULL DEFAULT 0,   -- 0 = use Admin Settings OT multiplier
     friday_work_days              SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     day_off_work_days             SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     official_holiday_work_days    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-    hours_deduction               DECIMAL(6,2) NOT NULL DEFAULT 0,   -- from hour shortage (Excel: خصم ساعات)
+    extra_days                    SMALLINT UNSIGNED NOT NULL DEFAULT 0,  -- Excel إضافي days (manual)
+    hours_deduction               DECIMAL(6,2) NOT NULL DEFAULT 0,   -- from hour shortage (Excel: خصم ساعات hours)
+    hours_deduction_amount        DECIMAL(12,2) NOT NULL DEFAULT 0,  -- money = base/(30×8)×hours
+    excused_absence_days          SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    unexcused_absence_days        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     late_minutes_total            INT UNSIGNED NOT NULL DEFAULT 0,
     -- earnings
     full_time_pay                 DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -336,6 +342,7 @@ CREATE TABLE payroll_records (
     friday_bonus                  DECIMAL(12,2) NOT NULL DEFAULT 0,
     day_off_bonus                 DECIMAL(12,2) NOT NULL DEFAULT 0,
     official_holiday_bonus        DECIMAL(12,2) NOT NULL DEFAULT 0,
+    extra_pay                     DECIMAL(12,2) NOT NULL DEFAULT 0,  -- Excel إضافي amount (manual / days×rate)
     -- deductions
     late_penalty                  DECIMAL(12,2) NOT NULL DEFAULT 0,
     leave_permission_penalty      DECIMAL(12,2) NOT NULL DEFAULT 0,

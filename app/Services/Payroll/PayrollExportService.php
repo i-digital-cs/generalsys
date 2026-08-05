@@ -3,6 +3,7 @@
 namespace App\Services\Payroll;
 
 use App\Models\PayrollRecord;
+use App\Support\DompdfFonts;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -18,10 +19,19 @@ class PayrollExportService
     public function downloadPayslipPdf(PayrollRecord $payroll): \Barryvdh\DomPDF\PDF
     {
         $payroll->loadMissing(['user', 'adjustments']);
+        $fontDir = DompdfFonts::directory();
 
         return Pdf::loadView('exports.payslip-pdf', [
             'payroll' => $payroll,
-        ])->setPaper('a4');
+        ])
+            ->setPaper('a4')
+            ->setOptions([
+                'defaultFont' => 'Tajawal',
+                'fontDir' => $fontDir,
+                'fontCache' => $fontDir,
+                'isRemoteEnabled' => false,
+                'chroot' => realpath(base_path()) ?: base_path(),
+            ]);
     }
 
     /**

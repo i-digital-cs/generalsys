@@ -18,6 +18,18 @@ class ShiftConfig
         Attendance::SHIFT_ONLINE_FULL => 12.0,
     ];
 
+    /**
+     * Default work windows [start, end] per shift type — Excel RADWA sheet
+     * (PAYROLL_CALCULATION.md §1): FT 10→18 (8h), Online½ 06→10 (4h), Online full 10→22 (12h).
+     *
+     * @var array<string, array{0: string, 1: string}>
+     */
+    public const DEFAULT_TIME_WINDOWS = [
+        Attendance::SHIFT_FULL_TIME => ['10:00', '18:00'],
+        Attendance::SHIFT_ONLINE_HALF => ['06:00', '10:00'],
+        Attendance::SHIFT_ONLINE_FULL => ['10:00', '22:00'],
+    ];
+
     public function plannedHours(string $shiftType, ?ShiftAssignment $assignment = null): float
     {
         if ($assignment !== null && $assignment->shift_type === $shiftType) {
@@ -29,5 +41,13 @@ class ShiftConfig
         }
 
         return self::BASE_PLANNED_HOURS[$shiftType];
+    }
+
+    /**
+     * @return array{0: string, 1: string}|null
+     */
+    public function defaultWindow(string $shiftType): ?array
+    {
+        return self::DEFAULT_TIME_WINDOWS[$shiftType] ?? null;
     }
 }

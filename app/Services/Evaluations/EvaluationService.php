@@ -290,6 +290,8 @@ class EvaluationService
             'year_average' => $present === []
                 ? null
                 : round(array_sum($present) / count($present), 2),
+            'is_saved' => $saved !== null,
+            'evaluated_by_id' => $saved?->team_leader_id,
         ];
     }
 

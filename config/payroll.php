@@ -29,5 +29,7 @@ return [
         'day_off_online' => 1.5,
         'overtime' => 1.5,
         'official_holiday_work' => 1.0,
+        /** Applied when filling Excel «إضافي» from extra_days × day_rate. */
+        'extra_pay' => 1.0,
     ],
 ];

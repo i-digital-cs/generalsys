@@ -313,34 +313,19 @@
     const multiplierInput = document.getElementById('multiplier');
 
     const defaults = {
-        FULL_TIME: { hours: 8, multiplier: 1 },
-        ONLINE_HALF: { hours: 4, multiplier: 1 },
-        ONLINE_FULL: { hours: 12, multiplier: 1 },
-        EXTRA_SHIFT: { hours: 4, multiplier: 1.5 },
-        OVERTIME: { hours: 4, multiplier: 1.5 }
+        FULL_TIME: { hours: 8, multiplier: 1, start: '10:00', end: '18:00' },
+        ONLINE_HALF: { hours: 4, multiplier: 1, start: '06:00', end: '10:00' },
+        ONLINE_FULL: { hours: 12, multiplier: 1, start: '10:00', end: '22:00' },
+        EXTRA_SHIFT: { hours: 4, multiplier: 1.5, start: '18:00', end: '22:00' },
+        OVERTIME: { hours: 4, multiplier: 1.5, start: '18:00', end: '22:00' }
     };
 
     function applyDefaults() {
         const type = typeSelect.value;
         const preset = defaults[type] || defaults.FULL_TIME;
-        const option = userSelect.options[userSelect.selectedIndex];
-        const start = (option && option.dataset.start) ? option.dataset.start : '10:00';
-        const end = (option && option.dataset.end) ? option.dataset.end : '18:00';
 
-        if (type === 'FULL_TIME' || type === 'ONLINE_HALF' || type === 'ONLINE_FULL') {
-            startInput.value = start;
-            if (type === 'ONLINE_HALF') {
-                endInput.value = '14:00';
-            } else if (type === 'ONLINE_FULL') {
-                endInput.value = '22:00';
-            } else {
-                endInput.value = end;
-            }
-        } else {
-            startInput.value = '18:00';
-            endInput.value = '22:00';
-        }
-
+        startInput.value = preset.start;
+        endInput.value = preset.end;
         hoursInput.value = preset.hours;
         multiplierInput.value = preset.multiplier;
     }

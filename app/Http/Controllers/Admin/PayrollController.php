@@ -78,10 +78,17 @@ class PayrollController extends Controller
     {
         $this->authorize('view', $payroll);
 
+        // Drafts re-pull ACTIVE advances so a salary advance added after Generate
+        // appears without requiring a full re-generate.
+        if ($payroll->status === PayrollRecord::STATUS_DRAFT) {
+            $payroll = $this->drafts->recalculate($payroll);
+        }
+
         $payroll->load(['user', 'adjustments']);
 
         $scores = null;
         $evaluationText = null;
+        $evaluationSaved = false;
         $monthlyTotals = null;
         $yearAverage = null;
         $attendanceSummary = null;
@@ -97,6 +104,7 @@ class PayrollController extends Controller
             $evaluationText = $eval['evaluation_text'];
             $monthlyTotals = $eval['monthly_totals'];
             $yearAverage = $eval['year_average'];
+            $evaluationSaved = (bool) ($eval['is_saved'] ?? false);
             $attendanceSummary = $this->aggregator->monthStatusSummary(
                 $payroll->user,
                 (int) $payroll->month,
@@ -113,6 +121,7 @@ class PayrollController extends Controller
             'editable' => $payroll->status === PayrollRecord::STATUS_DRAFT,
             'scores' => $scores,
             'evaluationText' => $evaluationText,
+            'evaluationSaved' => $evaluationSaved ?? false,
             'monthlyTotals' => $monthlyTotals,
             'yearAverage' => $yearAverage,
             'attendanceSummary' => $attendanceSummary,

@@ -12,6 +12,7 @@ return [
     'flash' => [
         'all_read' => 'All notifications marked as read.',
     ],
+    'you' => 'You',
     'kinds' => [
         'generic' => 'Notification',
         'permission_submitted' => 'New permission request',
@@ -22,6 +23,7 @@ return [
         'vacation_forced' => 'Vacation marked as forced',
         'report_submitted' => 'New daily report',
         'report_replied' => 'Report reply',
+        'attendance_auto_clock_out' => 'Auto clock-out',
     ],
     'bodies' => [
         'permission_submitted' => ':name submitted :type for :date.',
@@ -32,5 +34,6 @@ return [
         'vacation_forced' => 'Your :type vacation :start → :end was marked as forced (rest day kept).',
         'report_submitted' => ':name submitted a daily report for :date.',
         'report_replied' => 'Your team leader replied to your report for :date.',
+        'attendance_auto_clock_out' => ':name was auto clocked out for :date (:shift) at :time after the grace period.',
     ],
 ];

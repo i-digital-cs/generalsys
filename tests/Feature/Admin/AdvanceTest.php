@@ -131,6 +131,44 @@ class AdvanceTest extends TestCase
         $this->assertSame(Advance::STATUS_ACTIVE, $advance->status);
     }
 
+    public function test_draft_recalculate_pulls_advance_added_after_generate(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create(['base_salary' => 5000]);
+        $this->seedFullMonth($employee, 6, 2026);
+
+        $this->actingAs($manager)
+            ->post(route('admin.payroll.generate'), [
+                'month' => 6,
+                'year' => 2026,
+            ])
+            ->assertRedirect();
+
+        $draft = PayrollRecord::query()
+            ->where('user_id', $employee->id)
+            ->where('month', 6)
+            ->where('year', 2026)
+            ->firstOrFail();
+
+        $this->assertSame(0.0, (float) $draft->advance_deductions);
+
+        Advance::factory()->create([
+            'user_id' => $employee->id,
+            'amount' => 2000,
+            'deduction_amount_monthly' => 2000,
+            'remaining_amount' => 2000,
+            'status' => Advance::STATUS_ACTIVE,
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.show', $draft))
+            ->assertOk();
+
+        $draft->refresh();
+        $this->assertSame(2000.0, (float) $draft->advance_deductions);
+        $this->assertTrue($draft->adjustments()->where('type', 'ADVANCE')->exists());
+    }
+
     public function test_approve_marks_advance_fully_deducted_when_remaining_cleared(): void
     {
         $manager = User::factory()->manager()->create();

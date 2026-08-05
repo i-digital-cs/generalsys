@@ -3,6 +3,7 @@
 return [
     'title' => 'ملفي الشخصي',
     'personal_info' => 'البيانات الشخصية',
+    'work_info' => 'بيانات العمل',
     'contract_info' => 'العقد',
     'qualifications' => 'المؤهلات',
     'emergency_contacts' => 'جهات اتصال الطوارئ',

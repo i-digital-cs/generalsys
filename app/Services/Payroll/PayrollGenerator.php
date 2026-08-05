@@ -6,6 +6,7 @@ use App\Jobs\GeneratePayrollJob;
 use App\Models\PayrollAdjustment;
 use App\Models\PayrollRecord;
 use App\Models\User;
+use App\Services\Admin\SettingService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,6 +20,7 @@ class PayrollGenerator
         private readonly PayrollAggregator $aggregator,
         private readonly PayrollCalculator $calculator,
         private readonly AdvanceService $advances,
+        private readonly SettingService $settings,
     ) {}
 
     /**
@@ -139,7 +141,13 @@ class PayrollGenerator
         }
 
         $agg = $this->aggregator->aggregate($user, $month, $year);
-        $input = $this->toInput($user, $agg);
+        $extraDays = (int) ($existing?->extra_days ?? 0);
+        $extraPay = (float) ($existing?->extra_pay ?? 0);
+        $otMult = (float) ($existing?->overtime_multiplier ?? 0);
+        if ($otMult <= 0) {
+            $otMult = $this->settings->multiplier('overtime');
+        }
+        $input = $this->toInput($user, $agg, $extraDays, $extraPay, $otMult);
         $result = $this->calculator->calculate($input);
 
         $attrs = array_merge(
@@ -154,12 +162,19 @@ class PayrollGenerator
                 'online_half_days' => $agg['online_half_days'],
                 'online_full_days' => $agg['online_full_days'],
                 'rest_days' => $agg['rest_days'],
-                'extra_shift_hours' => $agg['extra_shift_hours'],
-                'overtime_hours' => $agg['overtime_hours'],
+                'extra_shift_hours' => 0,
+                'overtime_hours' => round(
+                    (float) $agg['overtime_hours'] + (float) $agg['extra_shift_hours'],
+                    2,
+                ),
+                'overtime_multiplier' => $otMult,
                 'friday_work_days' => $agg['friday_work_days'],
                 'day_off_work_days' => $agg['day_off_work_days'],
                 'official_holiday_work_days' => $agg['official_holiday_work_days'],
+                'extra_days' => $extraDays,
                 'hours_deduction' => $agg['hours_deduction'],
+                'excused_absence_days' => (int) ($agg['excused_absence_days'] ?? 0),
+                'unexcused_absence_days' => (int) ($agg['unexcused_absence_days'] ?? 0),
                 'late_minutes_total' => $agg['late_minutes_total'],
             ],
             $result->toPayrollAttributes(),
@@ -269,7 +284,7 @@ class PayrollGenerator
     /**
      * @param  array<string, mixed>  $agg
      */
-    private function toInput(User $user, array $agg): PayrollCalculationInput
+    private function toInput(User $user, array $agg, int $extraDays = 0, float $extraPay = 0.0, float $overtimeMultiplier = 0.0): PayrollCalculationInput
     {
         $half = $user->online_half_day_rate;
         $full = $user->online_full_day_rate;
@@ -293,8 +308,14 @@ class PayrollGenerator
             fridayOnlineDays: (int) $agg['friday_online_days'],
             dayOffFullTimeDays: (int) $agg['day_off_full_time_days'],
             dayOffOnlineDays: (int) $agg['day_off_online_days'],
-            overtimeHours: (float) $agg['overtime_hours'],
-            extraShiftHours: (float) $agg['extra_shift_hours'],
+            overtimeHours: round(
+                (float) $agg['overtime_hours'] + (float) $agg['extra_shift_hours'],
+                2,
+            ),
+            extraShiftHours: 0.0,
+            overtimeMultiplier: $overtimeMultiplier > 0 ? $overtimeMultiplier : null,
+            extraDays: $extraDays,
+            extraPay: $extraPay,
             onlineHalfDayRate: ((float) $half > 0) ? (float) $half : null,
             onlineFullDayRate: ((float) $full > 0) ? (float) $full : null,
             overtimeHourlyRate: ((float) $ot > 0) ? (float) $ot : null,

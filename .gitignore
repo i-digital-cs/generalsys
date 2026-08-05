@@ -3,8 +3,8 @@
 /public/build
 /public/hot
 /public/storage
-/storage/*.key
-/storage/pail
+storage/fonts/*
+!storage/fonts/.gitignore
 /vendor
 .env
 .env.backup

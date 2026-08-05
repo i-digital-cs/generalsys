@@ -33,6 +33,7 @@ return new class extends Migration
             ])->default('PRESENT');
             $table->unsignedInteger('late_minutes')->default(0);
             $table->unsignedInteger('early_departure_minutes')->default(0);
+            $table->boolean('is_auto_clock_out')->default(false);
             $table->text('daily_report')->nullable();
             $table->text('team_leader_response')->nullable();
             $table->decimal('performance_score', 5, 2)->nullable();

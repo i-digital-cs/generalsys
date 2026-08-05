@@ -106,7 +106,8 @@
             </div>
             <div class="col-md-4">
                 <label for="shift_type_default" class="form-label">{{ __('employees.fields.shift_type_default') }}</label>
-                <select id="shift_type_default" name="shift_type_default" class="form-select @error('shift_type_default') is-invalid @enderror" required>
+                <select id="shift_type_default" name="shift_type_default" class="form-select @error('shift_type_default') is-invalid @enderror"
+                        data-shift-times="{{ json_encode(\App\Services\Attendance\ShiftConfig::DEFAULT_TIME_WINDOWS) }}" required>
                     @foreach (['FULL_TIME', 'ONLINE_HALF', 'ONLINE_FULL'] as $option)
                         <option value="{{ $option }}" @selected($val('shift_type_default', 'FULL_TIME') === $option)>
                             {{ __("employees.shifts.{$option}") }}

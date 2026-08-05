@@ -162,6 +162,165 @@ class PayrollDraftTest extends TestCase
         $this->assertSame(4000.0, (float) $payroll->full_time_pay); // 6000/30*20
     }
 
+    public function test_extra_days_zero_amount_fills_day_rate(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'extra_days' => 1,
+                'extra_pay' => 0,
+            ]))
+            ->assertRedirect(route('admin.payroll.show', $payroll));
+
+        $payroll->refresh();
+        $this->assertSame(1, (int) $payroll->extra_days);
+        $this->assertEqualsWithDelta(166.67, (float) $payroll->extra_pay, 0.01);
+    }
+
+    public function test_changing_extra_days_recalculates_amount_even_if_amount_was_set(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'extra_days' => 1,
+                'extra_pay' => 166.67,
+            ]))
+            ->assertRedirect();
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'extra_days' => 2,
+                'extra_pay' => 166.67, // leftover from previous day — must be ignored
+            ]))
+            ->assertRedirect();
+
+        $payroll->refresh();
+        $this->assertSame(2, (int) $payroll->extra_days);
+        $this->assertEqualsWithDelta(333.33, (float) $payroll->extra_pay, 0.01);
+    }
+
+    public function test_manual_extra_pay_amount_is_saved(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'extra_days' => 0,
+                'extra_pay' => 166.67,
+            ]))
+            ->assertRedirect(route('admin.payroll.show', $payroll));
+
+        $payroll->refresh();
+        $this->assertEqualsWithDelta(166.67, (float) $payroll->extra_pay, 0.01);
+        $this->assertGreaterThanOrEqual(166.67, (float) $payroll->gross_pay);
+    }
+
+    public function test_overtime_is_hours_times_rate_times_multiplier(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'overtime_hours' => 8,
+                'overtime_multiplier' => 1.5,
+            ]))
+            ->assertRedirect(route('admin.payroll.show', $payroll));
+
+        $payroll->refresh();
+        // 8 × (5000/30/8) × 1.5 = 250
+        $this->assertEqualsWithDelta(250.0, (float) $payroll->overtime_pay, 0.01);
+        $this->assertEqualsWithDelta(1.5, (float) $payroll->overtime_multiplier, 0.01);
+        $this->assertEqualsWithDelta(0.0, (float) $payroll->extra_shift_hours, 0.01);
+    }
+
+    public function test_draft_folds_legacy_extra_shift_into_overtime_hours(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+        $payroll->update([
+            'overtime_hours' => 0,
+            'extra_shift_hours' => 1,
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.show', $payroll))
+            ->assertOk()
+            ->assertSee('value="1.00"', false)
+            ->assertDontSee('name="extra_shift_hours"', false);
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'overtime_hours' => 1,
+                'overtime_multiplier' => 1.0,
+            ]))
+            ->assertRedirect();
+
+        $payroll->refresh();
+        $this->assertEqualsWithDelta(1.0, (float) $payroll->overtime_hours, 0.01);
+        $this->assertEqualsWithDelta(0.0, (float) $payroll->extra_shift_hours, 0.01);
+        $this->assertEqualsWithDelta(20.83, (float) $payroll->overtime_pay, 0.01);
+    }
+
+    public function test_draft_overtime_multiplier_one_is_straight_time(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'overtime_hours' => 8,
+                'overtime_multiplier' => 1.0,
+            ]))
+            ->assertRedirect();
+
+        $payroll->refresh();
+        $this->assertEqualsWithDelta(166.67, (float) $payroll->overtime_pay, 0.01);
+    }
+
+    public function test_excel_deduction_counts_recalculate_money(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'excused_absence_days' => 1,
+                'unexcused_absence_days' => 1,
+                'hours_deduction' => 3,
+            ]))
+            ->assertRedirect(route('admin.payroll.show', $payroll));
+
+        $payroll->refresh();
+        $this->assertSame(1, (int) $payroll->excused_absence_days);
+        $this->assertSame(1, (int) $payroll->unexcused_absence_days);
+        $this->assertEqualsWithDelta(3.0, (float) $payroll->hours_deduction, 0.01);
+        $this->assertEqualsWithDelta(166.67, (float) $payroll->excused_absence_penalty, 0.01);
+        $this->assertEqualsWithDelta(500.0, (float) $payroll->unexcused_absence_penalty, 0.01);
+        $this->assertEqualsWithDelta(62.50, (float) $payroll->hours_deduction_amount, 0.01);
+    }
+
+    public function test_other_deduction_is_not_labeled_as_advance(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+
+        $this->actingAs($manager)
+            ->post(route('admin.payroll.adjustments.store', $payroll), [
+                'type' => PayrollAdjustment::TYPE_OTHER_DEDUCTION,
+                'amount' => 1000,
+                'note' => 'عدد ساعات الخصم',
+            ])
+            ->assertRedirect();
+
+        $payroll->refresh();
+        $this->assertEqualsWithDelta(0.0, (float) $payroll->advance_deductions, 0.01);
+        $this->assertEqualsWithDelta(1000.0, (float) $payroll->total_deductions, 0.01);
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.show', $payroll))
+            ->assertOk()
+            ->assertSee(__('payroll.adjustment_types.OTHER_DEDUCTION'), false)
+            ->assertSee('1,000.00', false);
+    }
+
     /**
      * @return array{0: User, 1: PayrollRecord}
      */
@@ -197,12 +356,16 @@ class PayrollDraftTest extends TestCase
             'online_half_days' => 0,
             'online_full_days' => 0,
             'rest_days' => 0,
-            'extra_shift_hours' => 0,
             'overtime_hours' => 0,
+            'overtime_multiplier' => 1.5,
             'friday_work_days' => 0,
             'day_off_work_days' => 0,
             'official_holiday_work_days' => 0,
+            'extra_days' => 0,
+            'extra_pay' => 0,
             'hours_deduction' => 0,
+            'excused_absence_days' => 0,
+            'unexcused_absence_days' => 0,
             'late_minutes_total' => 0,
         ], $overrides);
     }

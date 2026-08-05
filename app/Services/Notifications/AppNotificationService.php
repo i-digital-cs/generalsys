@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Permission;
 use App\Models\User;
 use App\Models\Vacation;
+use App\Notifications\AttendanceAutoClockOutNotification;
 use App\Notifications\DailyReportRepliedNotification;
 use App\Notifications\DailyReportSubmittedNotification;
 use App\Notifications\PermissionDecisionNotification;
@@ -138,6 +139,26 @@ class AppNotificationService
         }
 
         $this->notifyManagers($notification, $actor);
+    }
+
+    /**
+     * System auto clock-out: notify employee + team leader + managers.
+     */
+    public function attendanceAutoClockOut(Attendance $attendance): void
+    {
+        $attendance->loadMissing('user');
+        $notification = new AttendanceAutoClockOutNotification($attendance);
+
+        if ($attendance->user !== null) {
+            $attendance->user->notify($notification);
+        }
+
+        $leaderId = $attendance->user?->team_leader_id;
+        if ($leaderId !== null) {
+            User::query()->find($leaderId)?->notify($notification);
+        }
+
+        $this->notifyManagers($notification);
     }
 
     private function notifyTeamLeaderOf(

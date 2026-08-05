@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateSettingsRequest;
 use App\Services\Admin\SettingService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class SettingController extends Controller
@@ -18,18 +17,17 @@ class SettingController extends Controller
         return view('admin.settings.edit', [
             'defaultLanguage' => $this->settings->get(SettingService::KEY_DEFAULT_LANGUAGE, 'ar'),
             'defaultCurrency' => $this->settings->get(SettingService::KEY_DEFAULT_CURRENCY, 'EGP'),
+            'multipliers' => $this->settings->multipliers(),
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(UpdateSettingsRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'default_language' => ['required', Rule::in(['ar', 'en'])],
-            'default_currency' => ['required', Rule::in(['EGP', 'AED'])],
-        ]);
+        $validated = $request->validated();
 
         $this->settings->set(SettingService::KEY_DEFAULT_LANGUAGE, $validated['default_language']);
         $this->settings->set(SettingService::KEY_DEFAULT_CURRENCY, $validated['default_currency']);
+        $this->settings->setMultipliers($validated['multipliers']);
 
         return redirect()
             ->route('admin.settings')

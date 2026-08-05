@@ -8,7 +8,7 @@
 | CSS | **Bootstrap 5.3** (RTL build) | User decision; Arabic-first UI |
 | JS | **Bootstrap bundle + small vanilla JS** | No framework; keeps hosting simple |
 | Assets | **Vite build locally → upload `public/build`** | Build step never runs on server |
-| Fonts | **Cairo / Tajawal** (self-hosted in `public/fonts`) | No external CDN dependency, works offline & fast |
+| Fonts | **Cairo** UI (self-hosted `public/fonts`; preload + `font-display: block`). **Tajawal** TTF for payslip PDF only | No CDN; reduces hard-refresh font flash |
 | Direction | `dir="rtl"` default, `lang="ar"`; `dir="ltr"` when `language_preference = en` | AR/EN toggle |
 | Icons | Bootstrap Icons (self-hosted SVG sprite) | No CDN |
 

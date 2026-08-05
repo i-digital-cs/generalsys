@@ -8,6 +8,7 @@ use App\Models\OfficialHoliday;
 use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Services\Employees\RestDayService;
+use App\Services\Notifications\AppNotificationService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,8 @@ class AttendanceService
     public function __construct(
         private readonly ShiftConfig $shifts,
         private readonly RestDayService $restDays,
+        private readonly DailyReportService $reports,
+        private readonly AppNotificationService $notifications,
     ) {}
 
     public function clockIn(User $user, string $shiftType, ?CarbonInterface $at = null): Attendance
@@ -42,9 +45,24 @@ class AttendanceService
             throw AttendanceException::planMismatch();
         }
 
+        // Enforcement: a previous day with a missing daily report blocks
+        // clocking in until the report is submitted (same-day extra/extra
+        // punches are unaffected — their date is not before today's).
+        $unreported = $this->reports->latestUnreportedClosedDay($user);
+        if ($unreported !== null && $unreported->date->toDateString() < $date) {
+            throw AttendanceException::dailyReportRequired();
+        }
+
         $assignment = $this->resolveAssignment($user, $shiftType, $date);
 
         return DB::transaction(function () use ($user, $shiftType, $at, $date, $assignment) {
+            $draft = new Attendance([
+                'date' => $date,
+                'clock_in' => $at,
+                'shift_type' => $shiftType,
+            ]);
+            $lateMinutes = $this->computeLateMinutes($user, $draft, $assignment);
+
             return Attendance::create([
                 'user_id' => $user->id,
                 'date' => $date,
@@ -56,8 +74,8 @@ class AttendanceService
                 'clock_in' => $at,
                 'planned_hours' => $this->shifts->plannedHours($shiftType, $assignment),
                 'actual_hours' => 0,
-                'status' => Attendance::STATUS_PRESENT,
-                'late_minutes' => 0,
+                'status' => $lateMinutes > 0 ? Attendance::STATUS_LATE : Attendance::STATUS_PRESENT,
+                'late_minutes' => $lateMinutes,
                 'early_departure_minutes' => 0,
             ]);
         });
@@ -72,7 +90,82 @@ class AttendanceService
             throw AttendanceException::noOpenAttendance();
         }
 
-        return DB::transaction(function () use ($user, $attendance, $at) {
+        return $this->finalizeClockOut($attendance, $at, automatic: false);
+    }
+
+    /**
+     * Force-close open punches after expected end + grace (default 60 minutes).
+     * Clock-out timestamp = expected_end + grace (counts as worked). Marked automatic.
+     *
+     * @return int number of rows closed
+     */
+    public function autoClockOutOverdue(?CarbonInterface $now = null): int
+    {
+        $now = Carbon::parse($now ?? now());
+        $grace = max(0, (int) config('attendance.auto_clock_out_grace_minutes', 60));
+        $closed = 0;
+
+        Attendance::query()
+            ->whereNotNull('clock_in')
+            ->whereNull('clock_out')
+            ->where('is_auto_clock_out', false)
+            ->with('user')
+            ->orderBy('id')
+            ->chunkById(50, function ($rows) use ($now, $grace, &$closed) {
+                foreach ($rows as $attendance) {
+                    if ($this->tryAutoClockOut($attendance, $now, $grace)) {
+                        $closed++;
+                    }
+                }
+            });
+
+        return $closed;
+    }
+
+    private function tryAutoClockOut(Attendance $attendance, Carbon $now, int $graceMinutes): bool
+    {
+        $user = $attendance->user;
+        if ($user === null) {
+            return false;
+        }
+
+        $assignment = ShiftAssignment::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $attendance->date->toDateString())
+            ->where('shift_type', $attendance->shift_type)
+            ->whereIn('status', [
+                ShiftAssignment::STATUS_SCHEDULED,
+                ShiftAssignment::STATUS_COMPLETED,
+            ])
+            ->first();
+
+        $expectedEnd = $this->expectedEnd($user, $attendance, $assignment);
+        if ($expectedEnd === null) {
+            return false;
+        }
+
+        $forceAt = $expectedEnd->copy()->addMinutes($graceMinutes);
+        if ($now->lt($forceAt)) {
+            return false;
+        }
+
+        $closed = $this->finalizeClockOut($attendance, $forceAt, automatic: true);
+        $this->notifications->attendanceAutoClockOut($closed);
+
+        return true;
+    }
+
+    private function finalizeClockOut(
+        Attendance $attendance,
+        CarbonInterface $at,
+        bool $automatic,
+    ): Attendance {
+        $user = $attendance->user;
+        if ($user === null) {
+            throw AttendanceException::noOpenAttendance();
+        }
+
+        return DB::transaction(function () use ($user, $attendance, $at, $automatic) {
             $assignment = $this->resolveAssignment(
                 $user,
                 $attendance->shift_type,
@@ -89,6 +182,7 @@ class AttendanceService
                 'actual_hours' => $actualHours,
                 'late_minutes' => $lateMinutes,
                 'early_departure_minutes' => $earlyMinutes,
+                'is_auto_clock_out' => $automatic,
                 'status' => $this->resolveStatus($lateMinutes, $earlyMinutes),
                 'attendance_score' => $this->attendanceScore($actualHours, $planned),
             ]);
@@ -231,6 +325,78 @@ class AttendanceService
             ->first();
     }
 
+    /**
+     * Expected clock-in for today (assignment window, else profile work_start_time).
+     */
+    public function expectedStartFor(
+        User $user,
+        ?string $shiftType = null,
+        ?CarbonInterface $at = null,
+    ): ?Carbon {
+        $at = Carbon::parse($at ?? now());
+        $date = $at->toDateString();
+        $shiftType ??= $this->preferredShiftType($user, $at);
+
+        $assignment = ShiftAssignment::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->where('shift_type', $shiftType)
+            ->where('status', ShiftAssignment::STATUS_SCHEDULED)
+            ->first();
+
+        $draft = new Attendance([
+            'date' => $date,
+            'shift_type' => $shiftType,
+        ]);
+
+        return $this->expectedStart($user, $draft, $assignment);
+    }
+
+    /**
+     * Expected clock-out for today (assignment window, else profile work_end_time).
+     */
+    public function expectedEndFor(
+        User $user,
+        ?string $shiftType = null,
+        ?CarbonInterface $at = null,
+    ): ?Carbon {
+        $at = Carbon::parse($at ?? now());
+        $date = $at->toDateString();
+        $shiftType ??= $this->preferredShiftType($user, $at);
+
+        $assignment = ShiftAssignment::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->where('shift_type', $shiftType)
+            ->where('status', ShiftAssignment::STATUS_SCHEDULED)
+            ->first();
+
+        $draft = new Attendance([
+            'date' => $date,
+            'shift_type' => $shiftType,
+        ]);
+
+        return $this->expectedEnd($user, $draft, $assignment);
+    }
+
+    /**
+     * Minutes late if the employee clocked in at $at (default: now).
+     */
+    public function previewLateMinutes(
+        User $user,
+        ?string $shiftType = null,
+        ?CarbonInterface $at = null,
+    ): int {
+        $at = Carbon::parse($at ?? now());
+        $expected = $this->expectedStartFor($user, $shiftType, $at);
+
+        if ($expected === null) {
+            return 0;
+        }
+
+        return (int) max(0, $expected->diffInMinutes($at, false));
+    }
+
     private function resolveAssignment(User $user, string $shiftType, string $date): ?ShiftAssignment
     {
         $assignment = ShiftAssignment::query()
@@ -294,11 +460,12 @@ class AttendanceService
             return Carbon::parse($date.' '.$assignment->expected_start_time);
         }
 
-        if ($user->work_start_time === null) {
+        $window = $this->windowForShift($user, $attendance->shift_type);
+        if ($window === null) {
             return null;
         }
 
-        return Carbon::parse($date.' '.$user->work_start_time);
+        return Carbon::parse($date.' '.$window[0]);
     }
 
     private function expectedEnd(
@@ -315,14 +482,39 @@ class AttendanceService
             return $end->lte($start) ? $end->addDay() : $end;
         }
 
-        if ($user->work_end_time === null || $user->work_start_time === null) {
+        $window = $this->windowForShift($user, $attendance->shift_type);
+        if ($window === null) {
             return null;
         }
 
-        $end = Carbon::parse($date->toDateString().' '.$user->work_end_time);
-        $start = Carbon::parse($date->toDateString().' '.$user->work_start_time);
+        $start = Carbon::parse($date->toDateString().' '.$window[0]);
+        $end = Carbon::parse($date->toDateString().' '.$window[1]);
 
         return $end->lte($start) ? $end->addDay() : $end;
+    }
+
+    /**
+     * Online ½ / Online full use Excel fixed windows. Full-time (and others)
+     * prefer the employee profile schedule (supports overnight 22:00→06:00).
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    private function windowForShift(User $user, string $shiftType): ?array
+    {
+        $configWindow = $this->shifts->defaultWindow($shiftType);
+
+        if (in_array($shiftType, [
+            Attendance::SHIFT_ONLINE_HALF,
+            Attendance::SHIFT_ONLINE_FULL,
+        ], true)) {
+            return $configWindow;
+        }
+
+        if ($user->work_start_time !== null && $user->work_end_time !== null) {
+            return [(string) $user->work_start_time, (string) $user->work_end_time];
+        }
+
+        return $configWindow;
     }
 
     private function resolveStatus(int $lateMinutes, int $earlyMinutes): string

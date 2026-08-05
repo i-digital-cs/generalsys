@@ -33,7 +33,7 @@ return [
         'role' => 'Role',
         'currency' => 'Currency',
         'language_preference' => 'Language',
-        'shift_type_default' => 'Default Shift Type',
+        'shift_type_default' => 'Default work type',
         'work_start_time' => 'Work Start (حضور)',
         'work_end_time' => 'Work End (انصراف)',
         'status' => 'Status',

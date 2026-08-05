@@ -11,7 +11,7 @@ return [
     'approvals' => 'الموافقات',
     'reports_review' => 'مراجعة التقارير',
     'evaluations' => 'التقييمات الشهرية',
-    'shifts' => 'تعيين الورديات',
+    'shifts' => 'تعيين الدوام',
     'rest_days' => 'أيام الراحة',
     'employees' => 'إدارة الموظفين',
     'penalties' => 'قواعد الجزاءات',

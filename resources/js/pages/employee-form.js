@@ -45,3 +45,33 @@ document.addEventListener('click', function (event) {
         reindexRows(container, container.dataset.prefix);
     }
 });
+
+// Shift type change prefills the default work window (ShiftConfig::DEFAULT_TIME_WINDOWS).
+// The time inputs stay editable — this only sets a sensible starting value.
+(function () {
+    const shiftSelect = document.getElementById('shift_type_default');
+
+    if (! shiftSelect || ! shiftSelect.dataset.shiftTimes) {
+        return;
+    }
+
+    const windows = JSON.parse(shiftSelect.dataset.shiftTimes);
+    const startInput = document.getElementById('work_start_time');
+    const endInput = document.getElementById('work_end_time');
+
+    shiftSelect.addEventListener('change', function () {
+        const window = windows[shiftSelect.value];
+
+        if (! window) {
+            return;
+        }
+
+        if (startInput) {
+            startInput.value = window[0];
+        }
+
+        if (endInput) {
+            endInput.value = window[1];
+        }
+    });
+})();

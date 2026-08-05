@@ -15,6 +15,18 @@
         </span>
     </div>
 
+    @if ($missingReportDate)
+        <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span>
+                <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
+                {{ __('clock.report_missing', ['date' => $missingReportDate]) }}
+            </span>
+            <a href="{{ route('employee.report', ['date' => $missingReportDate]) }}" class="btn btn-sm btn-warning">
+                {{ __('clock.report_write') }}
+            </a>
+        </div>
+    @endif
+
     <div class="row g-3 mb-3">
         <div class="col-6 col-md-3">
             <x-stat-card

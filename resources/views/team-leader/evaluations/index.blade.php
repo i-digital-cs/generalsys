@@ -77,7 +77,12 @@
                                     @endphp
                                     <tr data-filter-text="{{ $name }} {{ $member->name_ar }} {{ $member->name_en }}"
                                         data-filter-status="{{ $statusKey }}">
-                                        <td class="fw-semibold">{{ $name }}</td>
+                                        <td class="fw-semibold">
+                                            {{ $name }}
+                                            @if ($member->isTeamLeader())
+                                                <span class="badge text-bg-info ms-1">{{ __('employees.roles.TEAM_LEADER') }}</span>
+                                            @endif
+                                        </td>
                                         <td class="col-num"><span class="num-ltr">{{ number_format($row['scores']['total_score'], 2) }}%</span></td>
                                         <td>
                                             <span @class([

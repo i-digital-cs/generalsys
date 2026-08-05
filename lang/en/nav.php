@@ -11,7 +11,7 @@ return [
     'approvals' => 'Approvals',
     'reports_review' => 'Reports Review',
     'evaluations' => 'Monthly Evaluations',
-    'shifts' => 'Shift Assignment',
+    'shifts' => 'Work schedule',
     'rest_days' => 'Rest Days',
     'employees' => 'Employee Management',
     'penalties' => 'Penalty Rules',

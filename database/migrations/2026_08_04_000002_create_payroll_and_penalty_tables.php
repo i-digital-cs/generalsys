@@ -47,10 +47,15 @@ return new class extends Migration
             $table->unsignedSmallInteger('rest_days')->default(0);
             $table->decimal('extra_shift_hours', 6, 2)->default(0);
             $table->decimal('overtime_hours', 6, 2)->default(0);
+            $table->decimal('overtime_multiplier', 5, 2)->default(0);
             $table->unsignedSmallInteger('friday_work_days')->default(0);
             $table->unsignedSmallInteger('day_off_work_days')->default(0);
             $table->unsignedSmallInteger('official_holiday_work_days')->default(0);
+            $table->unsignedSmallInteger('extra_days')->default(0);
             $table->decimal('hours_deduction', 6, 2)->default(0);
+            $table->decimal('hours_deduction_amount', 12, 2)->default(0);
+            $table->unsignedSmallInteger('excused_absence_days')->default(0);
+            $table->unsignedSmallInteger('unexcused_absence_days')->default(0);
             $table->unsignedInteger('late_minutes_total')->default(0);
 
             $table->decimal('full_time_pay', 12, 2)->default(0);
@@ -60,6 +65,7 @@ return new class extends Migration
             $table->decimal('friday_bonus', 12, 2)->default(0);
             $table->decimal('day_off_bonus', 12, 2)->default(0);
             $table->decimal('official_holiday_bonus', 12, 2)->default(0);
+            $table->decimal('extra_pay', 12, 2)->default(0);
 
             $table->decimal('late_penalty', 12, 2)->default(0);
             $table->decimal('leave_permission_penalty', 12, 2)->default(0);

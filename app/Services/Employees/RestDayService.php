@@ -26,6 +26,28 @@ class RestDayService
             ->exists();
     }
 
+    /**
+     * Rest-day dates for a calendar month (Y-m-d strings).
+     *
+     * @return list<string>
+     */
+    public function datesInMonth(User $user, int $month, int $year): array
+    {
+        $from = Carbon::create($year, $month, 1)->startOfDay();
+        $to = $from->copy()->endOfMonth();
+
+        return RestDay::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', '>=', $from->toDateString())
+            ->whereDate('date', '<=', $to->toDateString())
+            ->orderBy('date')
+            ->pluck('date')
+            ->map(fn ($d) => Carbon::parse($d)->toDateString())
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     public function add(User $actor, User $employee, string $date): RestDay
     {
         if (! $this->actorMayManage($actor, $employee)) {

@@ -15,7 +15,30 @@ class SmokeTest extends TestCase
     {
         $this->get('/login')
             ->assertOk()
-            ->assertSee('dir="rtl"', false);
+            ->assertSee('dir="rtl"', false)
+            ->assertSee('rel="preload"', false)
+            ->assertSee('cairo-400-arabic.woff2', false)
+            ->assertSee('fonts/fonts.css', false);
+    }
+
+    public function test_english_login_preloads_latin_cairo(): void
+    {
+        $this->withSession(['locale' => 'en'])
+            ->get('/login')
+            ->assertOk()
+            ->assertSee('cairo-400-latin.woff2', false)
+            ->assertDontSee('cairo-400-arabic.woff2', false);
+    }
+
+    public function test_cairo_font_faces_use_block_display(): void
+    {
+        $css = file_get_contents(public_path('fonts/fonts.css'));
+
+        $this->assertNotFalse($css);
+        $this->assertStringContainsString('font-family: \'Cairo\'', $css);
+        $this->assertStringContainsString('font-display: block;', $css);
+        $this->assertStringNotContainsString('font-display: swap;', $css);
+        $this->assertStringNotContainsString('Tajawal', $css);
     }
 
     public function test_locale_route_stores_session_and_redirects_back(): void

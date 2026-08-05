@@ -3,6 +3,7 @@
 return [
     'title' => 'My Profile',
     'personal_info' => 'Personal Information',
+    'work_info' => 'Work Information',
     'contract_info' => 'Contract',
     'qualifications' => 'Qualifications',
     'emergency_contacts' => 'Emergency Contacts',

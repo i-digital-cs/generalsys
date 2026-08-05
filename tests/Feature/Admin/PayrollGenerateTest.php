@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Jobs\GeneratePayrollJob;
 use App\Models\Attendance;
 use App\Models\PayrollRecord;
+use App\Models\RestDay;
 use App\Models\User;
 use App\Services\Payroll\MonthCoverageException;
 use App\Services\Payroll\PayrollGenerator;
@@ -158,6 +159,85 @@ class PayrollGenerateTest extends TestCase
                 'year' => 2026,
             ])
             ->assertSessionHasErrors('month');
+    }
+
+    public function test_generate_pulls_rest_days_from_rest_days_screen(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create(['base_salary' => 5000]);
+
+        // June 2026 = 30 days: 26 FT attendance + 4 rest-day pool dates (no clock).
+        for ($day = 1; $day <= 26; $day++) {
+            Attendance::factory()->create([
+                'user_id' => $employee->id,
+                'date' => Carbon::create(2026, 6, $day)->toDateString(),
+                'shift_type' => Attendance::SHIFT_FULL_TIME,
+                'planned_hours' => 8,
+                'actual_hours' => 8,
+                'status' => Attendance::STATUS_PRESENT,
+                'late_minutes' => 0,
+            ]);
+        }
+
+        foreach ([27, 28, 29, 30] as $day) {
+            RestDay::factory()->create([
+                'user_id' => $employee->id,
+                'date' => Carbon::create(2026, 6, $day)->toDateString(),
+                'created_by' => $manager->id,
+            ]);
+        }
+
+        $this->actingAs($manager)
+            ->post(route('admin.payroll.generate'), [
+                'month' => 6,
+                'year' => 2026,
+            ])
+            ->assertRedirect();
+
+        $draft = PayrollRecord::query()
+            ->where('user_id', $employee->id)
+            ->where('month', 6)
+            ->where('year', 2026)
+            ->firstOrFail();
+
+        $this->assertSame(26, (int) $draft->full_time_days);
+        $this->assertSame(4, (int) $draft->rest_days);
+        // 26 × (5000/30) = 4333.33
+        $this->assertEqualsWithDelta(4333.33, (float) $draft->gross_pay, 0.01);
+    }
+
+    public function test_draft_show_refreshes_rest_days_after_pool_change(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create(['base_salary' => 5000]);
+        $this->seedFullMonth($employee, 6, 2026);
+
+        $this->actingAs($manager)
+            ->post(route('admin.payroll.generate'), [
+                'month' => 6,
+                'year' => 2026,
+            ])
+            ->assertRedirect();
+
+        $draft = PayrollRecord::query()
+            ->where('user_id', $employee->id)
+            ->where('month', 6)
+            ->where('year', 2026)
+            ->firstOrFail();
+
+        $this->assertSame(0, (int) $draft->rest_days);
+
+        RestDay::factory()->create([
+            'user_id' => $employee->id,
+            'date' => '2026-06-15',
+            'created_by' => $manager->id,
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.show', $draft))
+            ->assertOk();
+
+        $this->assertSame(1, (int) $draft->fresh()->rest_days);
     }
 
     private function seedFullMonth(User $user, int $month, int $year): void

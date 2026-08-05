@@ -41,8 +41,8 @@ class ShiftAssignmentFactory extends Factory
     {
         return $this->state(fn () => [
             'shift_type' => ShiftAssignment::TYPE_ONLINE_HALF,
-            'expected_start_time' => '10:00',
-            'expected_end_time' => '14:00',
+            'expected_start_time' => '06:00',
+            'expected_end_time' => '10:00',
             'expected_hours' => 4,
             'multiplier' => 1.00,
         ]);

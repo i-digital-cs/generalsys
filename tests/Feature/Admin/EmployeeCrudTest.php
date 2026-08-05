@@ -393,6 +393,37 @@ class EmployeeCrudTest extends TestCase
             ->assertDontSee('Radwa Adel');
     }
 
+    public function test_index_shows_phone_and_shift_type_columns(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'name_en' => 'Column Check',
+            'shift_type_default' => 'ONLINE_HALF',
+        ]);
+        $employee->profile()->create(['employee_code' => 'EMP-C1', 'phone' => '01001234567']);
+
+        $this->withSession(['locale' => 'en'])->actingAs($this->manager)
+            ->get(route('admin.employees.index'))
+            ->assertOk()
+            ->assertSee('01001234567')
+            ->assertSee(__('employees.shifts.ONLINE_HALF'));
+    }
+
+    public function test_form_exposes_shift_type_default_time_windows(): void
+    {
+        $this->actingAs($this->manager)
+            ->get(route('admin.employees.create'))
+            ->assertOk()
+            ->assertSee('data-shift-times', false)
+            ->assertSee('&quot;ONLINE_HALF&quot;:[&quot;06:00&quot;,&quot;10:00&quot;]', false);
+
+        $employee = User::factory()->employee()->create();
+
+        $this->actingAs($this->manager)
+            ->get(route('admin.employees.edit', $employee))
+            ->assertOk()
+            ->assertSee('data-shift-times', false);
+    }
+
     public function test_index_filters_by_status_and_paginates(): void
     {
         User::factory()->employee()->count(30)->create();

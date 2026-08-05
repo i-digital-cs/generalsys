@@ -35,9 +35,7 @@ class TableFilterUiTest extends TestCase
         PenaltyRule::factory()->create();
 
         foreach ([
-            route('admin.employees.index'),
             route('admin.payroll.index', ['month' => now()->month, 'year' => now()->year]),
-            route('admin.advances.index'),
             route('admin.config.penalties'),
         ] as $url) {
             $this->actingAs($manager)
@@ -46,6 +44,57 @@ class TableFilterUiTest extends TestCase
                 ->assertSee('table-hr', false)
                 ->assertSee('data-table-filter-root', false);
         }
+    }
+
+    public function test_paginated_admin_lists_filter_server_side_only(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create();
+
+        Advance::factory()->create(['user_id' => $employee->id]);
+
+        // Paginated lists: a JS toolbar would hide matches on other pages, so the
+        // server-side GET form is the single filter — no client-side toolbar.
+        $this->actingAs($manager)
+            ->get(route('admin.employees.index'))
+            ->assertOk()
+            ->assertSee('table-hr', false)
+            ->assertSee('name="q"', false)
+            ->assertDontSee('data-table-filter-root', false);
+
+        $this->actingAs($manager)
+            ->get(route('admin.advances.index'))
+            ->assertOk()
+            ->assertSee('table-hr', false)
+            ->assertSee('name="user_id"', false)
+            ->assertDontSee('data-table-filter-root', false);
+    }
+
+    public function test_paginated_team_leader_lists_filter_server_side_only(): void
+    {
+        $leader = User::factory()->teamLeader()->create();
+        $employee = User::factory()->employee()->create(['team_leader_id' => $leader->id]);
+
+        Permission::factory()->create([
+            'user_id' => $employee->id,
+            'team_leader_id' => $leader->id,
+            'status' => Permission::STATUS_PENDING,
+        ]);
+
+        // Reports: GET form (employee + status) is the single filter.
+        $this->actingAs($leader)
+            ->get(route('team-leader.reports'))
+            ->assertOk()
+            ->assertSee('name="employee_id"', false)
+            ->assertDontSee('data-table-filter-root', false);
+
+        // Approvals: status pills (?filter=…) are the single filter.
+        $this->actingAs($leader)
+            ->get(route('team-leader.approvals'))
+            ->assertOk()
+            ->assertSee('table-hr', false)
+            ->assertSee(route('team-leader.approvals', ['filter' => 'pending']), false)
+            ->assertDontSee('data-table-filter-root', false);
     }
 
     public function test_team_leader_list_screens_use_table_toolbar(): void
@@ -60,7 +109,6 @@ class TableFilterUiTest extends TestCase
         ]);
 
         foreach ([
-            route('team-leader.approvals'),
             route('team-leader.evaluations'),
             route('team-leader.shifts'),
             route('team-leader.rest-days'),

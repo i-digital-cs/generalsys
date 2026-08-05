@@ -12,6 +12,7 @@ return [
     'flash' => [
         'all_read' => 'تم تعليم كل الإشعارات كمقروءة.',
     ],
+    'you' => 'أنت',
     'kinds' => [
         'generic' => 'إشعار',
         'permission_submitted' => 'طلب إذن جديد',
@@ -22,6 +23,7 @@ return [
         'vacation_forced' => 'تم تعليم الإجازة كإجبارية',
         'report_submitted' => 'تقرير يومي جديد',
         'report_replied' => 'رد على التقرير',
+        'attendance_auto_clock_out' => 'انصراف تلقائي',
     ],
     'bodies' => [
         'permission_submitted' => 'قدّم :name :type بتاريخ :date.',
@@ -32,5 +34,6 @@ return [
         'vacation_forced' => 'تم تعليم إجازتك :type من :start إلى :end كإجبارية (يوم الراحة محفوظ).',
         'report_submitted' => 'قدّم :name تقريرًا يوميًا بتاريخ :date.',
         'report_replied' => 'رد قائد فريقك على تقريرك بتاريخ :date.',
+        'attendance_auto_clock_out' => 'تم إنصراف :name تلقائيًا ليوم :date (:shift) الساعة :time بعد انتهاء فترة السماح.',
     ],
 ];

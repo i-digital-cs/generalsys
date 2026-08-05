@@ -13,6 +13,7 @@
             'friday_bonus',
             'day_off_bonus',
             'official_holiday_bonus',
+            'extra_pay',
         ];
         $deductions = [
             'late_penalty',
@@ -21,6 +22,7 @@
             'excused_absence_penalty',
             'unexcused_absence_penalty',
             'forced_penalty_surcharge',
+            'hours_deduction_amount',
             'advance_deductions',
         ];
     @endphp
@@ -86,6 +88,10 @@
                 'scores' => $scores ?? null,
                 'evaluationText' => $evaluationText ?? null,
                 'yearAverage' => $yearAverage ?? null,
+                'evaluationSaved' => $evaluationSaved ?? false,
+                'evaluationSubject' => $payroll->user,
+                'evaluationMonth' => (int) $payroll->month,
+                'evaluationYear' => (int) $payroll->year,
             ])
         </div>
         <div class="col-12 col-lg-6">

@@ -30,6 +30,10 @@ final class PayrollCalculationInput
         public readonly int $dayOffOnlineDays = 0,
         public readonly float $overtimeHours = 0.0,
         public readonly float $extraShiftHours = 0.0,
+        /** Null = use Admin Settings overtime multiplier. */
+        public readonly ?float $overtimeMultiplier = null,
+        public readonly int $extraDays = 0,
+        public readonly float $extraPay = 0.0,
         public readonly ?float $onlineHalfDayRate = null,
         public readonly ?float $onlineFullDayRate = null,
         public readonly ?float $overtimeHourlyRate = null,

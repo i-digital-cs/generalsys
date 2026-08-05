@@ -111,6 +111,7 @@
   2. **EXTRA / OVERTIME** — only when SCHEDULED for that day (in addition to the base plan).
   3. If **no** base assignment → only **`shift_type_default`** (not a free pick among all three).
   4. **One attendance row per `(user, date, shift_type)`**; one open punch at a time; overnight `clock_out` uses real next-day datetime.
+  5. **Forgot clock-out:** after **expected end + 60 minutes** grace, scheduler force-closes at `end+grace` (hours count that grace); `is_auto_clock_out=true`; notifies employee + TL + managers. Command `attendance:auto-clock-out` every 5 minutes via `schedule:run`.
 - Planned hours: matching assignment’s `expected_hours`, else profile defaults **8 / 4 / 12** (`ShiftConfig`).
 - **Hours facts:** planned vs actual (and shortfall by date/shift) via `HoursComparisonService` / dashboards — **informational**.
 - **Penalties (Phase 6):** money penalties are **100% manual** on the Admin payroll draft (`payroll_adjustments` / manual lines). The system **does not** auto-apply EGP for late / absence / permission / hours gap / forced surcharge when `payroll.auto_penalties=false` (default). Facts (minutes, days, hours) still appear on the payslip for Admin review.
@@ -478,6 +479,7 @@ Hourly Rate = Daily Rate / Daily Working Hours (8 for fulltime)
 | Online 1 Day Pay | Employee's `online_full_day_rate` × Online 1 Days |
 | Extra Shift Pay | Assigned Hours × Employee's `overtime_hourly_rate` × Multiplier |
 | Overtime Pay | OT Hours × Employee's `overtime_hourly_rate` × 1.5 |
+| Extra pay (إضافي) | Manual `extra_pay` amount, or `extra_days × (base/30)` when amount left 0 |
 | Friday Work — Fulltime | Daily Rate × Friday FT Days × 1.0 |
 | Friday Work — Online | Daily Rate × Friday Online Days × 0.5 |
 | Day Off Work — Fulltime | Daily Rate × Day Off FT Days × 2.0 |

@@ -2,9 +2,20 @@
 
 return [
     'title' => 'الإعدادات',
-    'defaults_section' => 'الإعدادات الافتراضية للنظام',
+    'defaults_section' => 'الإعدادات الافتراضية',
     'default_language' => 'اللغة الافتراضية',
     'default_currency' => 'العملة الافتراضية',
+    'multipliers_section' => 'مضاعفات الرواتب',
+    'multipliers_hint' => 'تُطبَّق عند توليد أو إعادة حساب كشف الراتب. الإضافي 1.50 = ساعة ونصف؛ ضع 1.00 للأجر العادي.',
+    'multipliers' => [
+        'friday_full_time' => 'الجمعة (دوام كامل)',
+        'friday_online' => 'الجمعة (أونلاين)',
+        'day_off_full_time' => 'عمل يوم الراحة (دوام كامل)',
+        'day_off_online' => 'عمل يوم الراحة (أونلاين)',
+        'overtime' => 'ساعات إضافية / دوام إضافي',
+        'official_holiday_work' => 'عمل عطلة رسمية',
+        'extra_pay' => 'إضافي من الأيام',
+    ],
     'flash' => [
         'updated' => 'تم تحديث الإعدادات بنجاح.',
     ],

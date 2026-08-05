@@ -25,6 +25,7 @@ class NotificationMessage
             'vacation_forced' => __('notifications.kinds.vacation_forced'),
             'report_submitted' => __('notifications.kinds.report_submitted'),
             'report_replied' => __('notifications.kinds.report_replied'),
+            'attendance_auto_clock_out' => __('notifications.kinds.attendance_auto_clock_out'),
             default => __('notifications.kinds.generic'),
         };
     }
@@ -79,6 +80,12 @@ class NotificationMessage
             ]),
             'report_replied' => __('notifications.bodies.report_replied', [
                 'date' => $data['date'] ?? '',
+            ]),
+            'attendance_auto_clock_out' => __('notifications.bodies.attendance_auto_clock_out', [
+                'name' => $name !== '' ? $name : __('notifications.you'),
+                'date' => $data['date'] ?? '',
+                'shift' => __('clock.shifts.'.($data['shift_type'] ?? 'FULL_TIME')),
+                'time' => $data['clock_out'] ?? '',
             ]),
             default => '',
         };

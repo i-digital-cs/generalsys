@@ -7,12 +7,14 @@ use App\Models\Attendance;
 use App\Models\PayrollAdjustment;
 use App\Models\Permission;
 use App\Models\User;
+use App\Services\Employees\RestDayService;
 use App\Services\Permissions\PermissionPenaltyCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 /**
  * Attendance / permission / advance inputs for one employee-month (T-4.4).
+ * Rest-day pool (Rest Days screen) feeds rest_days counts on generate/recalc.
  */
 class PayrollAggregator
 {
@@ -24,6 +26,7 @@ class PayrollAggregator
 
     public function __construct(
         private readonly PermissionPenaltyCalculator $permissions,
+        private readonly RestDayService $restDays,
     ) {}
 
     /**
@@ -59,7 +62,8 @@ class PayrollAggregator
             ->whereMonth('date', $month)
             ->get();
 
-        $counts = $this->dayCounts($rows);
+        $poolRestDates = $this->restDays->datesInMonth($user, $month, $year);
+        $counts = $this->dayCounts($rows, $poolRestDates);
         $hours = $this->hoursDeduction($rows);
         $permission = $this->permissionTotals($user, $month, $year);
 
@@ -75,12 +79,17 @@ class PayrollAggregator
 
     public function classifiedDayCount(User $user, int $month, int $year): int
     {
-        return (int) Attendance::query()
+        $attendanceDates = Attendance::query()
             ->where('user_id', $user->id)
             ->whereYear('date', $year)
             ->whereMonth('date', $month)
-            ->selectRaw('COUNT(DISTINCT date) as c')
-            ->value('c');
+            ->pluck('date')
+            ->map(fn ($d) => Carbon::parse($d)->toDateString())
+            ->all();
+
+        $restDates = $this->restDays->datesInMonth($user, $month, $year);
+
+        return count(array_unique([...$attendanceDates, ...$restDates]));
     }
 
     /**
@@ -132,17 +141,14 @@ class PayrollAggregator
 
     /**
      * @param  Collection<int, Attendance>  $rows
+     * @param  list<string>  $poolRestDates  Y-m-d from Rest Days screen
      * @return array<string, int|float>
      */
-    public function dayCounts($rows): array
+    public function dayCounts($rows, array $poolRestDates = []): array
     {
         $ft = 0;
         $half = 0;
         $full = 0;
-        $rest = 0;
-        $excused = 0;
-        $unexcused = 0;
-        $holidayWork = 0;
         $friFt = 0;
         $friOnline = 0;
         $offFt = 0;
@@ -150,7 +156,7 @@ class PayrollAggregator
         $extra = 0.0;
         $ot = 0.0;
 
-        $restDates = [];
+        $restDates = array_fill_keys($poolRestDates, true);
         $excusedDates = [];
         $unexcusedDates = [];
         $holidayDates = [];
@@ -205,6 +211,8 @@ class PayrollAggregator
             }
         }
 
+        // Rest-day pool dates with no clock stay as rest. Worked-on-rest (day-off work)
+        // stays in FT/online counts and still counts toward rest_days (planned day off).
         $holidayWork = count($holidayDates);
 
         return [

@@ -35,6 +35,25 @@ class DailyReportService
             ->first();
     }
 
+    /**
+     * Latest closed day whose main attendance still has no report — used to
+     * warn the employee and block the next day's clock-in until submitted.
+     */
+    public function latestUnreportedClosedDay(User $user): ?Attendance
+    {
+        $main = Attendance::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('clock_out')
+            ->orderByDesc('date')
+            ->orderBy('clock_in')
+            ->orderBy('id')
+            ->get()
+            ->unique(fn (Attendance $row) => $row->date->toDateString())
+            ->first();
+
+        return $main !== null && blank($main->daily_report) ? $main : null;
+    }
+
     public function isLocked(?Attendance $attendance): bool
     {
         if ($attendance === null) {

@@ -5,6 +5,8 @@ namespace Tests\Feature\Employee;
 use App\Models\Attendance;
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Services\Attendance\AttendanceService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -28,6 +30,27 @@ class ClockTest extends TestCase
         ]);
     }
 
+    public function test_clock_in_blocked_and_banner_shown_when_previous_report_missing(): void
+    {
+        $service = app(AttendanceService::class);
+        $service->clockIn($this->employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 10:00:00'));
+        $service->clockOut($this->employee, Carbon::parse('2026-08-03 18:00:00'));
+
+        Carbon::setTestNow(Carbon::parse('2026-08-04 10:00:00', config('app.timezone')));
+
+        $this->actingAs($this->employee)
+            ->get(route('employee.clock'))
+            ->assertOk()
+            ->assertSee(__('clock.report_missing', ['date' => '2026-08-03']));
+
+        $this->actingAs($this->employee)
+            ->from(route('employee.clock'))
+            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->assertSessionHasErrors('shift_type');
+
+        $this->assertSame(1, Attendance::where('user_id', $this->employee->id)->count());
+    }
+
     public function test_employee_can_open_clock_screen(): void
     {
         $this->actingAs($this->employee)
@@ -35,6 +58,7 @@ class ClockTest extends TestCase
             ->assertOk()
             ->assertSee(__('clock.clock_in'), false)
             ->assertSee(__('clock.shifts.FULL_TIME'), false)
+            ->assertSee(__('clock.should_start_at', ['time' => '10:00']), false)
             ->assertDontSee('value="ONLINE_HALF"', false)
             ->assertDontSee('value="ONLINE_FULL"', false)
             ->assertDontSee('value="OVERTIME"', false)
@@ -60,14 +84,47 @@ class ClockTest extends TestCase
             ->get(route('employee.clock'))
             ->assertOk()
             ->assertSee(__('clock.clock_out'), false)
-            ->assertSee('id="clock-elapsed"', false);
+            ->assertSee('id="clock-elapsed"', false)
+            ->assertSee(__('clock.late_minutes'), false);
 
+        // Missing daily report → routed to the report page for that date.
         $this->actingAs($this->employee)
             ->post(route('employee.clock.out'))
-            ->assertRedirect(route('employee.clock'));
+            ->assertRedirect(route('employee.report', ['date' => now()->toDateString()]));
 
         $row = Attendance::where('user_id', $this->employee->id)->firstOrFail();
         $this->assertNotNull($row->clock_out);
+    }
+
+    public function test_clock_out_redirects_to_clock_when_report_already_filled(): void
+    {
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME]);
+
+        Attendance::where('user_id', $this->employee->id)->firstOrFail()
+            ->update(['daily_report' => 'Finished all tasks.']);
+
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.out'))
+            ->assertRedirect(route('employee.clock'))
+            ->assertSessionHas('success');
+    }
+
+    public function test_clock_screen_shows_lateness_after_late_clock_in(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-05 10:25:00', config('app.timezone')));
+
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->assertRedirect(route('employee.clock'));
+
+        $this->actingAs($this->employee)
+            ->get(route('employee.clock'))
+            ->assertOk()
+            ->assertSee(__('clock.should_start_at', ['time' => '10:00']), false)
+            ->assertSee(__('clock.late_by', ['minutes' => 25]), false);
+
+        Carbon::setTestNow();
     }
 
     public function test_second_open_clock_in_returns_validation_error(): void

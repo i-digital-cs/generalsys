@@ -33,7 +33,7 @@ return [
         'role' => 'الدور',
         'currency' => 'العملة',
         'language_preference' => 'اللغة',
-        'shift_type_default' => 'نوع الوردية الافتراضي',
+        'shift_type_default' => 'نوع الدوام الافتراضي',
         'work_start_time' => 'مواعيد العمل — حضور',
         'work_end_time' => 'مواعيد العمل — انصراف',
         'status' => 'الحالة',

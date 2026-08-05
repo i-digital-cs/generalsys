@@ -261,6 +261,74 @@ h6, .h6 { font-size: .9rem; }
     }
 }
 
+// ---- Payroll review (Admin payslip) ----------------------------------------
+.payroll-review-toolbar {
+    position: sticky;
+    top: .5rem;
+    z-index: 1020;
+}
+
+.payroll-review-hero {
+    background: linear-gradient(135deg, #0b1f3a 0%, #123a6b 48%, #1a5f9e 100%);
+    color: #fff;
+
+    .payroll-review-hero-label {
+        font-size: .8rem;
+        opacity: .8;
+        margin-bottom: .15rem;
+    }
+
+    .payroll-review-hero-net {
+        font-size: clamp(1.6rem, 3vw, 2.15rem);
+        font-weight: 700;
+        letter-spacing: .01em;
+        line-height: 1.15;
+    }
+
+    .payroll-review-metric {
+        min-width: 7.5rem;
+        padding: .55rem .75rem;
+        border-radius: .55rem;
+        background: rgba(255, 255, 255, .12);
+
+        .label {
+            display: block;
+            font-size: .72rem;
+            opacity: .75;
+            margin-bottom: .15rem;
+        }
+
+        .value {
+            display: block;
+            font-weight: 600;
+            font-size: .95rem;
+        }
+
+        &.is-warn {
+            background: rgba(255, 193, 7, .22);
+        }
+    }
+}
+
+.payroll-review-tabs {
+    padding-bottom: .15rem;
+
+    .nav-link {
+        white-space: nowrap;
+        border-radius: 2rem;
+        padding: .4rem .9rem;
+        color: #495057;
+        background: #fff;
+        border: 1px solid var(--hp-card-border);
+
+        &.active {
+            color: #fff;
+            background: var(--hp-primary);
+            border-color: var(--hp-primary);
+        }
+    }
+}
+
 // ---- Quick action tiles ----------------------------------------------------
 .quick-action {
     display: flex;

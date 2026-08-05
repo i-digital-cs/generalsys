@@ -78,7 +78,7 @@ return [
         'currency' => 'العملة',
         'language_preference' => 'اللغة',
         'team_leader_id' => 'قائد الفريق',
-        'shift_type_default' => 'نوع الوردية الافتراضي',
+        'shift_type_default' => 'نوع الدوام الافتراضي',
         'work_start_time' => 'موعد الحضور',
         'work_end_time' => 'موعد الانصراف',
         'base_salary' => 'الراتب الأساسي',

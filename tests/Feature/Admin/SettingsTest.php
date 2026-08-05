@@ -4,6 +4,8 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\Payroll\PayrollCalculationInput;
+use App\Services\Payroll\PayrollCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -26,11 +28,56 @@ class SettingsTest extends TestCase
             ->put(route('admin.settings.update'), [
                 'default_language' => 'en',
                 'default_currency' => 'AED',
+                'multipliers' => [
+                    'friday_full_time' => 1,
+                    'friday_online' => 0.5,
+                    'day_off_full_time' => 2,
+                    'day_off_online' => 1.5,
+                    'overtime' => 1.5,
+                    'official_holiday_work' => 1,
+                    'extra_pay' => 1,
+                ],
             ])
             ->assertRedirect(route('admin.settings'));
 
         $this->assertDatabaseHas('settings', ['key' => 'default_language', 'value' => 'en']);
         $this->assertDatabaseHas('settings', ['key' => 'default_currency', 'value' => 'AED']);
+    }
+
+    public function test_manager_can_change_overtime_multiplier(): void
+    {
+        $manager = User::factory()->manager()->create();
+
+        $this->actingAs($manager)
+            ->put(route('admin.settings.update'), [
+                'default_language' => 'ar',
+                'default_currency' => 'EGP',
+                'multipliers' => [
+                    'friday_full_time' => 1,
+                    'friday_online' => 0.5,
+                    'day_off_full_time' => 2,
+                    'day_off_online' => 1.5,
+                    'overtime' => 1.0,
+                    'official_holiday_work' => 1,
+                    'extra_pay' => 1,
+                ],
+            ])
+            ->assertRedirect(route('admin.settings'));
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'payroll.multiplier.overtime',
+            'value' => '1.0000',
+        ]);
+
+        $result = app(PayrollCalculator::class)->calculate(
+            new PayrollCalculationInput(
+                baseSalary: 5000,
+                overtimeHours: 8,
+            )
+        );
+
+        // (5000/30/8) × 8 × 1.0 ≈ 166.67
+        $this->assertEqualsWithDelta(166.67, $result->overtimePay, 0.01);
     }
 
     public function test_settings_validation_rejects_unknown_values(): void
@@ -41,6 +88,15 @@ class SettingsTest extends TestCase
             ->put(route('admin.settings.update'), [
                 'default_language' => 'fr',
                 'default_currency' => 'USD',
+                'multipliers' => [
+                    'friday_full_time' => 1,
+                    'friday_online' => 0.5,
+                    'day_off_full_time' => 2,
+                    'day_off_online' => 1.5,
+                    'overtime' => 1.5,
+                    'official_holiday_work' => 1,
+                    'extra_pay' => 1,
+                ],
             ])
             ->assertSessionHasErrors(['default_language', 'default_currency']);
     }

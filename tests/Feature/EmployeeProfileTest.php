@@ -56,6 +56,25 @@ class EmployeeProfileTest extends TestCase
             ->assertSee('2026-08-08', false);
     }
 
+    public function test_profile_renders_gender_and_marital_status_values(): void
+    {
+        $employee = User::factory()->employee()->create();
+        $employee->profile()->create([
+            'employee_code' => 'EMP-G1',
+            'gender' => 'FEMALE',
+            'marital_status' => 'SINGLE',
+        ]);
+
+        // Regression: nested quotes in component attributes once leaked raw Blade.
+        $this->actingAs($employee)
+            ->get(route('employee.profile'))
+            ->assertOk()
+            ->assertSee(__('employees.genders.FEMALE'))
+            ->assertSee(__('employees.marital_statuses.SINGLE'))
+            ->assertDontSee('genders.')
+            ->assertDontSee(': null', false);
+    }
+
     public function test_employee_cannot_view_another_employees_profile(): void
     {
         $employeeA = User::factory()->employee()->create();

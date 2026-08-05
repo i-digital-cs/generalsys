@@ -49,6 +49,7 @@ class SalaryController extends Controller
 
         $scores = null;
         $evaluationText = null;
+        $evaluationSaved = false;
         $monthlyTotals = null;
         $yearAverage = null;
         $attendanceSummary = null;
@@ -61,6 +62,7 @@ class SalaryController extends Controller
             );
             $scores = $eval['scores'];
             $evaluationText = $eval['evaluation_text'];
+            $evaluationSaved = (bool) ($eval['is_saved'] ?? false);
             $monthlyTotals = $eval['monthly_totals'];
             $yearAverage = $eval['year_average'];
             $attendanceSummary = $this->aggregator->monthStatusSummary(
@@ -74,6 +76,7 @@ class SalaryController extends Controller
             'payroll' => $payroll,
             'scores' => $scores,
             'evaluationText' => $evaluationText,
+            'evaluationSaved' => $evaluationSaved,
             'monthlyTotals' => $monthlyTotals,
             'yearAverage' => $yearAverage,
             'attendanceSummary' => $attendanceSummary,

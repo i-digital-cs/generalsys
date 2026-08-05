@@ -36,4 +36,9 @@ class AttendanceException extends RuntimeException
     {
         return new self('clock.errors.plan_mismatch');
     }
+
+    public static function dailyReportRequired(): self
+    {
+        return new self('clock.errors.report_required');
+    }
 }

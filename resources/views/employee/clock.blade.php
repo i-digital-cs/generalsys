@@ -3,7 +3,41 @@
 @section('title', __('clock.title'))
 
 @section('content')
+    @php
+        $tz = config('app.timezone');
+        $startLabel = $expectedStart
+            ? $expectedStart->timezone($tz)->format('H:i')
+            : null;
+        $endLabel = $expectedEnd
+            ? $expectedEnd->timezone($tz)->format('H:i')
+            : null;
+    @endphp
+
     <h1 class="h4 mb-3">{{ __('clock.title') }}</h1>
+
+    @if ($missingReportDate)
+        <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span>
+                <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
+                {{ __('clock.report_missing', ['date' => $missingReportDate]) }}
+            </span>
+            <a href="{{ route('employee.report', ['date' => $missingReportDate]) }}" class="btn btn-sm btn-warning">
+                {{ __('clock.report_write') }}
+            </a>
+        </div>
+    @endif
+
+    @if ($todayAutoClockOut)
+        <div class="alert alert-secondary d-flex flex-wrap align-items-center gap-2">
+            <span class="badge text-bg-dark">{{ __('clock.flags.auto_clock_out') }}</span>
+            <span>
+                {{ __('clock.auto_closed_notice', [
+                    'time' => $todayAutoClockOut->clock_out?->timezone($tz)->format('H:i'),
+                    'shift' => __('clock.shifts.'.$todayAutoClockOut->shift_type),
+                ]) }}
+            </span>
+        </div>
+    @endif
 
     <div class="card border-0 shadow-sm employee-mobile-stack">
         <div class="card-body p-3 p-md-4">
@@ -12,11 +46,40 @@
                     <span class="badge text-bg-success fs-6 px-3 py-2">{{ __('clock.status_open') }}</span>
                 </div>
 
+                @if ($startLabel || $lateMinutes > 0)
+                    <div @class([
+                        'alert mb-4',
+                        'alert-warning' => $lateMinutes > 0,
+                        'alert-success' => $lateMinutes === 0,
+                    ])>
+                        @if ($startLabel)
+                            <div class="fw-semibold">{{ __('clock.should_start_at', ['time' => $startLabel]) }}</div>
+                        @endif
+                        @if ($lateMinutes > 0)
+                            <div class="mt-1">{{ __('clock.late_by', ['minutes' => $lateMinutes]) }}</div>
+                        @else
+                            <div class="mt-1">{{ __('clock.on_time') }}</div>
+                        @endif
+                    </div>
+                @endif
+
                 <dl class="row mb-4">
                     <dt class="col-sm-4">{{ __('clock.shift_type') }}</dt>
                     <dd class="col-sm-8">{{ __('clock.shifts.'.$open->shift_type) }}</dd>
                     <dt class="col-sm-4">{{ __('clock.clocked_at') }}</dt>
-                    <dd class="col-sm-8" dir="ltr">{{ $open->clock_in?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</dd>
+                    <dd class="col-sm-8" dir="ltr">{{ $open->clock_in?->timezone($tz)->format('Y-m-d H:i') }}</dd>
+                    @if ($startLabel)
+                        <dt class="col-sm-4">{{ __('clock.expected_start') }}</dt>
+                        <dd class="col-sm-8" dir="ltr">{{ $startLabel }}</dd>
+                    @endif
+                    <dt class="col-sm-4">{{ __('clock.late_minutes') }}</dt>
+                    <dd class="col-sm-8">
+                        @if ($lateMinutes > 0)
+                            <span class="badge text-bg-warning">{{ __('clock.late_by', ['minutes' => $lateMinutes]) }}</span>
+                        @else
+                            <span class="badge text-bg-success">{{ __('clock.on_time') }}</span>
+                        @endif
+                    </dd>
                     <dt class="col-sm-4">{{ __('clock.planned_hours') }}</dt>
                     <dd class="col-sm-8" dir="ltr">{{ $open->planned_hours }}</dd>
                     <dt class="col-sm-4">{{ __('clock.elapsed') }}</dt>
@@ -41,6 +104,24 @@
                 <div class="text-center mb-4">
                     <span class="badge text-bg-secondary fs-6 px-3 py-2">{{ __('clock.status_closed') }}</span>
                 </div>
+
+                @if ($startLabel || $endLabel)
+                    <div class="alert alert-info mb-4">
+                        @if ($startLabel)
+                            <div class="fw-semibold">{{ __('clock.should_start_at', ['time' => $startLabel]) }}</div>
+                        @endif
+                        @if ($endLabel)
+                            <div class="small mt-1">{{ __('clock.should_end_at', ['time' => $endLabel]) }}</div>
+                        @endif
+                        @if ($previewLateMinutes > 0)
+                            <div class="mt-2 text-warning-emphasis">
+                                {{ __('clock.preview_late', ['minutes' => $previewLateMinutes]) }}
+                            </div>
+                        @elseif ($startLabel)
+                            <div class="mt-2 small text-success">{{ __('clock.preview_on_time') }}</div>
+                        @endif
+                    </div>
+                @endif
 
                 <form method="POST" action="{{ route('employee.clock.in') }}" class="mb-3">
                     @csrf

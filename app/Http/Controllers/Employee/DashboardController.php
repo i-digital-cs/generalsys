@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
+use App\Services\Attendance\DailyReportService;
 use App\Services\Employee\EmployeeDashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ use Illuminate\View\View;
  */
 class DashboardController extends Controller
 {
-    public function __construct(private readonly EmployeeDashboardService $dashboard) {}
+    public function __construct(
+        private readonly EmployeeDashboardService $dashboard,
+        private readonly DailyReportService $reports,
+    ) {}
 
     public function __invoke(Request $request): View
     {
@@ -27,6 +31,7 @@ class DashboardController extends Controller
 
         return view('employee.dashboard', [
             'open' => $snapshot['open'],
+            'missingReportDate' => $this->reports->latestUnreportedClosedDay($request->user())?->date->toDateString(),
             'assignment' => $snapshot['assignment'],
             'preferredShift' => $snapshot['preferredShift'],
             'todaySessions' => $snapshot['todaySessions'],

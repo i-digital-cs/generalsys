@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') — {{ config('app.name') }}</title>
-    <link rel="stylesheet" href="{{ asset('fonts/fonts.css') }}">
+    @include('layouts.partials.fonts')
     @vite([$dir === 'rtl' ? 'resources/scss/app.rtl.scss' : 'resources/scss/app.scss'])
 </head>
 <body class="bg-body-tertiary d-flex align-items-center min-vh-100">

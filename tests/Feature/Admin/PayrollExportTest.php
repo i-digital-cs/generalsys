@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Jobs\ExportPayrollExcelJob;
+use App\Models\PayrollAdjustment;
 use App\Models\PayrollRecord;
 use App\Models\User;
 use App\Services\Payroll\PayrollExportService;
@@ -34,6 +35,73 @@ class PayrollExportTest extends TestCase
             ->get(route('admin.payroll.export.pdf', $payroll))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_arabic_payslip_pdf_html_uses_shaped_glyphs(): void
+    {
+        app()->setLocale('ar');
+
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create([
+            'name_ar' => 'رضوى أحمد',
+            'name_en' => 'Radwa',
+        ]);
+        $payroll = PayrollRecord::factory()->create([
+            'user_id' => $employee->id,
+            'created_by' => $manager->id,
+            'status' => PayrollRecord::STATUS_DRAFT,
+        ]);
+
+        $html = view('exports.payslip-pdf', ['payroll' => $payroll->load('user')])->render();
+
+        $this->assertStringNotContainsString('كشف الراتب', $html);
+        $this->assertMatchesRegularExpression('/[\x{FE70}-\x{FEFF}]/u', $html);
+        $this->assertStringNotContainsString('الراتب الأساسي', $html);
+        $this->assertStringContainsString("font-family: 'Tajawal'", $html);
+        $this->assertStringContainsString('text-align: right', $html);
+        $this->assertStringContainsString('sig-box', $html);
+        $this->assertStringContainsString('sig-blank', $html);
+        // RTL table: amount cell before label cell
+        $this->assertMatchesRegularExpression('/<td class="amount">[\s\d.,]+<\/td>\s*<th>/u', $html);
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.export.pdf', $payroll))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_payslip_pdf_lists_manual_deduction_lines(): void
+    {
+        app()->setLocale('ar');
+
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create();
+        $payroll = PayrollRecord::factory()->create([
+            'user_id' => $employee->id,
+            'created_by' => $manager->id,
+            'status' => PayrollRecord::STATUS_DRAFT,
+            'advance_deductions' => 3000,
+            'total_deductions' => 3000,
+        ]);
+
+        PayrollAdjustment::factory()->create([
+            'payroll_record_id' => $payroll->id,
+            'type' => PayrollAdjustment::TYPE_OTHER_DEDUCTION,
+            'amount' => 1000,
+            'created_by' => $manager->id,
+        ]);
+        PayrollAdjustment::factory()->create([
+            'payroll_record_id' => $payroll->id,
+            'type' => PayrollAdjustment::TYPE_ADVANCE,
+            'amount' => 2000,
+            'created_by' => $manager->id,
+        ]);
+
+        $html = view('exports.payslip-pdf', ['payroll' => $payroll->load(['user', 'adjustments'])])->render();
+
+        $this->assertStringContainsString('1,000.00', $html);
+        $this->assertStringContainsString('2,000.00', $html);
+        $this->assertMatchesRegularExpression('/[\x{FE70}-\x{FEFF}]/u', $html);
     }
 
     public function test_employee_can_download_own_approved_pdf(): void
