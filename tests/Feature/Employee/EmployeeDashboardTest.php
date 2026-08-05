@@ -49,7 +49,10 @@ class EmployeeDashboardTest extends TestCase
             ->get(route('employee.dashboard'))
             ->assertOk()
             ->assertSee(__('dashboard.employee.clocked_in'), false)
-            ->assertSee(__('dashboard.employee.go_clock_out'), false);
+            ->assertSee(__('dashboard.employee.go_clock_out'), false)
+            ->assertSee('data-table-filter-root', false)
+            ->assertSee('table-hr', false)
+            ->assertSee('data-table-search', false);
     }
 
     public function test_dashboard_reflects_tl_assignment(): void

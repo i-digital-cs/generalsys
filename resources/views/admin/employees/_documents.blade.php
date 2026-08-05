@@ -5,43 +5,101 @@
         @if ($employee->documents->isEmpty())
             <p class="text-body-secondary">{{ __('documents.no_documents') }}</p>
         @else
-            <div class="table-responsive mb-3">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th scope="col">{{ __('documents.type') }}</th>
-                            <th scope="col">{{ __('documents.uploaded_at') }}</th>
-                            <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($employee->documents as $document)
+            @php
+                $showDocumentsToolbar = $employee->documents->count() > 1;
+            @endphp
+            @if ($showDocumentsToolbar)
+                <div data-table-filter-root class="mb-3">
+                    <x-table-toolbar
+                        id="employee-documents"
+                        :search-placeholder="__('documents.type')"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                            <thead>
+                                <tr>
+                                    <th scope="col">{{ __('documents.type') }}</th>
+                                    <th scope="col">{{ __('documents.uploaded_at') }}</th>
+                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($employee->documents as $document)
+                                    <tr data-filter-text="{{ __("documents.types.{$document->type}") }}">
+                                        <td>{{ __("documents.types.{$document->type}") }}</td>
+                                        <td>
+                                            <span class="num-ltr">{{ $document->uploaded_at?->translatedFormat('Y-m-d H:i') }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="d-inline-flex gap-1">
+                                                <a href="{{ route('documents.download', $document) }}"
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-download me-1" aria-hidden="true"></i>{{ __('documents.download') }}
+                                                </a>
+                                                <form method="POST"
+                                                      action="{{ route('admin.employees.documents.destroy', [$employee, $document]) }}"
+                                                      onsubmit="return confirm(@js(__('documents.confirm_delete')))">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                            aria-label="{{ __('documents.delete') }}">
+                                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="3" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @else
+                <div class="table-responsive mb-3">
+                    <table class="table table-hr table-sm align-middle mb-0">
+                        <thead>
                             <tr>
-                                <td>{{ __("documents.types.{$document->type}") }}</td>
-                                <td>{{ $document->uploaded_at?->translatedFormat('Y-m-d H:i') }}</td>
-                                <td class="text-end">
-                                    <div class="d-inline-flex gap-1">
-                                        <a href="{{ route('documents.download', $document) }}"
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-download me-1" aria-hidden="true"></i>{{ __('documents.download') }}
-                                        </a>
-                                        <form method="POST"
-                                              action="{{ route('admin.employees.documents.destroy', [$employee, $document]) }}"
-                                              onsubmit="return confirm(@js(__('documents.confirm_delete')))">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                    aria-label="{{ __('documents.delete') }}">
-                                                <i class="bi bi-trash" aria-hidden="true"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
+                                <th scope="col">{{ __('documents.type') }}</th>
+                                <th scope="col">{{ __('documents.uploaded_at') }}</th>
+                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            @foreach ($employee->documents as $document)
+                                <tr>
+                                    <td>{{ __("documents.types.{$document->type}") }}</td>
+                                    <td>
+                                        <span class="num-ltr">{{ $document->uploaded_at?->translatedFormat('Y-m-d H:i') }}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="d-inline-flex gap-1">
+                                            <a href="{{ route('documents.download', $document) }}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-download me-1" aria-hidden="true"></i>{{ __('documents.download') }}
+                                            </a>
+                                            <form method="POST"
+                                                  action="{{ route('admin.employees.documents.destroy', [$employee, $document]) }}"
+                                                  onsubmit="return confirm(@js(__('documents.confirm_delete')))">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        aria-label="{{ __('documents.delete') }}">
+                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         @endif
 
         <form method="POST" action="{{ route('admin.employees.documents.store', $employee) }}"

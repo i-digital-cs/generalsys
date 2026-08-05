@@ -90,12 +90,12 @@
                 <p class="text-body-secondary mb-0">{{ __('profile.no_qualifications') }}</p>
             @else
                 <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
+                    <table class="table table-hr table-sm align-middle mb-0">
                         <thead>
                             <tr>
                                 <th scope="col">{{ __('employees.fields.degree') }}</th>
                                 <th scope="col">{{ __('employees.fields.specialization') }}</th>
-                                <th scope="col">{{ __('employees.fields.graduation_year') }}</th>
+                                <th scope="col" class="col-num">{{ __('employees.fields.graduation_year') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -103,7 +103,9 @@
                                 <tr>
                                     <td>{{ $qualification->degree }}</td>
                                     <td>{{ $qualification->specialization ?? __('general.not_available') }}</td>
-                                    <td>{{ $qualification->graduation_year ?? __('general.not_available') }}</td>
+                                    <td class="col-num">
+                                        <span class="num-ltr">{{ $qualification->graduation_year ?? __('general.not_available') }}</span>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -121,11 +123,11 @@
                 <p class="text-body-secondary mb-0">{{ __('profile.no_contacts') }}</p>
             @else
                 <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
+                    <table class="table table-hr table-sm align-middle mb-0">
                         <thead>
                             <tr>
                                 <th scope="col">{{ __('employees.fields.contact_name') }}</th>
-                                <th scope="col">{{ __('employees.fields.contact_phone') }}</th>
+                                <th scope="col" class="col-num">{{ __('employees.fields.contact_phone') }}</th>
                                 <th scope="col">{{ __('employees.fields.relationship') }}</th>
                             </tr>
                         </thead>
@@ -133,7 +135,7 @@
                             @foreach ($employee->emergencyContacts as $contact)
                                 <tr>
                                     <td>{{ $contact->name }}</td>
-                                    <td dir="ltr">{{ $contact->phone }}</td>
+                                    <td class="col-num"><span class="num-ltr">{{ $contact->phone }}</span></td>
                                     <td>{{ $contact->relationship ?? __('general.not_available') }}</td>
                                 </tr>
                             @endforeach
@@ -170,30 +172,43 @@
             @if ($employee->documents->isEmpty())
                 <p class="text-body-secondary mb-0">{{ __('documents.no_documents') }}</p>
             @else
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col">{{ __('documents.type') }}</th>
-                                <th scope="col">{{ __('documents.uploaded_at') }}</th>
-                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($employee->documents as $document)
+                <div data-table-filter-root>
+                    <x-table-toolbar
+                        id="profile-documents"
+                        :search-placeholder="__('general.search_placeholder')"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm align-middle mb-0" data-table-filterable>
+                            <thead>
                                 <tr>
-                                    <td>{{ __("documents.types.{$document->type}") }}</td>
-                                    <td>{{ $document->uploaded_at?->translatedFormat('Y-m-d H:i') }}</td>
-                                    <td class="text-end">
-                                        <a href="{{ route('documents.download', $document) }}"
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-download me-1" aria-hidden="true"></i>{{ __('documents.download') }}
-                                        </a>
+                                    <th scope="col">{{ __('documents.type') }}</th>
+                                    <th scope="col" class="col-num">{{ __('documents.uploaded_at') }}</th>
+                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($employee->documents as $document)
+                                    <tr data-filter-text="{{ __("documents.types.{$document->type}") }} {{ $document->uploaded_at?->translatedFormat('Y-m-d H:i') }}">
+                                        <td>{{ __("documents.types.{$document->type}") }}</td>
+                                        <td class="col-num">
+                                            <span class="num-ltr">{{ $document->uploaded_at?->translatedFormat('Y-m-d H:i') }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="{{ route('documents.download', $document) }}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-download me-1" aria-hidden="true"></i>{{ __('documents.download') }}
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="3" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
                                     </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             @endif
         </div>

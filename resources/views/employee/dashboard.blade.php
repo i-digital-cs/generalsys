@@ -109,26 +109,55 @@
                             icon="bi-clock-history"
                         />
                     @else
-                        <ul class="list-group list-group-flush">
-                            @foreach ($todaySessions as $session)
-                                <li class="list-group-item px-0 d-flex justify-content-between align-items-start gap-2">
-                                    <div>
-                                        <div class="fw-semibold">{{ __('clock.shifts.'.$session->shift_type) }}</div>
-                                        <div class="small text-body-secondary" dir="ltr">
-                                            {{ $session->clock_in?->format('H:i') ?? '—' }}
-                                            →
-                                            {{ $session->clock_out?->format('H:i') ?? __('dashboard.employee.open_session') }}
-                                        </div>
-                                        <x-attendance-flags :attendance="$session" class="mt-1" />
-                                    </div>
-                                    <span class="badge text-bg-{{ $session->clock_out ? 'secondary' : 'success' }}">
-                                        {{ $session->clock_out
-                                            ? number_format((float) $session->actual_hours, 2).'h'
-                                            : __('dashboard.employee.open_session') }}
-                                    </span>
-                                </li>
-                            @endforeach
-                        </ul>
+                        <div data-table-filter-root>
+                            <x-table-toolbar
+                                id="today-sessions"
+                                :search-placeholder="__('general.search_placeholder')"
+                            />
+                            <div class="table-responsive">
+                                <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">{{ __('shifts.shift_type') }}</th>
+                                            <th scope="col" class="col-num">{{ __('dashboard.hours.spent') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($todaySessions as $session)
+                                            @php
+                                                $shiftLabel = __('clock.shifts.'.$session->shift_type);
+                                                $hoursLabel = $session->clock_out
+                                                    ? number_format((float) $session->actual_hours, 2).'h'
+                                                    : __('dashboard.employee.open_session');
+                                            @endphp
+                                            <tr data-filter-text="{{ $shiftLabel }} {{ $session->shift_type }}">
+                                                <td>
+                                                    <div class="fw-semibold">{{ $shiftLabel }}</div>
+                                                    <div class="small text-body-secondary">
+                                                        <span class="num-ltr">
+                                                            {{ $session->clock_in?->format('H:i') ?? '—' }}
+                                                            →
+                                                            {{ $session->clock_out?->format('H:i') ?? __('dashboard.employee.open_session') }}
+                                                        </span>
+                                                    </div>
+                                                    <x-attendance-flags :attendance="$session" class="mt-1" />
+                                                </td>
+                                                <td class="col-num">
+                                                    <span class="badge text-bg-{{ $session->clock_out ? 'secondary' : 'success' }}">
+                                                        <span class="num-ltr">{{ $hoursLabel }}</span>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                        <tr data-table-empty-row class="d-none">
+                                            <td colspan="2" class="text-body-secondary text-center py-3">
+                                                {{ __('general.no_filter_results') }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     @endif
                 </div>
             </div>

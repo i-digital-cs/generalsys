@@ -14,34 +14,38 @@
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-sm table-bordered align-middle mb-0 text-center">
+                <table class="table table-hr table-sm table-bordered align-middle mb-0">
                     <thead>
                         <tr>
                             <th scope="col">{{ __('payroll.evaluation.month_col') }}</th>
                             @for ($m = 1; $m <= 12; $m++)
-                                <th scope="col">{{ \Carbon\Carbon::create(null, $m, 1)->translatedFormat('M') }}</th>
+                                <th scope="col" class="col-num">{{ \Carbon\Carbon::create(null, $m, 1)->translatedFormat('M') }}</th>
                             @endfor
-                            <th scope="col">{{ __('payroll.evaluation.year_total') }}</th>
+                            <th scope="col" class="col-num">{{ __('payroll.evaluation.year_total') }}</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <th scope="row" class="text-start">{{ __('payroll.evaluation.monthly_total') }}</th>
+                            <th scope="row">{{ __('payroll.evaluation.monthly_total') }}</th>
                             @for ($m = 1; $m <= 12; $m++)
-                                <td dir="ltr">
-                                    @if (($monthlyTotals[$m] ?? null) !== null)
-                                        {{ number_format((float) $monthlyTotals[$m], 2) }}%
+                                <td class="col-num">
+                                    <span class="num-ltr">
+                                        @if (($monthlyTotals[$m] ?? null) !== null)
+                                            {{ number_format((float) $monthlyTotals[$m], 2) }}%
+                                        @else
+                                            —
+                                        @endif
+                                    </span>
+                                </td>
+                            @endfor
+                            <td class="col-num fw-semibold">
+                                <span class="num-ltr">
+                                    @if ($yearAverage !== null)
+                                        {{ number_format((float) $yearAverage, 2) }}%
                                     @else
                                         —
                                     @endif
-                                </td>
-                            @endfor
-                            <td class="fw-semibold" dir="ltr">
-                                @if ($yearAverage !== null)
-                                    {{ number_format((float) $yearAverage, 2) }}%
-                                @else
-                                    —
-                                @endif
+                                </span>
                             </td>
                         </tr>
                     </tbody>

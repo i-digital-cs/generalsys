@@ -83,8 +83,8 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="text-body-secondary small">{{ __('payroll.fields.base_salary') }}</div>
-                    <div class="fs-5" dir="ltr">
-                        <x-money :amount="$payroll->base_salary" :currency="$payroll->currency" />
+                    <div class="fs-5">
+                        <span class="num-ltr"><x-money :amount="$payroll->base_salary" :currency="$payroll->currency" /></span>
                     </div>
                 </div>
             </div>
@@ -93,8 +93,8 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="text-body-secondary small">{{ __('payroll.fields.gross') }}</div>
-                    <div class="fs-5" dir="ltr">
-                        <x-money :amount="$payroll->gross_pay" :currency="$payroll->currency" />
+                    <div class="fs-5">
+                        <span class="num-ltr"><x-money :amount="$payroll->gross_pay" :currency="$payroll->currency" /></span>
                     </div>
                 </div>
             </div>
@@ -103,8 +103,8 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="text-body-secondary small">{{ __('payroll.fields.net') }}</div>
-                    <div class="fs-5 fw-semibold" dir="ltr">
-                        <x-money :amount="$payroll->net_pay" :currency="$payroll->currency" />
+                    <div class="fs-5 fw-semibold">
+                        <span class="num-ltr"><x-money :amount="$payroll->net_pay" :currency="$payroll->currency" /></span>
                     </div>
                 </div>
             </div>
@@ -142,13 +142,13 @@
                 <div class="card-header bg-transparent fw-semibold">{{ __('payroll.earnings') }}</div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table mb-0 align-middle">
+                        <table class="table table-hr table-sm mb-0 align-middle">
                             <tbody>
                                 @foreach ($earnings as $key)
                                     <tr>
                                         <th scope="row" class="ps-3">{{ __('payroll.fields.'.$key) }}</th>
-                                        <td class="text-end pe-3" dir="ltr">
-                                            <x-money :amount="$payroll->{$key}" :currency="$payroll->currency" />
+                                        <td class="col-num pe-3">
+                                            <span class="num-ltr"><x-money :amount="$payroll->{$key}" :currency="$payroll->currency" /></span>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -162,20 +162,20 @@
                 <div class="card-header bg-transparent fw-semibold">{{ __('payroll.deductions_section') }}</div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table mb-0 align-middle">
+                        <table class="table table-hr table-sm mb-0 align-middle">
                             <tbody>
                                 @foreach ($deductions as $key)
                                     <tr>
                                         <th scope="row" class="ps-3">{{ __('payroll.fields.'.$key) }}</th>
-                                        <td class="text-end pe-3" dir="ltr">
-                                            <x-money :amount="$payroll->{$key}" :currency="$payroll->currency" />
+                                        <td class="col-num pe-3">
+                                            <span class="num-ltr"><x-money :amount="$payroll->{$key}" :currency="$payroll->currency" /></span>
                                         </td>
                                     </tr>
                                 @endforeach
                                 <tr class="fw-semibold">
                                     <th scope="row" class="ps-3">{{ __('payroll.fields.deductions') }}</th>
-                                    <td class="text-end pe-3" dir="ltr">
-                                        <x-money :amount="$payroll->total_deductions" :currency="$payroll->currency" />
+                                    <td class="col-num pe-3">
+                                        <span class="num-ltr"><x-money :amount="$payroll->total_deductions" :currency="$payroll->currency" /></span>
                                     </td>
                                 </tr>
                             </tbody>
@@ -217,12 +217,14 @@
                         </form>
                     @else
                         <div class="table-responsive">
-                            <table class="table mb-0 align-middle">
+                            <table class="table table-hr table-sm mb-0 align-middle">
                                 <tbody>
                                     @foreach ($countFields as $field)
                                         <tr>
                                             <th scope="row">{{ __('payroll.fields.'.$field) }}</th>
-                                            <td class="text-end" dir="ltr">{{ $payroll->{$field} }}</td>
+                                            <td class="col-num">
+                                                <span class="num-ltr">{{ $payroll->{$field} }}</span>
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -238,44 +240,100 @@
                     @if ($payroll->adjustments->isEmpty())
                         <p class="text-body-secondary small mb-3">{{ __('payroll.empty_adjustments') }}</p>
                     @else
-                        <div class="table-responsive mb-3">
-                            <table class="table table-sm align-middle">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">{{ __('payroll.fields.type') }}</th>
-                                        <th scope="col">{{ __('payroll.fields.amount') }}</th>
-                                        <th scope="col">{{ __('payroll.fields.note') }}</th>
-                                        @if ($editable)
-                                            <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                                        @endif
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($payroll->adjustments as $adj)
-                                        <tr>
-                                            <td>{{ __('payroll.adjustment_types.'.$adj->type) }}</td>
-                                            <td dir="ltr">
-                                                <x-money :amount="$adj->amount" :currency="$payroll->currency" />
-                                            </td>
-                                            <td>{{ $adj->note ?: __('general.not_available') }}</td>
-                                            @if ($editable)
-                                                <td class="text-end">
-                                                    <form method="POST"
-                                                          action="{{ route('admin.payroll.adjustments.destroy', [$payroll, $adj]) }}"
-                                                          class="d-inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                            {{ __('payroll.remove_adjustment') }}
-                                                        </button>
-                                                    </form>
+                        @php
+                            $adjustmentColspan = $editable ? 4 : 3;
+                            $showAdjustmentToolbar = $payroll->adjustments->count() > 1;
+                        @endphp
+                        @if ($showAdjustmentToolbar)
+                            <div data-table-filter-root class="mb-3">
+                                <x-table-toolbar
+                                    id="payroll-adjustments"
+                                    :search-placeholder="__('payroll.fields.type')"
+                                />
+                                <div class="table-responsive">
+                                    <table class="table table-hr table-sm align-middle mb-0" data-table-filterable>
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">{{ __('payroll.fields.type') }}</th>
+                                                <th scope="col" class="col-num">{{ __('payroll.fields.amount') }}</th>
+                                                <th scope="col">{{ __('payroll.fields.note') }}</th>
+                                                @if ($editable)
+                                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                                @endif
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($payroll->adjustments as $adj)
+                                                <tr data-filter-text="{{ __('payroll.adjustment_types.'.$adj->type) }} {{ $adj->note }}">
+                                                    <td>{{ __('payroll.adjustment_types.'.$adj->type) }}</td>
+                                                    <td class="col-num">
+                                                        <span class="num-ltr"><x-money :amount="$adj->amount" :currency="$payroll->currency" /></span>
+                                                    </td>
+                                                    <td>{{ $adj->note ?: __('general.not_available') }}</td>
+                                                    @if ($editable)
+                                                        <td class="text-end">
+                                                            <form method="POST"
+                                                                  action="{{ route('admin.payroll.adjustments.destroy', [$payroll, $adj]) }}"
+                                                                  class="d-inline">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                                    {{ __('payroll.remove_adjustment') }}
+                                                                </button>
+                                                            </form>
+                                                        </td>
+                                                    @endif
+                                                </tr>
+                                            @endforeach
+                                            <tr data-table-empty-row class="d-none">
+                                                <td colspan="{{ $adjustmentColspan }}" class="text-body-secondary text-center py-3">
+                                                    {{ __('general.no_filter_results') }}
                                                 </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        @else
+                            <div class="table-responsive mb-3">
+                                <table class="table table-hr table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">{{ __('payroll.fields.type') }}</th>
+                                            <th scope="col" class="col-num">{{ __('payroll.fields.amount') }}</th>
+                                            <th scope="col">{{ __('payroll.fields.note') }}</th>
+                                            @if ($editable)
+                                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
                                             @endif
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($payroll->adjustments as $adj)
+                                            <tr>
+                                                <td>{{ __('payroll.adjustment_types.'.$adj->type) }}</td>
+                                                <td class="col-num">
+                                                    <span class="num-ltr"><x-money :amount="$adj->amount" :currency="$payroll->currency" /></span>
+                                                </td>
+                                                <td>{{ $adj->note ?: __('general.not_available') }}</td>
+                                                @if ($editable)
+                                                    <td class="text-end">
+                                                        <form method="POST"
+                                                              action="{{ route('admin.payroll.adjustments.destroy', [$payroll, $adj]) }}"
+                                                              class="d-inline">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                                {{ __('payroll.remove_adjustment') }}
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                @endif
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
                     @endif
 
                     @if ($editable)

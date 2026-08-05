@@ -39,26 +39,53 @@
                     <h2 class="h6 mb-0">{{ __('dashboard.expiring_contracts') }}</h2>
                 </div>
                 <div class="card-body pt-2">
-                    @forelse ($expiringContracts as $contract)
-                        @php
-                            $daysLeft = (int) now()->startOfDay()->diffInDays($contract->contract_end);
-                        @endphp
-                        <div class="contract-row">
-                            <div>
-                                <div class="fw-semibold">
-                                    {{ app()->getLocale() === 'ar' ? $contract->user->name_ar : $contract->user->name_en }}
-                                </div>
-                                <div class="text-body-secondary small">
-                                    {{ __('dashboard.ends_on', ['date' => $contract->contract_end->translatedFormat('d F Y')]) }}
-                                </div>
-                            </div>
-                            <span class="badge text-bg-{{ $daysLeft <= 14 ? 'danger' : 'warning' }}">
-                                {{ trans_choice('dashboard.days_left', $daysLeft) }}
-                            </span>
-                        </div>
-                    @empty
+                    @if ($expiringContracts->isEmpty())
                         <x-empty-state :title="__('dashboard.no_expiring_contracts')" icon="bi-calendar-check" />
-                    @endforelse
+                    @else
+                        <div data-table-filter-root>
+                            <x-table-toolbar
+                                id="expiring-contracts"
+                                :search-placeholder="__('dashboard.contracts_table.search')"
+                            />
+                            <div class="table-responsive">
+                                <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">{{ __('dashboard.contracts_table.employee') }}</th>
+                                            <th scope="col">{{ __('dashboard.contracts_table.ends') }}</th>
+                                            <th scope="col" class="col-num">{{ __('dashboard.contracts_table.days_left') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($expiringContracts as $contract)
+                                            @php
+                                                $daysLeft = (int) now()->startOfDay()->diffInDays($contract->contract_end);
+                                                $name = app()->getLocale() === 'ar'
+                                                    ? $contract->user->name_ar
+                                                    : $contract->user->name_en;
+                                            @endphp
+                                            <tr data-filter-text="{{ $name }} {{ $contract->user->name_ar }} {{ $contract->user->name_en }}">
+                                                <td class="fw-semibold">{{ $name }}</td>
+                                                <td>
+                                                    <span class="num-ltr">{{ $contract->contract_end->translatedFormat('d F Y') }}</span>
+                                                </td>
+                                                <td class="col-num">
+                                                    <span class="badge text-bg-{{ $daysLeft <= 14 ? 'danger' : 'warning' }}">
+                                                        {{ trans_choice('dashboard.days_left', $daysLeft) }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                        <tr data-table-empty-row class="d-none">
+                                            <td colspan="3" class="text-body-secondary text-center py-3">
+                                                {{ __('general.no_filter_results') }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -129,34 +156,64 @@
                             icon="bi-calendar3"
                         />
                     @else
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">{{ __('shifts.employee') }}</th>
-                                        <th scope="col">{{ __('shifts.shift_type') }}</th>
-                                        <th scope="col">{{ __('shifts.start_time') }}</th>
-                                        <th scope="col">{{ __('shifts.end_time') }}</th>
-                                        <th scope="col" class="text-end">{{ __('shifts.expected_hours') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($leaderShiftsToday as $shift)
-                                        @php
-                                            $name = app()->getLocale() === 'ar'
-                                                ? $shift->user->name_ar
-                                                : $shift->user->name_en;
-                                        @endphp
+                        @php
+                            $leaderShiftTypeFilters = $leaderShiftsToday
+                                ->pluck('shift_type')
+                                ->unique()
+                                ->mapWithKeys(fn ($type) => [$type => __('clock.shifts.'.$type)])
+                                ->all();
+                        @endphp
+                        <div data-table-filter-root>
+                            <x-table-toolbar
+                                id="leader-shifts"
+                                :search-placeholder="__('dashboard.leader_shifts.search_name')"
+                                :filters="[[
+                                    'name' => 'type',
+                                    'label' => __('shifts.shift_type'),
+                                    'options' => $leaderShiftTypeFilters,
+                                ]]"
+                            />
+                            <div class="table-responsive">
+                                <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                                    <thead>
                                         <tr>
-                                            <td class="fw-semibold">{{ $name }}</td>
-                                            <td>{{ __('clock.shifts.'.$shift->shift_type) }}</td>
-                                            <td dir="ltr">{{ \Illuminate\Support\Str::of($shift->expected_start_time)->substr(0, 5) }}</td>
-                                            <td dir="ltr">{{ \Illuminate\Support\Str::of($shift->expected_end_time)->substr(0, 5) }}</td>
-                                            <td class="text-end" dir="ltr">{{ number_format((float) $shift->expected_hours, 2) }}h</td>
+                                            <th scope="col">{{ __('shifts.employee') }}</th>
+                                            <th scope="col">{{ __('shifts.shift_type') }}</th>
+                                            <th scope="col" class="col-num">{{ __('shifts.start_time') }}</th>
+                                            <th scope="col" class="col-num">{{ __('shifts.end_time') }}</th>
+                                            <th scope="col" class="col-num">{{ __('shifts.expected_hours') }}</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($leaderShiftsToday as $shift)
+                                            @php
+                                                $name = app()->getLocale() === 'ar'
+                                                    ? $shift->user->name_ar
+                                                    : $shift->user->name_en;
+                                            @endphp
+                                            <tr data-filter-text="{{ $name }} {{ $shift->user->name_ar }} {{ $shift->user->name_en }}"
+                                                data-filter-type="{{ $shift->shift_type }}">
+                                                <td class="fw-semibold">{{ $name }}</td>
+                                                <td>{{ __('clock.shifts.'.$shift->shift_type) }}</td>
+                                                <td class="col-num">
+                                                    <span class="num-ltr">{{ \Illuminate\Support\Str::of($shift->expected_start_time)->substr(0, 5) }}</span>
+                                                </td>
+                                                <td class="col-num">
+                                                    <span class="num-ltr">{{ \Illuminate\Support\Str::of($shift->expected_end_time)->substr(0, 5) }}</span>
+                                                </td>
+                                                <td class="col-num">
+                                                    <span class="num-ltr">{{ number_format((float) $shift->expected_hours, 2) }}h</span>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                        <tr data-table-empty-row class="d-none">
+                                            <td colspan="5" class="text-body-secondary text-center py-3">
+                                                {{ __('general.no_filter_results') }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     @endif
                 </div>
@@ -183,48 +240,7 @@
                                 icon="bi-people"
                             />
                         @else
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">{{ __('shifts.employee') }}</th>
-                                            <th scope="col">{{ __('dashboard.hours.status') }}</th>
-                                            <th scope="col">{{ __('dashboard.hours.should_spend') }}</th>
-                                            <th scope="col">{{ __('dashboard.hours.spent') }}</th>
-                                            <th scope="col" class="text-end">{{ __('dashboard.hours.pct') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($todayStatus as $row)
-                                            @php
-                                                $name = app()->getLocale() === 'ar' ? $row['user']->name_ar : $row['user']->name_en;
-                                            @endphp
-                                            <tr>
-                                                <td class="fw-semibold">
-                                                    <a href="{{ route($dashboardRoute, ['cal' => $calCursor, 'user_id' => $row['user']->id]) }}">
-                                                        {{ $name }}
-                                                    </a>
-                                                </td>
-                                                <td>
-                                                    <span @class([
-                                                        'badge',
-                                                        'text-bg-success' => $row['status'] === 'IN',
-                                                        'text-bg-secondary' => $row['status'] === 'OUT',
-                                                        'text-bg-light' => $row['status'] === 'NONE',
-                                                    ])>
-                                                        {{ __('dashboard.hours.statuses.'.$row['status']) }}
-                                                    </span>
-                                                </td>
-                                                <td dir="ltr">{{ number_format($row['planned'], 2) }}h</td>
-                                                <td dir="ltr">{{ number_format($row['actual'], 2) }}h</td>
-                                                <td class="text-end" dir="ltr">
-                                                    {{ $row['pct'] === null ? '—' : number_format($row['pct'], 1).'%' }}
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                            @include('partials.dashboard.today-board-table')
                         @endif
                     </div>
                 </div>
@@ -239,37 +255,7 @@
                         <p class="small text-body-secondary mb-3">
                             {{ __('dashboard.hours.team_month_hint', ['month' => $calendar['label'] ?? '']) }}
                         </p>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">{{ __('shifts.employee') }}</th>
-                                        <th scope="col">{{ __('dashboard.hours.month_planned') }}</th>
-                                        <th scope="col">{{ __('dashboard.hours.month_actual') }}</th>
-                                        <th scope="col" class="text-end">{{ __('dashboard.hours.pct') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($teamSummary as $row)
-                                        @php
-                                            $name = app()->getLocale() === 'ar' ? $row['user']->name_ar : $row['user']->name_en;
-                                            $active = $focusUser && (int) $focusUser->id === (int) $row['user']->id;
-                                        @endphp
-                                        <tr @class(['table-active' => $active])>
-                                            <td>
-                                                <a href="{{ route($dashboardRoute, ['cal' => $calCursor, 'user_id' => $row['user']->id]) }}"
-                                                   class="fw-semibold">{{ $name }}</a>
-                                            </td>
-                                            <td dir="ltr">{{ number_format($row['planned'], 2) }}h</td>
-                                            <td dir="ltr">{{ number_format($row['actual'], 2) }}h</td>
-                                            <td class="text-end" dir="ltr">
-                                                {{ $row['pct'] === null ? '—' : number_format($row['pct'], 1).'%' }}
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                        @include('partials.dashboard.team-month-table')
                     </div>
                 </div>
             </div>

@@ -12,47 +12,47 @@
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
+                <table class="table table-hr table-sm align-middle mb-0">
                     <tbody>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('payroll.fields.full_time_days') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ (int) $payroll->full_time_days }}</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ (int) $payroll->full_time_days }}</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('payroll.fields.online_half_days') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ (int) $payroll->online_half_days }}</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ (int) $payroll->online_half_days }}</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('payroll.fields.online_full_days') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ (int) $payroll->online_full_days }}</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ (int) $payroll->online_full_days }}</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('payroll.fields.rest_days') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ (int) $payroll->rest_days }}</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ (int) $payroll->rest_days }}</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('payroll.attendance_summary.vacation_days') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ (int) ($attendanceSummary['vacation_days'] ?? 0) }}</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ (int) ($attendanceSummary['vacation_days'] ?? 0) }}</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('payroll.attendance_summary.official_holidays') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ (int) ($attendanceSummary['official_holiday_days'] ?? 0) }}</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ (int) ($attendanceSummary['official_holiday_days'] ?? 0) }}</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('payroll.attendance_summary.excused_absence') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ (int) ($attendanceSummary['excused_absence_days'] ?? 0) }}</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ (int) ($attendanceSummary['excused_absence_days'] ?? 0) }}</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('payroll.attendance_summary.unexcused_absence') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ (int) ($attendanceSummary['unexcused_absence_days'] ?? 0) }}</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ (int) ($attendanceSummary['unexcused_absence_days'] ?? 0) }}</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('payroll.fields.late_minutes_total') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ (int) $payroll->late_minutes_total }}</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ (int) $payroll->late_minutes_total }}</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('payroll.fields.hours_deduction') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ number_format((float) $payroll->hours_deduction, 2) }}</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ number_format((float) $payroll->hours_deduction, 2) }}</span></td>
                         </tr>
                     </tbody>
                 </table>

@@ -39,40 +39,66 @@
             @if ($employees->isEmpty())
                 <x-empty-state :title="__('employees.empty_title')" :text="__('employees.empty_text')" icon="bi-people" />
             @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col">{{ __('employees.code') }}</th>
-                                <th scope="col">{{ __('employees.name') }}</th>
-                                <th scope="col">{{ __('employees.email') }}</th>
-                                <th scope="col">{{ __('employees.role') }}</th>
-                                <th scope="col">{{ __('employees.status') }}</th>
-                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($employees as $employee)
+                <div data-table-filter-root>
+                    <x-table-toolbar
+                        id="employees-list"
+                        :search-placeholder="__('employees.search_placeholder')"
+                        :filters="[[
+                            'name' => 'status',
+                            'label' => __('employees.status'),
+                            'options' => [
+                                'ACTIVE' => __('employees.statuses.ACTIVE'),
+                                'INACTIVE' => __('employees.statuses.INACTIVE'),
+                            ],
+                        ]]"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                            <thead>
                                 <tr>
-                                    <td>{{ $employee->profile?->employee_code ?? __('general.not_available') }}</td>
-                                    <td>{{ app()->getLocale() === 'ar' ? $employee->name_ar : $employee->name_en }}</td>
-                                    <td dir="ltr">{{ $employee->email }}</td>
-                                    <td>{{ __("employees.roles.{$employee->role}") }}</td>
-                                    <td>
-                                        <span class="badge text-bg-{{ $employee->isActive() ? 'success' : 'secondary' }}">
-                                            {{ __("employees.statuses.{$employee->status}") }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
-                                        <a href="{{ route('admin.employees.edit', $employee) }}"
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-pencil me-1" aria-hidden="true"></i>{{ __('general.edit') }}
-                                        </a>
+                                    <th scope="col">{{ __('employees.code') }}</th>
+                                    <th scope="col">{{ __('employees.name') }}</th>
+                                    <th scope="col">{{ __('employees.email') }}</th>
+                                    <th scope="col">{{ __('employees.role') }}</th>
+                                    <th scope="col">{{ __('employees.status') }}</th>
+                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($employees as $employee)
+                                    @php
+                                        $displayName = app()->getLocale() === 'ar' ? $employee->name_ar : $employee->name_en;
+                                        $code = $employee->profile?->employee_code ?? '';
+                                    @endphp
+                                    <tr
+                                        data-filter-text="{{ $code }} {{ $displayName }} {{ $employee->name_ar }} {{ $employee->name_en }} {{ $employee->email }}"
+                                        data-filter-status="{{ $employee->status }}"
+                                    >
+                                        <td>{{ $employee->profile?->employee_code ?? __('general.not_available') }}</td>
+                                        <td>{{ $displayName }}</td>
+                                        <td><span class="num-ltr">{{ $employee->email }}</span></td>
+                                        <td>{{ __("employees.roles.{$employee->role}") }}</td>
+                                        <td>
+                                            <span class="badge text-bg-{{ $employee->isActive() ? 'success' : 'secondary' }}">
+                                                {{ __("employees.statuses.{$employee->status}") }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="{{ route('admin.employees.edit', $employee) }}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil me-1" aria-hidden="true"></i>{{ __('general.edit') }}
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="6" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
                                     </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="mt-3">

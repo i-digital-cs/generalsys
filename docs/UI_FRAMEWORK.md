@@ -110,12 +110,31 @@ $border-radius: .5rem;
 <x-stat-card title="{{ __('dashboard.team_attendance') }}" value="94%" icon="bi-people" color="success"/>
 ```
 
-**Data table (always paginated)**
+**Data table (always paginated; use `.table-hr` + toolbar)**
 ```blade
-<x-data-table :rows="$attendance" :columns="['date','shift','clock_in','clock_out','status']"/>
-{{ $attendance->links() }}   {{-- Bootstrap 5 paginator --}}
+<div data-table-filter-root>
+    <x-table-toolbar :search-placeholder="__('general.search_placeholder')" />
+    <div class="table-responsive">
+        <table class="table table-hr table-sm" data-table-filterable>
+            <thead>
+                <tr>
+                    <th>{{ __('…') }}</th>
+                    <th class="col-num">{{ __('…') }}</th>{{-- numbers/times: same class on th+td --}}
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-filter-text="…">
+                    <td>…</td>
+                    <td class="col-num"><span class="num-ltr">12.50h</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{{ $rows->links() }}
 ```
 
+Rules: never put `dir="ltr"` on a whole `th`/`td` (breaks RTL column alignment). Wrap numerals in `.num-ltr`. Text columns stay start-aligned; numeric columns use `.col-num` on **both** header and cell.
 **Payslip money row**
 ```blade
 <tr><td>{{ __('payroll.net') }}</td>

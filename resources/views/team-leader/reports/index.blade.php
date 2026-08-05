@@ -61,47 +61,67 @@
                     icon="bi-journal-text"
                 />
             @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col">{{ __('report.tl.employee') }}</th>
-                                <th scope="col">{{ __('report.date') }}</th>
-                                <th scope="col">{{ __('report.tl.preview') }}</th>
-                                <th scope="col">{{ __('report.tl.status') }}</th>
-                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($reports as $row)
-                                @php
-                                    $name = app()->getLocale() === 'ar' ? $row->user->name_ar : $row->user->name_en;
-                                    $preview = \Illuminate\Support\Str::limit(strip_tags((string) $row->daily_report), 80);
-                                    $statusKey = filled($row->team_leader_response) ? 'replied' : 'waiting';
-                                @endphp
+                <div data-table-filter-root>
+                    <x-table-toolbar
+                        id="tl-reports-list"
+                        :search-placeholder="__('dashboard.hours.search_name')"
+                        :filters="[[
+                            'name' => 'status',
+                            'label' => __('report.tl.status'),
+                            'options' => [
+                                'replied' => __('report.status.replied'),
+                                'waiting' => __('report.status.waiting'),
+                            ],
+                        ]]"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                            <thead>
                                 <tr>
-                                    <td class="fw-semibold">{{ $name }}</td>
-                                    <td dir="ltr" class="text-nowrap">{{ $row->date->toDateString() }}</td>
-                                    <td class="text-body-secondary small">{{ $preview }}</td>
-                                    <td>
-                                        <span @class([
-                                            'badge',
-                                            'text-bg-success' => $statusKey === 'replied',
-                                            'text-bg-warning' => $statusKey === 'waiting',
-                                        ])>
-                                            {{ __('report.status.'.$statusKey) }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
+                                    <th scope="col">{{ __('report.tl.employee') }}</th>
+                                    <th scope="col" class="col-num">{{ __('report.date') }}</th>
+                                    <th scope="col">{{ __('report.tl.preview') }}</th>
+                                    <th scope="col">{{ __('report.tl.status') }}</th>
+                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($reports as $row)
+                                    @php
+                                        $name = app()->getLocale() === 'ar' ? $row->user->name_ar : $row->user->name_en;
+                                        $preview = \Illuminate\Support\Str::limit(strip_tags((string) $row->daily_report), 80);
+                                        $statusKey = filled($row->team_leader_response) ? 'replied' : 'waiting';
+                                    @endphp
+                                    <tr data-filter-text="{{ $name }} {{ $row->user->name_ar }} {{ $row->user->name_en }} {{ $preview }}"
+                                        data-filter-status="{{ $statusKey }}">
+                                        <td class="fw-semibold">{{ $name }}</td>
+                                        <td class="col-num text-nowrap"><span class="num-ltr">{{ $row->date->toDateString() }}</span></td>
+                                        <td class="text-body-secondary small">{{ $preview }}</td>
+                                        <td>
+                                            <span @class([
+                                                'badge',
+                                                'text-bg-success' => $statusKey === 'replied',
+                                                'text-bg-warning' => $statusKey === 'waiting',
+                                            ])>
+                                                {{ __('report.status.'.$statusKey) }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
                                         <a href="{{ route('team-leader.reports.show', $row) }}"
                                            class="btn btn-sm btn-outline-primary">
                                             {{ filled($row->team_leader_response) ? __('report.tl.view') : __('report.tl.reply') }}
                                         </a>
                                     </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="5" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
+                                    </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="mt-3">

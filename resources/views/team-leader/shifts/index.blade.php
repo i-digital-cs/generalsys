@@ -27,47 +27,59 @@
             @if ($teamRoster->isEmpty())
                 <x-empty-state :title="__('shifts.no_team_title')" :text="__('shifts.no_team_text')" icon="bi-people" />
             @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col">{{ __('shifts.employee') }}</th>
-                                <th scope="col">{{ __('shifts.today_shifts') }}</th>
-                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($teamRoster as $row)
-                                @php $member = $row['employee']; @endphp
+                <div data-table-filter-root>
+                    <x-table-toolbar
+                        id="tl-shifts-roster"
+                        :search-placeholder="__('dashboard.hours.search_name')"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                            <thead>
                                 <tr>
-                                    <td class="fw-semibold">
-                                        {{ app()->getLocale() === 'ar' ? $member->name_ar : $member->name_en }}
-                                    </td>
-                                    <td>
-                                        @if ($row['assignments']->isEmpty())
-                                            <span class="text-body-secondary">{{ __('shifts.no_shift_today') }}</span>
-                                        @else
-                                            <div class="d-flex flex-wrap gap-1">
-                                                @foreach ($row['assignments'] as $asg)
-                                                    <a href="{{ route('team-leader.shifts.edit', $asg) }}"
-                                                       class="badge text-bg-primary text-decoration-none">
-                                                        {{ __('shifts.types.'.$asg->shift_type) }}
-                                                        <span dir="ltr">({{ $asg->expected_start_time }}–{{ $asg->expected_end_time }})</span>
-                                                    </a>
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    </td>
-                                    <td class="text-end">
+                                    <th scope="col">{{ __('shifts.employee') }}</th>
+                                    <th scope="col">{{ __('shifts.today_shifts') }}</th>
+                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($teamRoster as $row)
+                                    @php
+                                        $member = $row['employee'];
+                                        $name = app()->getLocale() === 'ar' ? $member->name_ar : $member->name_en;
+                                    @endphp
+                                    <tr data-filter-text="{{ $name }} {{ $member->name_ar }} {{ $member->name_en }}">
+                                        <td class="fw-semibold">{{ $name }}</td>
+                                        <td>
+                                            @if ($row['assignments']->isEmpty())
+                                                <span class="text-body-secondary">{{ __('shifts.no_shift_today') }}</span>
+                                            @else
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    @foreach ($row['assignments'] as $asg)
+                                                        <a href="{{ route('team-leader.shifts.edit', $asg) }}"
+                                                           class="badge text-bg-primary text-decoration-none">
+                                                            {{ __('shifts.types.'.$asg->shift_type) }}
+                                                            <span class="num-ltr">({{ $asg->expected_start_time }}–{{ $asg->expected_end_time }})</span>
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </td>
+                                        <td class="text-end">
                                         <a href="{{ route('team-leader.shifts', ['date' => $date, 'user_id' => $member->id]) }}#shift-assign-form"
                                            class="btn btn-sm btn-outline-primary">
                                             {{ __('shifts.assign_for') }}
                                         </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="3" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
                                     </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             @endif
         </div>
@@ -194,30 +206,46 @@
                     @if ($assignments->isEmpty())
                         <x-empty-state :title="__('shifts.empty_title')" :text="__('shifts.empty_text')" icon="bi-calendar3" />
                     @else
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">{{ __('shifts.employee') }}</th>
-                                        <th scope="col">{{ __('shifts.shift_type') }}</th>
-                                        <th scope="col">{{ __('shifts.start_time') }}</th>
-                                        <th scope="col">{{ __('shifts.end_time') }}</th>
-                                        <th scope="col">{{ __('shifts.expected_hours') }}</th>
-                                        <th scope="col">{{ __('shifts.status') }}</th>
-                                        <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($assignments as $row)
+                        <div data-table-filter-root>
+                            <x-table-toolbar
+                                id="tl-shifts-assignments"
+                                :search-placeholder="__('dashboard.hours.search_name')"
+                                :filters="[[
+                                    'name' => 'status',
+                                    'label' => __('shifts.status'),
+                                    'options' => [
+                                        'SCHEDULED' => __('shifts.statuses.SCHEDULED'),
+                                        'COMPLETED' => __('shifts.statuses.COMPLETED'),
+                                        'CANCELLED' => __('shifts.statuses.CANCELLED'),
+                                    ],
+                                ]]"
+                            />
+                            <div class="table-responsive">
+                                <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                                    <thead>
                                         <tr>
-                                            <td>
-                                                {{ app()->getLocale() === 'ar' ? $row->user?->name_ar : $row->user?->name_en }}
-                                            </td>
-                                            <td>{{ __('shifts.types.'.$row->shift_type) }}</td>
-                                            <td dir="ltr">{{ $row->expected_start_time }}</td>
-                                            <td dir="ltr">{{ $row->expected_end_time }}</td>
-                                            <td dir="ltr">{{ $row->expected_hours }}</td>
-                                            <td>
+                                            <th scope="col">{{ __('shifts.employee') }}</th>
+                                            <th scope="col">{{ __('shifts.shift_type') }}</th>
+                                            <th scope="col" class="col-num">{{ __('shifts.start_time') }}</th>
+                                            <th scope="col" class="col-num">{{ __('shifts.end_time') }}</th>
+                                            <th scope="col" class="col-num">{{ __('shifts.expected_hours') }}</th>
+                                            <th scope="col">{{ __('shifts.status') }}</th>
+                                            <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($assignments as $row)
+                                            @php
+                                                $name = app()->getLocale() === 'ar' ? $row->user?->name_ar : $row->user?->name_en;
+                                            @endphp
+                                            <tr data-filter-text="{{ $name }} {{ $row->user?->name_ar }} {{ $row->user?->name_en }}"
+                                                data-filter-status="{{ $row->status }}">
+                                                <td>{{ $name }}</td>
+                                                <td>{{ __('shifts.types.'.$row->shift_type) }}</td>
+                                                <td class="col-num"><span class="num-ltr">{{ $row->expected_start_time }}</span></td>
+                                                <td class="col-num"><span class="num-ltr">{{ $row->expected_end_time }}</span></td>
+                                                <td class="col-num"><span class="num-ltr">{{ $row->expected_hours }}</span></td>
+                                                <td>
                                                 @php
                                                     $badge = match ($row->status) {
                                                         'SCHEDULED' => 'primary',
@@ -251,9 +279,15 @@
                                             </td>
                                         </tr>
                                     @endforeach
+                                    <tr data-table-empty-row class="d-none">
+                                        <td colspan="7" class="text-body-secondary text-center py-3">
+                                            {{ __('general.no_filter_results') }}
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
+                    </div>
 
                         <div class="mt-3">
                             {{ $assignments->links() }}

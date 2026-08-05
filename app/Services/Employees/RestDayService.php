@@ -86,7 +86,7 @@ class RestDayService
             return User::query()
                 ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
                 ->where('status', User::STATUS_ACTIVE)
-                ->with(['restDays' => fn ($q) => $q->orderBy('date')])
+                ->with(['restDays' => fn ($q) => $q->orderBy('date'), 'restDays.pendingReservation'])
                 ->orderBy('name_en')
                 ->get();
         }
@@ -96,7 +96,7 @@ class RestDayService
                 ->where('role', User::ROLE_EMPLOYEE)
                 ->where('team_leader_id', $actor->id)
                 ->where('status', User::STATUS_ACTIVE)
-                ->with(['restDays' => fn ($q) => $q->orderBy('date')])
+                ->with(['restDays' => fn ($q) => $q->orderBy('date'), 'restDays.pendingReservation'])
                 ->orderBy('name_en')
                 ->get();
         }

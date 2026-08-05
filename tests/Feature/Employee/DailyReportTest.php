@@ -3,6 +3,7 @@
 namespace Tests\Feature\Employee;
 
 use App\Models\Attendance;
+use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Services\Attendance\AttendanceService;
 use Carbon\Carbon;
@@ -90,6 +91,24 @@ class DailyReportTest extends TestCase
 
     public function test_one_report_per_day_uses_first_shift_row(): void
     {
+        $leader = User::factory()->teamLeader()->create();
+        $this->employee->update(['team_leader_id' => $leader->id]);
+
+        // Phase 6: FT ↔ Online only when both are on the day's plan.
+        ShiftAssignment::factory()->fullTime()->create([
+            'user_id' => $this->employee->id,
+            'assigned_by_tl_id' => $leader->id,
+            'date' => '2026-08-03',
+        ]);
+        ShiftAssignment::factory()->onlineHalf()->create([
+            'user_id' => $this->employee->id,
+            'assigned_by_tl_id' => $leader->id,
+            'date' => '2026-08-03',
+            'expected_start_time' => '15:00',
+            'expected_end_time' => '19:00',
+            'expected_hours' => 4,
+        ]);
+
         $first = $this->clockClosedShift(
             Attendance::SHIFT_FULL_TIME,
             '2026-08-03 10:00:00',

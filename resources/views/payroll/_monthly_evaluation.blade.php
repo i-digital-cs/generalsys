@@ -16,40 +16,42 @@
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
+                <table class="table table-hr table-sm align-middle mb-0">
                     <tbody>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('evaluation.fields.performance') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ number_format((float) $scores['performance_score'], 2) }}%</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ number_format((float) $scores['performance_score'], 2) }}%</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('evaluation.fields.behavior') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ number_format((float) $scores['behavior_score'], 2) }}%</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ number_format((float) $scores['behavior_score'], 2) }}%</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('evaluation.fields.productivity') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ number_format((float) $scores['productivity_score'], 2) }}%</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ number_format((float) $scores['productivity_score'], 2) }}%</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('evaluation.fields.interest_return') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ number_format((float) $scores['interest_return_score'], 2) }}%</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ number_format((float) $scores['interest_return_score'], 2) }}%</span></td>
                         </tr>
                         <tr>
                             <th scope="row" class="ps-3">{{ __('evaluation.fields.attendance') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ number_format((float) $scores['attendance_score'], 2) }}%</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ number_format((float) $scores['attendance_score'], 2) }}%</span></td>
                         </tr>
                         <tr class="table-light fw-semibold">
                             <th scope="row" class="ps-3">{{ __('payroll.evaluation.monthly_total') }}</th>
-                            <td class="text-end pe-3" dir="ltr">{{ number_format((float) $scores['total_score'], 2) }}%</td>
+                            <td class="col-num pe-3"><span class="num-ltr">{{ number_format((float) $scores['total_score'], 2) }}%</span></td>
                         </tr>
                         <tr class="fw-semibold">
                             <th scope="row" class="ps-3">{{ __('payroll.evaluation.year_total') }}</th>
-                            <td class="text-end pe-3" dir="ltr">
-                                @if ($yearAverage !== null)
-                                    {{ number_format((float) $yearAverage, 2) }}%
-                                @else
-                                    {{ __('general.not_available') }}
-                                @endif
+                            <td class="col-num pe-3">
+                                <span class="num-ltr">
+                                    @if ($yearAverage !== null)
+                                        {{ number_format((float) $yearAverage, 2) }}%
+                                    @else
+                                        {{ __('general.not_available') }}
+                                    @endif
+                                </span>
                             </td>
                         </tr>
                     </tbody>

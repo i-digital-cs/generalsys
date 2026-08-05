@@ -84,6 +84,15 @@ return [
         ],
         'no_team_title' => 'No team members',
         'no_team_text' => 'Assign employees to this team leader to see attendance here.',
+        'search_name' => 'Search by name…',
+        'day_kind' => 'Day type',
+        'day_kinds' => [
+            'work' => 'Work day',
+            'shortfall' => 'Shortfall',
+            'rest' => 'Rest day',
+            'vacation' => 'Vacation',
+        ],
+        'search_date' => 'Search by date…',
     ],
     'team_intervals' => [
         'title' => 'Team shift intervals',
@@ -98,5 +107,12 @@ return [
         'hint' => 'Scheduled and completed shifts for team leaders today.',
         'empty_title' => 'No team-leader shifts today',
         'empty_text' => 'Assign a shift for a team leader from Shift Assignment.',
+        'search_name' => 'Search team leader…',
+    ],
+    'contracts_table' => [
+        'employee' => 'Employee',
+        'ends' => 'Ends on',
+        'days_left' => 'Days left',
+        'search' => 'Search contracts…',
     ],
 ];

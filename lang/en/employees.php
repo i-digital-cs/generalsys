@@ -99,6 +99,10 @@ return [
         'empty' => 'No rest days yet.',
         'add' => 'Add rest day',
         'remove' => 'Remove',
+        'upcoming' => 'Upcoming',
+        'past' => 'Past',
+        'reserved' => 'Pending vacation',
+        'reserved_title' => 'Reserved by a pending vacation request',
         'fields' => [
             'date' => 'Date',
         ],

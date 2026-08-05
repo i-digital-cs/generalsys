@@ -53,6 +53,41 @@ body {
     font-size: .875rem;
 }
 
+.num-ltr {
+    display: inline-block;
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+// Shared table alignment: headers and cells share the same logical edge.
+// Never put dir="ltr" on a whole <td>/<th> (that flips text-align in RTL).
+// Use .col-num on both th+td for numbers/times, and wrap values in .num-ltr.
+.table.table-hr {
+    th,
+    td {
+        text-align: start;
+        vertical-align: middle;
+    }
+
+    th.col-num,
+    td.col-num {
+        text-align: end;
+        white-space: nowrap;
+    }
+}
+
+.table-toolbar {
+    .form-label {
+        margin-bottom: .25rem;
+        font-size: .8rem;
+        color: var(--bs-secondary-color);
+    }
+}
+
+[data-table-empty-row].d-none {
+    display: none !important;
+}
+
 .card {
     --bs-card-spacer-y: .85rem;
     --bs-card-spacer-x: 1rem;

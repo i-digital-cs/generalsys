@@ -107,13 +107,13 @@
                 <div class="card-header bg-transparent fw-semibold">{{ __('payroll.earnings') }}</div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table mb-0 align-middle">
+                        <table class="table table-hr table-sm mb-0 align-middle">
                             <tbody>
                                 @foreach ($earnings as $key)
                                     <tr>
                                         <th scope="row" class="ps-3">{{ __('payroll.fields.'.$key) }}</th>
-                                        <td class="text-end pe-3" dir="ltr">
-                                            <x-money :amount="$payroll->{$key}" :currency="$payroll->currency" />
+                                        <td class="col-num text-end pe-3">
+                                            <span class="num-ltr"><x-money :amount="$payroll->{$key}" :currency="$payroll->currency" /></span>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -128,20 +128,20 @@
                 <div class="card-header bg-transparent fw-semibold">{{ __('payroll.deductions_section') }}</div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table mb-0 align-middle">
+                        <table class="table table-hr table-sm mb-0 align-middle">
                             <tbody>
                                 @foreach ($deductions as $key)
                                     <tr>
                                         <th scope="row" class="ps-3">{{ __('payroll.fields.'.$key) }}</th>
-                                        <td class="text-end pe-3" dir="ltr">
-                                            <x-money :amount="$payroll->{$key}" :currency="$payroll->currency" />
+                                        <td class="col-num text-end pe-3">
+                                            <span class="num-ltr"><x-money :amount="$payroll->{$key}" :currency="$payroll->currency" /></span>
                                         </td>
                                     </tr>
                                 @endforeach
                                 <tr class="fw-semibold">
                                     <th scope="row" class="ps-3">{{ __('salary.fields.deductions') }}</th>
-                                    <td class="text-end pe-3" dir="ltr">
-                                        <x-money :amount="$payroll->total_deductions" :currency="$payroll->currency" />
+                                    <td class="col-num text-end pe-3">
+                                        <span class="num-ltr"><x-money :amount="$payroll->total_deductions" :currency="$payroll->currency" /></span>
                                     </td>
                                 </tr>
                             </tbody>
@@ -157,11 +157,11 @@
             <div class="card-header bg-transparent fw-semibold">{{ __('payroll.adjustments') }}</div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table mb-0 align-middle">
+                    <table class="table table-hr table-sm mb-0 align-middle">
                         <thead>
                             <tr>
                                 <th scope="col" class="ps-3">{{ __('payroll.fields.type') }}</th>
-                                <th scope="col">{{ __('payroll.fields.amount') }}</th>
+                                <th scope="col" class="col-num">{{ __('payroll.fields.amount') }}</th>
                                 <th scope="col">{{ __('payroll.fields.note') }}</th>
                             </tr>
                         </thead>
@@ -169,8 +169,8 @@
                             @foreach ($payroll->adjustments as $adj)
                                 <tr>
                                     <td class="ps-3">{{ __('payroll.adjustment_types.'.$adj->type) }}</td>
-                                    <td dir="ltr">
-                                        <x-money :amount="$adj->amount" :currency="$payroll->currency" />
+                                    <td class="col-num">
+                                        <span class="num-ltr"><x-money :amount="$adj->amount" :currency="$payroll->currency" /></span>
                                     </td>
                                     <td>{{ $adj->note ?: __('general.not_available') }}</td>
                                 </tr>

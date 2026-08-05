@@ -423,11 +423,29 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 
 ### T-6.3 — Hours planned vs actual on payroll review
 - Depends on: T-6.1, T-6.2, T-2.13
-- Unlocks: —
+- Unlocks: T-6.4
 - [x] Task complete
   - [x] Admin payroll show: planned / actual / shortfall list (reuse `HoursComparisonService`)
   - [x] Feature test PASS
   - [x] UI/UX gate (AR+EN, RTL/LTR, responsive)
+
+### T-6.4 — Dashboard tables: search/filter + column alignment
+- Depends on: T-6.3, T-1.7, T-2.4, T-2.13
+- Unlocks: T-6.5
+- [x] Task complete
+  - [x] Shared `.table-hr` + `<x-table-toolbar>` + client filter JS
+  - [x] Admin / TL / Employee dashboard tables: search + filters; headers align with cells (RTL/LTR)
+  - [x] Feature tests PASS
+  - [x] UI/UX gate (AR+EN, RTL+LTR, 375/768/1280)
+
+### T-6.5 — All remaining tables: search/filter + column alignment
+- Depends on: T-6.4
+- Unlocks: —
+- [x] Task complete
+  - [x] Every list table (employees, payroll, advances, penalties, annual, approvals, reports, evaluations, shifts, requests, salary, rest days, …) uses `.table-hr` + toolbar where rows can grow
+  - [x] Detail/KV tables use `.table-hr` + `col-num`/`num-ltr` (no cell `dir=ltr`)
+  - [x] Feature smoke tests PASS
+  - [x] UI/UX gate (AR+EN, RTL+LTR, responsive)
 
 ---
 
@@ -450,7 +468,7 @@ T-0.1 → T-0.2 → T-0.3
                  ↓
               T-5.1 → T-5.2 → T-5.3 → T-5.4 → T-5.6
                  ↓
-              T-6.1 → T-6.3
+              T-6.1 → T-6.3 → T-6.4 → T-6.5
               T-6.2 → T-6.3
 ```
 
@@ -532,6 +550,8 @@ T-0.1 → T-0.2 → T-0.3
 - [x] 2026-08-04 T-6.1 PASS — Clock enforces day’s plan; default only when unassigned; EXTRA/OT if assigned. ClockTest + AttendanceServiceTest.
 - [x] 2026-08-04 T-6.2 PASS — `payroll.auto_penalties=false` by default; Excel 2808 tests force true; advances still auto.
 - [x] 2026-08-04 T-6.3 PASS — Admin payroll Review shows planned vs actual hours + shortfall by date/shift/time.
+- [x] 2026-08-04 T-6.4 PASS — Dashboard tables (Admin/TL/Employee): `.table-hr` alignment (no `dir=ltr` on cells), `<x-table-toolbar>` search+filters, shared filter JS; AR/EN keys; DashboardTest + TeamAttendance + EmployeeDashboard + LangParity green.
+- [x] 2026-08-04 T-6.5 PASS — System-wide tables: Admin (employees/payroll/advances/penalties/annual/show), TL (approvals/reports/evaluations/shifts/rest-days), Employee (salary/requests/advances/profile/evaluation history); payroll partials aligned; `TableFilterUiTest` green.
 - [x] 2026-08-03 UX — Approvals RTL: replaced misaligned table with labeled cards; in-app DB notifications (permission submit/decision, report submit/reply) + navbar bell; NotificationTest. 187 tests / 793 assertions.
 
 <!--

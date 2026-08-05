@@ -45,44 +45,65 @@
                     icon="bi-star"
                 />
             @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col">{{ __('evaluation.tl.employee') }}</th>
-                                <th scope="col">{{ __('evaluation.fields.total') }}</th>
-                                <th scope="col">{{ __('evaluation.tl.status') }}</th>
-                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($rows as $row)
-                                @php
-                                    $member = $row['employee'];
-                                    $name = app()->getLocale() === 'ar' ? $member->name_ar : $member->name_en;
-                                @endphp
+                <div data-table-filter-root>
+                    <x-table-toolbar
+                        id="tl-evaluations-list"
+                        :search-placeholder="__('dashboard.hours.search_name')"
+                        :filters="[[
+                            'name' => 'status',
+                            'label' => __('evaluation.tl.status'),
+                            'options' => [
+                                'saved' => __('evaluation.tl.saved'),
+                                'draft' => __('evaluation.tl.draft'),
+                            ],
+                        ]]"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                            <thead>
                                 <tr>
-                                    <td class="fw-semibold">{{ $name }}</td>
-                                    <td dir="ltr">{{ number_format($row['scores']['total_score'], 2) }}%</td>
-                                    <td>
-                                        <span @class([
-                                            'badge',
-                                            'text-bg-success' => $row['saved'],
-                                            'text-bg-secondary' => ! $row['saved'],
-                                        ])>
-                                            {{ $row['saved'] ? __('evaluation.tl.saved') : __('evaluation.tl.draft') }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
+                                    <th scope="col">{{ __('evaluation.tl.employee') }}</th>
+                                    <th scope="col" class="col-num">{{ __('evaluation.fields.total') }}</th>
+                                    <th scope="col">{{ __('evaluation.tl.status') }}</th>
+                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($rows as $row)
+                                    @php
+                                        $member = $row['employee'];
+                                        $name = app()->getLocale() === 'ar' ? $member->name_ar : $member->name_en;
+                                        $statusKey = $row['saved'] ? 'saved' : 'draft';
+                                    @endphp
+                                    <tr data-filter-text="{{ $name }} {{ $member->name_ar }} {{ $member->name_en }}"
+                                        data-filter-status="{{ $statusKey }}">
+                                        <td class="fw-semibold">{{ $name }}</td>
+                                        <td class="col-num"><span class="num-ltr">{{ number_format($row['scores']['total_score'], 2) }}%</span></td>
+                                        <td>
+                                            <span @class([
+                                                'badge',
+                                                'text-bg-success' => $row['saved'],
+                                                'text-bg-secondary' => ! $row['saved'],
+                                            ])>
+                                                {{ $row['saved'] ? __('evaluation.tl.saved') : __('evaluation.tl.draft') }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
                                         <a href="{{ route('team-leader.evaluations.show', ['employee' => $member, 'month' => $month, 'year' => $year]) }}"
                                            class="btn btn-sm btn-outline-primary">
                                             {{ __('evaluation.tl.open') }}
                                         </a>
                                     </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="4" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
+                                    </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             @endif
         </div>

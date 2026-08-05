@@ -55,57 +55,85 @@
                     icon="bi-cash-coin"
                 />
             @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col">{{ __('advances.fields.employee') }}</th>
-                                <th scope="col">{{ __('advances.fields.amount') }}</th>
-                                <th scope="col">{{ __('advances.fields.deduction_amount_monthly') }}</th>
-                                <th scope="col">{{ __('advances.fields.remaining_amount') }}</th>
-                                <th scope="col">{{ __('advances.fields.date_given') }}</th>
-                                <th scope="col">{{ __('advances.fields.status') }}</th>
-                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($advances as $row)
-                                @php
-                                    $emp = $row->user;
-                                    $name = $emp
-                                        ? (app()->getLocale() === 'ar' ? $emp->name_ar : $emp->name_en)
-                                        : __('general.not_available');
-                                    $currency = $emp->currency ?? 'EGP';
-                                @endphp
+                <div data-table-filter-root>
+                    <x-table-toolbar
+                        id="advances-list"
+                        :search-placeholder="__('advances.fields.employee')"
+                        :filters="[[
+                            'name' => 'status',
+                            'label' => __('advances.fields.status'),
+                            'options' => [
+                                'ACTIVE' => __('advances.status.ACTIVE'),
+                                'FULLY_DEDUCTED' => __('advances.status.FULLY_DEDUCTED'),
+                            ],
+                        ]]"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                            <thead>
                                 <tr>
-                                    <td class="fw-semibold">{{ $name }}</td>
-                                    <td dir="ltr"><x-money :amount="$row->amount" :currency="$currency" /></td>
-                                    <td dir="ltr"><x-money :amount="$row->deduction_amount_monthly" :currency="$currency" /></td>
-                                    <td dir="ltr"><x-money :amount="$row->remaining_amount" :currency="$currency" /></td>
-                                    <td>{{ $row->date_given->translatedFormat('d M Y') }}</td>
-                                    <td>
-                                        <span @class([
-                                            'badge',
-                                            'text-bg-success' => $row->status === 'ACTIVE',
-                                            'text-bg-secondary' => $row->status === 'FULLY_DEDUCTED',
-                                        ])>
-                                            {{ __('advances.status.'.$row->status) }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
-                                        @if ($row->status === 'ACTIVE')
-                                            <a href="{{ route('admin.advances.edit', $row) }}"
-                                               class="btn btn-sm btn-outline-primary">
-                                                {{ __('general.edit') }}
-                                            </a>
-                                        @else
-                                            {{ __('general.not_available') }}
-                                        @endif
+                                    <th scope="col">{{ __('advances.fields.employee') }}</th>
+                                    <th scope="col" class="col-num">{{ __('advances.fields.amount') }}</th>
+                                    <th scope="col" class="col-num">{{ __('advances.fields.deduction_amount_monthly') }}</th>
+                                    <th scope="col" class="col-num">{{ __('advances.fields.remaining_amount') }}</th>
+                                    <th scope="col">{{ __('advances.fields.date_given') }}</th>
+                                    <th scope="col">{{ __('advances.fields.status') }}</th>
+                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($advances as $row)
+                                    @php
+                                        $emp = $row->user;
+                                        $name = $emp
+                                            ? (app()->getLocale() === 'ar' ? $emp->name_ar : $emp->name_en)
+                                            : __('general.not_available');
+                                        $currency = $emp->currency ?? 'EGP';
+                                    @endphp
+                                    <tr
+                                        data-filter-text="{{ $name }} {{ $emp?->name_ar }} {{ $emp?->name_en }}"
+                                        data-filter-status="{{ $row->status }}"
+                                    >
+                                        <td class="fw-semibold">{{ $name }}</td>
+                                        <td class="col-num">
+                                            <span class="num-ltr"><x-money :amount="$row->amount" :currency="$currency" /></span>
+                                        </td>
+                                        <td class="col-num">
+                                            <span class="num-ltr"><x-money :amount="$row->deduction_amount_monthly" :currency="$currency" /></span>
+                                        </td>
+                                        <td class="col-num">
+                                            <span class="num-ltr"><x-money :amount="$row->remaining_amount" :currency="$currency" /></span>
+                                        </td>
+                                        <td>{{ $row->date_given->translatedFormat('d M Y') }}</td>
+                                        <td>
+                                            <span @class([
+                                                'badge',
+                                                'text-bg-success' => $row->status === 'ACTIVE',
+                                                'text-bg-secondary' => $row->status === 'FULLY_DEDUCTED',
+                                            ])>
+                                                {{ __('advances.status.'.$row->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            @if ($row->status === 'ACTIVE')
+                                                <a href="{{ route('admin.advances.edit', $row) }}"
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    {{ __('general.edit') }}
+                                                </a>
+                                            @else
+                                                {{ __('general.not_available') }}
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="7" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
                                     </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="mt-3">{{ $advances->links() }}</div>
             @endif

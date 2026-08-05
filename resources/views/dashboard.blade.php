@@ -50,18 +50,46 @@
                     <h2 class="h6 mb-0">{{ __('dashboard.upcoming_holidays') }}</h2>
                 </div>
                 <div class="card-body pt-2">
-                    @forelse ($upcomingHolidays as $holiday)
-                        <div class="contract-row">
-                            <span class="fw-semibold">
-                                {{ app()->getLocale() === 'ar' ? $holiday->name_ar : $holiday->name_en }}
-                            </span>
-                            <span class="badge text-bg-success">
-                                {{ $holiday->date->translatedFormat('d M') }}
-                            </span>
-                        </div>
-                    @empty
+                    @if ($upcomingHolidays->isEmpty())
                         <x-empty-state :title="__('dashboard.no_upcoming_holidays')" icon="bi-calendar-check" />
-                    @endforelse
+                    @else
+                        <div data-table-filter-root>
+                            <x-table-toolbar
+                                id="upcoming-holidays"
+                                :search-placeholder="__('general.search_placeholder')"
+                            />
+                            <div class="table-responsive">
+                                <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">{{ __('dashboard.upcoming_holidays') }}</th>
+                                            <th scope="col" class="col-num">{{ __('dashboard.hours.date') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($upcomingHolidays as $holiday)
+                                            @php
+                                                $name = app()->getLocale() === 'ar' ? $holiday->name_ar : $holiday->name_en;
+                                            @endphp
+                                            <tr data-filter-text="{{ $name }} {{ $holiday->name_ar }} {{ $holiday->name_en }} {{ $holiday->date->toDateString() }}">
+                                                <td class="fw-semibold">{{ $name }}</td>
+                                                <td class="col-num">
+                                                    <span class="badge text-bg-success">
+                                                        <span class="num-ltr">{{ $holiday->date->translatedFormat('d M') }}</span>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                        <tr data-table-empty-row class="d-none">
+                                            <td colspan="2" class="text-body-secondary text-center py-3">
+                                                {{ __('general.no_filter_results') }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -87,48 +115,7 @@
                                 icon="bi-people"
                             />
                         @else
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">{{ __('shifts.employee') }}</th>
-                                            <th scope="col">{{ __('dashboard.hours.status') }}</th>
-                                            <th scope="col">{{ __('dashboard.hours.should_spend') }}</th>
-                                            <th scope="col">{{ __('dashboard.hours.spent') }}</th>
-                                            <th scope="col" class="text-end">{{ __('dashboard.hours.pct') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($todayStatus as $row)
-                                            @php
-                                                $name = app()->getLocale() === 'ar' ? $row['user']->name_ar : $row['user']->name_en;
-                                            @endphp
-                                            <tr>
-                                                <td class="fw-semibold">
-                                                    <a href="{{ route($dashboardRoute, ['cal' => $calCursor, 'user_id' => $row['user']->id]) }}">
-                                                        {{ $name }}
-                                                    </a>
-                                                </td>
-                                                <td>
-                                                    <span @class([
-                                                        'badge',
-                                                        'text-bg-success' => $row['status'] === 'IN',
-                                                        'text-bg-secondary' => $row['status'] === 'OUT',
-                                                        'text-bg-light' => $row['status'] === 'NONE',
-                                                    ])>
-                                                        {{ __('dashboard.hours.statuses.'.$row['status']) }}
-                                                    </span>
-                                                </td>
-                                                <td dir="ltr">{{ number_format($row['planned'], 2) }}h</td>
-                                                <td dir="ltr">{{ number_format($row['actual'], 2) }}h</td>
-                                                <td class="text-end" dir="ltr">
-                                                    {{ $row['pct'] === null ? '—' : number_format($row['pct'], 1).'%' }}
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                            @include('partials.dashboard.today-board-table')
                         @endif
                     </div>
                 </div>
@@ -151,39 +138,7 @@
                                 icon="bi-people"
                             />
                         @else
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">{{ __('shifts.employee') }}</th>
-                                            <th scope="col">{{ __('dashboard.hours.month_planned') }}</th>
-                                            <th scope="col">{{ __('dashboard.hours.month_actual') }}</th>
-                                            <th scope="col" class="text-end">{{ __('dashboard.hours.pct') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($teamSummary as $row)
-                                            @php
-                                                $name = app()->getLocale() === 'ar' ? $row['user']->name_ar : $row['user']->name_en;
-                                                $active = $focusUser && (int) $focusUser->id === (int) $row['user']->id;
-                                            @endphp
-                                            <tr @class(['table-active' => $active])>
-                                                <td>
-                                                    <a href="{{ route($dashboardRoute, ['cal' => $calCursor, 'user_id' => $row['user']->id]) }}"
-                                                       class="fw-semibold">
-                                                        {{ $name }}
-                                                    </a>
-                                                </td>
-                                                <td dir="ltr">{{ number_format($row['planned'], 2) }}h</td>
-                                                <td dir="ltr">{{ number_format($row['actual'], 2) }}h</td>
-                                                <td class="text-end" dir="ltr">
-                                                    {{ $row['pct'] === null ? '—' : number_format($row['pct'], 1).'%' }}
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                            @include('partials.dashboard.team-month-table')
                         @endif
                     </div>
                 </div>

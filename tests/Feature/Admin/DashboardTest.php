@@ -102,6 +102,33 @@ class DashboardTest extends TestCase
         $this->assertStringNotContainsString('href="'.route('employee.requests').'"', $html);
     }
 
+    public function test_manager_dashboard_tables_use_shared_filter_toolbar(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $leader = User::factory()->teamLeader()->create(['name_en' => 'Filter Leader']);
+        $expiring = User::factory()->employee()->create(['name_en' => 'Expiring Person']);
+
+        Contract::factory()->create([
+            'user_id' => $expiring->id,
+            'contract_end' => now()->addDays(20)->toDateString(),
+        ]);
+
+        ShiftAssignment::factory()->fullTime()->create([
+            'user_id' => $leader->id,
+            'assigned_by_tl_id' => $manager->id,
+            'date' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('data-table-filter-root', false)
+            ->assertSee('table-hr', false)
+            ->assertSee('data-table-search', false)
+            ->assertSee(__('dashboard.contracts_table.employee'), false)
+            ->assertSee(__('general.search'), false);
+    }
+
     public function test_only_the_current_menu_item_is_active(): void
     {
         $manager = User::factory()->manager()->create();

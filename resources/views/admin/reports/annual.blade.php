@@ -115,55 +115,85 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-transparent fw-semibold">{{ __('reports.grid') }} — {{ $year }}</div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col">{{ __('reports.month') }}</th>
-                                <th scope="col">{{ __('reports.evaluation') }}</th>
-                                <th scope="col">{{ __('reports.penalties') }}</th>
-                                <th scope="col">{{ __('reports.bonuses') }}</th>
-                                <th scope="col">{{ __('reports.deductions') }}</th>
-                                <th scope="col">{{ __('reports.net') }}</th>
-                                <th scope="col">{{ __('reports.status') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($report['months'] as $row)
+                <div data-table-filter-root>
+                    <x-table-toolbar
+                        id="annual-report"
+                        :search-placeholder="__('reports.month')"
+                        :filters="[[
+                            'name' => 'status',
+                            'label' => __('reports.status'),
+                            'options' => [
+                                'DRAFT' => __('payroll.status.DRAFT'),
+                                'APPROVED' => __('payroll.status.APPROVED'),
+                                'PAID' => __('payroll.status.PAID'),
+                            ],
+                        ]]"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                            <thead>
                                 <tr>
-                                    <td class="fw-semibold">
-                                        {{ \Carbon\Carbon::create($year, $row['month'], 1)->translatedFormat('F') }}
-                                    </td>
-                                    <td dir="ltr">
-                                        {{ $row['evaluation'] !== null ? number_format($row['evaluation'], 2).'%' : __('reports.empty_cell') }}
-                                    </td>
-                                    <td dir="ltr">
-                                        <x-money :amount="$row['penalties']" :currency="$currency" />
-                                    </td>
-                                    <td dir="ltr">
-                                        <x-money :amount="$row['bonuses']" :currency="$currency" />
-                                    </td>
-                                    <td dir="ltr">
-                                        <x-money :amount="$row['deductions']" :currency="$currency" />
-                                    </td>
-                                    <td dir="ltr" class="fw-semibold">
-                                        @if ($row['net_pay'] !== null)
-                                            <x-money :amount="$row['net_pay']" :currency="$currency" />
-                                        @else
-                                            {{ __('reports.empty_cell') }}
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if ($row['payroll_status'])
-                                            {{ __('payroll.status.'.$row['payroll_status']) }}
-                                        @else
-                                            {{ __('reports.empty_cell') }}
-                                        @endif
+                                    <th scope="col">{{ __('reports.month') }}</th>
+                                    <th scope="col" class="col-num">{{ __('reports.evaluation') }}</th>
+                                    <th scope="col" class="col-num">{{ __('reports.penalties') }}</th>
+                                    <th scope="col" class="col-num">{{ __('reports.bonuses') }}</th>
+                                    <th scope="col" class="col-num">{{ __('reports.deductions') }}</th>
+                                    <th scope="col" class="col-num">{{ __('reports.net') }}</th>
+                                    <th scope="col">{{ __('reports.status') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($report['months'] as $row)
+                                    @php
+                                        $monthLabel = \Carbon\Carbon::create($year, $row['month'], 1)->translatedFormat('F');
+                                        $monthLabelEn = \Carbon\Carbon::create($year, $row['month'], 1)->locale('en')->translatedFormat('F');
+                                        $monthLabelAr = \Carbon\Carbon::create($year, $row['month'], 1)->locale('ar')->translatedFormat('F');
+                                    @endphp
+                                    <tr
+                                        data-filter-text="{{ $monthLabel }} {{ $monthLabelEn }} {{ $monthLabelAr }}"
+                                        data-filter-status="{{ $row['payroll_status'] ?? '' }}"
+                                    >
+                                        <td class="fw-semibold">{{ $monthLabel }}</td>
+                                        <td class="col-num">
+                                            <span class="num-ltr">
+                                                {{ $row['evaluation'] !== null ? number_format($row['evaluation'], 2).'%' : __('reports.empty_cell') }}
+                                            </span>
+                                        </td>
+                                        <td class="col-num">
+                                            <span class="num-ltr"><x-money :amount="$row['penalties']" :currency="$currency" /></span>
+                                        </td>
+                                        <td class="col-num">
+                                            <span class="num-ltr"><x-money :amount="$row['bonuses']" :currency="$currency" /></span>
+                                        </td>
+                                        <td class="col-num">
+                                            <span class="num-ltr"><x-money :amount="$row['deductions']" :currency="$currency" /></span>
+                                        </td>
+                                        <td class="col-num fw-semibold">
+                                            <span class="num-ltr">
+                                                @if ($row['net_pay'] !== null)
+                                                    <x-money :amount="$row['net_pay']" :currency="$currency" />
+                                                @else
+                                                    {{ __('reports.empty_cell') }}
+                                                @endif
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if ($row['payroll_status'])
+                                                {{ __('payroll.status.'.$row['payroll_status']) }}
+                                            @else
+                                                {{ __('reports.empty_cell') }}
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="7" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
                                     </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

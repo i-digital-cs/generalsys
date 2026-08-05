@@ -43,42 +43,58 @@
                     icon="bi-check2-square"
                 />
             @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col">{{ __('shifts.employee') }}</th>
-                                <th scope="col">{{ __('permissions.fields.request_date') }}</th>
-                                <th scope="col">{{ __('permissions.fields.type') }}</th>
-                                <th scope="col">{{ __('permissions.fields.interval') }}</th>
-                                <th scope="col">{{ __('permissions.fields.status') }}</th>
-                                <th scope="col">{{ __('permissions.fields.reason') }}</th>
-                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($permissions as $row)
-                                @php
-                                    $name = app()->getLocale() === 'ar' ? $row->user?->name_ar : $row->user?->name_en;
-                                @endphp
+                <div data-table-filter-root>
+                    <x-table-toolbar
+                        id="tl-approvals-permissions"
+                        :search-placeholder="__('dashboard.hours.search_name')"
+                        :filters="[[
+                            'name' => 'status',
+                            'label' => __('permissions.fields.status'),
+                            'options' => [
+                                'PENDING' => __('permissions.statuses.PENDING'),
+                                'ACCEPTED' => __('permissions.statuses.ACCEPTED'),
+                                'REJECTED' => __('permissions.statuses.REJECTED'),
+                                'FORCED' => __('permissions.statuses.FORCED'),
+                            ],
+                        ]]"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                            <thead>
                                 <tr>
-                                    <td class="fw-semibold">{{ $name }}</td>
-                                    <td dir="ltr" class="text-nowrap">{{ $row->request_date->toDateString() }}</td>
-                                    <td>{{ __('permissions.types.'.$row->type) }}</td>
-                                    <td dir="ltr" class="text-nowrap">{{ $row->from_time }}–{{ $row->to_time }}</td>
-                                    <td>
-                                        <span @class([
-                                            'badge',
-                                            'text-bg-warning' => $row->status === 'PENDING',
-                                            'text-bg-success' => $row->status === 'ACCEPTED',
-                                            'text-bg-danger' => $row->status === 'REJECTED',
-                                            'text-bg-dark' => $row->status === 'FORCED',
-                                        ])>
-                                            {{ __('permissions.statuses.'.$row->status) }}
-                                        </span>
-                                    </td>
-                                    <td class="text-body-secondary small">{{ filled($row->reason) ? $row->reason : '—' }}</td>
-                                    <td class="text-end">
+                                    <th scope="col">{{ __('shifts.employee') }}</th>
+                                    <th scope="col" class="col-num">{{ __('permissions.fields.request_date') }}</th>
+                                    <th scope="col">{{ __('permissions.fields.type') }}</th>
+                                    <th scope="col" class="col-num">{{ __('permissions.fields.interval') }}</th>
+                                    <th scope="col">{{ __('permissions.fields.status') }}</th>
+                                    <th scope="col">{{ __('permissions.fields.reason') }}</th>
+                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($permissions as $row)
+                                    @php
+                                        $name = app()->getLocale() === 'ar' ? $row->user?->name_ar : $row->user?->name_en;
+                                    @endphp
+                                    <tr data-filter-text="{{ $name }} {{ $row->user?->name_ar }} {{ $row->user?->name_en }} {{ $row->reason }}"
+                                        data-filter-status="{{ $row->status }}">
+                                        <td class="fw-semibold">{{ $name }}</td>
+                                        <td class="col-num text-nowrap"><span class="num-ltr">{{ $row->request_date->toDateString() }}</span></td>
+                                        <td>{{ __('permissions.types.'.$row->type) }}</td>
+                                        <td class="col-num text-nowrap"><span class="num-ltr">{{ $row->from_time }}–{{ $row->to_time }}</span></td>
+                                        <td>
+                                            <span @class([
+                                                'badge',
+                                                'text-bg-warning' => $row->status === 'PENDING',
+                                                'text-bg-success' => $row->status === 'ACCEPTED',
+                                                'text-bg-danger' => $row->status === 'REJECTED',
+                                                'text-bg-dark' => $row->status === 'FORCED',
+                                            ])>
+                                                {{ __('permissions.statuses.'.$row->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="text-body-secondary small">{{ filled($row->reason) ? $row->reason : '—' }}</td>
+                                        <td class="text-end">
                                         <div class="d-flex flex-nowrap gap-2 justify-content-end">
                                             @if ($row->status === 'PENDING')
                                                 <form method="POST"
@@ -111,10 +127,16 @@
                                             @endif
                                         </div>
                                     </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="7" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
+                                    </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="mt-3">
@@ -137,46 +159,62 @@
                     icon="bi-calendar2-check"
                 />
             @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col">{{ __('shifts.employee') }}</th>
-                                <th scope="col">{{ __('vacations.fields.type') }}</th>
-                                <th scope="col">{{ __('vacations.fields.range') }}</th>
-                                <th scope="col">{{ __('vacations.fields.days_requested') }}</th>
-                                <th scope="col">{{ __('vacations.fields.replace_rest_day') }}</th>
-                                <th scope="col">{{ __('vacations.fields.status') }}</th>
-                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($vacations as $row)
-                                @php
-                                    $name = app()->getLocale() === 'ar' ? $row->user?->name_ar : $row->user?->name_en;
-                                @endphp
+                <div data-table-filter-root>
+                    <x-table-toolbar
+                        id="tl-approvals-vacations"
+                        :search-placeholder="__('dashboard.hours.search_name')"
+                        :filters="[[
+                            'name' => 'status',
+                            'label' => __('vacations.fields.status'),
+                            'options' => [
+                                'PENDING' => __('vacations.statuses.PENDING'),
+                                'APPROVED' => __('vacations.statuses.APPROVED'),
+                                'REJECTED' => __('vacations.statuses.REJECTED'),
+                                'FORCED' => __('vacations.statuses.FORCED'),
+                            ],
+                        ]]"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                            <thead>
                                 <tr>
-                                    <td class="fw-semibold">{{ $name }}</td>
-                                    <td>{{ __('vacations.types.'.$row->type) }}</td>
-                                    <td dir="ltr" class="text-nowrap">
-                                        {{ $row->start_date->toDateString() }}
-                                    </td>
-                                    <td dir="ltr">{{ number_format((float) $row->days_requested, 1) }}</td>
-                                    <td dir="ltr" class="text-nowrap">
-                                        {{ $row->replace_rest_date?->toDateString() ?? '—' }}
-                                    </td>
-                                    <td>
-                                        <span @class([
-                                            'badge',
-                                            'text-bg-warning' => $row->status === 'PENDING',
-                                            'text-bg-success' => $row->status === 'APPROVED',
-                                            'text-bg-danger' => $row->status === 'REJECTED',
-                                            'text-bg-dark' => $row->status === 'FORCED',
-                                        ])>
-                                            {{ __('vacations.statuses.'.$row->status) }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
+                                    <th scope="col">{{ __('shifts.employee') }}</th>
+                                    <th scope="col">{{ __('vacations.fields.type') }}</th>
+                                    <th scope="col" class="col-num">{{ __('vacations.fields.range') }}</th>
+                                    <th scope="col" class="col-num">{{ __('vacations.fields.days_requested') }}</th>
+                                    <th scope="col" class="col-num">{{ __('vacations.fields.replace_rest_day') }}</th>
+                                    <th scope="col">{{ __('vacations.fields.status') }}</th>
+                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($vacations as $row)
+                                    @php
+                                        $name = app()->getLocale() === 'ar' ? $row->user?->name_ar : $row->user?->name_en;
+                                    @endphp
+                                    <tr data-filter-text="{{ $name }} {{ $row->user?->name_ar }} {{ $row->user?->name_en }}"
+                                        data-filter-status="{{ $row->status }}">
+                                        <td class="fw-semibold">{{ $name }}</td>
+                                        <td>{{ __('vacations.types.'.$row->type) }}</td>
+                                        <td class="col-num text-nowrap">
+                                            <span class="num-ltr">{{ $row->start_date->toDateString() }}</span>
+                                        </td>
+                                        <td class="col-num"><span class="num-ltr">{{ number_format((float) $row->days_requested, 1) }}</span></td>
+                                        <td class="col-num text-nowrap">
+                                            <span class="num-ltr">{{ $row->replace_rest_date?->toDateString() ?? '—' }}</span>
+                                        </td>
+                                        <td>
+                                            <span @class([
+                                                'badge',
+                                                'text-bg-warning' => $row->status === 'PENDING',
+                                                'text-bg-success' => $row->status === 'APPROVED',
+                                                'text-bg-danger' => $row->status === 'REJECTED',
+                                                'text-bg-dark' => $row->status === 'FORCED',
+                                            ])>
+                                                {{ __('vacations.statuses.'.$row->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
                                         <div class="d-flex flex-nowrap gap-2 justify-content-end">
                                             @if ($row->status === 'PENDING')
                                                 <form method="POST"
@@ -209,10 +247,16 @@
                                             @endif
                                         </div>
                                     </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="7" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
+                                    </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="mt-3">

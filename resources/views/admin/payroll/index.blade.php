@@ -90,66 +90,89 @@
                     icon="bi-cash-stack"
                 />
             @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col">{{ __('payroll.fields.employee') }}</th>
-                                <th scope="col">{{ __('payroll.fields.status') }}</th>
-                                <th scope="col">{{ __('payroll.fields.gross') }}</th>
-                                <th scope="col">{{ __('payroll.fields.deductions') }}</th>
-                                <th scope="col">{{ __('payroll.fields.net') }}</th>
-                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($records as $row)
-                                @php
-                                    $emp = $row->user;
-                                    $name = $emp
-                                        ? (app()->getLocale() === 'ar' ? $emp->name_ar : $emp->name_en)
-                                        : __('general.not_available');
-                                @endphp
+                <div data-table-filter-root>
+                    <x-table-toolbar
+                        id="payroll-list"
+                        :search-placeholder="__('payroll.fields.employee')"
+                        :filters="[[
+                            'name' => 'status',
+                            'label' => __('payroll.fields.status'),
+                            'options' => [
+                                'DRAFT' => __('payroll.status.DRAFT'),
+                                'APPROVED' => __('payroll.status.APPROVED'),
+                                'PAID' => __('payroll.status.PAID'),
+                            ],
+                        ]]"
+                    />
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                            <thead>
                                 <tr>
-                                    <td class="fw-semibold">{{ $name }}</td>
-                                    <td>
-                                        <span @class([
-                                            'badge',
-                                            'text-bg-secondary' => $row->status === 'DRAFT',
-                                            'text-bg-success' => $row->status === 'APPROVED',
-                                            'text-bg-primary' => $row->status === 'PAID',
-                                        ])>
-                                            {{ __('payroll.status.'.$row->status) }}
-                                        </span>
-                                    </td>
-                                    <td dir="ltr">
-                                        <x-money :amount="$row->gross_pay" :currency="$row->currency" />
-                                    </td>
-                                    <td dir="ltr">
-                                        <x-money :amount="$row->total_deductions" :currency="$row->currency" />
-                                    </td>
-                                    <td dir="ltr" class="fw-semibold">
-                                        <x-money :amount="$row->net_pay" :currency="$row->currency" />
-                                    </td>
-                                    <td class="text-end">
-                                        <a href="{{ route('admin.payroll.show', $row) }}"
-                                           class="btn btn-sm btn-outline-primary">
-                                            {{ __('payroll.review') }}
-                                        </a>
-                                        @if ($row->status === 'DRAFT')
-                                            <form method="POST" action="{{ route('admin.payroll.approve', $row) }}" class="d-inline">
-                                                @csrf
-                                                @method('PUT')
-                                                <button type="submit" class="btn btn-sm btn-success">
-                                                    {{ __('payroll.approve') }}
-                                                </button>
-                                            </form>
-                                        @endif
+                                    <th scope="col">{{ __('payroll.fields.employee') }}</th>
+                                    <th scope="col">{{ __('payroll.fields.status') }}</th>
+                                    <th scope="col" class="col-num">{{ __('payroll.fields.gross') }}</th>
+                                    <th scope="col" class="col-num">{{ __('payroll.fields.deductions') }}</th>
+                                    <th scope="col" class="col-num">{{ __('payroll.fields.net') }}</th>
+                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($records as $row)
+                                    @php
+                                        $emp = $row->user;
+                                        $name = $emp
+                                            ? (app()->getLocale() === 'ar' ? $emp->name_ar : $emp->name_en)
+                                            : __('general.not_available');
+                                    @endphp
+                                    <tr
+                                        data-filter-text="{{ $name }} {{ $emp?->name_ar }} {{ $emp?->name_en }}"
+                                        data-filter-status="{{ $row->status }}"
+                                    >
+                                        <td class="fw-semibold">{{ $name }}</td>
+                                        <td>
+                                            <span @class([
+                                                'badge',
+                                                'text-bg-secondary' => $row->status === 'DRAFT',
+                                                'text-bg-success' => $row->status === 'APPROVED',
+                                                'text-bg-primary' => $row->status === 'PAID',
+                                            ])>
+                                                {{ __('payroll.status.'.$row->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="col-num">
+                                            <span class="num-ltr"><x-money :amount="$row->gross_pay" :currency="$row->currency" /></span>
+                                        </td>
+                                        <td class="col-num">
+                                            <span class="num-ltr"><x-money :amount="$row->total_deductions" :currency="$row->currency" /></span>
+                                        </td>
+                                        <td class="col-num fw-semibold">
+                                            <span class="num-ltr"><x-money :amount="$row->net_pay" :currency="$row->currency" /></span>
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="{{ route('admin.payroll.show', $row) }}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                {{ __('payroll.review') }}
+                                            </a>
+                                            @if ($row->status === 'DRAFT')
+                                                <form method="POST" action="{{ route('admin.payroll.approve', $row) }}" class="d-inline">
+                                                    @csrf
+                                                    @method('PUT')
+                                                    <button type="submit" class="btn btn-sm btn-success">
+                                                        {{ __('payroll.approve') }}
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                <tr data-table-empty-row class="d-none">
+                                    <td colspan="6" class="text-body-secondary text-center py-3">
+                                        {{ __('general.no_filter_results') }}
                                     </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="mt-3">
                     {{ $records->links() }}

@@ -84,21 +84,47 @@
                     @if ($history->isEmpty())
                         <p class="text-body-secondary small mb-0">{{ __('evaluation.me.history_empty') }}</p>
                     @else
-                        <ul class="list-group list-group-flush">
-                            @foreach ($history as $row)
-                                @php
-                                    $active = (int) $row->month === (int) $month && (int) $row->year === (int) $year;
-                                    $label = \Carbon\Carbon::create($row->year, $row->month, 1)->translatedFormat('F Y');
-                                @endphp
-                                <li class="list-group-item px-0 {{ $active ? 'bg-body-tertiary rounded' : '' }}">
-                                    <a href="{{ route('employee.evaluation', ['month' => $row->month, 'year' => $row->year]) }}"
-                                       class="text-decoration-none d-flex justify-content-between gap-2 px-2 py-1">
-                                        <span class="fw-semibold">{{ $label }}</span>
-                                        <span dir="ltr" class="text-body-secondary">{{ number_format((float) $row->total_score, 2) }}%</span>
-                                    </a>
-                                </li>
-                            @endforeach
-                        </ul>
+                        <div data-table-filter-root>
+                            <x-table-toolbar
+                                id="evaluation-history"
+                                :search-placeholder="__('general.search_placeholder')"
+                            />
+                            <div class="table-responsive">
+                                <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">{{ __('evaluation.tl.month') }}</th>
+                                            <th scope="col" class="col-num">{{ __('evaluation.fields.total') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($history as $row)
+                                            @php
+                                                $active = (int) $row->month === (int) $month && (int) $row->year === (int) $year;
+                                                $label = \Carbon\Carbon::create($row->year, $row->month, 1)->translatedFormat('F Y');
+                                            @endphp
+                                            <tr @class(['table-active' => $active])
+                                                data-filter-text="{{ $label }} {{ $row->month }} {{ $row->year }}">
+                                                <td>
+                                                    <a href="{{ route('employee.evaluation', ['month' => $row->month, 'year' => $row->year]) }}"
+                                                       class="fw-semibold text-decoration-none">
+                                                        {{ $label }}
+                                                    </a>
+                                                </td>
+                                                <td class="col-num">
+                                                    <span class="num-ltr">{{ number_format((float) $row->total_score, 2) }}%</span>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                        <tr data-table-empty-row class="d-none">
+                                            <td colspan="2" class="text-body-secondary text-center py-3">
+                                                {{ __('general.no_filter_results') }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     @endif
                 </div>
             </div>

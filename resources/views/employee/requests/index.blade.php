@@ -122,28 +122,44 @@
                                 icon="bi-calendar-plus"
                             />
                         @else
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">{{ __('vacations.fields.range') }}</th>
-                                            <th scope="col">{{ __('vacations.fields.replace_rest_day') }}</th>
-                                            <th scope="col">{{ __('vacations.fields.type') }}</th>
-                                            <th scope="col">{{ __('vacations.fields.status') }}</th>
-                                            <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($vacations as $row)
+                            <div data-table-filter-root>
+                                <x-table-toolbar
+                                    id="employee-vacations-list"
+                                    :search-placeholder="__('dashboard.hours.search_date')"
+                                    :filters="[[
+                                        'name' => 'status',
+                                        'label' => __('vacations.fields.status'),
+                                        'options' => [
+                                            'PENDING' => __('vacations.statuses.PENDING'),
+                                            'APPROVED' => __('vacations.statuses.APPROVED'),
+                                            'REJECTED' => __('vacations.statuses.REJECTED'),
+                                            'FORCED' => __('vacations.statuses.FORCED'),
+                                        ],
+                                    ]]"
+                                />
+                                <div class="table-responsive">
+                                    <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                                        <thead>
                                             <tr>
-                                                <td dir="ltr" class="text-nowrap">
-                                                    {{ $row->start_date->toDateString() }}
-                                                </td>
-                                                <td dir="ltr" class="text-nowrap">
-                                                    {{ $row->replace_rest_date?->toDateString() ?? '—' }}
-                                                </td>
-                                                <td>{{ __('vacations.types.'.$row->type) }}</td>
-                                                <td>
+                                                <th scope="col" class="col-num">{{ __('vacations.fields.range') }}</th>
+                                                <th scope="col" class="col-num">{{ __('vacations.fields.replace_rest_day') }}</th>
+                                                <th scope="col">{{ __('vacations.fields.type') }}</th>
+                                                <th scope="col">{{ __('vacations.fields.status') }}</th>
+                                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($vacations as $row)
+                                                <tr data-filter-text="{{ $row->start_date->toDateString() }} {{ $row->replace_rest_date?->toDateString() }} {{ __('vacations.types.'.$row->type) }}"
+                                                    data-filter-status="{{ $row->status }}">
+                                                    <td class="col-num text-nowrap">
+                                                        <span class="num-ltr">{{ $row->start_date->toDateString() }}</span>
+                                                    </td>
+                                                    <td class="col-num text-nowrap">
+                                                        <span class="num-ltr">{{ $row->replace_rest_date?->toDateString() ?? '—' }}</span>
+                                                    </td>
+                                                    <td>{{ __('vacations.types.'.$row->type) }}</td>
+                                                    <td>
                                                     <span @class([
                                                         'badge',
                                                         'text-bg-warning' => $row->status === 'PENDING',
@@ -171,9 +187,15 @@
                                                 </td>
                                             </tr>
                                         @endforeach
+                                        <tr data-table-empty-row class="d-none">
+                                            <td colspan="5" class="text-body-secondary text-center py-3">
+                                                {{ __('general.no_filter_results') }}
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
 
                             <div class="mt-3">
                                 {{ $vacations->withQueryString()->links() }}
@@ -293,26 +315,51 @@
                                 icon="bi-inbox"
                             />
                         @else
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">{{ __('permissions.fields.request_date') }}</th>
-                                            <th scope="col">{{ __('permissions.fields.type') }}</th>
-                                            <th scope="col">{{ __('permissions.fields.interval') }}</th>
-                                            <th scope="col">{{ __('permissions.fields.status') }}</th>
-                                            <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($permissions as $row)
+                            <div data-table-filter-root>
+                                <x-table-toolbar
+                                    id="employee-permissions-list"
+                                    :search-placeholder="__('dashboard.hours.search_date')"
+                                    :filters="[[
+                                        'name' => 'status',
+                                        'label' => __('permissions.fields.status'),
+                                        'options' => [
+                                            'PENDING' => __('permissions.statuses.PENDING'),
+                                            'ACCEPTED' => __('permissions.statuses.ACCEPTED'),
+                                            'REJECTED' => __('permissions.statuses.REJECTED'),
+                                            'FORCED' => __('permissions.statuses.FORCED'),
+                                        ],
+                                    ]]"
+                                />
+                                <div class="table-responsive">
+                                    <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
+                                        <thead>
                                             <tr>
-                                                <td dir="ltr">{{ $row->request_date->toDateString() }}</td>
-                                                <td>{{ __('permissions.types.'.$row->type) }}</td>
-                                                <td dir="ltr" class="text-nowrap">
-                                                    {{ $row->from_time }}–{{ $row->to_time }}
-                                                </td>
-                                                <td>
+                                                <th scope="col" class="col-num">{{ __('permissions.fields.request_date') }}</th>
+                                                <th scope="col">{{ __('permissions.fields.type') }}</th>
+                                                <th scope="col" class="col-num">{{ __('permissions.fields.interval') }}</th>
+                                                <th scope="col">{{ __('permissions.fields.status') }}</th>
+                                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($permissions as $row)
+                                                @php
+                                                    $filterText = implode(' ', array_filter([
+                                                        $row->request_date->toDateString(),
+                                                        __('permissions.types.'.$row->type),
+                                                        $row->from_time,
+                                                        $row->to_time,
+                                                        $row->reason,
+                                                    ]));
+                                                @endphp
+                                                <tr data-filter-text="{{ $filterText }}"
+                                                    data-filter-status="{{ $row->status }}">
+                                                    <td class="col-num"><span class="num-ltr">{{ $row->request_date->toDateString() }}</span></td>
+                                                    <td>{{ __('permissions.types.'.$row->type) }}</td>
+                                                    <td class="col-num text-nowrap">
+                                                        <span class="num-ltr">{{ $row->from_time }}–{{ $row->to_time }}</span>
+                                                    </td>
+                                                    <td>
                                                     <span @class([
                                                         'badge',
                                                         'text-bg-warning' => $row->status === 'PENDING',
@@ -340,16 +387,24 @@
                                                 </td>
                                             </tr>
                                             @if (filled($row->reason))
-                                                <tr class="border-0">
+                                                <tr class="border-0"
+                                                    data-filter-text="{{ $filterText }}"
+                                                    data-filter-status="{{ $row->status }}">
                                                     <td colspan="5" class="small text-body-secondary pt-0">
                                                         {{ __('permissions.fields.reason') }}: {{ $row->reason }}
                                                     </td>
                                                 </tr>
                                             @endif
                                         @endforeach
+                                        <tr data-table-empty-row class="d-none">
+                                            <td colspan="5" class="text-body-secondary text-center py-3">
+                                                {{ __('general.no_filter_results') }}
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
 
                             <div class="mt-3">
                                 {{ $permissions->withQueryString()->links() }}

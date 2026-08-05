@@ -67,7 +67,10 @@ class TeamAttendanceDashboardTest extends TestCase
             ->assertSee(__('dashboard.hours.team_month'), false)
             ->assertSee('Radwa Test', false)
             ->assertDontSee('Other Team Person', false)
-            ->assertSee(__('dashboard.hours.should_spend'), false);
+            ->assertSee(__('dashboard.hours.should_spend'), false)
+            ->assertSee('data-table-filter-root', false)
+            ->assertSee('table-hr', false)
+            ->assertSee('data-table-search', false);
     }
 
     public function test_team_leader_cannot_focus_other_team_employee(): void
