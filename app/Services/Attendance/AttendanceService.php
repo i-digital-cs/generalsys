@@ -24,10 +24,18 @@ class AttendanceService
         private readonly RestDayService $restDays,
         private readonly DailyReportService $reports,
         private readonly AppNotificationService $notifications,
+        private readonly GeofenceService $geofence,
     ) {}
 
-    public function clockIn(User $user, string $shiftType, ?CarbonInterface $at = null): Attendance
-    {
+    /**
+     * @param  array{latitude: float|int|string, longitude: float|int|string, accuracy?: float|int|string|null}|null  $location
+     */
+    public function clockIn(
+        User $user,
+        string $shiftType,
+        ?CarbonInterface $at = null,
+        ?array $location = null,
+    ): Attendance {
         $this->assertKnownShiftType($shiftType);
 
         $at = Carbon::parse($at ?? now());
@@ -55,7 +63,7 @@ class AttendanceService
 
         $assignment = $this->resolveAssignment($user, $shiftType, $date);
 
-        return DB::transaction(function () use ($user, $shiftType, $at, $date, $assignment) {
+        $attendance = DB::transaction(function () use ($user, $shiftType, $at, $date, $assignment) {
             $draft = new Attendance([
                 'date' => $date,
                 'clock_in' => $at,
@@ -79,9 +87,14 @@ class AttendanceService
                 'early_departure_minutes' => 0,
             ]);
         });
+
+        return $this->applyPunchLocation($attendance, 'CLOCK_IN', $location);
     }
 
-    public function clockOut(User $user, ?CarbonInterface $at = null): Attendance
+    /**
+     * @param  array{latitude: float|int|string, longitude: float|int|string, accuracy?: float|int|string|null}|null  $location
+     */
+    public function clockOut(User $user, ?CarbonInterface $at = null, ?array $location = null): Attendance
     {
         $at = Carbon::parse($at ?? now());
         $attendance = $this->openAttendance($user);
@@ -90,7 +103,7 @@ class AttendanceService
             throw AttendanceException::noOpenAttendance();
         }
 
-        return $this->finalizeClockOut($attendance, $at, automatic: false);
+        return $this->finalizeClockOut($attendance, $at, automatic: false, location: $location);
     }
 
     /**
@@ -155,17 +168,21 @@ class AttendanceService
         return true;
     }
 
+    /**
+     * @param  array{latitude: float|int|string, longitude: float|int|string, accuracy?: float|int|string|null}|null  $location
+     */
     private function finalizeClockOut(
         Attendance $attendance,
         CarbonInterface $at,
         bool $automatic,
+        ?array $location = null,
     ): Attendance {
         $user = $attendance->user;
         if ($user === null) {
             throw AttendanceException::noOpenAttendance();
         }
 
-        return DB::transaction(function () use ($user, $attendance, $at, $automatic) {
+        $closed = DB::transaction(function () use ($user, $attendance, $at, $automatic) {
             $assignment = $this->resolveAssignment(
                 $user,
                 $attendance->shift_type,
@@ -193,6 +210,55 @@ class AttendanceService
 
             return $attendance->refresh();
         });
+
+        if ($automatic) {
+            return $closed;
+        }
+
+        return $this->applyPunchLocation($closed, 'CLOCK_OUT', $location);
+    }
+
+    /**
+     * Persist browser GPS + soft geofence flags; warn when outside office radius.
+     *
+     * @param  array{latitude: float|int|string, longitude: float|int|string, accuracy?: float|int|string|null}|null  $location
+     */
+    private function applyPunchLocation(Attendance $attendance, string $kind, ?array $location): Attendance
+    {
+        if ($location === null) {
+            return $attendance;
+        }
+
+        $lat = (float) $location['latitude'];
+        $lng = (float) $location['longitude'];
+        $accuracy = array_key_exists('accuracy', $location) && $location['accuracy'] !== null && $location['accuracy'] !== ''
+            ? (int) round((float) $location['accuracy'])
+            : null;
+
+        $eval = $this->geofence->evaluate($lat, $lng);
+        $prefix = $kind === 'CLOCK_OUT' ? 'clock_out' : 'clock_in';
+
+        $attendance->update([
+            "{$prefix}_lat" => $lat,
+            "{$prefix}_lng" => $lng,
+            "{$prefix}_accuracy_m" => $accuracy,
+            "{$prefix}_distance_m" => $eval['distance_m'],
+            "{$prefix}_outside_geofence" => $eval['outside'],
+        ]);
+
+        $attendance = $attendance->refresh();
+
+        if ($eval['outside'] && $eval['distance_m'] !== null) {
+            $office = $this->geofence->office();
+            $this->notifications->attendanceGeofenceWarning(
+                $attendance,
+                $kind,
+                $eval['distance_m'],
+                (int) ($office['radius_m'] ?? config('attendance.location.radius_meters', 1000)),
+            );
+        }
+
+        return $attendance;
     }
 
     public function computeWorkedHours(CarbonInterface $clockIn, CarbonInterface $clockOut): float

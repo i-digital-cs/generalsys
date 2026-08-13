@@ -7,6 +7,7 @@ use App\Models\Permission;
 use App\Models\User;
 use App\Models\Vacation;
 use App\Notifications\AttendanceAutoClockOutNotification;
+use App\Notifications\AttendanceGeofenceWarningNotification;
 use App\Notifications\DailyReportMissingNotification;
 use App\Notifications\DailyReportRepliedNotification;
 use App\Notifications\DailyReportSubmittedNotification;
@@ -178,6 +179,35 @@ class AppNotificationService
     {
         $attendance->loadMissing('user');
         $notification = new AttendanceAutoClockOutNotification($attendance);
+
+        if ($attendance->user !== null) {
+            $attendance->user->notify($notification);
+        }
+
+        $leaderId = $attendance->user?->team_leader_id;
+        if ($leaderId !== null) {
+            User::query()->find($leaderId)?->notify($notification);
+        }
+
+        $this->notifyManagers($notification);
+    }
+
+    /**
+     * Soft geofence: punch accepted outside office — notify employee + TL + managers.
+     */
+    public function attendanceGeofenceWarning(
+        Attendance $attendance,
+        string $kindPunch,
+        int $distanceM,
+        int $radiusM,
+    ): void {
+        $attendance->loadMissing('user');
+        $notification = new AttendanceGeofenceWarningNotification(
+            $attendance,
+            $kindPunch,
+            $distanceM,
+            $radiusM,
+        );
 
         if ($attendance->user !== null) {
             $attendance->user->notify($notification);

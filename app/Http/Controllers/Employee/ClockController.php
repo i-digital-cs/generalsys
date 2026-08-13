@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
- * Employee clock screen (T-2.3 / T-6.6) — thin: authorize → service → view/redirect.
+ * Employee clock screen (T-2.3 / T-6.6 / T-7.2) — thin: authorize → service → view/redirect.
  */
 class ClockController extends Controller
 {
@@ -66,7 +66,11 @@ class ClockController extends Controller
     public function clockIn(ClockInRequest $request): RedirectResponse
     {
         try {
-            $attendance = $this->attendance->clockIn($request->user(), $request->validated('shift_type'));
+            $attendance = $this->attendance->clockIn(
+                $request->user(),
+                $request->validated('shift_type'),
+                location: $this->locationFrom($request),
+            );
             $this->photos->storeMany(
                 $attendance,
                 AttendancePhoto::KIND_CLOCK_IN,
@@ -76,15 +80,26 @@ class ClockController extends Controller
             throw ValidationException::withMessages(['shift_type' => __($e->getMessage())]);
         }
 
-        return redirect()
+        $redirect = redirect()
             ->route('employee.clock')
             ->with('success', __('clock.flash.clocked_in'));
+
+        if ($attendance->clock_in_outside_geofence) {
+            $redirect->with('warning', __('clock.flash.outside_geofence', [
+                'distance' => $attendance->clock_in_distance_m,
+            ]));
+        }
+
+        return $redirect;
     }
 
     public function clockOut(ClockOutRequest $request): RedirectResponse
     {
         try {
-            $attendance = $this->attendance->clockOut($request->user());
+            $attendance = $this->attendance->clockOut(
+                $request->user(),
+                location: $this->locationFrom($request),
+            );
             $this->photos->storeMany(
                 $attendance,
                 AttendancePhoto::KIND_CLOCK_OUT,
@@ -94,19 +109,43 @@ class ClockController extends Controller
             throw ValidationException::withMessages(['clock_out' => __($e->getMessage())]);
         }
 
+        $warning = $attendance->clock_out_outside_geofence
+            ? __('clock.flash.outside_geofence', ['distance' => $attendance->clock_out_distance_m])
+            : null;
+
         // After leaving, route the employee straight to their daily report
         // when the day's report is still missing.
         $date = $attendance->date->toDateString();
         $main = $this->reports->mainAttendanceForDate($request->user(), $date);
 
         if ($main !== null && blank($main->daily_report)) {
-            return redirect()
+            $redirect = redirect()
                 ->route('employee.report', ['date' => $date])
                 ->with('success', __('clock.flash.clocked_out_report'));
+        } else {
+            $redirect = redirect()
+                ->route('employee.clock')
+                ->with('success', __('clock.flash.clocked_out'));
         }
 
-        return redirect()
-            ->route('employee.clock')
-            ->with('success', __('clock.flash.clocked_out'));
+        if ($warning !== null) {
+            $redirect->with('warning', $warning);
+        }
+
+        return $redirect;
+    }
+
+    /**
+     * @return array{latitude: float, longitude: float, accuracy: ?float}
+     */
+    private function locationFrom(ClockInRequest|ClockOutRequest $request): array
+    {
+        $validated = $request->validated();
+
+        return [
+            'latitude' => (float) $validated['latitude'],
+            'longitude' => (float) $validated['longitude'],
+            'accuracy' => isset($validated['accuracy']) ? (float) $validated['accuracy'] : null,
+        ];
     }
 }

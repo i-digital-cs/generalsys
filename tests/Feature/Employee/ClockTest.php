@@ -45,7 +45,7 @@ class ClockTest extends TestCase
 
         $this->actingAs($this->employee)
             ->from(route('employee.clock'))
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertSessionHasErrors('shift_type');
 
         $this->assertSame(1, Attendance::where('user_id', $this->employee->id)->count());
@@ -69,7 +69,7 @@ class ClockTest extends TestCase
     public function test_clock_in_and_clock_out_happy_path(): void
     {
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHas('success');
 
@@ -89,7 +89,7 @@ class ClockTest extends TestCase
 
         // Missing daily report → routed to the report page for that date.
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.out'))
+            ->post(route('employee.clock.out'), $this->withClockGps())
             ->assertRedirect(route('employee.report', ['date' => now()->toDateString()]));
 
         $row = Attendance::where('user_id', $this->employee->id)->firstOrFail();
@@ -99,13 +99,13 @@ class ClockTest extends TestCase
     public function test_clock_out_redirects_to_clock_when_report_already_filled(): void
     {
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME]);
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]));
 
         Attendance::where('user_id', $this->employee->id)->firstOrFail()
             ->update(['daily_report' => 'Finished all tasks.']);
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.out'))
+            ->post(route('employee.clock.out'), $this->withClockGps())
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHas('success');
     }
@@ -115,7 +115,7 @@ class ClockTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-08-05 10:25:00', config('app.timezone')));
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect(route('employee.clock'));
 
         $this->actingAs($this->employee)
@@ -130,12 +130,12 @@ class ClockTest extends TestCase
     public function test_second_open_clock_in_returns_validation_error(): void
     {
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect();
 
         $this->actingAs($this->employee)
             ->from(route('employee.clock'))
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_ONLINE_HALF])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_ONLINE_HALF]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHasErrors('shift_type');
 
@@ -146,7 +146,7 @@ class ClockTest extends TestCase
     {
         $this->actingAs($this->employee)
             ->from(route('employee.clock'))
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_OVERTIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_OVERTIME]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHasErrors('shift_type');
 
@@ -172,7 +172,7 @@ class ClockTest extends TestCase
             ->assertSee(__('clock.shifts.OVERTIME'), false);
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_OVERTIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_OVERTIME]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHas('success');
 
@@ -185,16 +185,16 @@ class ClockTest extends TestCase
     public function test_employee_cannot_clock_second_base_type_without_plan(): void
     {
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect();
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.out'))
+            ->post(route('employee.clock.out'), $this->withClockGps())
             ->assertRedirect();
 
         $this->actingAs($this->employee)
             ->from(route('employee.clock'))
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_ONLINE_HALF])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_ONLINE_HALF]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHasErrors('shift_type');
 
@@ -224,7 +224,7 @@ class ClockTest extends TestCase
         ]);
 
         $this->actingAs($manager)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHas('success');
 
@@ -267,12 +267,12 @@ class ClockTest extends TestCase
         $this->assertStringNotContainsString('value="ONLINE_HALF"', $html);
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_ONLINE_HALF])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_ONLINE_HALF]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHasErrors('shift_type');
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHas('success');
 
@@ -303,10 +303,10 @@ class ClockTest extends TestCase
     public function test_completed_full_time_is_hidden_and_rejected_same_day(): void
     {
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect();
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.out'))
+            ->post(route('employee.clock.out'), $this->withClockGps())
             ->assertRedirect();
 
         $html = $this->actingAs($this->employee)
@@ -320,7 +320,7 @@ class ClockTest extends TestCase
 
         $this->actingAs($this->employee)
             ->from(route('employee.clock'))
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME])
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHasErrors('shift_type');
     }

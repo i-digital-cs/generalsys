@@ -43,7 +43,7 @@ class EmployeeDashboardTest extends TestCase
         app()->setLocale('en');
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_FULL_TIME]);
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]));
 
         $this->actingAs($this->employee)
             ->get(route('employee.dashboard'))

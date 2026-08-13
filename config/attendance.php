@@ -28,4 +28,17 @@ return [
         'mimes' => ['jpg', 'jpeg', 'png', 'webp'],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Soft office geofence (T-7.2)
+    |--------------------------------------------------------------------------
+    |
+    | Punch GPS is required. Outside radius still accepts the punch but warns
+    | employee + TL + Admin. Office lat/lng live in settings (Admin UI).
+    |
+    */
+    'location' => [
+        'radius_meters' => (int) env('ATTENDANCE_OFFICE_RADIUS_METERS', 1000),
+    ],
+
 ];

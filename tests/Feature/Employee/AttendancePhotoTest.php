@@ -62,10 +62,10 @@ class AttendancePhotoTest extends TestCase
         $inB = UploadedFile::fake()->image('in-b.png', 200, 200);
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), [
+            ->post(route('employee.clock.in'), $this->withClockGps([
                 'shift_type' => Attendance::SHIFT_FULL_TIME,
                 'photos' => [$inA, $inB],
-            ])
+            ]))
             ->assertRedirect(route('employee.clock'));
 
         $attendance = Attendance::where('user_id', $this->employee->id)->firstOrFail();
@@ -87,9 +87,9 @@ class AttendancePhotoTest extends TestCase
             ->update(['daily_report' => 'Done.']);
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.out'), [
+            ->post(route('employee.clock.out'), $this->withClockGps([
                 'photos' => [$out],
-            ])
+            ]))
             ->assertRedirect(route('employee.clock'));
 
         $this->assertSame(1, $attendance->fresh()->photos()->where('kind', AttendancePhoto::KIND_CLOCK_OUT)->count());
@@ -99,9 +99,9 @@ class AttendancePhotoTest extends TestCase
     public function test_clock_in_without_photos_still_works(): void
     {
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), [
+            ->post(route('employee.clock.in'), $this->withClockGps([
                 'shift_type' => Attendance::SHIFT_FULL_TIME,
-            ])
+            ]))
             ->assertRedirect(route('employee.clock'));
 
         $this->assertSame(0, AttendancePhoto::count());
@@ -113,10 +113,10 @@ class AttendancePhotoTest extends TestCase
 
         $this->actingAs($this->employee)
             ->from(route('employee.clock'))
-            ->post(route('employee.clock.in'), [
+            ->post(route('employee.clock.in'), $this->withClockGps([
                 'shift_type' => Attendance::SHIFT_FULL_TIME,
                 'photos' => [$pdf],
-            ])
+            ]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHasErrors('photos.0');
 
@@ -131,10 +131,10 @@ class AttendancePhotoTest extends TestCase
         }
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), [
+            ->post(route('employee.clock.in'), $this->withClockGps([
                 'shift_type' => Attendance::SHIFT_FULL_TIME,
                 'photos' => $files,
-            ])
+            ]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHasNoErrors();
 
@@ -145,10 +145,10 @@ class AttendancePhotoTest extends TestCase
     public function test_photo_view_authorization_matrix(): void
     {
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), [
+            ->post(route('employee.clock.in'), $this->withClockGps([
                 'shift_type' => Attendance::SHIFT_FULL_TIME,
                 'photos' => [UploadedFile::fake()->image('proof.jpg')],
-            ]);
+            ]));
 
         $photo = AttendancePhoto::firstOrFail();
 
@@ -178,10 +178,10 @@ class AttendancePhotoTest extends TestCase
         ]);
 
         $this->actingAs($tl)
-            ->post(route('employee.clock.in'), [
+            ->post(route('employee.clock.in'), $this->withClockGps([
                 'shift_type' => Attendance::SHIFT_FULL_TIME,
                 'photos' => [UploadedFile::fake()->image('tl.jpg')],
-            ]);
+            ]));
 
         $photo = AttendancePhoto::firstOrFail();
 
@@ -197,10 +197,10 @@ class AttendancePhotoTest extends TestCase
     public function test_today_board_shows_photos_for_team_leader(): void
     {
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), [
+            ->post(route('employee.clock.in'), $this->withClockGps([
                 'shift_type' => Attendance::SHIFT_FULL_TIME,
                 'photos' => [UploadedFile::fake()->image('board.jpg')],
-            ]);
+            ]));
 
         $photo = AttendancePhoto::firstOrFail();
 

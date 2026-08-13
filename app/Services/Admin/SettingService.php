@@ -15,6 +15,12 @@ class SettingService
 
     public const KEY_DEFAULT_CURRENCY = 'default_currency';
 
+    public const KEY_OFFICE_LATITUDE = 'office_latitude';
+
+    public const KEY_OFFICE_LONGITUDE = 'office_longitude';
+
+    public const KEY_OFFICE_RADIUS_METERS = 'office_radius_meters';
+
     public const CACHE_MULTIPLIERS = 'settings.payroll_multipliers';
 
     /** @var list<string> */

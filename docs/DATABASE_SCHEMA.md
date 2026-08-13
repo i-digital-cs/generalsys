@@ -146,7 +146,17 @@ CREATE TABLE attendance (
     is_official_holiday_work TINYINT(1) NOT NULL DEFAULT 0,   -- vs official_holidays
     assigned_by_tl_id        BIGINT UNSIGNED NULL,            -- set when clocking a matching TL assignment
     clock_in                 DATETIME NULL,
+    clock_in_lat             DECIMAL(10,7) NULL,              -- browser GPS (T-7.2)
+    clock_in_lng             DECIMAL(10,7) NULL,
+    clock_in_accuracy_m      INT UNSIGNED NULL,
+    clock_in_distance_m      INT UNSIGNED NULL,               -- meters from office when configured
+    clock_in_outside_geofence TINYINT(1) NOT NULL DEFAULT 0,  -- soft: punch still accepted
     clock_out                DATETIME NULL,                   -- overnight: next-day datetime, no offset hacks
+    clock_out_lat            DECIMAL(10,7) NULL,
+    clock_out_lng            DECIMAL(10,7) NULL,
+    clock_out_accuracy_m     INT UNSIGNED NULL,
+    clock_out_distance_m     INT UNSIGNED NULL,
+    clock_out_outside_geofence TINYINT(1) NOT NULL DEFAULT 0,
     planned_hours            DECIMAL(4,2) NOT NULL DEFAULT 0, -- 8 / 4 / 12 / assigned hours
     actual_hours             DECIMAL(4,2) NOT NULL DEFAULT 0,
     status                   ENUM('PRESENT','LATE','EARLY_LEAVE','REST_DAY','OFFICIAL_HOLIDAY',
@@ -176,6 +186,8 @@ CREATE TABLE attendance (
 > Overnight shifts (e.g. 10:00 → 06:00 next day): store real datetimes. The Excel "modify TIME +12:00" hack is **not** carried into the app (see `docs/PAYROLL_CALCULATION.md` §3).
 >
 > Unique `(user_id, date, shift_type)`: one punch cycle per shift type per day. After clock-out, that type is hidden on `/clock`; employee may still clock a **different** type the same day.
+>
+> **GPS (T-7.2):** lat/lng/accuracy required on manual clock-in/out (browser geolocation; no manual pick). Soft geofence vs Admin Settings office point + radius (default 1 km): outside still accepted; flags + notify employee/TL/Admin. Auto clock-out skips GPS. View like photos: owner · TL team · Manager.
 
 ## 7b. attendance_photos
 

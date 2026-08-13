@@ -23,7 +23,7 @@
                 <tr>
                     <th scope="col">{{ __('shifts.employee') }}</th>
                     <th scope="col">{{ __('dashboard.hours.status') }}</th>
-                    <th scope="col">{{ __('clock.photos.title') }}</th>
+                    <th scope="col">{{ __('clock.photos.title') }} / {{ __('clock.location.title') }}</th>
                     <th scope="col" class="col-num">{{ __('dashboard.hours.should_spend') }}</th>
                     <th scope="col" class="col-num">{{ __('dashboard.hours.spent') }}</th>
                     <th scope="col" class="col-num">{{ __('dashboard.hours.pct') }}</th>
@@ -54,7 +54,11 @@
                         <td>
                             @if (($row['photo_count'] ?? 0) > 0)
                                 <x-attendance-photos :photos="$row['photos']" compact />
-                            @else
+                            @endif
+                            @if (! empty($row['attendance']))
+                                <x-attendance-location :attendance="$row['attendance']" compact class="mt-1" />
+                            @endif
+                            @if (($row['photo_count'] ?? 0) === 0 && empty($row['attendance']?->clock_in_lat) && empty($row['attendance']?->clock_out_lat))
                                 <span class="small text-body-secondary">{{ __('clock.photos.none') }}</span>
                             @endif
                         </td>

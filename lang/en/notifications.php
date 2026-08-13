@@ -26,6 +26,7 @@ return [
         'report_missing_today' => 'Missing report — today',
         'report_missing_overdue' => 'Overdue daily report',
         'attendance_auto_clock_out' => 'Auto clock-out',
+        'attendance_geofence_warning' => 'Outside office area',
     ],
     'bodies' => [
         'permission_submitted' => ':name submitted :type for :date.',
@@ -39,5 +40,6 @@ return [
         'report_missing_today' => ':name has not submitted today’s report (:date) yet.',
         'report_missing_overdue' => ':name has not submitted yesterday’s report (:date) — overdue.',
         'attendance_auto_clock_out' => ':name was auto clocked out for :date (:shift) at :time after the grace period.',
+        'attendance_geofence_warning' => ':name punched :punch for :date about :distance m from the office (allowed :radius m).',
     ],
 ];

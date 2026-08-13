@@ -26,6 +26,7 @@ return [
         'report_missing_today' => 'تقرير اليوم مفقود',
         'report_missing_overdue' => 'تقرير يومي متأخر',
         'attendance_auto_clock_out' => 'انصراف تلقائي',
+        'attendance_geofence_warning' => 'خارج نطاق المكتب',
     ],
     'bodies' => [
         'permission_submitted' => 'قدّم :name :type بتاريخ :date.',
@@ -39,5 +40,6 @@ return [
         'report_missing_today' => 'لم يقدّم :name تقرير اليوم (:date) حتى الآن.',
         'report_missing_overdue' => 'لم يقدّم :name تقرير الأمس (:date) — متأخر.',
         'attendance_auto_clock_out' => 'تم إنصراف :name تلقائيًا ليوم :date (:shift) الساعة :time بعد انتهاء فترة السماح.',
+        'attendance_geofence_warning' => 'سجّل :name :punch ليوم :date على بعد حوالي :distance م من المكتب (المسموح :radius م).',
     ],
 ];

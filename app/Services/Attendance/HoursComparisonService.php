@@ -211,6 +211,8 @@ class HoursComparisonService
                 'is_vacation' => $isVacation,
                 'photo_count' => (int) $photoCount,
                 'photos' => $photoModels,
+                'attendance' => $dayAttendances->first(fn (Attendance $row) => $row->clock_out === null)
+                    ?? $dayAttendances->sortByDesc('id')->first(),
             ];
         })->values();
     }
@@ -414,6 +416,7 @@ class HoursComparisonService
                 'is_day_off_work' => (bool) $row->is_day_off_work,
                 'is_official_holiday_work' => (bool) $row->is_official_holiday_work,
                 'photos' => $photos,
+                'attendance' => $row,
             ];
         }
 

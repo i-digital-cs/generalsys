@@ -95,16 +95,21 @@
                 @endif
 
                 <div class="mb-4">
+                    <x-attendance-location :attendance="$open" kind="CLOCK_IN" />
+                </div>
+
+                <div class="mb-4">
                     <x-attendance-flags :attendance="$open" class="mb-0 justify-content-center" />
                 </div>
 
-                <form method="POST" action="{{ route('employee.clock.out') }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('employee.clock.out') }}" enctype="multipart/form-data" data-clock-form>
                     @csrf
                     @error('clock_out')
                         <div class="alert alert-danger">{{ $message }}</div>
                     @enderror
+                    @include('partials.clock-location-input', ['id' => 'clock-out-gps'])
                     @include('partials.clock-photos-input', ['id' => 'clock-out-photos'])
-                    <button type="submit" class="btn btn-danger btn-lg w-100 clock-cta">
+                    <button type="submit" class="btn btn-danger btn-lg w-100 clock-cta" data-clock-submit>
                         <i class="bi bi-box-arrow-left me-2" aria-hidden="true"></i>{{ __('clock.clock_out') }}
                     </button>
                 </form>
@@ -131,7 +136,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('employee.clock.in') }}" class="mb-3" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('employee.clock.in') }}" class="mb-3" enctype="multipart/form-data" data-clock-form>
                     @csrf
                     @if ($todaysAssignment)
                         <div class="alert alert-info py-2">
@@ -157,9 +162,10 @@
                             <div class="form-text">{{ __('clock.rotation_hint') }}</div>
                         </div>
 
+                        @include('partials.clock-location-input', ['id' => 'clock-in-gps'])
                         @include('partials.clock-photos-input', ['id' => 'clock-in-photos'])
 
-                        <button type="submit" class="btn btn-primary btn-lg w-100 clock-cta">
+                        <button type="submit" class="btn btn-primary btn-lg w-100 clock-cta" data-clock-submit>
                             <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>{{ __('clock.clock_in') }}
                         </button>
                     @endif
@@ -173,20 +179,102 @@
 <script>
 (function () {
     const el = document.getElementById('clock-elapsed');
-    if (!el || !el.dataset.clockIn) return;
-
-    const start = Date.parse(el.dataset.clockIn);
-
-    function tick() {
-        const secs = Math.max(0, Math.floor((Date.now() - start) / 1000));
-        const h = String(Math.floor(secs / 3600)).padStart(2, '0');
-        const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
-        const s = String(secs % 60).padStart(2, '0');
-        el.textContent = h + ':' + m + ':' + s;
+    if (el && el.dataset.clockIn) {
+        const start = Date.parse(el.dataset.clockIn);
+        function tick() {
+            const secs = Math.max(0, Math.floor((Date.now() - start) / 1000));
+            const h = String(Math.floor(secs / 3600)).padStart(2, '0');
+            const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+            const s = String(secs % 60).padStart(2, '0');
+            el.textContent = h + ':' + m + ':' + s;
+        }
+        tick();
+        setInterval(tick, 1000);
     }
 
-    tick();
-    setInterval(tick, 1000);
+    const msgs = {
+        unsupported: @json(__('clock.location.unsupported')),
+        denied: @json(__('clock.location.denied')),
+        unavailable: @json(__('clock.location.unavailable')),
+        timeout: @json(__('clock.location.timeout')),
+        locating: @json(__('clock.location.locating')),
+    };
+
+    document.querySelectorAll('[data-clock-form]').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            const lat = form.querySelector('[data-clock-lat]');
+            const lng = form.querySelector('[data-clock-lng]');
+            const acc = form.querySelector('[data-clock-acc]');
+            const err = form.querySelector('[data-clock-loc-err]');
+            const ok = form.querySelector('[data-clock-loc-ok]');
+            const btn = form.querySelector('[data-clock-submit]');
+
+            if (!lat || !lng) return;
+
+            if (lat.value !== '' && lng.value !== '') {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (!navigator.geolocation) {
+                if (err) {
+                    err.textContent = msgs.unsupported;
+                    err.classList.remove('d-none');
+                }
+                return;
+            }
+
+            if (err) {
+                err.classList.add('d-none');
+                err.textContent = '';
+            }
+            if (ok) {
+                ok.classList.add('d-none');
+            }
+            if (btn) {
+                btn.disabled = true;
+                btn.dataset.originalLabel = btn.innerHTML;
+                btn.innerHTML = msgs.locating;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function (pos) {
+                    lat.value = String(pos.coords.latitude);
+                    lng.value = String(pos.coords.longitude);
+                    if (acc) {
+                        acc.value = pos.coords.accuracy != null ? String(pos.coords.accuracy) : '';
+                    }
+                    if (ok) {
+                        ok.classList.remove('d-none');
+                    }
+                    if (btn) {
+                        btn.disabled = false;
+                        if (btn.dataset.originalLabel) {
+                            btn.innerHTML = btn.dataset.originalLabel;
+                        }
+                    }
+                    form.submit();
+                },
+                function (error) {
+                    let message = msgs.unavailable;
+                    if (error && error.code === 1) message = msgs.denied;
+                    if (error && error.code === 3) message = msgs.timeout;
+                    if (err) {
+                        err.textContent = message;
+                        err.classList.remove('d-none');
+                    }
+                    if (btn) {
+                        btn.disabled = false;
+                        if (btn.dataset.originalLabel) {
+                            btn.innerHTML = btn.dataset.originalLabel;
+                        }
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            );
+        });
+    });
 })();
 </script>
 @endpush

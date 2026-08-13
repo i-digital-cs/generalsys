@@ -28,6 +28,7 @@ class NotificationMessage
             'report_missing_today' => __('notifications.kinds.report_missing_today'),
             'report_missing_overdue' => __('notifications.kinds.report_missing_overdue'),
             'attendance_auto_clock_out' => __('notifications.kinds.attendance_auto_clock_out'),
+            'attendance_geofence_warning' => __('notifications.kinds.attendance_geofence_warning'),
             default => __('notifications.kinds.generic'),
         };
     }
@@ -96,6 +97,15 @@ class NotificationMessage
                 'date' => $data['date'] ?? '',
                 'shift' => __('clock.shifts.'.($data['shift_type'] ?? 'FULL_TIME')),
                 'time' => $data['clock_out'] ?? '',
+            ]),
+            'attendance_geofence_warning' => __('notifications.bodies.attendance_geofence_warning', [
+                'name' => $name !== '' ? $name : __('notifications.you'),
+                'punch' => ($data['punch'] ?? '') === 'CLOCK_OUT'
+                    ? __('clock.clock_out')
+                    : __('clock.clock_in'),
+                'date' => $data['date'] ?? '',
+                'distance' => $data['distance_m'] ?? '',
+                'radius' => $data['radius_m'] ?? '',
             ]),
             default => '',
         };

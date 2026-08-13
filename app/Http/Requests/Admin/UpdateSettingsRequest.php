@@ -28,6 +28,9 @@ class UpdateSettingsRequest extends FormRequest
             'multipliers.overtime' => ['required', 'numeric', 'min:0', 'max:10'],
             'multipliers.official_holiday_work' => ['required', 'numeric', 'min:0', 'max:10'],
             'multipliers.extra_pay' => ['required', 'numeric', 'min:0', 'max:10'],
+            'office_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'office_longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'office_radius_meters' => ['nullable', 'integer', 'min:50', 'max:50000'],
         ];
     }
 }

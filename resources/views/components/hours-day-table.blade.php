@@ -121,6 +121,9 @@
                                                     @if (! empty($interval['photos']) && count($interval['photos']) > 0)
                                                         <x-attendance-photos :photos="$interval['photos']" class="mt-1" compact />
                                                     @endif
+                                                    @if (! empty($interval['attendance']))
+                                                        <x-attendance-location :attendance="$interval['attendance']" class="mt-1" compact />
+                                                    @endif
                                                 </li>
                                             @endforeach
                                         </ul>

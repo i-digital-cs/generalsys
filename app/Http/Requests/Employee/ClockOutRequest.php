@@ -23,6 +23,6 @@ class ClockOutRequest extends FormRequest
      */
     public function rules(): array
     {
-        return ClockPhotoRules::rules();
+        return array_merge(ClockPhotoRules::rules(), ClockLocationRules::rules());
     }
 }

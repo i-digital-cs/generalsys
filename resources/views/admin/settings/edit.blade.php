@@ -74,6 +74,46 @@
         </div>
 
         <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent">
+                    <div class="fw-semibold">{{ __('settings.office_section') }}</div>
+                    <p class="small text-body-secondary mb-0">{{ __('settings.office_hint') }}</p>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4">
+                            <label for="office_latitude" class="form-label">{{ __('settings.office_latitude') }}</label>
+                            <input type="number" step="any" id="office_latitude" name="office_latitude"
+                                   class="form-control @error('office_latitude') is-invalid @enderror"
+                                   value="{{ old('office_latitude', $officeLatitude) }}"
+                                   placeholder="30.044420"
+                                   dir="ltr">
+                            @error('office_latitude') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="office_longitude" class="form-label">{{ __('settings.office_longitude') }}</label>
+                            <input type="number" step="any" id="office_longitude" name="office_longitude"
+                                   class="form-control @error('office_longitude') is-invalid @enderror"
+                                   value="{{ old('office_longitude', $officeLongitude) }}"
+                                   placeholder="31.235712"
+                                   dir="ltr">
+                            @error('office_longitude') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="office_radius_meters" class="form-label">{{ __('settings.office_radius_meters') }}</label>
+                            <input type="number" min="50" max="50000" step="1" id="office_radius_meters" name="office_radius_meters"
+                                   class="form-control @error('office_radius_meters') is-invalid @enderror"
+                                   value="{{ old('office_radius_meters', $officeRadiusMeters) }}"
+                                   dir="ltr">
+                            @error('office_radius_meters') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <div class="form-text">{{ __('settings.office_radius_hint') }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
             <button type="submit" class="btn btn-primary">{{ __('general.save') }}</button>
         </div>
     </form>

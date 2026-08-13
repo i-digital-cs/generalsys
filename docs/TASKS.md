@@ -472,6 +472,16 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] AccountantRoleTest + MenuConfigTest green
   - [x] UI/UX: AR+EN role label; approve button hidden for accountant
 
+### T-7.2 — Required punch GPS + soft office geofence (1 office / 1 km)
+- Depends on: T-2.3, T-6.6, T-1.x settings
+- Unlocks: —
+- [x] Task complete
+  - [x] attendance punch lat/lng/accuracy/distance/outside flags
+  - [x] Admin Settings: office lat/lng + radius (default 1000 m)
+  - [x] Browser GPS required on clock in/out (block if denied); soft warn if outside
+  - [x] Notify employee + TL + Admin; show Maps link like photos
+  - [x] TL↔Admin self-clock yes; tests + UI/UX AR+EN RTL/LTR responsive
+
 ## Dependency map
 
 ```text
@@ -607,3 +617,4 @@ Example:
 - [x] 2026-08-12 Amend T-6.6 — removed punch-photo **count** limit (keep ≤50MB each); AR+EN hint updated; AttendancePhotoTest accepts 8 files.
 - [x] 2026-08-12 UX — Admin payroll show: second button **Export full review PDF** (`export-review.pdf`) covers all tabs (pay / edit draft / attendance / evaluation / hours); Admin-only (TL 403); PayrollExportTest green.
 - [x] 2026-08-12 T-7.1 PASS — ACCOUNTANT role: self-service + payroll (no اعتماد) + advances CRUD; `team_leader_id` null → Manager decides leave; seed accountant@hrpro.test; TL still money-blocked.
+- [x] 2026-08-13 T-7.2 PASS — Required punch GPS + soft 1-office geofence (Admin Settings lat/lng, default 1 km): store lat/lng/accuracy/distance/outside; accept outside with warn + notify employee/TL/Admin; Maps links like photos; TL↔Admin self-clock yes; ClockLocationTest + GeofenceServiceTest green.

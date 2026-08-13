@@ -28,6 +28,6 @@ class ClockInRequest extends FormRequest
 
         return array_merge([
             'shift_type' => ['required', 'string', Rule::in($allowed)],
-        ], ClockPhotoRules::rules());
+        ], ClockPhotoRules::rules(), ClockLocationRules::rules());
     }
 }

@@ -52,6 +52,7 @@
                             <div class="mb-4">
                                 <x-attendance-photos :photos="$main->photos" kind="CLOCK_IN" class="mb-3" />
                                 <x-attendance-photos :photos="$main->photos" kind="CLOCK_OUT" />
+                                <x-attendance-location :attendance="$main" class="mt-3" />
                             </div>
                         @endif
 

@@ -17,6 +17,12 @@ class SettingController extends Controller
         return view('admin.settings.edit', [
             'defaultLanguage' => $this->settings->get(SettingService::KEY_DEFAULT_LANGUAGE, 'ar'),
             'defaultCurrency' => $this->settings->get(SettingService::KEY_DEFAULT_CURRENCY, 'EGP'),
+            'officeLatitude' => $this->settings->get(SettingService::KEY_OFFICE_LATITUDE, ''),
+            'officeLongitude' => $this->settings->get(SettingService::KEY_OFFICE_LONGITUDE, ''),
+            'officeRadiusMeters' => $this->settings->get(
+                SettingService::KEY_OFFICE_RADIUS_METERS,
+                (string) config('attendance.location.radius_meters', 1000),
+            ),
             'multipliers' => $this->settings->multipliers(),
         ]);
     }
@@ -27,6 +33,14 @@ class SettingController extends Controller
 
         $this->settings->set(SettingService::KEY_DEFAULT_LANGUAGE, $validated['default_language']);
         $this->settings->set(SettingService::KEY_DEFAULT_CURRENCY, $validated['default_currency']);
+        $this->settings->set(SettingService::KEY_OFFICE_LATITUDE, $validated['office_latitude'] ?? null);
+        $this->settings->set(SettingService::KEY_OFFICE_LONGITUDE, $validated['office_longitude'] ?? null);
+        $this->settings->set(
+            SettingService::KEY_OFFICE_RADIUS_METERS,
+            isset($validated['office_radius_meters'])
+                ? (string) (int) $validated['office_radius_meters']
+                : (string) config('attendance.location.radius_meters', 1000),
+        );
         $this->settings->setMultipliers($validated['multipliers']);
 
         return redirect()
