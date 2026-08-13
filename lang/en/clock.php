@@ -44,6 +44,16 @@ return [
     'report_missing' => 'Your daily report for :date is still missing.',
     'report_write' => 'Write it now',
     'auto_closed_notice' => 'The system auto clocked you out for :shift at :time (end of work + 1 hour grace).',
+    'photos' => [
+        'title' => 'Punch photos',
+        'label' => 'Photos',
+        'optional' => 'optional',
+        'hint' => 'Any number of images (JPG, PNG, WebP), :mb MB each.',
+        'in_label' => 'Clock-in photos',
+        'out_label' => 'Clock-out photos',
+        'count' => ':count photo|:count photos',
+        'none' => 'No photos',
+    ],
     'errors' => [
         'open_exists' => 'You already have an open clock-in. Clock out first.',
         'no_open' => 'No open clock-in to clock out.',

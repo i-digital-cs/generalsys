@@ -11,6 +11,7 @@
         $endLabel = $expectedEnd
             ? $expectedEnd->timezone($tz)->format('H:i')
             : null;
+        $clockInPhotos = $open?->photos?->where('kind', \App\Models\AttendancePhoto::KIND_CLOCK_IN) ?? collect();
     @endphp
 
     <h1 class="h4 mb-3">{{ __('clock.title') }}</h1>
@@ -87,15 +88,22 @@
                         data-clock-in="{{ $open->clock_in?->toIso8601String() }}">--:--:--</dd>
                 </dl>
 
+                @if ($clockInPhotos->isNotEmpty())
+                    <div class="mb-4">
+                        <x-attendance-photos :photos="$clockInPhotos" kind="CLOCK_IN" />
+                    </div>
+                @endif
+
                 <div class="mb-4">
                     <x-attendance-flags :attendance="$open" class="mb-0 justify-content-center" />
                 </div>
 
-                <form method="POST" action="{{ route('employee.clock.out') }}">
+                <form method="POST" action="{{ route('employee.clock.out') }}" enctype="multipart/form-data">
                     @csrf
                     @error('clock_out')
                         <div class="alert alert-danger">{{ $message }}</div>
                     @enderror
+                    @include('partials.clock-photos-input', ['id' => 'clock-out-photos'])
                     <button type="submit" class="btn btn-danger btn-lg w-100 clock-cta">
                         <i class="bi bi-box-arrow-left me-2" aria-hidden="true"></i>{{ __('clock.clock_out') }}
                     </button>
@@ -123,7 +131,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('employee.clock.in') }}" class="mb-3">
+                <form method="POST" action="{{ route('employee.clock.in') }}" class="mb-3" enctype="multipart/form-data">
                     @csrf
                     @if ($todaysAssignment)
                         <div class="alert alert-info py-2">
@@ -148,6 +156,8 @@
                             @enderror
                             <div class="form-text">{{ __('clock.rotation_hint') }}</div>
                         </div>
+
+                        @include('partials.clock-photos-input', ['id' => 'clock-in-photos'])
 
                         <button type="submit" class="btn btn-primary btn-lg w-100 clock-cta">
                             <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>{{ __('clock.clock_in') }}

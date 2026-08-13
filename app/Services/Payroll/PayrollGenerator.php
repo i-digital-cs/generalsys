@@ -268,7 +268,7 @@ class PayrollGenerator
     {
         $query = User::query()
             ->where('status', User::STATUS_ACTIVE)
-            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
+            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT])
             ->orderBy('id');
 
         if ($teamLeaderId !== null) {

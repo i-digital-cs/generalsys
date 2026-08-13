@@ -23,6 +23,8 @@ return [
         'vacation_forced' => 'Vacation marked as forced',
         'report_submitted' => 'New daily report',
         'report_replied' => 'Report reply',
+        'report_missing_today' => 'Missing report — today',
+        'report_missing_overdue' => 'Overdue daily report',
         'attendance_auto_clock_out' => 'Auto clock-out',
     ],
     'bodies' => [
@@ -34,6 +36,8 @@ return [
         'vacation_forced' => 'Your :type vacation :start → :end was marked as forced (rest day kept).',
         'report_submitted' => ':name submitted a daily report for :date.',
         'report_replied' => 'Your team leader replied to your report for :date.',
+        'report_missing_today' => ':name has not submitted today’s report (:date) yet.',
+        'report_missing_overdue' => ':name has not submitted yesterday’s report (:date) — overdue.',
         'attendance_auto_clock_out' => ':name was auto clocked out for :date (:shift) at :time after the grace period.',
     ],
 ];

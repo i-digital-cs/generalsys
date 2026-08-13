@@ -6,8 +6,8 @@
  * Routes are placeholders until their phase ships — the sidebar renders '#'
  * for any route name that is not registered yet.
  *
- * PRIVACY RULE: payroll entries exist ONLY under MANAGER. TEAM_LEADER must
- * never see money (AGENTS.md §5.1) — do not add payroll/money items here.
+ * PRIVACY RULE: payroll/money entries exist under MANAGER and ACCOUNTANT only.
+ * TEAM_LEADER must never see money (AGENTS.md §5.1).
  */
 return [
     'MANAGER' => [
@@ -25,6 +25,18 @@ return [
         ['key' => 'nav.advances', 'route' => 'admin.advances.index', 'icon' => 'bi-cash-coin'],
         ['key' => 'nav.annual_reports', 'route' => 'admin.reports.annual', 'icon' => 'bi-bar-chart'],
         ['key' => 'nav.settings', 'route' => 'admin.settings', 'icon' => 'bi-gear'],
+    ],
+
+    'ACCOUNTANT' => [
+        ['key' => 'nav.dashboard', 'route' => 'employee.dashboard', 'icon' => 'bi-speedometer2'],
+        ['key' => 'nav.clock', 'route' => 'employee.clock', 'icon' => 'bi-clock'],
+        ['key' => 'nav.profile', 'route' => 'employee.profile', 'icon' => 'bi-person'],
+        ['key' => 'nav.daily_report', 'route' => 'employee.report', 'icon' => 'bi-journal-text'],
+        ['key' => 'nav.requests', 'route' => 'employee.requests', 'icon' => 'bi-inbox'],
+        ['key' => 'nav.salary', 'route' => 'employee.salary', 'icon' => 'bi-wallet2'],
+        ['key' => 'nav.evaluation', 'route' => 'employee.evaluation', 'icon' => 'bi-star'],
+        ['key' => 'nav.payroll', 'route' => 'admin.payroll.index', 'icon' => 'bi-cash-stack'],
+        ['key' => 'nav.advances', 'route' => 'admin.advances.index', 'icon' => 'bi-cash-coin'],
     ],
 
     'TEAM_LEADER' => [

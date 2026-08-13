@@ -17,7 +17,7 @@ CREATE TABLE users (
     name_en                 VARCHAR(150) NOT NULL,
     email                   VARCHAR(190) NOT NULL UNIQUE,
     password                VARCHAR(255) NOT NULL,
-    role                    ENUM('MANAGER','TEAM_LEADER','EMPLOYEE') NOT NULL DEFAULT 'EMPLOYEE',
+    role                    ENUM('MANAGER','TEAM_LEADER','EMPLOYEE','ACCOUNTANT') NOT NULL DEFAULT 'EMPLOYEE',
     currency                ENUM('EGP','AED') NOT NULL,
     language_preference     ENUM('ar','en') NOT NULL DEFAULT 'ar',
     team_leader_id          BIGINT UNSIGNED NULL,
@@ -160,7 +160,7 @@ CREATE TABLE attendance (
     performance_score        DECIMAL(5,2) NULL,               -- TL
     behavior_score           DECIMAL(5,2) NULL,               -- TL
     productivity_score       DECIMAL(5,2) NULL,               -- TL
-    interest_return_score    DECIMAL(5,2) NULL,               -- TL (عائد الاهتمام)
+    interest_return_score    DECIMAL(5,2) NULL,               -- TL (عائد الفائدة)
     attendance_score         DECIMAL(5,2) NULL,               -- auto: min(100, actual/planned*100)
     created_at               TIMESTAMP NULL,
     updated_at               TIMESTAMP NULL,
@@ -176,6 +176,30 @@ CREATE TABLE attendance (
 > Overnight shifts (e.g. 10:00 → 06:00 next day): store real datetimes. The Excel "modify TIME +12:00" hack is **not** carried into the app (see `docs/PAYROLL_CALCULATION.md` §3).
 >
 > Unique `(user_id, date, shift_type)`: one punch cycle per shift type per day. After clock-out, that type is hidden on `/clock`; employee may still clock a **different** type the same day.
+
+## 7b. attendance_photos
+
+Optional multi-image proof at clock-in and/or clock-out (T-6.6). Files on `local` disk outside web root; served via authorized route.
+
+```sql
+CREATE TABLE attendance_photos (
+    id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    attendance_id   BIGINT UNSIGNED NOT NULL,
+    kind            ENUM('CLOCK_IN','CLOCK_OUT') NOT NULL,
+    file_path       VARCHAR(255) NOT NULL,
+    original_name   VARCHAR(255) NULL,
+    mime_type       VARCHAR(100) NULL,
+    size_bytes      INT UNSIGNED NOT NULL DEFAULT 0,
+    sort_order      TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    uploaded_at     TIMESTAMP NULL,
+    created_at      TIMESTAMP NULL,
+    updated_at      TIMESTAMP NULL,
+    CONSTRAINT fk_att_photo_att FOREIGN KEY (attendance_id) REFERENCES attendance(id) ON DELETE CASCADE,
+    INDEX idx_att_photos_att_kind (attendance_id, kind)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+> Optional on both punches; **no count limit**; each file ≤ **50MB** (jpg/jpeg/png/webp) — see `config/attendance.php` `photos.*`. View: owner · team TL · Manager (employees + TLs). UI: `/clock`, employee sessions, TL/Admin today board + hours day list, report review.
 
 ## 8. permissions
 
@@ -498,7 +522,7 @@ users ─┬─ employee_profiles (1:1)
        ├─ contracts (1:N)
        ├─ rest_days (1:N, date-based)
        ├─ users.team_leader_id (self FK, TL → team members)
-       ├─ attendance (1:N) ── daily TL scores
+       ├─ attendance (1:N) ── daily TL scores · attendance_photos (1:N)
        ├─ permissions (1:N)
        ├─ vacations (1:N)
        ├─ vacation_balances (1:N) ── vacation_credit_logs (1:N)

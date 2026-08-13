@@ -3,6 +3,8 @@
 namespace App\Services\Payroll;
 
 use App\Models\PayrollRecord;
+use App\Services\Attendance\HoursComparisonService;
+use App\Services\Evaluations\EvaluationService;
 use App\Support\DompdfFonts;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
@@ -12,18 +14,79 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Payslip PDF + monthly payroll Excel (T-5.2). Hostinger-safe: Dompdf + PhpSpreadsheet.
+ * Payslip PDF + full review PDF + monthly payroll Excel (T-5.2 / review export).
  */
 class PayrollExportService
 {
+    public function __construct(
+        private readonly EvaluationService $evaluations,
+        private readonly PayrollAggregator $aggregator,
+        private readonly HoursComparisonService $hours,
+    ) {}
+
     public function downloadPayslipPdf(PayrollRecord $payroll): \Barryvdh\DomPDF\PDF
     {
         $payroll->loadMissing(['user', 'adjustments']);
+
+        return $this->makePdf('exports.payslip-pdf', [
+            'payroll' => $payroll,
+        ]);
+    }
+
+    /**
+     * Full admin review PDF — pay, draft counts, attendance, evaluation, hours.
+     */
+    public function downloadReviewPdf(PayrollRecord $payroll): \Barryvdh\DomPDF\PDF
+    {
+        $payroll->loadMissing(['user', 'adjustments']);
+
+        $scores = null;
+        $evaluationText = null;
+        $yearAverage = null;
+        $evaluationSaved = false;
+        $attendanceSummary = null;
+        $hoursMonth = null;
+
+        if ($payroll->user !== null) {
+            $eval = $this->evaluations->summaryForPayslip(
+                $payroll->user,
+                (int) $payroll->month,
+                (int) $payroll->year,
+            );
+            $scores = $eval['scores'];
+            $evaluationText = $eval['evaluation_text'];
+            $yearAverage = $eval['year_average'];
+            $evaluationSaved = (bool) ($eval['is_saved'] ?? false);
+            $attendanceSummary = $this->aggregator->monthStatusSummary(
+                $payroll->user,
+                (int) $payroll->month,
+                (int) $payroll->year,
+            );
+            $hoursMonth = $this->hours->monthForUser(
+                $payroll->user,
+                sprintf('%04d-%02d', $payroll->year, $payroll->month),
+            );
+        }
+
+        return $this->makePdf('exports.payroll-review-pdf', [
+            'payroll' => $payroll,
+            'scores' => $scores,
+            'evaluationText' => $evaluationText,
+            'yearAverage' => $yearAverage,
+            'evaluationSaved' => $evaluationSaved,
+            'attendanceSummary' => $attendanceSummary,
+            'hoursMonth' => $hoursMonth,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function makePdf(string $view, array $data): \Barryvdh\DomPDF\PDF
+    {
         $fontDir = DompdfFonts::directory();
 
-        return Pdf::loadView('exports.payslip-pdf', [
-            'payroll' => $payroll,
-        ])
+        return Pdf::loadView($view, $data)
             ->setPaper('a4')
             ->setOptions([
                 'defaultFont' => 'Tajawal',

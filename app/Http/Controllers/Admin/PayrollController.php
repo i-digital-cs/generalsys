@@ -244,6 +244,15 @@ class PayrollController extends Controller
         return $this->exports->downloadPayslipPdf($payroll)->download($filename);
     }
 
+    public function exportReviewPdf(PayrollRecord $payroll): Response
+    {
+        $this->authorize('view', $payroll);
+
+        $filename = sprintf('payroll-review-%d-%02d-%04d.pdf', $payroll->id, $payroll->month, $payroll->year);
+
+        return $this->exports->downloadReviewPdf($payroll)->download($filename);
+    }
+
     public function queueExcelExport(Request $request): RedirectResponse
     {
         $this->authorize('viewAny', PayrollRecord::class);

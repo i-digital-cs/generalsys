@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\PayrollController;
 use App\Http\Controllers\Admin\PenaltyRuleController;
 use App\Http\Controllers\Admin\RestDayController as AdminRestDayController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\AttendancePhotoController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentDownloadController;
@@ -71,6 +72,10 @@ Route::get('/documents/{document}/download', [DocumentDownloadController::class,
 Route::get('/employees/{user}/photo', [EmployeePhotoController::class, 'show'])
     ->middleware('auth')->name('employees.photo');
 
+// Punch photos: owner · team TL · Manager (T-6.6)
+Route::get('/attendance-photos/{photo}', [AttendancePhotoController::class, 'show'])
+    ->middleware('auth')->name('attendance.photos.show');
+
 // Admin / MANAGER only (T-1.4 – T-1.7)
 Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
@@ -94,6 +99,13 @@ Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->gr
     Route::get('/config/penalties/{penalty_rule}/edit', [PenaltyRuleController::class, 'edit'])->name('config.penalties.edit');
     Route::put('/config/penalties/{penalty_rule}', [PenaltyRuleController::class, 'update'])->name('config.penalties.update');
 
+    Route::put('/payroll/{payroll}/approve', [PayrollController::class, 'approve'])->name('payroll.approve');
+
+    Route::get('/reports/annual', [AnnualReportController::class, 'index'])->name('reports.annual');
+});
+
+// Payroll + advances — Manager and Accountant (approve stays Manager-only above)
+Route::middleware(['auth', 'role:MANAGER,ACCOUNTANT'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
     Route::post('/payroll/generate', [PayrollController::class, 'generate'])->name('payroll.generate');
     Route::get('/payroll/export.xlsx', [PayrollController::class, 'queueExcelExport'])->name('payroll.export.xlsx');
@@ -101,21 +113,21 @@ Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->gr
     Route::get('/payroll/{payroll}', [PayrollController::class, 'show'])->name('payroll.show');
     Route::put('/payroll/{payroll}', [PayrollController::class, 'update'])->name('payroll.update');
     Route::post('/payroll/{payroll}/adjustments', [PayrollController::class, 'storeAdjustment'])->name('payroll.adjustments.store');
-    Route::delete('/payroll/{payroll}/adjustments/{adjustment}', [PayrollController::class, 'destroyAdjustment'])->name('payroll.adjustments.destroy');
-    Route::put('/payroll/{payroll}/approve', [PayrollController::class, 'approve'])->name('payroll.approve');
+    Route::delete('/payroll/{payroll}/adjustments/{adjustment}', [PayrollController::class, 'destroyAdjustment'])
+        ->name('payroll.adjustments.destroy');
     Route::get('/payroll/{payroll}/export.pdf', [PayrollController::class, 'exportPdf'])->name('payroll.export.pdf');
+    Route::get('/payroll/{payroll}/export-review.pdf', [PayrollController::class, 'exportReviewPdf'])
+        ->name('payroll.export.review.pdf');
 
     Route::get('/advances', [AdminAdvanceController::class, 'index'])->name('advances.index');
     Route::get('/advances/create', [AdminAdvanceController::class, 'create'])->name('advances.create');
     Route::post('/advances', [AdminAdvanceController::class, 'store'])->name('advances.store');
     Route::get('/advances/{advance}/edit', [AdminAdvanceController::class, 'edit'])->name('advances.edit');
     Route::put('/advances/{advance}', [AdminAdvanceController::class, 'update'])->name('advances.update');
-
-    Route::get('/reports/annual', [AnnualReportController::class, 'index'])->name('reports.annual');
 });
 
-// Employee profile (EMPLOYEE only)
-Route::middleware(['auth', 'role:EMPLOYEE'])->group(function () {
+// Employee + Accountant self home (profile / salary / my advances)
+Route::middleware(['auth', 'role:EMPLOYEE,ACCOUNTANT'])->group(function () {
     Route::get('/employee/dashboard', EmployeeDashboardController::class)->name('employee.dashboard');
     Route::get('/profile', [ProfileController::class, 'showSelf'])->name('employee.profile');
     Route::get('/employees/{user}/profile', [ProfileController::class, 'show'])->name('employee.profile.show');
@@ -125,8 +137,8 @@ Route::middleware(['auth', 'role:EMPLOYEE'])->group(function () {
     Route::get('/advances/my', [EmployeeAdvanceController::class, 'index'])->name('employee.advances');
 });
 
-// Self-service: clock, daily report, my requests — all roles (EMPLOYEE / TL / MANAGER)
-Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER'])->group(function () {
+// Self-service: clock, daily report, my requests — all staff roles
+Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT'])->group(function () {
     Route::get('/clock', [ClockController::class, 'show'])->name('employee.clock');
     Route::post('/clock/in', [ClockController::class, 'clockIn'])->name('employee.clock.in');
     Route::post('/clock/out', [ClockController::class, 'clockOut'])->name('employee.clock.out');

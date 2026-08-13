@@ -82,9 +82,10 @@
 
 | Method | Route name | Path | Role |
 |--------|------------|------|------|
-| GET | `employee.clock` | `/clock` | EMPLOYEE |
-| POST | `employee.clock.in` | `/clock/in` | EMPLOYEE — `{ shift_type }` |
-| POST | `employee.clock.out` | `/clock/out` | EMPLOYEE |
+| GET | `employee.clock` | `/clock` | EMPLOYEE/TL/MANAGER |
+| POST | `employee.clock.in` | `/clock/in` | EMPLOYEE/TL/MANAGER — `{ shift_type, photos[]? }` optional multi images |
+| POST | `employee.clock.out` | `/clock/out` | EMPLOYEE/TL/MANAGER — `{ photos[]? }` optional multi images |
+| GET | `attendance.photos.show` | `/attendance-photos/{photo}` | owner · team TL · Manager — stream punch photo |
 | GET | `employee.report` | `/report?date=` | EMPLOYEE |
 | POST | `employee.report.store` | `/report` | EMPLOYEE — `{ date, daily_report }` |
 | GET | `team-leader.reports` | `/team-leader/reports?filter=` | TEAM_LEADER(team), MANAGER — `pending` \| `replied` \| `all` |
@@ -101,6 +102,7 @@
 - Same `shift_type` twice on the same day → 422 (`clock.errors.shift_already_recorded`).
 - Overnight shifts allowed — `clock_out` may be next calendar day.
 - Planned hours from matching assignment `expected_hours`, else 8 / 4 / 12 (`ShiftConfig`).
+- Optional punch photos (`photos[]`): jpg/jpeg/png/webp, ≤50MB each, **no count limit** (in and/or out).
 
 ```json
 // POST /attendance/clock-in → 201

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Admin\DashboardStatsService;
 use App\Services\Attendance\HoursComparisonService;
+use App\Services\Attendance\MissingDailyReportService;
 use App\Services\Dashboard\DashboardCalendarService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class DashboardController extends Controller
         private readonly DashboardStatsService $stats,
         private readonly DashboardCalendarService $calendar,
         private readonly HoursComparisonService $hours,
+        private readonly MissingDailyReportService $missingReports,
     ) {}
 
     public function index(Request $request): View
@@ -40,6 +42,8 @@ class DashboardController extends Controller
             $queryBase['user_id'] = $focusId;
         }
 
+        $today = now();
+
         return view('admin.dashboard', [
             'stats' => $this->stats->stats(),
             'expiringContracts' => $this->stats->expiringContracts(),
@@ -60,6 +64,10 @@ class DashboardController extends Controller
             ])),
             'dashboardRoute' => 'admin.dashboard',
             'calCursor' => $calData['calendar']['cursor'],
+            'missingReportsToday' => $this->missingReports->missingForActor($request->user(), $today),
+            'missingReportsOverdue' => $this->missingReports->missingForActor($request->user(), $today->copy()->subDay()),
+            'missingReportsTodayDate' => $today,
+            'missingReportsOverdueDate' => $today->copy()->subDay(),
         ]);
     }
 }

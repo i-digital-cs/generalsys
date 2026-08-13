@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Attendance\HoursComparisonService;
+use App\Services\Attendance\MissingDailyReportService;
 use App\Services\Dashboard\DashboardCalendarService;
 use App\Services\Dashboard\DashboardService;
 use Carbon\Carbon;
@@ -19,6 +20,7 @@ class DashboardController extends Controller
         private readonly DashboardService $dashboard,
         private readonly DashboardCalendarService $calendar,
         private readonly HoursComparisonService $hours,
+        private readonly MissingDailyReportService $missingReports,
     ) {}
 
     public function __invoke(Request $request): View
@@ -51,6 +53,14 @@ class DashboardController extends Controller
             ? 'team-leader.dashboard'
             : 'dashboard';
 
+        $today = now();
+        $missingReportsToday = collect();
+        $missingReportsOverdue = collect();
+        if ($user->isTeamLeader() || $user->isManager()) {
+            $missingReportsToday = $this->missingReports->missingForActor($user, $today);
+            $missingReportsOverdue = $this->missingReports->missingForActor($user, $today->copy()->subDay());
+        }
+
         return view('dashboard', [
             'quickActions' => $this->dashboard->quickActionsFor($user->role),
             'upcomingHolidays' => $this->dashboard->upcomingHolidays(),
@@ -71,6 +81,10 @@ class DashboardController extends Controller
             ])),
             'dashboardRoute' => $routeName,
             'calCursor' => $calData['calendar']['cursor'],
+            'missingReportsToday' => $missingReportsToday,
+            'missingReportsOverdue' => $missingReportsOverdue,
+            'missingReportsTodayDate' => $today,
+            'missingReportsOverdueDate' => $today->copy()->subDay(),
         ]);
     }
 }

@@ -23,7 +23,7 @@ abstract class EmployeeRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        $payload = [
             'qualifications' => $this->nonEmptyRows(
                 $this->input('qualifications', []),
                 ['degree', 'specialization', 'graduation_year'],
@@ -32,7 +32,14 @@ abstract class EmployeeRequest extends FormRequest
                 $this->input('contacts', []),
                 ['name', 'phone', 'relationship'],
             ),
-        ]);
+        ];
+
+        // Accountant reports to Admin — never assign a team leader.
+        if ($this->input('role') === User::ROLE_ACCOUNTANT) {
+            $payload['team_leader_id'] = null;
+        }
+
+        $this->merge($payload);
     }
 
     /**
@@ -79,7 +86,7 @@ abstract class EmployeeRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($employee),
             ],
             'password' => $this->passwordRules(),
-            'role' => ['required', Rule::in([User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])],
+            'role' => ['required', Rule::in([User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT])],
             'currency' => ['required', Rule::in(['EGP', 'AED'])],
             'language_preference' => ['required', Rule::in(['ar', 'en'])],
             'team_leader_id' => [

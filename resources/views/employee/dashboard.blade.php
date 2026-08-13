@@ -153,6 +153,7 @@
                                                         </span>
                                                     </div>
                                                     <x-attendance-flags :attendance="$session" class="mt-1" />
+                                                    <x-attendance-photos :photos="$session->photos" class="mt-2" compact />
                                                 </td>
                                                 <td class="col-num">
                                                     <span class="badge text-bg-{{ $session->clock_out ? 'secondary' : 'success' }}">

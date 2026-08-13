@@ -92,7 +92,7 @@ class EmployeeService
     {
         return User::query()
             ->with('profile')
-            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
+            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('name_ar', 'like', "%{$search}%")

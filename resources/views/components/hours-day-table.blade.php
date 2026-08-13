@@ -118,6 +118,9 @@
                                                         :holiday="$interval['is_official_holiday_work'] ?? false"
                                                         class="mt-1"
                                                     />
+                                                    @if (! empty($interval['photos']) && count($interval['photos']) > 0)
+                                                        <x-attendance-photos :photos="$interval['photos']" class="mt-1" compact />
+                                                    @endif
                                                 </li>
                                             @endforeach
                                         </ul>

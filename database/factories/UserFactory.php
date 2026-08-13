@@ -68,6 +68,14 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function accountant(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => User::ROLE_ACCOUNTANT,
+            'team_leader_id' => null,
+        ]);
+    }
+
     public function inactive(): static
     {
         return $this->state(fn (array $attributes) => [

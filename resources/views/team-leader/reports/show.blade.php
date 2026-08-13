@@ -32,6 +32,13 @@
                         </span>
                     </div>
 
+                    @if ($attendance->photos->isNotEmpty())
+                        <div class="mb-4">
+                            <x-attendance-photos :photos="$attendance->photos" kind="CLOCK_IN" class="mb-3" />
+                            <x-attendance-photos :photos="$attendance->photos" kind="CLOCK_OUT" />
+                        </div>
+                    @endif
+
                     <h2 class="h6">{{ __('report.body') }}</h2>
                     <div class="border rounded p-3 bg-body-tertiary mb-4">{{ $attendance->daily_report }}</div>
 

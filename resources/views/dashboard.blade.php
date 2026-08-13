@@ -15,6 +15,8 @@
         </span>
     </div>
 
+    @include('partials.dashboard.missing-reports-card')
+
     <div class="row g-3">
         <div class="col-12 col-lg-8">
             <div class="card border-0 h-100">

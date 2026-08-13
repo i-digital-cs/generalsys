@@ -17,3 +17,12 @@ Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=1')
 Schedule::command('attendance:auto-clock-out')
     ->everyFiveMinutes()
     ->withoutOverlapping();
+
+// Missing daily reports: same-day evening warning + next-morning overdue warning.
+Schedule::command('reports:warn-missing 0')
+    ->dailyAt('21:00')
+    ->withoutOverlapping();
+
+Schedule::command('reports:warn-missing 1')
+    ->dailyAt('08:00')
+    ->withoutOverlapping();

@@ -13,7 +13,7 @@ class ClockInRequest extends FormRequest
         $user = $this->user();
 
         return $user !== null && (
-            $user->isEmployee() || $user->isTeamLeader() || $user->isManager()
+            $user->isEmployee() || $user->isTeamLeader() || $user->isManager() || $user->isAccountant()
         );
     }
 
@@ -26,8 +26,8 @@ class ClockInRequest extends FormRequest
         $attendance = app(AttendanceService::class);
         $allowed = $attendance->availableShiftTypes($this->user());
 
-        return [
+        return array_merge([
             'shift_type' => ['required', 'string', Rule::in($allowed)],
-        ];
+        ], ClockPhotoRules::rules());
     }
 }

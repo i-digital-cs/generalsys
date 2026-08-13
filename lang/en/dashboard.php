@@ -115,4 +115,10 @@ return [
         'days_left' => 'Days left',
         'search' => 'Search contracts…',
     ],
+    'missing_reports' => [
+        'title' => 'Missing daily reports',
+        'today' => 'Today’s report not submitted yet',
+        'overdue' => 'Yesterday’s report — overdue',
+        'cta' => 'Review reports',
+    ],
 ];

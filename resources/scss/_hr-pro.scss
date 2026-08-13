@@ -216,6 +216,26 @@ h6, .h6 { font-size: .9rem; }
     font-size: 1.15rem;
 }
 
+// ---- Attendance punch photos (T-6.6) --------------------------------------
+.attendance-photo-thumb {
+    display: inline-block;
+    width: 4.5rem;
+    height: 4.5rem;
+    flex-shrink: 0;
+}
+
+.attendance-photos--compact .attendance-photo-thumb {
+    width: 2.75rem;
+    height: 2.75rem;
+}
+
+.attendance-photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 // ---- Cards ----------------------------------------------------------------
 .card {
     border-color: var(--hp-card-border);

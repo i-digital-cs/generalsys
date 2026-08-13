@@ -30,6 +30,7 @@ class DailyReportService
         return Attendance::query()
             ->where('user_id', $user->id)
             ->whereDate('date', $date)
+            ->with('photos')
             ->orderBy('clock_in')
             ->orderBy('id')
             ->first();

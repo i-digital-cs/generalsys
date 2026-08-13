@@ -3,11 +3,15 @@
 namespace Tests\Feature\Employee;
 
 use App\Models\Attendance;
+use App\Models\AttendancePhoto;
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Services\Attendance\AttendancePhotoService;
 use App\Services\Attendance\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -174,5 +178,25 @@ class DailyReportTest extends TestCase
         ]))
             ->get(route('employee.report'))
             ->assertOk();
+    }
+
+    public function test_report_screen_shows_punch_photos(): void
+    {
+        Storage::fake('local');
+
+        $attendance = $this->clockClosedShift();
+        app(AttendancePhotoService::class)->storeMany(
+            $attendance,
+            AttendancePhoto::KIND_CLOCK_OUT,
+            [UploadedFile::fake()->image('out.jpg')],
+        );
+
+        $photo = $attendance->fresh()->photos()->firstOrFail();
+
+        $this->actingAs($this->employee)
+            ->get(route('employee.report', ['date' => '2026-08-03']))
+            ->assertOk()
+            ->assertSee(__('clock.photos.out_label'), false)
+            ->assertSee(route('attendance.photos.show', $photo), false);
     }
 }

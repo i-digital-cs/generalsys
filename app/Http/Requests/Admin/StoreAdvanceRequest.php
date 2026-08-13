@@ -26,6 +26,7 @@ class StoreAdvanceRequest extends FormRequest
                 Rule::exists('users', 'id')->whereIn('role', [
                     User::ROLE_EMPLOYEE,
                     User::ROLE_TEAM_LEADER,
+                    User::ROLE_ACCOUNTANT,
                 ]),
             ],
             'amount' => ['required', 'numeric', 'min:0.01', 'max:9999999.99'],

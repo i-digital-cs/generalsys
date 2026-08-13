@@ -7,24 +7,26 @@ use App\Models\User;
 
 /**
  * Payroll privacy (AGENTS §5.1): TEAM_LEADER → 403 on every payroll action.
- * Employee: own APPROVED/PAID only. Manager: full access.
+ * Employee: own APPROVED/PAID only.
+ * Manager: full access including approve.
+ * Accountant: view/generate/edit drafts — approve is Manager-only.
  */
 class PayrollPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isManager();
+        return $user->canAccessPayroll();
     }
 
     /** Employee list of own published payslips (T-4.7). */
     public function viewAnyOwn(User $user): bool
     {
-        return $user->isEmployee();
+        return $user->isEmployee() || $user->isAccountant();
     }
 
     public function view(User $user, PayrollRecord $payroll): bool
     {
-        if ($user->isManager()) {
+        if ($user->canAccessPayroll()) {
             return true;
         }
 
@@ -41,12 +43,12 @@ class PayrollPolicy
 
     public function create(User $user): bool
     {
-        return $user->isManager();
+        return $user->canAccessPayroll();
     }
 
     public function update(User $user, PayrollRecord $payroll): bool
     {
-        return $user->isManager() && $payroll->status === PayrollRecord::STATUS_DRAFT;
+        return $user->canAccessPayroll() && $payroll->status === PayrollRecord::STATUS_DRAFT;
     }
 
     public function approve(User $user, PayrollRecord $payroll): bool
@@ -56,6 +58,6 @@ class PayrollPolicy
 
     public function generate(User $user): bool
     {
-        return $user->isManager();
+        return $user->canAccessPayroll();
     }
 }

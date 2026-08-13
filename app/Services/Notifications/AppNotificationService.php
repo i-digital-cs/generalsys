@@ -7,12 +7,14 @@ use App\Models\Permission;
 use App\Models\User;
 use App\Models\Vacation;
 use App\Notifications\AttendanceAutoClockOutNotification;
+use App\Notifications\DailyReportMissingNotification;
 use App\Notifications\DailyReportRepliedNotification;
 use App\Notifications\DailyReportSubmittedNotification;
 use App\Notifications\PermissionDecisionNotification;
 use App\Notifications\PermissionSubmittedNotification;
 use App\Notifications\VacationDecisionNotification;
 use App\Notifications\VacationSubmittedNotification;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
@@ -127,6 +129,34 @@ class AppNotificationService
         }
 
         $this->notifyManagers($notification);
+    }
+
+    /**
+     * Missing daily report warning: notify the person's team leader
+     * (employees only) + all managers.
+     *
+     * @return int recipients notified
+     */
+    public function reportMissing(
+        ?Attendance $attendance,
+        User $person,
+        CarbonInterface $date,
+        string $kind,
+    ): int {
+        $notification = new DailyReportMissingNotification($attendance, $person, $date, $kind);
+        $sent = 0;
+
+        if ($person->isEmployee() && $person->team_leader_id !== null) {
+            User::query()->find($person->team_leader_id)?->notify($notification);
+            $sent++;
+        }
+
+        $managers = $this->activeManagers();
+        foreach ($managers as $manager) {
+            $manager->notify($notification);
+        }
+
+        return $sent + $managers->count();
     }
 
     public function reportReplied(Attendance $attendance, ?User $actor = null): void

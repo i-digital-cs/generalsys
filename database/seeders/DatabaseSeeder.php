@@ -37,6 +37,20 @@ class DatabaseSeeder extends Seeder
             'shift_type_default' => 'FULL_TIME',
         ]);
 
+        $this->seedEmployee(User::factory()->accountant(), [
+            'name_ar' => 'المحاسب',
+            'name_en' => 'Accountant',
+            'email' => 'accountant@hrpro.test',
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+            'shift_type_default' => 'FULL_TIME',
+            'base_salary' => 7000,
+            'online_half_day_rate' => 120,
+            'online_full_day_rate' => 240,
+            'overtime_hourly_rate' => 55,
+            'team_leader_id' => null,
+        ]);
+
         $radwa = $this->seedEmployee(User::factory()->employee(), [
             'name_ar' => 'رضوى',
             'name_en' => 'Radwa',

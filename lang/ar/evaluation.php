@@ -8,7 +8,7 @@ return [
         'performance' => 'مستوى الأداء',
         'behavior' => 'السلوك',
         'productivity' => 'مستوى الإنتاج',
-        'interest_return' => 'عائد الاهتمام',
+        'interest_return' => 'عائد الفائدة',
         'attendance' => 'الحضور (تلقائي)',
         'total' => 'الإجمالي',
     ],

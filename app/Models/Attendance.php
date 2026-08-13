@@ -6,6 +6,7 @@ use Database\Factories\AttendanceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Daily attendance row (schema doc §7) — thin: casts + relations only.
@@ -96,5 +97,10 @@ class Attendance extends Model
     public function assignedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_by_tl_id');
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(AttendancePhoto::class)->orderBy('sort_order')->orderBy('id');
     }
 }

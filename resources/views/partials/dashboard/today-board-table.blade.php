@@ -23,6 +23,7 @@
                 <tr>
                     <th scope="col">{{ __('shifts.employee') }}</th>
                     <th scope="col">{{ __('dashboard.hours.status') }}</th>
+                    <th scope="col">{{ __('clock.photos.title') }}</th>
                     <th scope="col" class="col-num">{{ __('dashboard.hours.should_spend') }}</th>
                     <th scope="col" class="col-num">{{ __('dashboard.hours.spent') }}</th>
                     <th scope="col" class="col-num">{{ __('dashboard.hours.pct') }}</th>
@@ -50,6 +51,13 @@
                                 {{ __('dashboard.hours.statuses.'.$row['status']) }}
                             </span>
                         </td>
+                        <td>
+                            @if (($row['photo_count'] ?? 0) > 0)
+                                <x-attendance-photos :photos="$row['photos']" compact />
+                            @else
+                                <span class="small text-body-secondary">{{ __('clock.photos.none') }}</span>
+                            @endif
+                        </td>
                         <td class="col-num"><span class="num-ltr">{{ number_format($row['planned'], 2) }}h</span></td>
                         <td class="col-num"><span class="num-ltr">{{ number_format($row['actual'], 2) }}h</span></td>
                         <td class="col-num">
@@ -60,7 +68,7 @@
                     </tr>
                 @endforeach
                 <tr data-table-empty-row class="d-none">
-                    <td colspan="5" class="text-body-secondary text-center py-3">
+                    <td colspan="6" class="text-body-secondary text-center py-3">
                         {{ __('general.no_filter_results') }}
                     </td>
                 </tr>

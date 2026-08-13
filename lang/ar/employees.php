@@ -67,6 +67,7 @@ return [
         'MANAGER' => 'مدير',
         'TEAM_LEADER' => 'قائد فريق',
         'EMPLOYEE' => 'موظف',
+        'ACCOUNTANT' => 'محاسب',
     ],
     'statuses' => [
         'ACTIVE' => 'نشط',

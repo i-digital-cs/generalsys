@@ -104,7 +104,7 @@ Excel stores clock-out as `time + 12:00` ("modify TIME", columns U/V). **The app
 | J9 | `=IF(P10>0,SUM(P12:P42)/P10,0)` | Attendance = avg (auto) |
 | **J10** | `=SUM(J6:J9)/4` | **Total = simple average of 4** (Excel original) |
 
-**Product extension (locked):** add **Interest Return** (عائد الاهتمام) as a 5th daily % score (TL), averaged monthly like the others. App total:
+**Product extension (locked):** add **Interest Return** (عائد الفائدة) as a 5th daily % score (TL), averaged monthly like the others. App total:
 
 ```
 total_score = (performance + behavior + productivity + interest_return + attendance) / 5

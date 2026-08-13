@@ -5,35 +5,36 @@ namespace App\Policies;
 use App\Models\Advance;
 use App\Models\User;
 
-/** Advances: Manager CRUD; employee may view own list only. TL never. */
+/** Advances: Manager + Accountant CRUD; employee/accountant may view own list. TL never. */
 class AdvancePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isManager();
+        return $user->canAccessAdvances();
     }
 
     public function viewOwn(User $user): bool
     {
-        return $user->isEmployee();
+        return $user->isEmployee() || $user->isAccountant();
     }
 
     public function view(User $user, Advance $advance): bool
     {
-        if ($user->isManager()) {
+        if ($user->canAccessAdvances()) {
             return true;
         }
 
-        return $user->isEmployee() && $user->id === $advance->user_id;
+        return ($user->isEmployee() || $user->isAccountant())
+            && $user->id === $advance->user_id;
     }
 
     public function create(User $user): bool
     {
-        return $user->isManager();
+        return $user->canAccessAdvances();
     }
 
     public function update(User $user, Advance $advance): bool
     {
-        return $user->isManager() && $advance->status === Advance::STATUS_ACTIVE;
+        return $user->canAccessAdvances() && $advance->status === Advance::STATUS_ACTIVE;
     }
 }

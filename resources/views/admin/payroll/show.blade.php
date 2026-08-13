@@ -107,7 +107,10 @@
                         <a href="{{ route('admin.payroll.export.pdf', $payroll) }}" class="btn btn-outline-primary">
                             <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>{{ __('payroll.export_pdf') }}
                         </a>
-                        @if ($editable)
+                        <a href="{{ route('admin.payroll.export.review.pdf', $payroll) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-journal-richtext me-1" aria-hidden="true"></i>{{ __('payroll.export_review_pdf') }}
+                        </a>
+                        @if ($editable && auth()->user()?->can('approve', $payroll))
                             <form method="POST" action="{{ route('admin.payroll.approve', $payroll) }}">
                                 @csrf
                                 @method('PUT')

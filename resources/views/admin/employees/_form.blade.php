@@ -62,7 +62,7 @@
             <div class="col-md-4">
                 <label for="role" class="form-label">{{ __('employees.fields.role') }}</label>
                 <select id="role" name="role" class="form-select @error('role') is-invalid @enderror" required>
-                    @foreach (['EMPLOYEE', 'TEAM_LEADER'] as $option)
+                    @foreach (['EMPLOYEE', 'TEAM_LEADER', 'ACCOUNTANT'] as $option)
                         <option value="{{ $option }}" @selected($val('role', 'EMPLOYEE') === $option)>
                             {{ __("employees.roles.{$option}") }}
                         </option>

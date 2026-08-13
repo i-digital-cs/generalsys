@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Models\Advance;
+use App\Models\AttendancePhoto;
 use App\Models\PayrollRecord;
 use App\Models\PenaltyRule;
 use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Policies\AdvancePolicy;
+use App\Policies\AttendancePhotoPolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\PayrollPolicy;
 use App\Policies\PenaltyRulePolicy;
@@ -35,5 +37,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PenaltyRule::class, PenaltyRulePolicy::class);
         Gate::policy(PayrollRecord::class, PayrollPolicy::class);
         Gate::policy(Advance::class, AdvancePolicy::class);
+        Gate::policy(AttendancePhoto::class, AttendancePhotoPolicy::class);
     }
 }

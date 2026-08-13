@@ -15,6 +15,8 @@
         </span>
     </div>
 
+    @include('partials.dashboard.missing-reports-card')
+
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-xl-3">
             <x-stat-card :title="__('dashboard.total_employees')" :value="$stats['total']" icon="bi-people" color="primary" />

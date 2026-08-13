@@ -8,6 +8,7 @@ return [
     'approve' => 'اعتماد',
     'review' => 'مراجعة',
     'export_pdf' => 'تحميل PDF',
+    'export_review_pdf' => 'تصدير PDF كامل (كل التبويبات)',
     'export_excel' => 'تصدير Excel',
     'download_excel' => 'تحميل Excel',
     'back_to_list' => 'العودة للقائمة',

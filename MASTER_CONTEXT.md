@@ -11,7 +11,7 @@
 | Backend | **PHP 8.2 + Laravel 11** | Monolith, no separate SPA |
 | Frontend | **Blade + Bootstrap 5** | Server-rendered, RTL-first (Arabic), vanilla JS only where needed |
 | Database | **MySQL 8 (InnoDB, utf8mb4)** | MariaDB 10.6+ compatible |
-| Auth | **Laravel Sanctum** (session for web, token for API) | RBAC: MANAGER / TEAM_LEADER / EMPLOYEE |
+| Auth | **Laravel Sanctum** (session for web, token for API) | RBAC: MANAGER / TEAM_LEADER / EMPLOYEE / ACCOUNTANT |
 | Excel Import/Export | **maatwebsite/excel** | Payroll parity with existing sheets |
 | PDF Export | **barryvdh/laravel-dompdf** | Payslips, reports |
 | Queue/Cache | **database driver** | No Redis on shared hosting |
@@ -84,7 +84,7 @@
 | Performance | مستوى الأداء | **Daily** | 0-100% | Team Leader |
 | Behavior | السلوك | **Daily** | 0-100% | Team Leader |
 | Productivity | مستوى الإنتاج | **Daily** | 0-100% | Team Leader |
-| Interest Return | عائد الاهتمام | **Daily** | 0-100% | Team Leader |
+| Interest Return | عائد الفائدة | **Daily** | 0-100% | Team Leader |
 | Attendance | الحضور | **Daily (auto)** | 0-100% | **System** |
 | **Total** | **التقييم الكلي** | **Monthly avg** | **Average of 5** | **System** |
 | Evaluation text | تقييم نصي | **Monthly** | text | Team Leader |
@@ -112,6 +112,7 @@
   3. If **no** base assignment → only **`shift_type_default`** (not a free pick among all three).
   4. **One attendance row per `(user, date, shift_type)`**; one open punch at a time; overnight `clock_out` uses real next-day datetime.
   5. **Forgot clock-out:** after **expected end + 60 minutes** grace, scheduler force-closes at `end+grace` (hours count that grace); `is_auto_clock_out=true`; notifies employee + TL + managers. Command `attendance:auto-clock-out` every 5 minutes via `schedule:run`.
+  6. **Optional punch photos (T-6.6):** multi images on clock-in **and** clock-out (jpg/jpeg/png/webp, ≤50MB each, **no count limit**). Stored on `local` disk; viewable by owner, team TL, and Manager (TL↔Admin **yes**). Shown on `/clock`, employee sessions, TL/Admin attendance boards, and report review.
 - Planned hours: matching assignment’s `expected_hours`, else profile defaults **8 / 4 / 12** (`ShiftConfig`).
 - **Hours facts:** planned vs actual (and shortfall by date/shift) via `HoursComparisonService` / dashboards — **informational**.
 - **Penalties (Phase 6):** money penalties are **100% manual** on the Admin payroll draft (`payroll_adjustments` / manual lines). The system **does not** auto-apply EGP for late / absence / permission / hours gap / forced surcharge when `payroll.auto_penalties=false` (default). Facts (minutes, days, hours) still appear on the payslip for Admin review.
@@ -123,6 +124,13 @@
 - **Who replies:** Team Leader → own employees; Manager → employees + team leaders (+ other managers).
 - Blade must escape report + response (`{{ }}` only — never `{!! !!}`).
 
+### 1.7e Missing-report warnings (locked 2026-08-12)
+- "Missing" = no attendance row at all (no-show) **or** no row with a non-blank `daily_report` for that day. Rest days, APPROVED/FORCED vacations, and official holidays are never warned about.
+- Escalation (user-approved, both directions): employee missing → warn their **TL + all Managers**; TL missing own report → warn **all Managers**.
+- Two scheduled passes (`reports:warn-missing {offset}` in `routes/console.php`): **21:00** same day → kind `report_missing_today` (yellow); **08:00** next morning → kind `report_missing_overdue` (red, still missing only).
+- Delivery: bell notification (`DailyReportMissingNotification`, database channel) + dashboard card (`partials/dashboard/missing-reports-card.blade.php`) on TL `/dashboard` and Admin `/admin/dashboard` — today list yellow, overdue list red.
+- Logic: `app/Services/Attendance/MissingDailyReportService.php`.
+
 ### 1.7c Self-service leave/late (locked 2026-08-03)
 - **My Requests** (`/requests`) is available to Employee, TL, and Manager (self).
 - Employees require `team_leader_id` (TL decides). TL/Manager requests have null `team_leader_id` → **Manager** decides on Approvals.
@@ -131,7 +139,7 @@
 ### 1.7d Role chain — Employee↔TL vs TL↔Admin (locked 2026-08-03)
 - **Standing rule:** features between **Employee and Team Leader** are *candidates* for the same pattern between **Team Leader and Admin** — agents **must ask the user before applying** (yes / no / partial).
 - Do not auto-mirror TL↔Admin. Record the user’s answer in the task Progress log / this section when a decision is made.
-- Already decided **yes** (shipped): clock, daily report, leave/late submit + decide + force, Admin CC on notifications, **vacation submit/approve with rest-day swap**, vacation credit UI, date-based rest days (Admin+TL), **daily scores on report review**, **monthly evaluations screen** (TL team / Manager any).
+- Already decided **yes** (shipped): clock, daily report, leave/late submit + decide + force, Admin CC on notifications, **vacation submit/approve with rest-day swap**, vacation credit UI, date-based rest days (Admin+TL), **daily scores on report review**, **monthly evaluations screen** (TL team / Manager any), **clock punch photos view** (owner · TL team · Admin; T-6.6).
 - Upcoming (e.g. employee My Evaluation is self-only): no TL↔Admin ask needed.
 - **Never weaken:** TL never sees monetary amounts; payroll generate/approve stays Admin-only unless the user explicitly changes that.
 
@@ -154,7 +162,7 @@ users
 ├── name_ar / name_en
 ├── email
 ├── password_hash
-├── role (enum: MANAGER, TEAM_LEADER, EMPLOYEE)
+├── role (enum: MANAGER, TEAM_LEADER, EMPLOYEE, ACCOUNTANT)
 ├── currency (EGP, AED)
 ├── language_preference (ar, en)
 ├── team_leader_id (FK → users, nullable)
@@ -431,34 +439,28 @@ vacations.replace_rest_date / replace_rest_day_id  -- swap on submit
 
 ## 3. UPDATED ROLE PERMISSIONS MATRIX
 
-| Feature | Admin | Team Leader | Employee |
-|---------|-------|-------------|----------|
-| **Attendance** | | | |
-| Clock In/Out | ✅ All | ✅ Self + Team | ✅ Self |
-| View Team Attendance % | ✅ All | ✅ Own Team | ❌ |
-| **Permissions** | | | |
-| Submit Permission | ✅ Self | ✅ Self | ✅ Self |
-| Approve/Reject Permission | ✅ All | ✅ Team Only | ❌ |
-| Force Rejected Permission | ✅ All | ✅ Team Only | ✅ Self |
-| **Vacations** | | | |
-| Submit Vacation | ✅ Self | ✅ Self | ✅ Self |
-| Approve/Reject Vacation | ✅ All | ✅ Team Only | ❌ |
-| View Vacation Credit | ✅ All | ✅ Team Only | ✅ Self |
-| **Daily Reports** | | | |
-| Submit Report | ✅ Self | ✅ Self | ✅ Self |
-| Respond to Report | ✅ All | ✅ Team Only | ❌ |
-| **Evaluations** | | | |
-| Submit Monthly Evaluation | ✅ All | ✅ Team Only | ❌ |
-| View Evaluations | ✅ All | ✅ Team Only | ✅ Self |
-| **Payroll** | | | |
-| View Payroll | ✅ All | ❌ **BLOCKED** | ✅ Self |
-| Generate Payroll | ✅ | ❌ | ❌ |
-| Approve Payroll | ✅ | ❌ | ❌ |
-| **HR Config** | | | |
-| Set Employee Rates | ✅ | ❌ | ❌ |
-| Set Penalty Rules | ✅ | ❌ | ❌ |
-| Add Vacation Credit | ✅ | ✅ Team Only | ❌ |
-| Pre-assign Shifts | ✅ | ✅ Team Only | ❌ |
+| Feature | Admin | Accountant | Team Leader | Employee |
+|---------|-------|------------|-------------|----------|
+| **Attendance** | | | | |
+| Clock In/Out | ✅ Self | ✅ Self | ✅ Self + Team | ✅ Self |
+| View Team Attendance % | ✅ All | ❌ | ✅ Own Team | ❌ |
+| **Permissions / Vacations** | | | | |
+| Submit leave/vacation | ✅ Self | ✅ Self (Manager decides) | ✅ Self (Manager decides) | ✅ Self (TL decides) |
+| Approve leave/vacation | ✅ All | ❌ | ✅ Team Only | ❌ |
+| **Daily Reports / Evaluations** | | | | |
+| Submit Report / view own eval | ✅ Self | ✅ Self | ✅ Self | ✅ Self |
+| Respond / monthly eval team | ✅ All | ❌ | ✅ Team Only | ❌ |
+| **Payroll** | | | | |
+| View Payroll | ✅ All | ✅ All | ❌ **BLOCKED** | ✅ Self (APPROVED/PAID) |
+| Generate / edit draft | ✅ | ✅ | ❌ | ❌ |
+| Approve Payroll (اعتماد) | ✅ | ❌ | ❌ | ❌ |
+| **Advances** | | | | |
+| Advances CRUD | ✅ | ✅ | ❌ | Own list only |
+| **HR Config** | | | | |
+| Employees / rates / settings / penalties | ✅ | ❌ | ❌ | ❌ |
+| Pre-assign Shifts / rest days | ✅ | ❌ | ✅ Team Only | ❌ |
+
+> **Accountant (T-7.1):** role `ACCOUNTANT` / محاسب. No `team_leader_id` (reports to Admin). Self-service + payroll (view/generate/edit) + advances CRUD. **Approve payroll stays Manager-only.**
 
 ---
 

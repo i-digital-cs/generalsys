@@ -23,6 +23,8 @@ return [
         'vacation_forced' => 'تم تعليم الإجازة كإجبارية',
         'report_submitted' => 'تقرير يومي جديد',
         'report_replied' => 'رد على التقرير',
+        'report_missing_today' => 'تقرير اليوم مفقود',
+        'report_missing_overdue' => 'تقرير يومي متأخر',
         'attendance_auto_clock_out' => 'انصراف تلقائي',
     ],
     'bodies' => [
@@ -34,6 +36,8 @@ return [
         'vacation_forced' => 'تم تعليم إجازتك :type من :start إلى :end كإجبارية (يوم الراحة محفوظ).',
         'report_submitted' => 'قدّم :name تقريرًا يوميًا بتاريخ :date.',
         'report_replied' => 'رد قائد فريقك على تقريرك بتاريخ :date.',
+        'report_missing_today' => 'لم يقدّم :name تقرير اليوم (:date) حتى الآن.',
+        'report_missing_overdue' => 'لم يقدّم :name تقرير الأمس (:date) — متأخر.',
         'attendance_auto_clock_out' => 'تم إنصراف :name تلقائيًا ليوم :date (:shift) الساعة :time بعد انتهاء فترة السماح.',
     ],
 ];

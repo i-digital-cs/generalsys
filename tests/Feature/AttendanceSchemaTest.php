@@ -25,6 +25,7 @@ class AttendanceSchemaTest extends TestCase
     {
         foreach ([
             'attendance',
+            'attendance_photos',
             'permissions',
             'vacations',
             'vacation_balances',

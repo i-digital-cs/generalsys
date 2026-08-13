@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Employee;
 use App\Exceptions\AttendanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Employee\ClockInRequest;
+use App\Http\Requests\Employee\ClockOutRequest;
 use App\Models\Attendance;
+use App\Models\AttendancePhoto;
+use App\Services\Attendance\AttendancePhotoService;
 use App\Services\Attendance\AttendanceService;
 use App\Services\Attendance\DailyReportService;
 use Illuminate\Http\RedirectResponse;
@@ -14,19 +17,23 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
- * Employee clock screen (T-2.3) — thin: authorize → service → view/redirect.
+ * Employee clock screen (T-2.3 / T-6.6) — thin: authorize → service → view/redirect.
  */
 class ClockController extends Controller
 {
     public function __construct(
         private readonly AttendanceService $attendance,
         private readonly DailyReportService $reports,
+        private readonly AttendancePhotoService $photos,
     ) {}
 
     public function show(Request $request): View
     {
         $user = $request->user();
         $open = $this->attendance->openAttendance($user);
+        if ($open !== null) {
+            $open->load(['photos']);
+        }
         $preferredShift = $this->attendance->preferredShiftType($user);
         $scheduleShift = $open?->shift_type ?? $preferredShift;
         $expectedStart = $this->attendance->expectedStartFor($user, $scheduleShift);
@@ -52,13 +59,19 @@ class ClockController extends Controller
                 : 0,
             'lateMinutes' => $open !== null ? (int) $open->late_minutes : 0,
             'todayAutoClockOut' => $todayAuto,
+            'photoMaxMb' => (int) round(((int) config('attendance.photos.max_kilobytes', 51200)) / 1024),
         ]);
     }
 
     public function clockIn(ClockInRequest $request): RedirectResponse
     {
         try {
-            $this->attendance->clockIn($request->user(), $request->validated('shift_type'));
+            $attendance = $this->attendance->clockIn($request->user(), $request->validated('shift_type'));
+            $this->photos->storeMany(
+                $attendance,
+                AttendancePhoto::KIND_CLOCK_IN,
+                $request->file('photos', []) ?? [],
+            );
         } catch (AttendanceException $e) {
             throw ValidationException::withMessages(['shift_type' => __($e->getMessage())]);
         }
@@ -68,10 +81,15 @@ class ClockController extends Controller
             ->with('success', __('clock.flash.clocked_in'));
     }
 
-    public function clockOut(Request $request): RedirectResponse
+    public function clockOut(ClockOutRequest $request): RedirectResponse
     {
         try {
             $attendance = $this->attendance->clockOut($request->user());
+            $this->photos->storeMany(
+                $attendance,
+                AttendancePhoto::KIND_CLOCK_OUT,
+                $request->file('photos', []) ?? [],
+            );
         } catch (AttendanceException $e) {
             throw ValidationException::withMessages(['clock_out' => __($e->getMessage())]);
         }

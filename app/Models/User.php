@@ -21,6 +21,8 @@ class User extends Authenticatable
 
     public const ROLE_EMPLOYEE = 'EMPLOYEE';
 
+    public const ROLE_ACCOUNTANT = 'ACCOUNTANT';
+
     public const STATUS_ACTIVE = 'ACTIVE';
 
     public const STATUS_INACTIVE = 'INACTIVE';
@@ -101,6 +103,23 @@ class User extends Authenticatable
     public function isEmployee(): bool
     {
         return $this->role === self::ROLE_EMPLOYEE;
+    }
+
+    public function isAccountant(): bool
+    {
+        return $this->role === self::ROLE_ACCOUNTANT;
+    }
+
+    /** Admin or Accountant — may see/manage payroll money (approve stays Manager-only). */
+    public function canAccessPayroll(): bool
+    {
+        return $this->isManager() || $this->isAccountant();
+    }
+
+    /** Admin or Accountant — advances CRUD. */
+    public function canAccessAdvances(): bool
+    {
+        return $this->isManager() || $this->isAccountant();
     }
 
     public function isActive(): bool

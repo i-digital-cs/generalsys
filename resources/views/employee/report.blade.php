@@ -48,6 +48,13 @@
                             </span>
                         </div>
 
+                        @if ($main->photos->isNotEmpty())
+                            <div class="mb-4">
+                                <x-attendance-photos :photos="$main->photos" kind="CLOCK_IN" class="mb-3" />
+                                <x-attendance-photos :photos="$main->photos" kind="CLOCK_OUT" />
+                            </div>
+                        @endif
+
                         @if ($isLocked)
                             <div class="alert alert-info">{{ __('report.errors.locked') }}</div>
                             <div class="mb-3">

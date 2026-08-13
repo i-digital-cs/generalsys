@@ -6,11 +6,11 @@ use Tests\TestCase;
 
 class MenuConfigTest extends TestCase
 {
-    public function test_menu_is_keyed_by_the_three_roles(): void
+    public function test_menu_is_keyed_by_the_four_roles(): void
     {
         $menu = config('menu');
 
-        $this->assertSame(['MANAGER', 'TEAM_LEADER', 'EMPLOYEE'], array_keys($menu));
+        $this->assertSame(['MANAGER', 'ACCOUNTANT', 'TEAM_LEADER', 'EMPLOYEE'], array_keys($menu));
 
         foreach ($menu as $role => $items) {
             $this->assertNotEmpty($items, "Menu for {$role} is empty");
@@ -23,7 +23,7 @@ class MenuConfigTest extends TestCase
         }
     }
 
-    public function test_payroll_entries_exist_only_for_manager(): void
+    public function test_payroll_entries_exist_only_for_manager_and_accountant(): void
     {
         foreach (config('menu.TEAM_LEADER') as $item) {
             $this->assertStringNotContainsString('payroll', $item['route']);
@@ -44,6 +44,12 @@ class MenuConfigTest extends TestCase
         $this->assertNotContains('employee.clock', $managerRoutes);
         $this->assertNotContains('employee.report', $managerRoutes);
         $this->assertNotContains('employee.requests', $managerRoutes);
+
+        $accountantRoutes = array_column(config('menu.ACCOUNTANT'), 'route');
+        $this->assertContains('admin.payroll.index', $accountantRoutes);
+        $this->assertContains('admin.advances.index', $accountantRoutes);
+        $this->assertContains('employee.clock', $accountantRoutes);
+        $this->assertNotContains('admin.employees.index', $accountantRoutes);
     }
 
     public function test_every_menu_key_is_translated_in_ar_and_en(): void

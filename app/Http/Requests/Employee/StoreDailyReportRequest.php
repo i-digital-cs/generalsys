@@ -11,7 +11,7 @@ class StoreDailyReportRequest extends FormRequest
         $user = $this->user();
 
         return $user !== null && (
-            $user->isEmployee() || $user->isTeamLeader() || $user->isManager()
+            $user->isEmployee() || $user->isTeamLeader() || $user->isManager() || $user->isAccountant()
         );
     }
 

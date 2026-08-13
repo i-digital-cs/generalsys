@@ -73,7 +73,7 @@ $border-radius: .5rem;
 |--------|------|----------------|
 | Login | `auth/login` | language toggle, RTL card |
 | Dashboard | `employee/dashboard` **(shipped T-2.4 + T-2.13)** | today status/sessions; month planned/spent stats; day list planned vs actual; calendar markers (shift + hours) |
-| Clock | `employee/clock` **(T-3.5 flags)** | FT/Online always (until used today); EXTRA/OT if assigned; preferred = TL assignment or default; banner; live timer; big CTA; Friday/rest/holiday work badges |
+| Clock | `employee/clock` **(T-3.5 flags · T-6.6 photos)** | FT/Online always (until used today); EXTRA/OT if assigned; preferred = TL assignment or default; banner; live timer; big CTA; Friday/rest/holiday work badges; optional multi photos on in/out |
 | Daily Report | `employee/report` **(shipped T-2.5)** | date picker; one report/day on first shift after clock-out; locked after TL reply; response read-only escaped |
 | My Requests | `employee/requests` **(shipped T-2.7 + T-2.9 + T-2.10)** | permissions + vacations; **Force** on REJECTED permissions |
 | My Salary | `employee/salary` | payslip card (APPROVED/PAID only), PDF download |

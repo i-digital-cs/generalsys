@@ -8,6 +8,7 @@ return [
     'approve' => 'Approve',
     'review' => 'Review',
     'export_pdf' => 'Download PDF',
+    'export_review_pdf' => 'Export full review PDF',
     'export_excel' => 'Export Excel',
     'download_excel' => 'Download Excel',
     'back_to_list' => 'Back to list',

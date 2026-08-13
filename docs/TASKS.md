@@ -447,7 +447,30 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] Feature smoke tests PASS
   - [x] UI/UX gate (AR+EN, RTL+LTR, responsive)
 
+
+### T-6.6 — Optional multi photos on clock-in and clock-out
+- Depends on: T-6.1, T-2.3, T-2.13
+- Unlocks: —
+- [x] Task complete
+  - [x] Schema `attendance_photos` + docs
+  - [x] Optional multi jpg/jpeg/png/webp ≤50MB each (**no count limit**) on clock-in **and** clock-out
+  - [x] Authorized view: self · TL (team) · Admin (employees + TLs) — role chain **yes**
+  - [x] Shown on clock screen + TL/Admin attendance (today board + hours day list) + employee sessions
+  - [x] Unit/feature tests PASS
+  - [x] UI/UX gate (AR+EN, RTL/LTR, responsive)
+
 ---
+
+
+### T-7.1 — ACCOUNTANT role (payroll + advances; Manager approves)
+- Depends on: T-4.5, T-4.8, T-1.3
+- Unlocks: —
+- [x] Task complete
+  - [x] Role `ACCOUNTANT` in schema/User/menu/seed (`accountant@hrpro.test`)
+  - [x] Self-service + payroll (view/generate/edit) + advances CRUD
+  - [x] Approve payroll Manager-only; no TL; Manager decides leave
+  - [x] AccountantRoleTest + MenuConfigTest green
+  - [x] UI/UX: AR+EN role label; approve button hidden for accountant
 
 ## Dependency map
 
@@ -470,6 +493,7 @@ T-0.1 → T-0.2 → T-0.3
                  ↓
               T-6.1 → T-6.3 → T-6.4 → T-6.5
               T-6.2 → T-6.3
+              T-6.1 + T-2.3 + T-2.13 → T-6.6
 ```
 
 ---
@@ -579,3 +603,7 @@ T-0.1 → T-0.2 → T-0.3
 Example:
 - 2026-08-02 T-0.1 PASS — migrate/boot OK
 -->
+- [x] 2026-08-12 T-6.6 PASS — Optional multi punch photos on clock-in **and** clock-out (jpg/jpeg/png/webp ≤50MB, max 5); `attendance_photos` + AttendancePhotoService; authorized view self·TL(team)·Manager (TL↔Admin **yes**); UI on `/clock`, employee sessions, TL/Admin today board + hours day list, report review; AR+EN; AttendancePhotoTest + schema/Clock/LangParity green.
+- [x] 2026-08-12 Amend T-6.6 — removed punch-photo **count** limit (keep ≤50MB each); AR+EN hint updated; AttendancePhotoTest accepts 8 files.
+- [x] 2026-08-12 UX — Admin payroll show: second button **Export full review PDF** (`export-review.pdf`) covers all tabs (pay / edit draft / attendance / evaluation / hours); Admin-only (TL 403); PayrollExportTest green.
+- [x] 2026-08-12 T-7.1 PASS — ACCOUNTANT role: self-service + payroll (no اعتماد) + advances CRUD; `team_leader_id` null → Manager decides leave; seed accountant@hrpro.test; TL still money-blocked.

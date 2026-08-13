@@ -49,7 +49,7 @@ class ReportReviewController extends Controller
 
     public function show(Request $request, Attendance $attendance): View
     {
-        $attendance->loadMissing('user');
+        $attendance->loadMissing(['user', 'photos']);
 
         abort_unless($this->reports->actorMayRespond($request->user(), $attendance), 403);
 
@@ -60,6 +60,8 @@ class ReportReviewController extends Controller
 
         abort_if($main === null || $main->id !== $attendance->id, 404);
         abort_if(blank($main->daily_report), 404);
+
+        $main->loadMissing('photos');
 
         return view('team-leader.reports.show', [
             'attendance' => $main,

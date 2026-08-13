@@ -63,6 +63,7 @@ class HoursComparisonService
         $attendances = Attendance::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->with('photos')
             ->orderBy('date')
             ->orderBy('clock_in')
             ->get()
@@ -171,6 +172,7 @@ class HoursComparisonService
         $attendances = Attendance::query()
             ->whereIn('user_id', $ids)
             ->whereDate('date', $date)
+            ->with('photos')
             ->orderBy('clock_in')
             ->get()
             ->groupBy('user_id');
@@ -184,6 +186,8 @@ class HoursComparisonService
             $planned = $this->plannedForDay($employee, $dayAssignments, $isOff);
             $actual = $this->actualForDay($dayAttendances);
             $isIn = $dayAttendances->contains(fn (Attendance $row) => $row->clock_out === null);
+            $photoCount = $dayAttendances->sum(fn (Attendance $row) => $row->photos->count());
+            $photoModels = $dayAttendances->flatMap(fn (Attendance $row) => $row->photos)->values();
 
             $status = 'NONE';
             if ($isIn) {
@@ -205,6 +209,8 @@ class HoursComparisonService
                 'is_clocked_in' => $isIn,
                 'is_rest_day' => $isRestDay,
                 'is_vacation' => $isVacation,
+                'photo_count' => (int) $photoCount,
+                'photos' => $photoModels,
             ];
         })->values();
     }
@@ -397,6 +403,7 @@ class HoursComparisonService
             $open = $row->clock_out === null;
             $h = $open ? 0.0 : round((float) $row->actual_hours, 2);
             $hours += $h;
+            $photos = $row->relationLoaded('photos') ? $row->photos : collect();
             $intervals[] = [
                 'label' => __('clock.shifts.'.$row->shift_type),
                 'start' => $row->clock_in?->format('H:i'),
@@ -406,6 +413,7 @@ class HoursComparisonService
                 'is_friday_work' => (bool) $row->is_friday_work,
                 'is_day_off_work' => (bool) $row->is_day_off_work,
                 'is_official_holiday_work' => (bool) $row->is_official_holiday_work,
+                'photos' => $photos,
             ];
         }
 
