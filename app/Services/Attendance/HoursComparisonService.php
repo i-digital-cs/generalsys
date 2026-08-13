@@ -87,6 +87,7 @@ class HoursComparisonService
 
             $planned = $this->plannedForDay($user, $dayAssignments, $isOff);
             $actual = $this->actualForDay($dayAttendances);
+            $shiftLines = $this->shiftLinesForDay($planned['intervals'], $actual['intervals']);
 
             $totalPlanned += $planned['hours'];
             $totalActual += $actual['hours'];
@@ -101,6 +102,7 @@ class HoursComparisonService
                 'is_vacation' => $isVacation,
                 'planned_intervals' => $planned['intervals'],
                 'actual_intervals' => $actual['intervals'],
+                'shift_lines' => $shiftLines,
             ];
         }
 
@@ -115,13 +117,13 @@ class HoursComparisonService
                 'actual' => $totalActual,
                 'pct' => $this->pct($totalActual, $totalPlanned),
             ],
-            'shift_breakdown' => $this->monthlyDefaultShiftHours($user, (int) $month->month, (int) $month->year),
+            'shift_breakdown' => $this->aggregateDefaultShiftBreakdown($days, $user),
         ];
     }
 
     /**
      * Required vs worked vs absent hours per default base shift for a month (T-7.3).
-     * Required = workdays (not rest, not vacation) × planned hours for each selected default.
+     * Sums exact per-day planned/actual lines (assignments override defaults that day).
      *
      * @return array{
      *     work_days: int,
@@ -130,51 +132,10 @@ class HoursComparisonService
      */
     public function monthlyDefaultShiftHours(User $user, int $month, int $year): array
     {
-        $from = Carbon::create($year, $month, 1)->startOfDay();
-        $to = $from->copy()->endOfMonth();
-        $defaults = $user->defaultShiftTypes();
-        $vacationDates = array_fill_keys(
-            $this->restDays->approvedVacationDates($user, $from->toDateString(), $to->toDateString()),
-            true,
-        );
+        $ym = sprintf('%04d-%02d', $year, $month);
+        $monthData = $this->monthForUser($user, $ym);
 
-        $workDays = 0;
-        for ($day = $from->copy(); $day->lte($to); $day->addDay()) {
-            $date = $day->toDateString();
-            if ($this->restDays->isRestDate($user, $date) || isset($vacationDates[$date])) {
-                continue;
-            }
-            $workDays++;
-        }
-
-        $actualByType = Attendance::query()
-            ->where('user_id', $user->id)
-            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
-            ->whereNotNull('clock_out')
-            ->whereIn('shift_type', User::DEFAULT_SHIFT_OPTIONS)
-            ->selectRaw('shift_type, COALESCE(SUM(actual_hours), 0) as hours')
-            ->groupBy('shift_type')
-            ->pluck('hours', 'shift_type');
-
-        $shifts = [];
-        foreach (User::DEFAULT_SHIFT_OPTIONS as $type) {
-            $perDay = (float) ($this->shifts->plannedHours($type));
-            $required = in_array($type, $defaults, true)
-                ? round($workDays * $perDay, 2)
-                : 0.0;
-            $actual = round((float) ($actualByType[$type] ?? 0), 2);
-            $shifts[$type] = [
-                'label' => __('clock.shifts.'.$type),
-                'required' => $required,
-                'actual' => $actual,
-                'absent' => round(max(0, $required - $actual), 2),
-            ];
-        }
-
-        return [
-            'work_days' => $workDays,
-            'shifts' => $shifts,
-        ];
+        return $monthData['shift_breakdown'];
     }
 
     /**
@@ -319,27 +280,28 @@ class HoursComparisonService
     public function profilePlannedHours(User $user): float
     {
         $hours = 0.0;
-        foreach ($user->defaultShiftTypes() as $type) {
-            $hours += $this->shifts->plannedHours($type);
+        foreach ($user->defaultShiftProfiles() as $profile) {
+            $hours += $this->plannedHoursForProfile($profile);
         }
 
         return round($hours, 2);
     }
 
     /**
-     * @return list<array{label: string, start: ?string, end: ?string, hours: float, source: string}>
+     * @return list<array{label: string, start: ?string, end: ?string, hours: float, source: string, shift_type: ?string}>
      */
     public function profilePlannedIntervals(User $user): array
     {
         $intervals = [];
         foreach ($user->defaultShiftProfiles() as $profile) {
-            $h = $this->shifts->plannedHours($profile['type']);
+            $h = $this->plannedHoursForProfile($profile);
             $intervals[] = [
                 'label' => __('clock.shifts.'.$profile['type']),
                 'start' => $profile['start'],
                 'end' => $profile['end'],
                 'hours' => $h,
                 'source' => 'profile',
+                'shift_type' => $profile['type'],
             ];
         }
 
@@ -418,6 +380,7 @@ class HoursComparisonService
                     'end' => $assignment->expected_end_time,
                     'hours' => $h,
                     'source' => 'assignment',
+                    'shift_type' => $assignment->shift_type,
                 ];
             }
 
@@ -438,6 +401,7 @@ class HoursComparisonService
                     'end' => null,
                     'hours' => 0.0,
                     'source' => 'rest_day',
+                    'shift_type' => null,
                 ]],
             ];
         }
@@ -454,8 +418,159 @@ class HoursComparisonService
                 'end' => null,
                 'hours' => $hours,
                 'source' => 'profile',
+                'shift_type' => null,
             ]],
         ];
+    }
+
+    /**
+     * Exact required / existing / absent hours per shift type for one day.
+     *
+     * @param  list<array{label: string, hours: float, source?: string, shift_type?: ?string}>  $plannedIntervals
+     * @param  list<array{label: string, hours: float, open?: bool, shift_type?: ?string}>  $actualIntervals
+     * @return list<array{shift_type: ?string, label: string, required: float, actual: float, absent: float}>
+     */
+    public function shiftLinesForDay(array $plannedIntervals, array $actualIntervals): array
+    {
+        $requiredByType = [];
+        $labels = [];
+
+        foreach ($plannedIntervals as $interval) {
+            if (($interval['source'] ?? '') === 'rest_day') {
+                continue;
+            }
+            $type = $interval['shift_type'] ?? null;
+            $key = is_string($type) && $type !== '' ? $type : '_'.$interval['label'];
+            $requiredByType[$key] = ($requiredByType[$key] ?? 0) + (float) $interval['hours'];
+            $labels[$key] = $interval['label'];
+        }
+
+        $actualByType = [];
+        foreach ($actualIntervals as $interval) {
+            if (! empty($interval['open'])) {
+                continue;
+            }
+            $type = $interval['shift_type'] ?? null;
+            $key = is_string($type) && $type !== '' ? $type : '_'.$interval['label'];
+            $actualByType[$key] = ($actualByType[$key] ?? 0) + (float) $interval['hours'];
+            $labels[$key] = $labels[$key] ?? $interval['label'];
+        }
+
+        $keys = array_unique(array_merge(array_keys($requiredByType), array_keys($actualByType)));
+        $lines = [];
+        foreach ($keys as $key) {
+            $required = round((float) ($requiredByType[$key] ?? 0), 2);
+            $actual = round((float) ($actualByType[$key] ?? 0), 2);
+            $type = str_starts_with((string) $key, '_') ? null : (string) $key;
+            $lines[] = [
+                'shift_type' => $type,
+                'label' => $labels[$key] ?? ($type ? __('clock.shifts.'.$type) : __('general.not_available')),
+                'required' => $required,
+                'actual' => $actual,
+                'absent' => round(max(0, $required - $actual), 2),
+            ];
+        }
+
+        usort($lines, function (array $a, array $b): int {
+            $order = array_flip(User::DEFAULT_SHIFT_OPTIONS);
+
+            return ($order[$a['shift_type'] ?? ''] ?? 99) <=> ($order[$b['shift_type'] ?? ''] ?? 99);
+        });
+
+        return $lines;
+    }
+
+    /**
+     * @param  list<array{is_rest_day?: bool, is_vacation?: bool, shift_lines?: list}>  $days
+     * @return array{
+     *     work_days: int,
+     *     shifts: array<string, array{label: string, required: float, actual: float, absent: float}>
+     * }
+     */
+    private function aggregateDefaultShiftBreakdown(array $days, User $user): array
+    {
+        $defaults = $user->defaultShiftTypes();
+        $workDays = 0;
+        $required = [];
+        $actual = [];
+
+        foreach (User::DEFAULT_SHIFT_OPTIONS as $type) {
+            $required[$type] = 0.0;
+            $actual[$type] = 0.0;
+        }
+
+        foreach ($days as $day) {
+            $isOff = ! empty($day['is_rest_day']) || ! empty($day['is_vacation']);
+            $lines = $day['shift_lines'] ?? [];
+            if (! $isOff && $lines !== []) {
+                $workDays++;
+            }
+
+            foreach ($lines as $line) {
+                $type = $line['shift_type'] ?? null;
+                if (! is_string($type) || ! in_array($type, User::DEFAULT_SHIFT_OPTIONS, true)) {
+                    continue;
+                }
+                $required[$type] += (float) $line['required'];
+                $actual[$type] += (float) $line['actual'];
+            }
+        }
+
+        $shifts = [];
+        foreach (User::DEFAULT_SHIFT_OPTIONS as $type) {
+            $req = in_array($type, $defaults, true) || $required[$type] > 0
+                ? round($required[$type], 2)
+                : 0.0;
+            // Always show actual for default options when hours were punched,
+            // even if type is not in defaults (legacy / assignment).
+            $act = round($actual[$type], 2);
+            if (! in_array($type, $defaults, true) && $req <= 0 && $act <= 0) {
+                $req = 0.0;
+            }
+            $shifts[$type] = [
+                'label' => __('clock.shifts.'.$type),
+                'required' => $req,
+                'actual' => $act,
+                'absent' => round(max(0, $req - $act), 2),
+            ];
+        }
+
+        return [
+            'work_days' => $workDays,
+            'shifts' => $shifts,
+        ];
+    }
+
+    /**
+     * @param  array{type: string, start: string, end: string}  $profile
+     */
+    private function plannedHoursForProfile(array $profile): float
+    {
+        $fromWindow = $this->hoursBetween($profile['start'] ?? null, $profile['end'] ?? null);
+        if ($fromWindow > 0) {
+            return $fromWindow;
+        }
+
+        return (float) $this->shifts->plannedHours($profile['type']);
+    }
+
+    private function hoursBetween(?string $start, ?string $end): float
+    {
+        if ($start === null || $start === '' || $end === null || $end === '') {
+            return 0.0;
+        }
+
+        $from = Carbon::createFromFormat('H:i', substr($start, 0, 5));
+        $to = Carbon::createFromFormat('H:i', substr($end, 0, 5));
+        if ($from === false || $to === false) {
+            return 0.0;
+        }
+
+        if ($to->lte($from)) {
+            $to->addDay();
+        }
+
+        return round($from->floatDiffInHours($to), 2);
     }
 
     /**
@@ -478,6 +593,7 @@ class HoursComparisonService
                 'end' => $row->clock_out?->format('H:i'),
                 'hours' => $h,
                 'open' => $open,
+                'shift_type' => $row->shift_type,
                 'is_friday_work' => (bool) $row->is_friday_work,
                 'is_day_off_work' => (bool) $row->is_day_off_work,
                 'is_official_holiday_work' => (bool) $row->is_official_holiday_work,

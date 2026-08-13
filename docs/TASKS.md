@@ -628,4 +628,4 @@ Example:
 - [x] 2026-08-12 UX — Admin payroll show: second button **Export full review PDF** (`export-review.pdf`) covers all tabs (pay / edit draft / attendance / evaluation / hours); Admin-only (TL 403); PayrollExportTest green.
 - [x] 2026-08-12 T-7.1 PASS — ACCOUNTANT role: self-service + payroll (no اعتماد) + advances CRUD; `team_leader_id` null → Manager decides leave; seed accountant@hrpro.test; TL still money-blocked.
 - [x] 2026-08-13 T-7.2 PASS — Required punch GPS + soft 1-office geofence (Admin Settings lat/lng, default 1 km): store lat/lng/accuracy/distance/outside; accept outside with warn + notify employee/TL/Admin; Maps links like photos; TL↔Admin self-clock yes; ClockLocationTest + GeofenceServiceTest green.
-- [x] 2026-08-13 T-7.3 PASS — Dual defaults FULL_TIME+ONLINE_HALF; every workday both expected; payroll Hours shows required/actual/absent per shift; ONLINE_FULL legacy→both; Admin form two dropdown+time rows (not checkboxes); DualDefaultShiftsTest green.
+- [x] 2026-08-13 T-7.3b PASS — Payroll Hours: per-day required / present (موجود) / absent (غائب) per shift; month totals summed from exact day lines; PDF aligned.

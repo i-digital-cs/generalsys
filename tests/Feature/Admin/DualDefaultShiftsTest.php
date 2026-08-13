@@ -144,6 +144,46 @@ class DualDefaultShiftsTest extends TestCase
         $this->assertSame(120.0, $breakdown['shifts'][Attendance::SHIFT_ONLINE_HALF]['absent']);
     }
 
+    public function test_payroll_day_lines_show_exact_existing_and_absent_per_shift(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'shift_types_default' => [
+                [
+                    'type' => Attendance::SHIFT_ONLINE_HALF,
+                    'start' => '06:00',
+                    'end' => '10:00',
+                ],
+                [
+                    'type' => Attendance::SHIFT_FULL_TIME,
+                    'start' => '10:00',
+                    'end' => '18:00',
+                ],
+            ],
+            'shift_type_default' => Attendance::SHIFT_ONLINE_HALF,
+        ]);
+
+        $service = app(AttendanceService::class);
+        $service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, Carbon::parse('2026-08-03 06:00:00'));
+        $service->clockOut($employee, Carbon::parse('2026-08-03 10:00:00'));
+        // Missed FULL_TIME that day.
+
+        $month = app(HoursComparisonService::class)->monthForUser($employee, '2026-08');
+        $day = collect($month['days'])->firstWhere('date', '2026-08-03');
+        $this->assertNotNull($day);
+        $byType = collect($day['shift_lines'])->keyBy('shift_type');
+
+        $this->assertSame(4.0, (float) $byType[Attendance::SHIFT_ONLINE_HALF]['required']);
+        $this->assertSame(4.0, (float) $byType[Attendance::SHIFT_ONLINE_HALF]['actual']);
+        $this->assertSame(0.0, (float) $byType[Attendance::SHIFT_ONLINE_HALF]['absent']);
+
+        $this->assertSame(8.0, (float) $byType[Attendance::SHIFT_FULL_TIME]['required']);
+        $this->assertSame(0.0, (float) $byType[Attendance::SHIFT_FULL_TIME]['actual']);
+        $this->assertSame(8.0, (float) $byType[Attendance::SHIFT_FULL_TIME]['absent']);
+
+        $this->assertSame(12.0, (float) $day['planned_hours']);
+        $this->assertSame(4.0, (float) $day['actual_hours']);
+    }
+
     public function test_online_full_legacy_normalizes_to_both(): void
     {
         $this->assertSame(

@@ -119,8 +119,10 @@
         'payroll.fields.hours_deduction' => (float) $payroll->hours_deduction,
     ];
 
-    $hourGaps = collect($hoursMonth['days'] ?? [])->filter(function (array $day) {
-        return ((float) $day['planned_hours'] - (float) $day['actual_hours']) > 0.01;
+    $hourDays = collect($hoursMonth['days'] ?? [])->filter(function (array $day) {
+        return ((float) $day['planned_hours'] > 0.01)
+            || ((float) $day['actual_hours'] > 0.01)
+            || (! empty($day['shift_lines']));
     })->values();
 
     $rowHtml = static function (string $label, string $value, bool $rtl): string {
@@ -311,10 +313,10 @@
     <div class="section">{{ $t('payroll.tabs.hours') }}</div>
     @if ($hoursMonth !== null)
         <table class="kv">
-            <tr>{!! $rowHtml($t('payroll.hours.planned'), $num($hoursMonth['totals']['planned']), $rtl) !!}</tr>
-            <tr>{!! $rowHtml($t('payroll.hours.actual'), $num($hoursMonth['totals']['actual']), $rtl) !!}</tr>
+            <tr>{!! $rowHtml($t('payroll.hours.required'), $num($hoursMonth['totals']['planned']), $rtl) !!}</tr>
+            <tr>{!! $rowHtml($t('payroll.hours.existing'), $num($hoursMonth['totals']['actual']), $rtl) !!}</tr>
             <tr>{!! $rowHtml(
-                $t('payroll.hours.shortfall'),
+                $t('payroll.hours.absent'),
                 $num(max(0, (float) $hoursMonth['totals']['planned'] - (float) $hoursMonth['totals']['actual'])),
                 $rtl
             ) !!}</tr>
@@ -330,19 +332,20 @@
                     <tr>
                         @if ($rtl)
                             <th>{{ $t('payroll.hours.absent') }}</th>
-                            <th>{{ $t('payroll.hours.actual') }}</th>
+                            <th>{{ $t('payroll.hours.existing') }}</th>
                             <th>{{ $t('payroll.hours.required') }}</th>
                             <th>{{ $t('payroll.hours.shift') }}</th>
                         @else
                             <th>{{ $t('payroll.hours.shift') }}</th>
                             <th>{{ $t('payroll.hours.required') }}</th>
-                            <th>{{ $t('payroll.hours.actual') }}</th>
+                            <th>{{ $t('payroll.hours.existing') }}</th>
                             <th>{{ $t('payroll.hours.absent') }}</th>
                         @endif
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($breakdown['shifts'] as $type => $row)
+                        @continue((float) $row['required'] <= 0 && (float) $row['actual'] <= 0)
                         <tr>
                             @if ($rtl)
                                 <td class="num">{{ $num($row['absent']) }}</td>
@@ -360,48 +363,59 @@
                 </tbody>
             </table>
         @endif
-        @if ($hourGaps->isEmpty())
-            <p class="empty">{{ $t('payroll.hours.no_gaps') }}</p>
+        <p class="empty" style="margin-top:8px;">{{ $t('payroll.hours.by_day_title') }}</p>
+        @if ($hourDays->isEmpty())
+            <p class="empty">{{ $t('payroll.hours.no_days') }}</p>
         @else
             <table class="days">
                 <thead>
                     <tr>
                         @if ($rtl)
-                            <th>{{ $t('payroll.hours.shortfall') }}</th>
-                            <th>{{ $t('payroll.hours.actual') }}</th>
-                            <th>{{ $t('payroll.hours.planned') }}</th>
+                            <th>{{ $t('payroll.hours.absent') }}</th>
+                            <th>{{ $t('payroll.hours.existing') }}</th>
+                            <th>{{ $t('payroll.hours.required') }}</th>
                             <th>{{ $t('payroll.hours.shift') }}</th>
                             <th>{{ $t('payroll.hours.date') }}</th>
                         @else
                             <th>{{ $t('payroll.hours.date') }}</th>
                             <th>{{ $t('payroll.hours.shift') }}</th>
-                            <th>{{ $t('payroll.hours.planned') }}</th>
-                            <th>{{ $t('payroll.hours.actual') }}</th>
-                            <th>{{ $t('payroll.hours.shortfall') }}</th>
+                            <th>{{ $t('payroll.hours.required') }}</th>
+                            <th>{{ $t('payroll.hours.existing') }}</th>
+                            <th>{{ $t('payroll.hours.absent') }}</th>
                         @endif
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($hourGaps as $day)
+                    @foreach ($hourDays as $day)
                         @php
-                            $short = round((float) $day['planned_hours'] - (float) $day['actual_hours'], 2);
-                            $labels = collect($day['planned_intervals'] ?? [])->pluck('label')->filter()->implode(' · ');
+                            $lines = $day['shift_lines'] ?? [];
+                            if ($lines === []) {
+                                $lines = [[
+                                    'label' => collect($day['planned_intervals'] ?? [])->pluck('label')->filter()->implode(' · ')
+                                        ?: __('general.not_available'),
+                                    'required' => (float) $day['planned_hours'],
+                                    'actual' => (float) $day['actual_hours'],
+                                    'absent' => max(0, (float) $day['planned_hours'] - (float) $day['actual_hours']),
+                                ]];
+                            }
                         @endphp
-                        <tr>
-                            @if ($rtl)
-                                <td>{{ $num($short) }}</td>
-                                <td>{{ $num($day['actual_hours']) }}</td>
-                                <td>{{ $num($day['planned_hours']) }}</td>
-                                <td>{{ $g($labels !== '' ? $labels : __('general.not_available')) }}</td>
-                                <td>{{ $day['date'] }}</td>
-                            @else
-                                <td>{{ $day['date'] }}</td>
-                                <td>{{ $g($labels !== '' ? $labels : __('general.not_available')) }}</td>
-                                <td>{{ $num($day['planned_hours']) }}</td>
-                                <td>{{ $num($day['actual_hours']) }}</td>
-                                <td>{{ $num($short) }}</td>
-                            @endif
-                        </tr>
+                        @foreach ($lines as $lineIndex => $line)
+                            <tr>
+                                @if ($rtl)
+                                    <td class="num">{{ $num($line['absent']) }}</td>
+                                    <td class="num">{{ $num($line['actual']) }}</td>
+                                    <td class="num">{{ $num($line['required']) }}</td>
+                                    <td>{{ $g($line['label']) }}</td>
+                                    <td>{{ $lineIndex === 0 ? $day['date'] : '' }}</td>
+                                @else
+                                    <td>{{ $lineIndex === 0 ? $day['date'] : '' }}</td>
+                                    <td>{{ $g($line['label']) }}</td>
+                                    <td class="num">{{ $num($line['required']) }}</td>
+                                    <td class="num">{{ $num($line['actual']) }}</td>
+                                    <td class="num">{{ $num($line['absent']) }}</td>
+                                @endif
+                            </tr>
+                        @endforeach
                     @endforeach
                 </tbody>
             </table>
