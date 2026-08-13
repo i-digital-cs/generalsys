@@ -56,9 +56,15 @@
                                     <tr>
                                         <td>
                                             <div>{{ $row['label'] }}</div>
-                                            @if (in_array($type, ['FULL_TIME', 'ONLINE_HALF'], true))
-                                                <div class="small text-body-secondary num-ltr">
-                                                    {{ __('employees.shifts.windows.'.$type) }}
+                                            @if ($type === 'ONLINE_HALF')
+                                                <div class="small text-body-secondary">
+                                                    {{ __('payroll.hours.period_morning') }}
+                                                    · <span class="num-ltr">{{ __('employees.shifts.windows.ONLINE_HALF') }}</span>
+                                                </div>
+                                            @elseif ($type === 'FULL_TIME')
+                                                <div class="small text-body-secondary">
+                                                    {{ __('payroll.hours.period_day') }}
+                                                    · <span class="num-ltr">{{ __('employees.shifts.windows.FULL_TIME') }}</span>
                                                 </div>
                                             @endif
                                         </td>
@@ -132,7 +138,21 @@
                                                     @endif
                                                 @endif
                                             </td>
-                                            <td>{{ $line['label'] }}</td>
+                                            <td>
+                                                <div>{{ $line['label'] }}</div>
+                                                @php $lineType = $line['shift_type'] ?? null; @endphp
+                                                @if ($lineType === 'ONLINE_HALF')
+                                                    <div class="small text-body-secondary">
+                                                        {{ __('payroll.hours.period_morning') }}
+                                                        · <span class="num-ltr">{{ __('employees.shifts.windows.ONLINE_HALF') }}</span>
+                                                    </div>
+                                                @elseif ($lineType === 'FULL_TIME')
+                                                    <div class="small text-body-secondary">
+                                                        {{ __('payroll.hours.period_day') }}
+                                                        · <span class="num-ltr">{{ __('employees.shifts.windows.FULL_TIME') }}</span>
+                                                    </div>
+                                                @endif
+                                            </td>
                                             <td class="col-num"><span class="num-ltr">{{ number_format((float) $line['required'], 2) }}</span></td>
                                             <td class="col-num"><span class="num-ltr">{{ number_format((float) $line['actual'], 2) }}</span></td>
                                             <td class="col-num">

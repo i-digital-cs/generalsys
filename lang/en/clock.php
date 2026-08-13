@@ -95,5 +95,6 @@ return [
         'shift_already_recorded' => 'You already recorded this work type today.',
         'plan_mismatch' => 'Clock-in must match today’s planned work type. Overtime / extra work only when assigned.',
         'report_required' => 'Submit your previous daily report before clocking in.',
+        'shift_window_closed' => 'This shift’s window has ended for today. Choose the next available shift (e.g. full time), or the morning shift counts as absent.',
     ],
 ];

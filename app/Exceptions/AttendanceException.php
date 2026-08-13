@@ -41,4 +41,9 @@ class AttendanceException extends RuntimeException
     {
         return new self('clock.errors.report_required');
     }
+
+    public static function shiftWindowClosed(): self
+    {
+        return new self('clock.errors.shift_window_closed');
+    }
 }

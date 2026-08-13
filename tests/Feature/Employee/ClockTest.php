@@ -284,7 +284,9 @@ class ClockTest extends TestCase
 
     public function test_without_assignment_prefers_profile_default(): void
     {
+        // Legacy ONLINE_FULL → both defaults; morning prefers Online½.
         $this->employee->update(['shift_type_default' => Attendance::SHIFT_ONLINE_FULL]);
+        Carbon::setTestNow(Carbon::parse('2026-08-03 07:00:00', config('app.timezone')));
 
         $html = $this->actingAs($this->employee)
             ->get(route('employee.clock'))
@@ -292,9 +294,10 @@ class ClockTest extends TestCase
             ->getContent();
 
         $this->assertMatchesRegularExpression(
-            '/option value="ONLINE_FULL"[^>]*selected/s',
+            '/option value="ONLINE_HALF"[^>]*selected/s',
             $html,
         );
+        $this->assertMatchesRegularExpression('/option value="FULL_TIME"/', $html);
         $this->assertStringNotContainsString(__('clock.assigned_today', [
             'shift' => __('clock.shifts.FULL_TIME'),
         ]), $html);

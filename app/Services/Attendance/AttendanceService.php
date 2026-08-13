@@ -53,6 +53,10 @@ class AttendanceService
             throw AttendanceException::planMismatch();
         }
 
+        if (! $this->shiftWindowStillOpen($user, $shiftType, $at)) {
+            throw AttendanceException::shiftWindowClosed();
+        }
+
         // Enforcement: a previous day with a missing daily report blocks
         // clocking in until the report is submitted (same-day extra/extra
         // punches are unaffected — their date is not before today's).
@@ -287,7 +291,8 @@ class AttendanceService
      */
     public function availableShiftTypes(User $user, ?CarbonInterface $at = null): array
     {
-        $date = Carbon::parse($at ?? now())->toDateString();
+        $at = Carbon::parse($at ?? now());
+        $date = $at->toDateString();
         $allowed = $this->plannedAllowedTypes($user, $date);
 
         $used = Attendance::query()
@@ -296,7 +301,92 @@ class AttendanceService
             ->pluck('shift_type')
             ->all();
 
-        return array_values(array_diff($allowed, $used));
+        $remaining = array_values(array_diff($allowed, $used));
+
+        return array_values(array_filter(
+            $remaining,
+            fn (string $type) => $this->shiftWindowStillOpen($user, $type, $at),
+        ));
+    }
+
+    /**
+     * Preferred clock selection: today’s SCHEDULED assignment, else the shift
+     * whose window contains now, else the next upcoming start still available.
+     */
+    public function preferredShiftType(User $user, ?CarbonInterface $at = null): string
+    {
+        $at = Carbon::parse($at ?? now());
+        $available = $this->availableShiftTypes($user, $at);
+
+        if ($available === []) {
+            return Attendance::SHIFT_FULL_TIME;
+        }
+
+        $assignment = $this->todaysPrimaryAssignment($user, $at);
+
+        if ($assignment !== null && in_array($assignment->shift_type, $available, true)) {
+            return $assignment->shift_type;
+        }
+
+        $inWindow = [];
+        $upcoming = [];
+
+        foreach ($available as $type) {
+            $start = $this->expectedStartFor($user, $type, $at);
+            if ($start === null) {
+                continue;
+            }
+
+            $end = $this->expectedEndFor($user, $type, $at);
+            $closeAt = $end?->copy()->addMinutes($this->clockInGraceMinutes());
+
+            if ($at->lt($start)) {
+                $upcoming[] = ['type' => $type, 'start' => $start];
+            } elseif ($closeAt === null || $at->lte($closeAt)) {
+                $inWindow[] = ['type' => $type, 'start' => $start];
+            }
+        }
+
+        if ($inWindow !== []) {
+            usort($inWindow, fn (array $a, array $b) => $a['start'] <=> $b['start']);
+
+            return $inWindow[0]['type'];
+        }
+
+        if ($upcoming !== []) {
+            usort($upcoming, fn (array $a, array $b) => $a['start'] <=> $b['start']);
+
+            return $upcoming[0]['type'];
+        }
+
+        foreach ($user->defaultShiftTypes() as $default) {
+            if (in_array($default, $available, true)) {
+                return $default;
+            }
+        }
+
+        return $available[0];
+    }
+
+    /**
+     * Morning (etc.) can be started until expected end + grace; after that the
+     * window is missed (counts as absent) and only later shifts stay open.
+     */
+    public function shiftWindowStillOpen(User $user, string $shiftType, ?CarbonInterface $at = null): bool
+    {
+        $at = Carbon::parse($at ?? now());
+        $end = $this->expectedEndFor($user, $shiftType, $at);
+
+        if ($end === null) {
+            return true;
+        }
+
+        return $at->lte($end->copy()->addMinutes($this->clockInGraceMinutes()));
+    }
+
+    private function clockInGraceMinutes(): int
+    {
+        return max(0, (int) config('attendance.auto_clock_out_grace_minutes', 60));
     }
 
     /**
@@ -323,33 +413,6 @@ class AttendanceService
         $defaults = $user->defaultShiftTypes();
 
         return array_values(array_unique([...$defaults, ...$premiumScheduled]));
-    }
-
-    /**
-     * Preferred clock selection: today’s SCHEDULED assignment, else first profile default still available.
-     * Falls back to the first still-available type when the preferred one was already used.
-     */
-    public function preferredShiftType(User $user, ?CarbonInterface $at = null): string
-    {
-        $available = $this->availableShiftTypes($user, $at);
-
-        if ($available === []) {
-            return Attendance::SHIFT_FULL_TIME;
-        }
-
-        $assignment = $this->todaysPrimaryAssignment($user, $at);
-
-        if ($assignment !== null && in_array($assignment->shift_type, $available, true)) {
-            return $assignment->shift_type;
-        }
-
-        foreach ($user->defaultShiftTypes() as $default) {
-            if (in_array($default, $available, true)) {
-                return $default;
-            }
-        }
-
-        return $available[0];
     }
 
     public function hasAttendanceForShift(User $user, string $date, string $shiftType): bool

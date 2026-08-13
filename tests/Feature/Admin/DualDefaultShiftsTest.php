@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Exceptions\AttendanceException;
 use App\Models\Attendance;
 use App\Models\RestDay;
 use App\Models\User;
@@ -113,6 +114,35 @@ class DualDefaultShiftsTest extends TestCase
         $allowed = $service->availableShiftTypes($employee, Carbon::parse('2026-08-03 19:00:00'));
         $this->assertNotContains(Attendance::SHIFT_FULL_TIME, $allowed);
         $this->assertNotContains(Attendance::SHIFT_ONLINE_HALF, $allowed);
+    }
+
+    public function test_evening_hides_morning_shift_and_prefers_full_time(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'shift_types_default' => [
+                [
+                    'type' => Attendance::SHIFT_ONLINE_HALF,
+                    'start' => '06:00',
+                    'end' => '10:00',
+                ],
+                [
+                    'type' => Attendance::SHIFT_FULL_TIME,
+                    'start' => '10:00',
+                    'end' => '18:00',
+                ],
+            ],
+            'shift_type_default' => Attendance::SHIFT_ONLINE_HALF,
+        ]);
+
+        $service = app(AttendanceService::class);
+        $at = Carbon::parse('2026-08-03 17:01:00');
+
+        $available = $service->availableShiftTypes($employee, $at);
+        $this->assertSame([Attendance::SHIFT_FULL_TIME], $available);
+        $this->assertSame(Attendance::SHIFT_FULL_TIME, $service->preferredShiftType($employee, $at));
+
+        $this->expectException(AttendanceException::class);
+        $service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, $at);
     }
 
     public function test_monthly_breakdown_required_and_absent_per_shift(): void
