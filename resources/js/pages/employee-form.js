@@ -46,32 +46,41 @@ document.addEventListener('click', function (event) {
     }
 });
 
-// Shift type change prefills the default work window (ShiftConfig::DEFAULT_TIME_WINDOWS).
-// The time inputs stay editable — this only sets a sensible starting value.
+// Default shift rows: choosing a type prefills that row's start/end (assign-shift style).
 (function () {
-    const shiftSelect = document.getElementById('shift_type_default');
-
-    if (! shiftSelect || ! shiftSelect.dataset.shiftTimes) {
+    const root = document.querySelector('[data-default-shifts]');
+    if (! root || ! root.dataset.shiftTimes) {
         return;
     }
 
-    const windows = JSON.parse(shiftSelect.dataset.shiftTimes);
-    const startInput = document.getElementById('work_start_time');
-    const endInput = document.getElementById('work_end_time');
+    const windows = JSON.parse(root.dataset.shiftTimes);
 
-    shiftSelect.addEventListener('change', function () {
-        const window = windows[shiftSelect.value];
+    root.querySelectorAll('[data-default-shift-row]').forEach(function (row) {
+        const typeSelect = row.querySelector('[data-default-shift-type]');
+        const startInput = row.querySelector('[data-default-shift-start]');
+        const endInput = row.querySelector('[data-default-shift-end]');
 
-        if (! window) {
+        if (! typeSelect) {
             return;
         }
 
-        if (startInput) {
-            startInput.value = window[0];
-        }
+        typeSelect.addEventListener('change', function () {
+            const type = typeSelect.value;
+            if (! type) {
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+                if (startInput) startInput.required = false;
+                if (endInput) endInput.required = false;
+                return;
+            }
 
-        if (endInput) {
-            endInput.value = window[1];
-        }
+            const window = windows[type];
+            if (window) {
+                if (startInput) startInput.value = window[0];
+                if (endInput) endInput.value = window[1];
+            }
+            if (startInput) startInput.required = true;
+            if (endInput) endInput.required = true;
+        });
     });
 })();

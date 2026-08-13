@@ -482,6 +482,16 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] Notify employee + TL + Admin; show Maps link like photos
   - [x] TL↔Admin self-clock yes; tests + UI/UX AR+EN RTL/LTR responsive
 
+### T-7.3 — Dual default shifts (FULL_TIME + ONLINE_HALF)
+- Depends on: T-1.4, T-2.3, T-4.x payroll hours
+- Unlocks: —
+- [x] Task complete
+  - [x] `shift_types_default` JSON; migrate ONLINE_FULL → both
+  - [x] Admin create/edit: two Assign-style rows (type + start/end); clock allows both same day
+  - [x] Planned hours = sum of defaults on workdays
+  - [x] Payroll Hours tab: required / actual / absent per shift; one salary
+  - [x] DualDefaultShiftsTest + related suite green; UI AR+EN
+
 ## Dependency map
 
 ```text
@@ -618,3 +628,4 @@ Example:
 - [x] 2026-08-12 UX — Admin payroll show: second button **Export full review PDF** (`export-review.pdf`) covers all tabs (pay / edit draft / attendance / evaluation / hours); Admin-only (TL 403); PayrollExportTest green.
 - [x] 2026-08-12 T-7.1 PASS — ACCOUNTANT role: self-service + payroll (no اعتماد) + advances CRUD; `team_leader_id` null → Manager decides leave; seed accountant@hrpro.test; TL still money-blocked.
 - [x] 2026-08-13 T-7.2 PASS — Required punch GPS + soft 1-office geofence (Admin Settings lat/lng, default 1 km): store lat/lng/accuracy/distance/outside; accept outside with warn + notify employee/TL/Admin; Maps links like photos; TL↔Admin self-clock yes; ClockLocationTest + GeofenceServiceTest green.
+- [x] 2026-08-13 T-7.3 PASS — Dual defaults FULL_TIME+ONLINE_HALF; every workday both expected; payroll Hours shows required/actual/absent per shift; ONLINE_FULL legacy→both; Admin form two dropdown+time rows (not checkboxes); DualDefaultShiftsTest green.

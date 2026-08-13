@@ -319,6 +319,47 @@
                 $rtl
             ) !!}</tr>
         </table>
+        @php
+            $breakdown = $hoursMonth['shift_breakdown'] ?? null;
+        @endphp
+        @if (is_array($breakdown) && isset($breakdown['shifts']))
+            <p class="empty" style="margin-top:8px;">{{ $t('payroll.hours.by_shift_title') }}
+                — {{ $t('payroll.hours.work_days') }}: {{ (int) ($breakdown['work_days'] ?? 0) }}</p>
+            <table class="days">
+                <thead>
+                    <tr>
+                        @if ($rtl)
+                            <th>{{ $t('payroll.hours.absent') }}</th>
+                            <th>{{ $t('payroll.hours.actual') }}</th>
+                            <th>{{ $t('payroll.hours.required') }}</th>
+                            <th>{{ $t('payroll.hours.shift') }}</th>
+                        @else
+                            <th>{{ $t('payroll.hours.shift') }}</th>
+                            <th>{{ $t('payroll.hours.required') }}</th>
+                            <th>{{ $t('payroll.hours.actual') }}</th>
+                            <th>{{ $t('payroll.hours.absent') }}</th>
+                        @endif
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($breakdown['shifts'] as $type => $row)
+                        <tr>
+                            @if ($rtl)
+                                <td class="num">{{ $num($row['absent']) }}</td>
+                                <td class="num">{{ $num($row['actual']) }}</td>
+                                <td class="num">{{ $num($row['required']) }}</td>
+                                <td>{{ $g($row['label']) }}</td>
+                            @else
+                                <td>{{ $g($row['label']) }}</td>
+                                <td class="num">{{ $num($row['required']) }}</td>
+                                <td class="num">{{ $num($row['actual']) }}</td>
+                                <td class="num">{{ $num($row['absent']) }}</td>
+                            @endif
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
         @if ($hourGaps->isEmpty())
             <p class="empty">{{ $t('payroll.hours.no_gaps') }}</p>
         @else

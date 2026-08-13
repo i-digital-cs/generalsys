@@ -320,16 +320,13 @@ class AttendanceService
             return array_values(array_unique([...$baseScheduled, ...$premiumScheduled]));
         }
 
-        $default = $user->shift_type_default ?: Attendance::SHIFT_FULL_TIME;
-        if (! in_array($default, ShiftAssignment::BASE_TYPES, true)) {
-            $default = Attendance::SHIFT_FULL_TIME;
-        }
+        $defaults = $user->defaultShiftTypes();
 
-        return array_values(array_unique([$default, ...$premiumScheduled]));
+        return array_values(array_unique([...$defaults, ...$premiumScheduled]));
     }
 
     /**
-     * Preferred clock selection: today’s SCHEDULED assignment, else profile default.
+     * Preferred clock selection: today’s SCHEDULED assignment, else first profile default still available.
      * Falls back to the first still-available type when the preferred one was already used.
      */
     public function preferredShiftType(User $user, ?CarbonInterface $at = null): string
@@ -346,10 +343,10 @@ class AttendanceService
             return $assignment->shift_type;
         }
 
-        $default = $user->shift_type_default;
-
-        if (in_array($default, $available, true)) {
-            return $default;
+        foreach ($user->defaultShiftTypes() as $default) {
+            if (in_array($default, $available, true)) {
+                return $default;
+            }
         }
 
         return $available[0];
@@ -560,13 +557,18 @@ class AttendanceService
     }
 
     /**
-     * Online ½ / Online full use Excel fixed windows. Full-time (and others)
-     * prefer the employee profile schedule (supports overnight 22:00→06:00).
+     * Prefer the employee’s default window for that shift type; else ShiftConfig;
+     * Full-time may fall back to profile work_start/end span.
      *
      * @return array{0: string, 1: string}|null
      */
     private function windowForShift(User $user, string $shiftType): ?array
     {
+        $profileWindow = $user->defaultWindowFor($shiftType);
+        if ($profileWindow !== null) {
+            return $profileWindow;
+        }
+
         $configWindow = $this->shifts->defaultWindow($shiftType);
 
         if (in_array($shiftType, [

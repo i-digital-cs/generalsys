@@ -8,6 +8,9 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreRestDayRequest extends FormRequest
 {
+    /** Max separate dates in one submit. */
+    public const MAX_DATES = 31;
+
     public function authorize(): bool
     {
         /** @var User $employee */
@@ -21,7 +24,8 @@ class StoreRestDayRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date' => ['required', 'date'],
+            'dates' => ['required', 'array', 'min:1', 'max:'.self::MAX_DATES],
+            'dates.*' => ['required', 'date', 'distinct'],
         ];
     }
 
@@ -29,7 +33,8 @@ class StoreRestDayRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'date' => __('employees.rest_days.fields.date'),
+            'dates' => __('employees.rest_days.fields.dates'),
+            'dates.*' => __('employees.rest_days.fields.date'),
         ];
     }
 }

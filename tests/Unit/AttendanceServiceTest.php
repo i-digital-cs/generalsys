@@ -327,10 +327,23 @@ class AttendanceServiceTest extends TestCase
 
     public function test_online_full_planned_hours_is_twelve(): void
     {
+        $leader = User::factory()->teamLeader()->create();
         $employee = User::factory()->employee()->create([
+            'team_leader_id' => $leader->id,
             'work_start_time' => '10:00',
             'work_end_time' => '22:00',
-            'shift_type_default' => Attendance::SHIFT_ONLINE_FULL,
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
+
+        ShiftAssignment::factory()->create([
+            'user_id' => $employee->id,
+            'assigned_by_tl_id' => $leader->id,
+            'date' => '2026-08-03',
+            'shift_type' => Attendance::SHIFT_ONLINE_FULL,
+            'expected_hours' => 12,
+            'expected_start_time' => '10:00',
+            'expected_end_time' => '22:00',
+            'status' => ShiftAssignment::STATUS_SCHEDULED,
         ]);
 
         $row = $this->service->clockIn(

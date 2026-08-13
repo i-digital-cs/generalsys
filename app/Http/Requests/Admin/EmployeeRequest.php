@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\User;
+use App\Services\Attendance\ShiftConfig;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * Shared validation for the employee create/edit wizard
@@ -38,6 +40,37 @@ abstract class EmployeeRequest extends FormRequest
         if ($this->input('role') === User::ROLE_ACCOUNTANT) {
             $payload['team_leader_id'] = null;
         }
+
+        $rows = $this->input('default_shifts', []);
+        if (! is_array($rows) || $rows === []) {
+            $legacyList = $this->input('shift_types_default', []);
+            if (is_array($legacyList) && $legacyList !== []) {
+                $rows = [];
+                foreach ($legacyList as $item) {
+                    if (is_string($item)) {
+                        $window = ShiftConfig::DEFAULT_TIME_WINDOWS[$item] ?? ['10:00', '18:00'];
+                        $rows[] = ['shift_type' => $item, 'start' => $window[0], 'end' => $window[1]];
+                    } elseif (is_array($item)) {
+                        $rows[] = [
+                            'shift_type' => $item['type'] ?? $item['shift_type'] ?? null,
+                            'start' => $item['start'] ?? null,
+                            'end' => $item['end'] ?? null,
+                        ];
+                    }
+                }
+            } elseif (is_string($this->input('shift_type_default')) && $this->input('shift_type_default') !== '') {
+                $legacy = $this->input('shift_type_default');
+                foreach (User::normalizeDefaultShiftProfiles([], $legacy) as $profile) {
+                    $rows[] = [
+                        'shift_type' => $profile['type'],
+                        'start' => $profile['start'],
+                        'end' => $profile['end'],
+                    ];
+                }
+            }
+        }
+
+        $payload['default_shifts'] = array_values(is_array($rows) ? $rows : []);
 
         $this->merge($payload);
     }
@@ -93,7 +126,13 @@ abstract class EmployeeRequest extends FormRequest
                 'nullable',
                 Rule::exists('users', 'id')->where('role', User::ROLE_TEAM_LEADER),
             ],
-            'shift_type_default' => ['required', Rule::in(['FULL_TIME', 'ONLINE_HALF', 'ONLINE_FULL'])],
+            'default_shifts' => ['required', 'array', 'min:1', 'max:2'],
+            'default_shifts.0.shift_type' => ['required', 'string', Rule::in(User::DEFAULT_SHIFT_OPTIONS)],
+            'default_shifts.0.start' => ['required', 'date_format:H:i'],
+            'default_shifts.0.end' => ['required', 'date_format:H:i'],
+            'default_shifts.1.shift_type' => ['nullable', 'string', Rule::in(User::DEFAULT_SHIFT_OPTIONS)],
+            'default_shifts.1.start' => ['nullable', 'required_with:default_shifts.1.shift_type', 'date_format:H:i'],
+            'default_shifts.1.end' => ['nullable', 'required_with:default_shifts.1.shift_type', 'date_format:H:i'],
             'work_start_time' => ['nullable', 'date_format:H:i'],
             'work_end_time' => ['nullable', 'date_format:H:i'],
             'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:2048'],
@@ -142,6 +181,32 @@ abstract class EmployeeRequest extends FormRequest
             ],
             'contacts.*.relationship' => ['nullable', 'string', 'max:100'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $rows = array_values($this->input('default_shifts', []) ?: []);
+            $types = [];
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $type = $row['shift_type'] ?? null;
+                if (! is_string($type) || $type === '') {
+                    continue;
+                }
+                if (isset($types[$type])) {
+                    $validator->errors()->add(
+                        'default_shifts',
+                        __('employees.validation.default_shifts_distinct'),
+                    );
+
+                    return;
+                }
+                $types[$type] = true;
+            }
+        });
     }
 
     /**

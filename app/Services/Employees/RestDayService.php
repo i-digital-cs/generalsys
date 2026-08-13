@@ -57,6 +57,7 @@ class RestDayService
         if ($employee->restDays()->whereDate('date', $date)->exists()) {
             throw ValidationException::withMessages([
                 'date' => __('employees.rest_days.errors.duplicate'),
+                'dates' => __('employees.rest_days.errors.duplicate'),
             ]);
         }
 
@@ -64,6 +65,65 @@ class RestDayService
             'date' => $date,
             'created_by' => $actor->id,
         ]);
+    }
+
+    /**
+     * Add many rest dates (separate days, e.g. 7th + 14th + 24th). Skips dates already marked.
+     *
+     * @param  list<string>  $dates  Y-m-d strings
+     * @return array{added: int, skipped: int}
+     */
+    public function addMany(User $actor, User $employee, array $dates): array
+    {
+        if (! $this->actorMayManage($actor, $employee)) {
+            abort(403);
+        }
+
+        $unique = collect($dates)
+            ->filter(fn ($d) => is_string($d) && $d !== '')
+            ->map(fn (string $d) => Carbon::parse($d)->toDateString())
+            ->unique()
+            ->values();
+
+        if ($unique->isEmpty()) {
+            throw ValidationException::withMessages([
+                'dates' => __('employees.rest_days.errors.no_dates'),
+            ]);
+        }
+
+        $existing = $employee->restDays()
+            ->whereDate('date', '>=', $unique->min())
+            ->whereDate('date', '<=', $unique->max())
+            ->get()
+            ->map(fn (RestDay $row) => $row->date->toDateString())
+            ->all();
+
+        $existingLookup = array_fill_keys($existing, true);
+        $added = 0;
+        $skipped = 0;
+
+        foreach ($unique as $day) {
+            if (isset($existingLookup[$day])) {
+                $skipped++;
+
+                continue;
+            }
+
+            $employee->restDays()->create([
+                'date' => $day,
+                'created_by' => $actor->id,
+            ]);
+            $existingLookup[$day] = true;
+            $added++;
+        }
+
+        if ($added === 0) {
+            throw ValidationException::withMessages([
+                'dates' => __('employees.rest_days.errors.all_duplicates'),
+            ]);
+        }
+
+        return ['added' => $added, 'skipped' => $skipped];
     }
 
     public function remove(User $actor, RestDay $restDay): void

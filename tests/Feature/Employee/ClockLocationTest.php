@@ -83,6 +83,8 @@ class ClockLocationTest extends TestCase
             ->get(route('employee.clock'))
             ->assertOk()
             ->assertSee(__('clock.location.required_hint'), false)
+            ->assertSee(__('clock.location.check_btn'), false)
+            ->assertSee(__('clock.location.enable_btn'), false)
             ->assertSee('name="latitude"', false);
 
         $this->actingAs($this->employee)

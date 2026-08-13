@@ -25,15 +25,23 @@ class RestDayController extends Controller
 
     public function store(StoreRestDayRequest $request, User $employee): RedirectResponse
     {
-        $this->restDays->add(
-            $request->user(),
-            $employee,
-            $request->string('date')->toString(),
-        );
+        /** @var list<string> $dates */
+        $dates = $request->validated('dates');
+
+        $result = $this->restDays->addMany($request->user(), $employee, $dates);
+
+        $message = $result['skipped'] > 0
+            ? __('employees.rest_days.flash.added_many_skipped', [
+                'added' => $result['added'],
+                'skipped' => $result['skipped'],
+            ])
+            : __('employees.rest_days.flash.added_many', [
+                'added' => $result['added'],
+            ]);
 
         return redirect()
             ->route('team-leader.rest-days')
-            ->with('success', __('employees.rest_days.flash.added'));
+            ->with('success', $message);
     }
 
     public function destroy(Request $request, User $employee, RestDay $restDay): RedirectResponse

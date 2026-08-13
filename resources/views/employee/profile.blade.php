@@ -54,11 +54,11 @@
                         <span class="badge text-bg-secondary">
                             <i class="bi bi-person-badge me-1" aria-hidden="true"></i>{{ __("employees.roles.{$employee->role}") }}
                         </span>
-                        @if ($employee->shift_type_default)
+                        @foreach ($employee->defaultShiftTypes() as $defaultShift)
                             <span class="badge text-bg-info">
-                                <i class="bi bi-clock-history me-1" aria-hidden="true"></i>{{ __("employees.shifts.{$employee->shift_type_default}") }}
+                                <i class="bi bi-clock-history me-1" aria-hidden="true"></i>{{ __("employees.shifts.{$defaultShift}") }}
                             </span>
-                        @endif
+                        @endforeach
                         @if ($workHours)
                             <span class="badge text-bg-light text-body-secondary border">
                                 <i class="bi bi-clock me-1" aria-hidden="true"></i><span dir="ltr">{{ $workHours }}</span>

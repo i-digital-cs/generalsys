@@ -46,7 +46,7 @@
                                 <th scope="col">{{ __('employees.code') }}</th>
                                 <th scope="col">{{ __('employees.name') }}</th>
                                 <th scope="col">{{ __('employees.fields.phone') }}</th>
-                                <th scope="col">{{ __('employees.fields.shift_type_default') }}</th>
+                                <th scope="col">{{ __('employees.fields.shift_types_default') }}</th>
                                 <th scope="col">{{ __('employees.email') }}</th>
                                 <th scope="col">{{ __('employees.role') }}</th>
                                 <th scope="col">{{ __('employees.status') }}</th>
@@ -84,11 +84,11 @@
                                         @endif
                                     </td>
                                     <td>
-                                        @if ($employee->shift_type_default)
-                                            {{ __("employees.shifts.{$employee->shift_type_default}") }}
-                                        @else
+                                        @forelse ($employee->defaultShiftTypes() as $defaultShift)
+                                            <span class="badge text-bg-light border me-1">{{ __("employees.shifts.{$defaultShift}") }}</span>
+                                        @empty
                                             {{ __('general.not_available') }}
-                                        @endif
+                                        @endforelse
                                     </td>
                                     <td><span class="num-ltr">{{ $employee->email }}</span></td>
                                     <td>{{ __("employees.roles.{$employee->role}") }}</td>

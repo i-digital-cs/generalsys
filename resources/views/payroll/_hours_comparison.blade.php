@@ -31,6 +31,50 @@
             </div>
 
             @php
+                $breakdown = $hoursMonth['shift_breakdown'] ?? null;
+            @endphp
+            @if (is_array($breakdown) && isset($breakdown['shifts']))
+                <div class="border rounded p-3 mb-3 bg-body-tertiary">
+                    <div class="fw-semibold small mb-2">{{ __('payroll.hours.by_shift_title') }}</div>
+                    <div class="small text-body-secondary mb-2">
+                        {{ __('payroll.hours.work_days') }}:
+                        <span class="num-ltr fw-semibold">{{ (int) ($breakdown['work_days'] ?? 0) }}</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hr table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th scope="col">{{ __('payroll.hours.shift') }}</th>
+                                    <th scope="col" class="col-num">{{ __('payroll.hours.required') }}</th>
+                                    <th scope="col" class="col-num">{{ __('payroll.hours.actual') }}</th>
+                                    <th scope="col" class="col-num">{{ __('payroll.hours.absent') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($breakdown['shifts'] as $type => $row)
+                                    <tr>
+                                        <td>
+                                            <div>{{ $row['label'] }}</div>
+                                            <div class="small text-body-secondary num-ltr">
+                                                {{ __('employees.shifts.windows.'.$type) }}
+                                            </div>
+                                        </td>
+                                        <td class="col-num"><span class="num-ltr">{{ number_format((float) $row['required'], 2) }}</span></td>
+                                        <td class="col-num"><span class="num-ltr">{{ number_format((float) $row['actual'], 2) }}</span></td>
+                                        <td class="col-num">
+                                            <span @class(['num-ltr', 'text-danger' => (float) $row['absent'] > 0])>
+                                                {{ number_format((float) $row['absent'], 2) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+
+            @php
                 $gaps = collect($hoursMonth['days'])->filter(function (array $day) {
                     return ((float) $day['planned_hours'] - (float) $day['actual_hours']) > 0.01;
                 })->values();

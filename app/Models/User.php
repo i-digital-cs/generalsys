@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Attendance\ShiftConfig;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,6 +47,7 @@ class User extends Authenticatable
         'online_full_day_rate',
         'overtime_hourly_rate',
         'shift_type_default',
+        'shift_types_default',
         'work_start_time',
         'work_end_time',
         'status',
@@ -74,7 +76,148 @@ class User extends Authenticatable
             'online_half_day_rate' => 'decimal:2',
             'online_full_day_rate' => 'decimal:2',
             'overtime_hourly_rate' => 'decimal:2',
+            'shift_types_default' => 'array',
         ];
+    }
+
+    /** Base types allowed as employee defaults (T-7.3). */
+    public const DEFAULT_SHIFT_OPTIONS = [
+        Attendance::SHIFT_FULL_TIME,
+        Attendance::SHIFT_ONLINE_HALF,
+    ];
+
+    /**
+     * Default shifts with windows (like TL assign rows, but every workday).
+     *
+     * @return list<array{type: string, start: string, end: string}>
+     */
+    public function defaultShiftProfiles(): array
+    {
+        return self::normalizeDefaultShiftProfiles(
+            is_array($this->shift_types_default) ? $this->shift_types_default : [],
+            $this->attributes['shift_type_default'] ?? null,
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function defaultShiftTypes(): array
+    {
+        return array_values(array_map(
+            fn (array $row) => $row['type'],
+            $this->defaultShiftProfiles(),
+        ));
+    }
+
+    public function hasDefaultShift(string $shiftType): bool
+    {
+        return in_array($shiftType, $this->defaultShiftTypes(), true);
+    }
+
+    /**
+     * @return array{0: string, 1: string}|null
+     */
+    public function defaultWindowFor(string $shiftType): ?array
+    {
+        foreach ($this->defaultShiftProfiles() as $profile) {
+            if ($profile['type'] === $shiftType) {
+                return [$profile['start'], $profile['end']];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Accepts form rows, stored profiles, or legacy type string lists.
+     *
+     * @param  list<mixed>|array<int, mixed>  $rows
+     * @return list<array{type: string, start: string, end: string}>
+     */
+    public static function normalizeDefaultShiftProfiles(array $rows, mixed $legacy = null): array
+    {
+        $out = [];
+        $seen = [];
+
+        foreach ($rows as $row) {
+            $type = null;
+            $start = null;
+            $end = null;
+
+            if (is_string($row) && $row !== '') {
+                $type = $row;
+            } elseif (is_array($row)) {
+                $type = $row['type'] ?? $row['shift_type'] ?? null;
+                $start = isset($row['start']) ? substr((string) $row['start'], 0, 5) : null;
+                $end = isset($row['end']) ? substr((string) $row['end'], 0, 5) : null;
+                if (($type === null || $type === '') && ($start === null || $start === '') && ($end === null || $end === '')) {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+
+            if (! is_string($type) || ! in_array($type, self::DEFAULT_SHIFT_OPTIONS, true)) {
+                continue;
+            }
+
+            if (isset($seen[$type])) {
+                continue;
+            }
+
+            $fallback = ShiftConfig::DEFAULT_TIME_WINDOWS[$type] ?? ['10:00', '18:00'];
+            if ($start === null || $start === '') {
+                $start = $fallback[0];
+            }
+            if ($end === null || $end === '') {
+                $end = $fallback[1];
+            }
+
+            $seen[$type] = true;
+            $out[] = [
+                'type' => $type,
+                'start' => $start,
+                'end' => $end,
+            ];
+        }
+
+        if ($out !== []) {
+            return $out;
+        }
+
+        $legacy = is_string($legacy) ? $legacy : Attendance::SHIFT_FULL_TIME;
+        $types = match ($legacy) {
+            Attendance::SHIFT_ONLINE_HALF => [Attendance::SHIFT_ONLINE_HALF],
+            Attendance::SHIFT_ONLINE_FULL => [
+                Attendance::SHIFT_FULL_TIME,
+                Attendance::SHIFT_ONLINE_HALF,
+            ],
+            default => [Attendance::SHIFT_FULL_TIME],
+        };
+
+        foreach ($types as $type) {
+            $fallback = ShiftConfig::DEFAULT_TIME_WINDOWS[$type] ?? ['10:00', '18:00'];
+            $out[] = [
+                'type' => $type,
+                'start' => $fallback[0],
+                'end' => $fallback[1],
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<string>|array<int, mixed>  $types
+     * @return list<string>
+     */
+    public static function normalizeDefaultShiftTypes(array $types, mixed $legacy = null): array
+    {
+        return array_values(array_map(
+            fn (array $row) => $row['type'],
+            self::normalizeDefaultShiftProfiles($types, $legacy),
+        ));
     }
 
     /**
@@ -125,6 +268,53 @@ class User extends Authenticatable
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE;
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (User $user): void {
+            $typesDirty = $user->isDirty('shift_types_default');
+            $scalarDirty = $user->isDirty('shift_type_default');
+            $hasTypes = is_array($user->shift_types_default) && $user->shift_types_default !== [];
+
+            if ($typesDirty && $hasTypes) {
+                $profiles = self::normalizeDefaultShiftProfiles(
+                    $user->shift_types_default,
+                    $user->shift_type_default,
+                );
+            } elseif ($scalarDirty || ! $hasTypes) {
+                $legacy = $user->shift_type_default;
+                $profiles = self::normalizeDefaultShiftProfiles([], $legacy);
+
+                // Legacy custom work_start/end apply only to a single FULL_TIME
+                // default (overnight / custom FT). Online½ keeps ShiftConfig 06–10.
+                $start = $user->work_start_time;
+                $end = $user->work_end_time;
+                if (
+                    count($profiles) === 1
+                    && $profiles[0]['type'] === Attendance::SHIFT_FULL_TIME
+                    && $start !== null && $start !== ''
+                    && $end !== null && $end !== ''
+                ) {
+                    $profiles[0]['start'] = substr((string) $start, 0, 5);
+                    $profiles[0]['end'] = substr((string) $end, 0, 5);
+                }
+            } else {
+                return;
+            }
+
+            $user->shift_types_default = $profiles;
+            $user->shift_type_default = $profiles[0]['type'];
+
+            // Overall span for roster prefill; overnight single windows keep start>end.
+            if (count($profiles) === 1) {
+                $user->work_start_time = $profiles[0]['start'];
+                $user->work_end_time = $profiles[0]['end'];
+            } else {
+                $user->work_start_time = collect($profiles)->min('start');
+                $user->work_end_time = collect($profiles)->max('end');
+            }
+        });
     }
 
     public function profile(): HasOne

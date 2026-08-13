@@ -34,9 +34,18 @@ class EmployeeCrudTest extends TestCase
             'currency' => 'EGP',
             'language_preference' => 'ar',
             'team_leader_id' => null,
-            'shift_type_default' => 'FULL_TIME',
-            'work_start_time' => '10:00',
-            'work_end_time' => '18:00',
+            'default_shifts' => [
+                [
+                    'shift_type' => 'FULL_TIME',
+                    'start' => '10:00',
+                    'end' => '18:00',
+                ],
+                [
+                    'shift_type' => '',
+                    'start' => '',
+                    'end' => '',
+                ],
+            ],
             'status' => 'ACTIVE',
             'base_salary' => 5000,
             'online_half_day_rate' => 100,
@@ -408,12 +417,17 @@ class EmployeeCrudTest extends TestCase
             ->assertSee(__('employees.shifts.ONLINE_HALF'));
     }
 
-    public function test_form_exposes_shift_type_default_time_windows(): void
+    public function test_form_exposes_two_default_shift_rows_like_assign(): void
     {
         $this->actingAs($this->manager)
             ->get(route('admin.employees.create'))
             ->assertOk()
+            ->assertSee('data-default-shifts', false)
             ->assertSee('data-shift-times', false)
+            ->assertSee('name="default_shifts[0][shift_type]"', false)
+            ->assertSee('name="default_shifts[1][shift_type]"', false)
+            ->assertSee('name="default_shifts[0][start]"', false)
+            ->assertSee('name="default_shifts[1][end]"', false)
             ->assertSee('&quot;ONLINE_HALF&quot;:[&quot;06:00&quot;,&quot;10:00&quot;]', false);
 
         $employee = User::factory()->employee()->create();

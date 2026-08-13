@@ -26,6 +26,7 @@ CREATE TABLE users (
     online_full_day_rate    DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin sets per employee
     overtime_hourly_rate    DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin sets per employee
     shift_type_default      ENUM('FULL_TIME','ONLINE_HALF','ONLINE_FULL') NOT NULL DEFAULT 'FULL_TIME',
+    shift_types_default     JSON NULL,                               -- list: FULL_TIME and/or ONLINE_HALF (T-7.3); ONLINE_FULL legacy → both
     work_start_time         TIME NULL,                          -- مواعيد العمل: حضور
     work_end_time           TIME NULL,                          -- مواعيد العمل: انصراف
     status                  ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',

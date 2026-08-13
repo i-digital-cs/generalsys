@@ -114,11 +114,37 @@ class EmployeeService
         $attributes = array_merge(
             Arr::only($data, [
                 'name_ar', 'name_en', 'email', 'role', 'currency', 'language_preference',
-                'team_leader_id', 'shift_type_default', 'work_start_time', 'work_end_time', 'status',
+                'team_leader_id', 'status',
                 'base_salary', 'online_half_day_rate', 'online_full_day_rate', 'overtime_hourly_rate',
             ]),
             ['password' => $data['password'] ?? null],
         );
+
+        $rows = [];
+        foreach (array_values($data['default_shifts'] ?? []) as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $rows[] = [
+                'type' => $row['shift_type'] ?? $row['type'] ?? null,
+                'start' => $row['start'] ?? null,
+                'end' => $row['end'] ?? null,
+            ];
+        }
+
+        $profiles = User::normalizeDefaultShiftProfiles(
+            $rows,
+            $data['shift_type_default'] ?? null,
+        );
+        $attributes['shift_types_default'] = $profiles;
+        $attributes['shift_type_default'] = $profiles[0]['type'];
+        if (count($profiles) === 1) {
+            $attributes['work_start_time'] = $profiles[0]['start'];
+            $attributes['work_end_time'] = $profiles[0]['end'];
+        } else {
+            $attributes['work_start_time'] = collect($profiles)->min('start');
+            $attributes['work_end_time'] = collect($profiles)->max('end');
+        }
 
         return $attributes;
     }

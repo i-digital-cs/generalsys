@@ -104,48 +104,108 @@
                 </select>
                 @error('language_preference') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
-            <div class="col-md-4">
-                <label for="shift_type_default" class="form-label">{{ __('employees.fields.shift_type_default') }}</label>
-                <select id="shift_type_default" name="shift_type_default" class="form-select @error('shift_type_default') is-invalid @enderror"
-                        data-shift-times="{{ json_encode(\App\Services\Attendance\ShiftConfig::DEFAULT_TIME_WINDOWS) }}" required>
-                    @foreach (['FULL_TIME', 'ONLINE_HALF', 'ONLINE_FULL'] as $option)
-                        <option value="{{ $option }}" @selected($val('shift_type_default', 'FULL_TIME') === $option)>
-                            {{ __("employees.shifts.{$option}") }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('shift_type_default') <div class="invalid-feedback">{{ $message }}</div> @enderror
-            </div>
         </div>
     </div>
 </div>
 
-{{-- Work schedule (مواعيد العمل: حضور / انصراف) --}}
+{{-- Default shifts = أنواع الدوام + مواعيد العمل (two assign-style rows; every workday) --}}
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-transparent fw-semibold">{{ __('employees.sections.work_schedule') }}</div>
     <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label for="work_start_time" class="form-label">{{ __('employees.fields.work_start_time') }}</label>
-                <input type="time" id="work_start_time" name="work_start_time" dir="ltr"
-                       value="{{ $val('work_start_time') }}" class="form-control @error('work_start_time') is-invalid @enderror">
-                @error('work_start_time') <div class="invalid-feedback">{{ $message }}</div> @enderror
-            </div>
-            <div class="col-md-4">
-                <label for="work_end_time" class="form-label">{{ __('employees.fields.work_end_time') }}</label>
-                <input type="time" id="work_end_time" name="work_end_time" dir="ltr"
-                       value="{{ $val('work_end_time') }}" class="form-control @error('work_end_time') is-invalid @enderror">
-                @error('work_end_time') <div class="invalid-feedback">{{ $message }}</div> @enderror
-            </div>
-            @unless ($editing)
-                <div class="col-12">
-                    <p class="small text-body-secondary mb-0">{{ __('employees.rest_days.hint') }}</p>
-                    <p class="small text-body-secondary mb-0">
-                        {{ __('employees.rest_days.empty') }} — {{ __('general.save') }} {{ __('employees.edit_title') }}
-                    </p>
+        <div class="form-label">{{ __('employees.fields.shift_types_default') }}</div>
+        <p class="small text-body-secondary mb-3">{{ __('employees.fields.shift_types_default_hint') }}</p>
+        @php
+            $defaultProfiles = old('default_shifts');
+            if (! is_array($defaultProfiles) || $defaultProfiles === []) {
+                $stored = isset($employee) ? $employee->defaultShiftProfiles() : [[
+                    'type' => 'FULL_TIME',
+                    'start' => '10:00',
+                    'end' => '18:00',
+                ]];
+                $defaultProfiles = [];
+                foreach ($stored as $profile) {
+                    $defaultProfiles[] = [
+                        'shift_type' => $profile['type'],
+                        'start' => $profile['start'],
+                        'end' => $profile['end'],
+                    ];
+                }
+            }
+            while (count($defaultProfiles) < 2) {
+                $defaultProfiles[] = ['shift_type' => '', 'start' => '', 'end' => ''];
+            }
+            $defaultProfiles = array_slice($defaultProfiles, 0, 2);
+            $shiftWindows = \App\Services\Attendance\ShiftConfig::DEFAULT_TIME_WINDOWS;
+        @endphp
+        <div class="d-flex flex-column gap-3" data-default-shifts data-shift-times="{{ json_encode($shiftWindows) }}">
+            @foreach ($defaultProfiles as $index => $row)
+                <div class="border rounded p-3 bg-body-tertiary" data-default-shift-row>
+                    <div class="small fw-semibold mb-2">
+                        {{ $index === 0 ? __('employees.fields.default_shift_primary') : __('employees.fields.default_shift_secondary') }}
+                        @if ($index === 1)
+                            <span class="text-body-secondary fw-normal">({{ __('employees.fields.optional') }})</span>
+                        @endif
+                    </div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label" for="default_shift_type_{{ $index }}">{{ __('employees.fields.shift_type_default') }}</label>
+                            <select id="default_shift_type_{{ $index }}"
+                                    name="default_shifts[{{ $index }}][shift_type]"
+                                    class="form-select @error('default_shifts.'.$index.'.shift_type') is-invalid @enderror"
+                                    data-default-shift-type
+                                    @if ($index === 0) required @endif>
+                                @if ($index === 1)
+                                    <option value="">{{ __('employees.fields.default_shift_none') }}</option>
+                                @endif
+                                @foreach (\App\Models\User::DEFAULT_SHIFT_OPTIONS as $option)
+                                    <option value="{{ $option }}" @selected(($row['shift_type'] ?? '') === $option)>
+                                        {{ __("employees.shifts.{$option}") }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('default_shifts.'.$index.'.shift_type')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label" for="default_shift_start_{{ $index }}">{{ __('employees.fields.work_start_time') }}</label>
+                            <input type="time" id="default_shift_start_{{ $index }}"
+                                   name="default_shifts[{{ $index }}][start]"
+                                   dir="ltr"
+                                   value="{{ $row['start'] ?? '' }}"
+                                   class="form-control @error('default_shifts.'.$index.'.start') is-invalid @enderror"
+                                   data-default-shift-start
+                                   @if ($index === 0) required @endif>
+                            @error('default_shifts.'.$index.'.start')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label" for="default_shift_end_{{ $index }}">{{ __('employees.fields.work_end_time') }}</label>
+                            <input type="time" id="default_shift_end_{{ $index }}"
+                                   name="default_shifts[{{ $index }}][end]"
+                                   dir="ltr"
+                                   value="{{ $row['end'] ?? '' }}"
+                                   class="form-control @error('default_shifts.'.$index.'.end') is-invalid @enderror"
+                                   data-default-shift-end
+                                   @if ($index === 0) required @endif>
+                            @error('default_shifts.'.$index.'.end')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
                 </div>
-            @endunless
+            @endforeach
         </div>
+        @error('default_shifts')
+            <div class="invalid-feedback d-block">{{ $message }}</div>
+        @enderror
+        @unless ($editing)
+            <p class="small text-body-secondary mb-0 mt-3">{{ __('employees.rest_days.hint') }}</p>
+            <p class="small text-body-secondary mb-0">
+                {{ __('employees.rest_days.empty') }} — {{ __('general.save') }} {{ __('employees.edit_title') }}
+            </p>
+        @endunless
     </div>
 </div>
 

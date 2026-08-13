@@ -59,7 +59,7 @@ class RestDayTest extends TestCase
 
         $this->actingAs($this->leader)
             ->post(route('team-leader.rest-days.store', $this->employee), [
-                'date' => '2026-08-14',
+                'dates' => ['2026-08-14'],
             ])
             ->assertRedirect(route('team-leader.rest-days'));
 
@@ -71,6 +71,58 @@ class RestDayTest extends TestCase
             ->assertRedirect(route('team-leader.rest-days'));
 
         $this->assertDatabaseMissing('rest_days', ['id' => $rest->id]);
+    }
+
+    public function test_team_leader_can_add_multiple_separate_rest_days(): void
+    {
+        $this->actingAs($this->leader)
+            ->get(route('team-leader.rest-days'))
+            ->assertOk()
+            ->assertSee(__('employees.rest_days.multi_hint'), false)
+            ->assertSee('data-rest-multi', false)
+            ->assertSee('data-rest-cal', false);
+
+        $this->actingAs($this->leader)
+            ->post(route('team-leader.rest-days.store', $this->employee), [
+                'dates' => ['2026-08-07', '2026-08-14', '2026-08-24'],
+            ])
+            ->assertRedirect(route('team-leader.rest-days'));
+
+        $this->assertSame(3, RestDay::query()->where('user_id', $this->employee->id)->count());
+        foreach (['2026-08-07', '2026-08-14', '2026-08-24'] as $day) {
+            $this->assertTrue(
+                RestDay::query()->where('user_id', $this->employee->id)->whereDate('date', $day)->exists()
+            );
+        }
+    }
+
+    public function test_team_leader_skips_duplicate_dates_in_selection(): void
+    {
+        RestDay::factory()->create([
+            'user_id' => $this->employee->id,
+            'date' => '2026-08-14',
+            'created_by' => $this->leader->id,
+        ]);
+
+        $this->actingAs($this->leader)
+            ->post(route('team-leader.rest-days.store', $this->employee), [
+                'dates' => ['2026-08-07', '2026-08-14', '2026-08-24'],
+            ])
+            ->assertRedirect(route('team-leader.rest-days'))
+            ->assertSessionHas('success');
+
+        $this->assertSame(3, RestDay::query()->where('user_id', $this->employee->id)->count());
+    }
+
+    public function test_team_leader_rejects_empty_dates_selection(): void
+    {
+        $this->actingAs($this->leader)
+            ->from(route('team-leader.rest-days'))
+            ->post(route('team-leader.rest-days.store', $this->employee), [
+                'dates' => [],
+            ])
+            ->assertRedirect(route('team-leader.rest-days'))
+            ->assertSessionHasErrors('dates');
     }
 
     public function test_team_leader_sees_reserved_badge_for_pending_vacation_swap(): void
@@ -107,7 +159,7 @@ class RestDayTest extends TestCase
 
         $this->actingAs($this->leader)
             ->post(route('team-leader.rest-days.store', $other), [
-                'date' => '2026-08-07',
+                'dates' => ['2026-08-07'],
             ])
             ->assertForbidden();
     }
