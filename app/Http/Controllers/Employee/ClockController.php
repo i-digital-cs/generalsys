@@ -34,10 +34,21 @@ class ClockController extends Controller
         if ($open !== null) {
             $open->load(['photos']);
         }
+
+        $shiftTypes = $this->attendance->availableShiftTypes($user);
         $preferredShift = $this->attendance->preferredShiftType($user);
+        if ($shiftTypes !== [] && ! in_array($preferredShift, $shiftTypes, true)) {
+            $preferredShift = $shiftTypes[0];
+        }
+
         $scheduleShift = $open?->shift_type ?? $preferredShift;
-        $expectedStart = $this->attendance->expectedStartFor($user, $scheduleShift);
-        $expectedEnd = $this->attendance->expectedEndFor($user, $scheduleShift);
+        $showSchedulePreview = $open !== null || $shiftTypes !== [];
+        $expectedStart = $showSchedulePreview
+            ? $this->attendance->expectedStartFor($user, $scheduleShift)
+            : null;
+        $expectedEnd = $showSchedulePreview
+            ? $this->attendance->expectedEndFor($user, $scheduleShift)
+            : null;
 
         $todayAuto = Attendance::query()
             ->where('user_id', $user->id)
@@ -49,12 +60,13 @@ class ClockController extends Controller
         return view('employee.clock', [
             'open' => $open,
             'missingReportDate' => $this->reports->latestUnreportedClosedDay($user)?->date->toDateString(),
-            'shiftTypes' => $this->attendance->availableShiftTypes($user),
+            'shiftTypes' => $shiftTypes,
             'preferredShift' => $preferredShift,
+            'scheduleShift' => $scheduleShift,
             'todaysAssignment' => $this->attendance->todaysPrimaryAssignment($user),
             'expectedStart' => $expectedStart,
             'expectedEnd' => $expectedEnd,
-            'previewLateMinutes' => $open === null
+            'previewLateMinutes' => ($open === null && $shiftTypes !== [])
                 ? $this->attendance->previewLateMinutes($user, $preferredShift)
                 : 0,
             'lateMinutes' => $open !== null ? (int) $open->late_minutes : 0,

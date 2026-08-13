@@ -11,6 +11,8 @@
         $endLabel = $expectedEnd
             ? $expectedEnd->timezone($tz)->format('H:i')
             : null;
+        $scheduleShift = $scheduleShift ?? ($open?->shift_type ?? $preferredShift ?? null);
+        $shiftLabel = $scheduleShift ? __('clock.shifts.'.$scheduleShift) : '';
         $clockInPhotos = $open?->photos?->where('kind', \App\Models\AttendancePhoto::KIND_CLOCK_IN) ?? collect();
     @endphp
 
@@ -54,10 +56,10 @@
                         'alert-success' => $lateMinutes === 0,
                     ])>
                         @if ($startLabel)
-                            <div class="fw-semibold">{{ __('clock.should_start_at', ['time' => $startLabel]) }}</div>
+                            <div class="fw-semibold">{{ __('clock.should_start_at', ['shift' => $shiftLabel, 'time' => $startLabel]) }}</div>
                         @endif
                         @if ($lateMinutes > 0)
-                            <div class="mt-1">{{ __('clock.late_by', ['minutes' => $lateMinutes]) }}</div>
+                            <div class="mt-1">{{ __('clock.late_by', ['minutes' => $lateMinutes, 'shift' => $shiftLabel]) }}</div>
                         @else
                             <div class="mt-1">{{ __('clock.on_time') }}</div>
                         @endif
@@ -76,7 +78,7 @@
                     <dt class="col-sm-4">{{ __('clock.late_minutes') }}</dt>
                     <dd class="col-sm-8">
                         @if ($lateMinutes > 0)
-                            <span class="badge text-bg-warning">{{ __('clock.late_by', ['minutes' => $lateMinutes]) }}</span>
+                            <span class="badge text-bg-warning">{{ __('clock.late_by', ['minutes' => $lateMinutes, 'shift' => $shiftLabel]) }}</span>
                         @else
                             <span class="badge text-bg-success">{{ __('clock.on_time') }}</span>
                         @endif
@@ -118,17 +120,17 @@
                     <span class="badge text-bg-secondary fs-6 px-3 py-2">{{ __('clock.status_closed') }}</span>
                 </div>
 
-                @if ($startLabel || $endLabel)
+                @if ($shiftTypes !== [] && ($startLabel || $endLabel))
                     <div class="alert alert-info mb-4">
                         @if ($startLabel)
-                            <div class="fw-semibold">{{ __('clock.should_start_at', ['time' => $startLabel]) }}</div>
+                            <div class="fw-semibold">{{ __('clock.should_start_at', ['shift' => $shiftLabel, 'time' => $startLabel]) }}</div>
                         @endif
                         @if ($endLabel)
-                            <div class="small mt-1">{{ __('clock.should_end_at', ['time' => $endLabel]) }}</div>
+                            <div class="small mt-1">{{ __('clock.should_end_at', ['shift' => $shiftLabel, 'time' => $endLabel]) }}</div>
                         @endif
                         @if ($previewLateMinutes > 0)
                             <div class="mt-2 text-warning-emphasis">
-                                {{ __('clock.preview_late', ['minutes' => $previewLateMinutes]) }}
+                                {{ __('clock.preview_late', ['minutes' => $previewLateMinutes, 'shift' => $shiftLabel]) }}
                             </div>
                         @elseif ($startLabel)
                             <div class="mt-2 small text-success">{{ __('clock.preview_on_time') }}</div>

@@ -58,7 +58,10 @@ class ClockTest extends TestCase
             ->assertOk()
             ->assertSee(__('clock.clock_in'), false)
             ->assertSee(__('clock.shifts.FULL_TIME'), false)
-            ->assertSee(__('clock.should_start_at', ['time' => '10:00']), false)
+            ->assertSee(__('clock.should_start_at', [
+                'shift' => __('clock.shifts.FULL_TIME'),
+                'time' => '10:00',
+            ]), false)
             ->assertDontSee('value="ONLINE_HALF"', false)
             ->assertDontSee('value="ONLINE_FULL"', false)
             ->assertDontSee('value="OVERTIME"', false)
@@ -121,8 +124,14 @@ class ClockTest extends TestCase
         $this->actingAs($this->employee)
             ->get(route('employee.clock'))
             ->assertOk()
-            ->assertSee(__('clock.should_start_at', ['time' => '10:00']), false)
-            ->assertSee(__('clock.late_by', ['minutes' => 25]), false);
+            ->assertSee(__('clock.should_start_at', [
+                'shift' => __('clock.shifts.FULL_TIME'),
+                'time' => '10:00',
+            ]), false)
+            ->assertSee(__('clock.late_by', [
+                'minutes' => 25,
+                'shift' => __('clock.shifts.FULL_TIME'),
+            ]), false);
 
         Carbon::setTestNow();
     }
@@ -320,6 +329,12 @@ class ClockTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/option value="FULL_TIME"/', $html);
         $this->assertDoesNotMatchRegularExpression('/option value="ONLINE_HALF"/', $html);
         $this->assertStringContainsString(__('clock.no_shifts_left'), $html);
+        $this->assertStringNotContainsString(__('clock.preview_late', [
+            'minutes' => 0,
+            'shift' => __('clock.shifts.FULL_TIME'),
+        ]), $html);
+        $this->assertStringNotContainsString('ستكون متأخرًا', $html);
+        $this->assertStringNotContainsString('will be late', $html);
 
         $this->actingAs($this->employee)
             ->from(route('employee.clock'))
