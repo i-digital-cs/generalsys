@@ -30,7 +30,7 @@ class DualDefaultShiftsTest extends TestCase
             'role' => User::ROLE_EMPLOYEE,
             'currency' => 'EGP',
             'language_preference' => 'ar',
-            'team_leader_id' => null,
+            'team_leader_ids' => [User::factory()->teamLeader()->create()->id],
             'shift_types_default' => [
                 Attendance::SHIFT_FULL_TIME,
                 Attendance::SHIFT_ONLINE_HALF,

@@ -114,6 +114,27 @@
         </div>
 
         <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent">
+                    <div class="fw-semibold">{{ __('settings.impersonation_section') }}</div>
+                    <p class="small text-body-secondary mb-0">{{ __('settings.impersonation_hint') }}</p>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch">
+                        <input type="hidden" name="impersonation_enabled" value="0">
+                        <input type="checkbox" class="form-check-input" role="switch"
+                               id="impersonation_enabled" name="impersonation_enabled" value="1"
+                               @checked(old('impersonation_enabled', $impersonationEnabled))>
+                        <label class="form-check-label" for="impersonation_enabled">
+                            {{ __('settings.impersonation_enabled') }}
+                        </label>
+                    </div>
+                    @error('impersonation_enabled') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
             <button type="submit" class="btn btn-primary">{{ __('general.save') }}</button>
         </div>
     </form>

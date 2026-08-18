@@ -5,6 +5,7 @@ namespace Tests\Feature\TeamLeader;
 use App\Models\RestDay;
 use App\Models\User;
 use App\Models\Vacation;
+use App\Services\Employees\TeamMembershipService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -85,6 +86,7 @@ class VacationApprovalTest extends TestCase
 
         $row->refresh();
         $this->assertSame(Vacation::STATUS_APPROVED, $row->status);
+        $this->assertSame($this->leader->id, $row->decided_by);
         $this->assertNull($row->replace_rest_day_id);
         $this->assertSame('2026-08-07', $row->replace_rest_date->toDateString());
         $this->assertDatabaseMissing('rest_days', ['id' => $rest->id]);
@@ -104,6 +106,7 @@ class VacationApprovalTest extends TestCase
 
         $row->refresh();
         $this->assertSame(Vacation::STATUS_REJECTED, $row->status);
+        $this->assertSame($this->leader->id, $row->decided_by);
         $this->assertNull($row->replace_rest_day_id);
         $this->assertDatabaseHas('rest_days', ['id' => $rest->id]);
     }
@@ -132,6 +135,7 @@ class VacationApprovalTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame(Vacation::STATUS_APPROVED, $row->fresh()->status);
+        $this->assertSame($this->manager->id, $row->fresh()->decided_by);
         $this->assertDatabaseMissing('rest_days', ['id' => $rest->id]);
     }
 
@@ -142,5 +146,63 @@ class VacationApprovalTest extends TestCase
         $this->actingAs($this->employee)
             ->post(route('team-leader.approvals.vacations.approve', $row))
             ->assertForbidden();
+    }
+
+    public function test_either_team_leader_sees_and_can_decide_the_same_member_vacation(): void
+    {
+        app()->setLocale('en');
+
+        $leaderA = User::factory()->teamLeader()->create(['name_en' => 'Alpha Vac TL']);
+        $leaderB = User::factory()->teamLeader()->create(['name_en' => 'Beta Vac TL']);
+        $leaderC = User::factory()->teamLeader()->create(['name_en' => 'Gamma Vac TL']);
+        $member = User::factory()->employee()->create([
+            'name_en' => 'Dual Vacation Member',
+        ]);
+        app(TeamMembershipService::class)->syncLeaders($member, [$leaderA->id, $leaderB->id]);
+
+        $rest = RestDay::factory()->create([
+            'user_id' => $member->id,
+            'date' => '2026-08-21',
+            'created_by' => $leaderA->id,
+        ]);
+        $row = Vacation::factory()->create([
+            'user_id' => $member->id,
+            'team_leader_id' => $leaderA->id,
+            'type' => Vacation::TYPE_EMERGENCY,
+            'start_date' => '2026-08-19',
+            'end_date' => '2026-08-19',
+            'days_requested' => 1,
+            'replace_rest_date' => '2026-08-21',
+            'replace_rest_day_id' => $rest->id,
+            'status' => Vacation::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($leaderA)
+            ->get(route('team-leader.approvals'))
+            ->assertOk()
+            ->assertSee('Dual Vacation Member', false)
+            ->assertSee(__('vacations.fields.submitted_for_team'), false)
+            ->assertSee('Alpha Vac TL', false)
+            ->assertSee('Beta Vac TL', false);
+
+        $this->actingAs($leaderC)
+            ->post(route('team-leader.approvals.vacations.approve', $row))
+            ->assertForbidden();
+
+        $this->actingAs($leaderB)
+            ->post(route('team-leader.approvals.vacations.approve', $row))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $row->refresh();
+        $this->assertSame(Vacation::STATUS_APPROVED, $row->status);
+        $this->assertSame($leaderB->id, $row->decided_by);
+        $this->assertDatabaseMissing('rest_days', ['id' => $rest->id]);
+
+        $this->actingAs($leaderA)
+            ->get(route('team-leader.approvals', ['filter' => 'decided']))
+            ->assertOk()
+            ->assertSee(__('vacations.fields.decided_by'), false)
+            ->assertSee('Beta Vac TL', false);
     }
 }

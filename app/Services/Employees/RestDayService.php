@@ -16,6 +16,8 @@ use Illuminate\Validation\ValidationException;
  */
 class RestDayService
 {
+    public function __construct(private readonly TeamMembershipService $membership) {}
+
     public function isRestDate(User $user, string|CarbonInterface $date): bool
     {
         $day = Carbon::parse($date)->toDateString();
@@ -155,7 +157,7 @@ class RestDayService
 
         if ($actor->isTeamLeader()) {
             return $employee->isEmployee()
-                && (int) $employee->team_leader_id === (int) $actor->id;
+                && $this->membership->leads($actor, $employee);
         }
 
         return false;
@@ -176,7 +178,7 @@ class RestDayService
         if ($actor->isTeamLeader()) {
             return User::query()
                 ->where('role', User::ROLE_EMPLOYEE)
-                ->where('team_leader_id', $actor->id)
+                ->ledBy($actor->id)
                 ->where('status', User::STATUS_ACTIVE)
                 ->with(['restDays' => fn ($q) => $q->orderBy('date'), 'restDays.pendingReservation'])
                 ->orderBy('name_en')

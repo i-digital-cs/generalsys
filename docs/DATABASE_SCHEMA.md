@@ -22,7 +22,6 @@ CREATE TABLE users (
     role                    ENUM('MANAGER','TEAM_LEADER','EMPLOYEE','ACCOUNTANT','ASSISTANT') NOT NULL DEFAULT 'EMPLOYEE',
     currency                ENUM('EGP','AED') NOT NULL,
     language_preference     ENUM('ar','en') NOT NULL DEFAULT 'ar',
-    team_leader_id          BIGINT UNSIGNED NULL,
     base_salary             DECIMAL(12,2) NOT NULL DEFAULT 0,
     online_half_day_rate    DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin sets per employee
     online_full_day_rate    DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin sets per employee
@@ -35,14 +34,33 @@ CREATE TABLE users (
     remember_token          VARCHAR(100) NULL,
     created_at              TIMESTAMP NULL,
     updated_at              TIMESTAMP NULL,
-    CONSTRAINT fk_users_tl FOREIGN KEY (team_leader_id) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_users_role (role),
-    INDEX idx_users_team_leader (team_leader_id),
     INDEX idx_users_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 > Vacation accrual is **dynamic** (TL adds credit) — it lives in `vacation_balances`, not on `users`.
+> Team membership (T-8.1): **not** a column on `users`. See §1b `employee_team_leaders` (max two `TEAM_LEADER` rows per employee, app-enforced).
+
+## 1b. employee_team_leaders
+
+Which team leaders an employee belongs to. One required, second optional; both equal. Permission/vacation **queue and decide** use this membership (either TL). `permissions.team_leader_id` / `vacations.team_leader_id` is a first-TL **submit snapshot** (not the notify/queue path). `decided_by` is who accepted/rejected/forced. Notify uses membership (both TLs). Evaluations keep `team_leader_id` as the evaluation owner (T-8.5). Payroll generate “by TL” uses `ledBy` membership.
+
+```sql
+CREATE TABLE employee_team_leaders (
+    id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id         BIGINT UNSIGNED NOT NULL,
+    team_leader_id  BIGINT UNSIGNED NOT NULL,
+    assigned_by     BIGINT UNSIGNED NULL,
+    created_at      TIMESTAMP NULL,
+    updated_at      TIMESTAMP NULL,
+    CONSTRAINT fk_etl_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_etl_tl FOREIGN KEY (team_leader_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_etl_assigned_by FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE KEY uq_etl_user_tl (user_id, team_leader_id),
+    INDEX idx_etl_tl (team_leader_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
 
 ## 2. employee_profiles
 
@@ -169,11 +187,6 @@ CREATE TABLE attendance (
     is_auto_clock_out        TINYINT(1) NOT NULL DEFAULT 0,   -- true when closed by scheduler (end + grace)
     daily_report             TEXT NULL,
     team_leader_response     TEXT NULL,
-    -- daily evaluation scores (averaged into monthly evaluation)
-    performance_score        DECIMAL(5,2) NULL,               -- TL
-    behavior_score           DECIMAL(5,2) NULL,               -- TL
-    productivity_score       DECIMAL(5,2) NULL,               -- TL
-    interest_return_score    DECIMAL(5,2) NULL,               -- TL (عائد الفائدة)
     attendance_score         DECIMAL(5,2) NULL,               -- auto: min(100, actual/planned*100)
     created_at               TIMESTAMP NULL,
     updated_at               TIMESTAMP NULL,
@@ -216,6 +229,32 @@ CREATE TABLE attendance_photos (
 
 > Optional on both punches; **no count limit**; each file ≤ **50MB** (jpg/jpeg/png/webp) — see `config/attendance.php` `photos.*`. View: owner · team TL · Manager (employees + TLs). UI: `/clock`, employee sessions, TL/Admin today board + hours day list, report review.
 
+## 7c. attendance_daily_scores
+
+Per-TL daily scores on an attendance row (T-8.5). Attendance % stays on `attendance`. Unique pair: one score row per TL per day.
+
+```sql
+CREATE TABLE attendance_daily_scores (
+    id                      BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    attendance_id           BIGINT UNSIGNED NOT NULL,
+    team_leader_id          BIGINT UNSIGNED NOT NULL,         -- evaluator (TL or Manager)
+    scored_by               BIGINT UNSIGNED NOT NULL,         -- actor (same as team_leader_id)
+    performance_score       DECIMAL(5,2) NOT NULL,
+    behavior_score          DECIMAL(5,2) NOT NULL,
+    productivity_score      DECIMAL(5,2) NOT NULL,
+    interest_return_score   DECIMAL(5,2) NOT NULL,            -- عائد الفائدة
+    created_at              TIMESTAMP NULL,
+    updated_at              TIMESTAMP NULL,
+    CONSTRAINT fk_ads_att FOREIGN KEY (attendance_id) REFERENCES attendance(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ads_tl FOREIGN KEY (team_leader_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ads_scored_by FOREIGN KEY (scored_by) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_ads_attendance_tl (attendance_id, team_leader_id),
+    INDEX idx_ads_tl (team_leader_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+> Each membership TL (and Manager) saves **their** four metrics. The other TL’s scores are read-only on report review. One official daily-report reply still locks.
+
 ## 8. permissions
 
 ```sql
@@ -228,15 +267,18 @@ CREATE TABLE permissions (
     to_time             TIME NOT NULL,
     reason              TEXT NULL,
     status              ENUM('PENDING','ACCEPTED','REJECTED','FORCED') NOT NULL DEFAULT 'PENDING',
-    team_leader_id      BIGINT UNSIGNED NULL,
+    team_leader_id      BIGINT UNSIGNED NULL,                  -- first-TL snapshot at submit (queue uses membership)
+    decided_by          BIGINT UNSIGNED NULL,                  -- who accepted / rejected / forced
     penalty_amount      DECIMAL(12,2) NOT NULL DEFAULT 0,
     is_double_penalty   TINYINT(1) NOT NULL DEFAULT 0,          -- TRUE when FORCED
     created_at          TIMESTAMP NULL,
     updated_at          TIMESTAMP NULL,
     CONSTRAINT fk_perm_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_perm_tl FOREIGN KEY (team_leader_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_perm_decided_by FOREIGN KEY (decided_by) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_perm_user_date (user_id, request_date),
-    INDEX idx_perm_tl_status (team_leader_id, status)
+    INDEX idx_perm_tl_status (team_leader_id, status),
+    INDEX idx_perm_decided_by (decided_by)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
@@ -254,11 +296,13 @@ CREATE TABLE vacations (
     replace_rest_day_id  BIGINT UNSIGNED NULL,  -- FK until approve (then null)
     status               ENUM('PENDING','APPROVED','REJECTED','FORCED') NOT NULL DEFAULT 'PENDING',
     -- FORCED = rejected then forced (product A): day off kept; rest day NOT consumed
-    team_leader_id       BIGINT UNSIGNED NULL,
+    team_leader_id       BIGINT UNSIGNED NULL,                 -- first-TL snapshot at submit (queue uses membership)
+    decided_by           BIGINT UNSIGNED NULL,                 -- who accepted / rejected / forced
     created_at           TIMESTAMP NULL,
     updated_at           TIMESTAMP NULL,
     CONSTRAINT fk_vac_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_vac_tl FOREIGN KEY (team_leader_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_vac_decided_by FOREIGN KEY (decided_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_vac_rest FOREIGN KEY (replace_rest_day_id) REFERENCES rest_days(id) ON DELETE SET NULL,
     INDEX idx_vac_user_status (user_id, status),
     INDEX idx_vac_dates (start_date, end_date)
@@ -312,20 +356,22 @@ CREATE TABLE evaluations (
     team_leader_id     BIGINT UNSIGNED NOT NULL,
     month              TINYINT UNSIGNED NOT NULL,
     year               SMALLINT UNSIGNED NOT NULL,
-    performance_score       DECIMAL(5,2) NOT NULL DEFAULT 0,  -- avg of daily TL
-    behavior_score          DECIMAL(5,2) NOT NULL DEFAULT 0,  -- avg of daily TL
-    productivity_score      DECIMAL(5,2) NOT NULL DEFAULT 0,  -- avg of daily TL
-    interest_return_score   DECIMAL(5,2) NOT NULL DEFAULT 0,  -- avg of daily TL
-    attendance_score        DECIMAL(5,2) NOT NULL DEFAULT 0,  -- avg of daily auto
+    performance_score       DECIMAL(5,2) NOT NULL DEFAULT 0,  -- avg of that TL's daily scores
+    behavior_score          DECIMAL(5,2) NOT NULL DEFAULT 0,  -- avg of that TL's daily scores
+    productivity_score      DECIMAL(5,2) NOT NULL DEFAULT 0,  -- avg of that TL's daily scores
+    interest_return_score   DECIMAL(5,2) NOT NULL DEFAULT 0,  -- avg of that TL's daily scores
+    attendance_score        DECIMAL(5,2) NOT NULL DEFAULT 0,  -- avg of daily auto (shared)
     total_score             DECIMAL(5,2) NOT NULL DEFAULT 0,  -- average of 5
     evaluation_text         TEXT NULL,                        -- monthly narrative only
     created_at         TIMESTAMP NULL,
     updated_at         TIMESTAMP NULL,
     CONSTRAINT fk_eval_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_eval_tl FOREIGN KEY (team_leader_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_eval_user_month (user_id, month, year)
+    UNIQUE KEY uq_eval_user_tl_month (user_id, team_leader_id, month, year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
+
+> One row per `(employee, evaluator, month, year)`. Four % = AVG of that evaluator’s `attendance_daily_scores`; attendance % = AVG of `attendance.attendance_score`. Combined month (payslip / annual) = average of existing TL `total_score`s for that month.
 
 ## 13. penalty_rules
 
@@ -489,7 +535,9 @@ CREATE TABLE official_holidays (
 
 ## 19. settings
 
-Small key/value store backing Admin global settings (language/currency defaults).
+Small key/value store backing Admin global settings (language/currency defaults, office geofence, payroll multipliers, **login-as-user**).
+
+Known keys (no extra columns): `default_language`, `default_currency`, `office_latitude`, `office_longitude`, `office_radius_meters`, `payroll.multiplier.*`, `impersonation_enabled` (`1`/`0`, default off).
 
 ```sql
 CREATE TABLE settings (
@@ -536,7 +584,7 @@ users ─┬─ employee_profiles (1:1)
        ├─ emergency_contacts (1:N)
        ├─ contracts (1:N)
        ├─ rest_days (1:N, date-based)
-       ├─ users.team_leader_id (self FK, TL → team members)
+       ├─ employee_team_leaders (N:M, max 2 TLs per employee)
        ├─ attendance (1:N) ── daily TL scores · attendance_photos (1:N)
        ├─ permissions (1:N)
        ├─ vacations (1:N)

@@ -72,10 +72,6 @@ class Attendance extends Model
         'is_auto_clock_out',
         'daily_report',
         'team_leader_response',
-        'performance_score',
-        'behavior_score',
-        'productivity_score',
-        'interest_return_score',
         'attendance_score',
     ];
 
@@ -97,10 +93,6 @@ class Attendance extends Model
             'clock_out_outside_geofence' => 'boolean',
             'planned_hours' => 'decimal:2',
             'actual_hours' => 'decimal:2',
-            'performance_score' => 'decimal:2',
-            'behavior_score' => 'decimal:2',
-            'productivity_score' => 'decimal:2',
-            'interest_return_score' => 'decimal:2',
             'attendance_score' => 'decimal:2',
         ];
     }
@@ -118,5 +110,10 @@ class Attendance extends Model
     public function photos(): HasMany
     {
         return $this->hasMany(AttendancePhoto::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function dailyScores(): HasMany
+    {
+        return $this->hasMany(AttendanceDailyScore::class);
     }
 }

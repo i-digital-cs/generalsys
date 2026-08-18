@@ -262,6 +262,9 @@ class PayrollGenerator
     }
 
     /**
+     * Active staff ids for a generate run. Optional `$teamLeaderId` filters by
+     * `employee_team_leaders` membership (`ledBy`) plus that TL’s own row.
+     *
      * @return list<int>
      */
     public function eligibleUserIds(?int $teamLeaderId = null): array
@@ -273,7 +276,7 @@ class PayrollGenerator
 
         if ($teamLeaderId !== null) {
             $query->where(function ($q) use ($teamLeaderId) {
-                $q->where('team_leader_id', $teamLeaderId)
+                $q->ledBy($teamLeaderId)
                     ->orWhere('id', $teamLeaderId);
             });
         }

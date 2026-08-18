@@ -6,19 +6,25 @@ use App\Exceptions\EvaluationException;
 use App\Models\Attendance;
 use App\Models\Evaluation;
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Monthly evaluation from daily attendance scores (T-3.2).
+ * Monthly evaluation from per-TL daily scores (T-3.2 / T-8.5).
  *
- * - Each metric = AVG of that month's non-null daily values.
- * - App total = average of 5 (incl. Interest Return).
- * - Legacy Excel total = average of 4 (excl. Interest Return) → fixture 0.97375 on 0–1 scale.
+ * - Four TL metrics = AVG of that evaluator's attendance_daily_scores.
+ * - Attendance % = AVG of attendance.attendance_score (system).
+ * - App total = average of 5. Legacy Excel four-metric fixture 0.97375.
  */
 class EvaluationService
 {
+    public function __construct(
+        private readonly DailyScoreService $dailyScores,
+        private readonly TeamMembershipService $membership,
+    ) {}
+
     /**
      * @return array{
      *     performance_score: float,
@@ -31,29 +37,26 @@ class EvaluationService
      *     legacy_four_average_0_1: float
      * }
      */
-    public function monthlyFromDaily(User $user, int $month, int $year): array
+    public function monthlyFromDaily(User $user, int $month, int $year, ?int $evaluatorId = null): array
     {
         $this->assertMonthYear($month, $year);
 
         $from = Carbon::create($year, $month, 1)->startOfDay();
         $to = $from->copy()->endOfMonth();
 
-        $agg = Attendance::query()
+        $four = $this->dailyScores->monthAverages($user, $month, $year, $evaluatorId);
+
+        $attendanceAvg = Attendance::query()
             ->where('user_id', $user->id)
             ->whereDate('date', '>=', $from->toDateString())
             ->whereDate('date', '<=', $to->toDateString())
-            ->selectRaw('AVG(performance_score) as performance_score')
-            ->selectRaw('AVG(behavior_score) as behavior_score')
-            ->selectRaw('AVG(productivity_score) as productivity_score')
-            ->selectRaw('AVG(interest_return_score) as interest_return_score')
-            ->selectRaw('AVG(attendance_score) as attendance_score')
-            ->first();
+            ->avg('attendance_score');
 
-        $performance = $this->asScore($agg?->performance_score);
-        $behavior = $this->asScore($agg?->behavior_score);
-        $productivity = $this->asScore($agg?->productivity_score);
-        $interestReturn = $this->asScore($agg?->interest_return_score);
-        $attendance = $this->asScore($agg?->attendance_score);
+        $performance = $four['performance_score'];
+        $behavior = $four['behavior_score'];
+        $productivity = $four['productivity_score'];
+        $interestReturn = $four['interest_return_score'];
+        $attendance = $this->asScore($attendanceAvg);
 
         return [
             'performance_score' => $performance,
@@ -81,7 +84,6 @@ class EvaluationService
         ];
     }
 
-    /** App product total: equal average of five 0–100 metrics. */
     public function totalFromFive(
         float $performance,
         float $behavior,
@@ -92,10 +94,6 @@ class EvaluationService
         return round(($performance + $behavior + $productivity + $interestReturn + $attendance) / 5, 2);
     }
 
-    /**
-     * Excel J10 legacy: average of four metrics on 0–1 scale.
-     * Inputs are 0–100 app scores; result matches sheet fixture **0.97375**.
-     */
     public function legacyFourAverageAsFraction(
         float $performance,
         float $behavior,
@@ -107,9 +105,6 @@ class EvaluationService
         return round($avgPercent / 100, 5);
     }
 
-    /**
-     * Upsert monthly row: recompute averages from daily scores + optional narrative.
-     */
     public function saveMonthly(
         User $actor,
         User $employee,
@@ -121,17 +116,17 @@ class EvaluationService
             throw EvaluationException::notTeamMember();
         }
 
-        $scores = $this->monthlyFromDaily($employee, $month, $year);
+        $scores = $this->monthlyFromDaily($employee, $month, $year, (int) $actor->id);
 
         return DB::transaction(function () use ($actor, $employee, $month, $year, $evaluationText, $scores) {
             $evaluation = Evaluation::query()->updateOrCreate(
                 [
                     'user_id' => $employee->id,
+                    'team_leader_id' => $actor->id,
                     'month' => $month,
                     'year' => $year,
                 ],
                 [
-                    'team_leader_id' => $actor->id,
                     'performance_score' => $scores['performance_score'],
                     'behavior_score' => $scores['behavior_score'],
                     'productivity_score' => $scores['productivity_score'],
@@ -156,10 +151,10 @@ class EvaluationService
             return false;
         }
 
-        return (int) $employee->team_leader_id === (int) $actor->id;
+        return $employee->isEmployee() && $this->membership->leads($actor, $employee);
     }
 
-    /** Team members (Manager: employees + TLs) for the monthly evaluation UI. */
+    /** @return Collection<int, User> */
     public function evaluableEmployees(User $actor): Collection
     {
         if ($actor->isManager()) {
@@ -174,7 +169,7 @@ class EvaluationService
             return User::query()
                 ->where('role', User::ROLE_EMPLOYEE)
                 ->where('status', User::STATUS_ACTIVE)
-                ->where('team_leader_id', $actor->id)
+                ->ledBy($actor->id)
                 ->orderBy('name_en')
                 ->get();
         }
@@ -183,34 +178,37 @@ class EvaluationService
     }
 
     /**
-     * Preview averages + saved text for one employee/month (UI).
-     *
      * @return array{
      *     scores: array<string, float>,
      *     evaluation: ?Evaluation,
-     *     evaluation_text: ?string
+     *     evaluation_text: ?string,
+     *     others: Collection<int, Evaluation>
      * }
      */
-    public function snapshot(User $employee, int $month, int $year): array
+    public function snapshot(User $employee, int $month, int $year, ?User $actor = null): array
     {
-        $scores = $this->monthlyFromDaily($employee, $month, $year);
-        $evaluation = Evaluation::query()
-            ->where('user_id', $employee->id)
-            ->where('month', $month)
-            ->where('year', $year)
-            ->first();
+        $evaluatorId = $actor?->id;
+        $scores = $this->monthlyFromDaily($employee, $month, $year, $evaluatorId);
+        $rows = $this->evaluationsForUserMonth($employee, $month, $year);
+        $own = $evaluatorId === null
+            ? $rows->first()
+            : $rows->first(fn (Evaluation $row) => (int) $row->team_leader_id === (int) $evaluatorId);
 
         return [
             'scores' => $scores,
-            'evaluation' => $evaluation,
-            'evaluation_text' => $evaluation?->evaluation_text,
+            'evaluation' => $own,
+            'evaluation_text' => $own?->evaluation_text,
+            'others' => $own === null
+                ? $rows
+                : $rows->reject(fn (Evaluation $row) => (int) $row->id === (int) $own->id)->values(),
         ];
     }
 
-    /** Saved monthly evaluations for the employee (newest first). */
+    /** @return Collection<int, Evaluation> */
     public function listForUser(User $user, ?int $year = null): Collection
     {
         $query = Evaluation::query()
+            ->with('teamLeader')
             ->where('user_id', $user->id)
             ->orderByDesc('year')
             ->orderByDesc('month');
@@ -222,55 +220,53 @@ class EvaluationService
         return $query->get();
     }
 
-    public function findForUserMonth(User $user, int $month, int $year): ?Evaluation
+    /** @return Collection<int, Evaluation> */
+    public function evaluationsForUserMonth(User $user, int $month, int $year): Collection
     {
         $this->assertMonthYear($month, $year);
 
         return Evaluation::query()
+            ->with('teamLeader')
             ->where('user_id', $user->id)
             ->where('month', $month)
             ->where('year', $year)
-            ->first();
+            ->orderBy('id')
+            ->get();
     }
 
     /**
-     * Payslip block: five monthly averages, monthly total (/5), and year total
-     * (average of monthly totals — Excel L33 / “total of total”).
+     * Combined payslip block: average of saved TL totals for the month.
      *
      * @return array{
-     *     scores: array{
-     *         performance_score: float,
-     *         behavior_score: float,
-     *         productivity_score: float,
-     *         interest_return_score: float,
-     *         attendance_score: float,
-     *         scores_sum: float,
-     *         total_score: float,
-     *         legacy_four_average_0_1: float
-     *     },
+     *     scores: array<string, float>,
      *     evaluation_text: ?string,
      *     monthly_totals: array<int, float|null>,
-     *     year_average: ?float
+     *     year_average: ?float,
+     *     is_saved: bool,
+     *     evaluated_by_id: ?int
      * }
      */
     public function summaryForPayslip(User $user, int $month, int $year): array
     {
         $this->assertMonthYear($month, $year);
 
-        $scores = $this->monthlyFromDaily($user, $month, $year);
-        $saved = $this->findForUserMonth($user, $month, $year);
-
-        $byMonth = Evaluation::query()
+        $yearRows = Evaluation::query()
+            ->with('teamLeader')
             ->where('user_id', $user->id)
             ->where('year', $year)
             ->get()
-            ->keyBy('month');
+            ->groupBy('month');
+
+        $saved = $yearRows->get($month, collect());
+        $scores = $saved->isNotEmpty()
+            ? $this->averageEvaluationScores($saved)
+            : $this->monthlyFromDaily($user, $month, $year);
 
         $monthlyTotals = [];
         for ($m = 1; $m <= 12; $m++) {
-            $row = $byMonth->get($m);
-            if ($row !== null) {
-                $monthlyTotals[$m] = round((float) $row->total_score, 2);
+            $group = $yearRows->get($m, collect());
+            if ($group->isNotEmpty()) {
+                $monthlyTotals[$m] = round((float) $group->avg('total_score'), 2);
             } elseif ($m === $month) {
                 $monthlyTotals[$m] = $scores['total_score'];
             } else {
@@ -283,15 +279,58 @@ class EvaluationService
             static fn (?float $v) => $v !== null,
         ));
 
+        $texts = $saved
+            ->filter(fn (Evaluation $row) => filled($row->evaluation_text))
+            ->map(function (Evaluation $row): string {
+                $name = $row->teamLeader?->localizedName();
+                $body = (string) $row->evaluation_text;
+
+                return $name ? $name.': '.$body : $body;
+            })
+            ->values()
+            ->all();
+
         return [
             'scores' => $scores,
-            'evaluation_text' => $saved?->evaluation_text,
+            'evaluation_text' => $texts === [] ? null : implode("\n\n", $texts),
             'monthly_totals' => $monthlyTotals,
             'year_average' => $present === []
                 ? null
                 : round(array_sum($present) / count($present), 2),
-            'is_saved' => $saved !== null,
-            'evaluated_by_id' => $saved?->team_leader_id,
+            'is_saved' => $saved->isNotEmpty(),
+            'evaluated_by_id' => $saved->count() === 1 ? $saved->first()?->team_leader_id : null,
+        ];
+    }
+
+    /** @param  Collection<int, Evaluation>  $rows */
+    private function averageEvaluationScores(Collection $rows): array
+    {
+        $performance = $this->asScore($rows->avg('performance_score'));
+        $behavior = $this->asScore($rows->avg('behavior_score'));
+        $productivity = $this->asScore($rows->avg('productivity_score'));
+        $interestReturn = $this->asScore($rows->avg('interest_return_score'));
+        $attendance = $this->asScore($rows->avg('attendance_score'));
+
+        return [
+            'performance_score' => $performance,
+            'behavior_score' => $behavior,
+            'productivity_score' => $productivity,
+            'interest_return_score' => $interestReturn,
+            'attendance_score' => $attendance,
+            'scores_sum' => round($performance + $behavior + $productivity + $interestReturn + $attendance, 2),
+            'total_score' => $this->totalFromFive(
+                $performance,
+                $behavior,
+                $productivity,
+                $interestReturn,
+                $attendance,
+            ),
+            'legacy_four_average_0_1' => $this->legacyFourAverageAsFraction(
+                $performance,
+                $behavior,
+                $productivity,
+                $attendance,
+            ),
         ];
     }
 

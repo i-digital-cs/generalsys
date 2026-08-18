@@ -133,7 +133,7 @@
 
 ### 1.7c Self-service leave/late (locked 2026-08-03)
 - **My Requests** (`/requests`) is available to Employee, TL, and Manager (self).
-- Employees require `team_leader_id` (TL decides). TL/Manager requests have null `team_leader_id` → **Manager** decides on Approvals.
+- Employees require **at least one** team leader (T-8: up to two, `employee_team_leaders`). TL/Manager requests have null membership snapshot → **Manager** decides on Approvals.
 - Force (REJECTED → FORCED, ×2): self, TL (team), or Manager.
 
 ### 1.7d Role chain — Employee↔TL vs TL↔Admin (locked 2026-08-03)
@@ -142,6 +142,20 @@
 - Already decided **yes** (shipped): clock, daily report, leave/late submit + decide + force, Admin CC on notifications, **vacation submit/approve with rest-day swap**, vacation credit UI, date-based rest days (Admin+TL), **daily scores on report review**, **monthly evaluations screen** (TL team / Manager any), **clock punch photos view** (owner · TL team · Admin; T-6.6).
 - Upcoming (e.g. employee My Evaluation is self-only): no TL↔Admin ask needed.
 - **Never weaken:** TL never sees monetary amounts; payroll generate/approve stays Admin/Accountant (approve Manager-only) unless the user explicitly changes that. Assistant may add/edit/see **employee salary and rates** (user, 2026-08-18); still no payroll generate/review.
+
+### 1.7e Dual team leaders + attributed evaluations (T-8.1–T-8.6 shipped 2026-08-18)
+- Task series **T-8.1–T-8.6** in `docs/TASKS.md`. Max two TLs per employee (`employee_team_leaders`); both see the employee; either may act; **who acted** is stored; each TL has own daily % + monthly text (no overwrite) — T-8.5.
+- Membership API: `TeamMembershipService` (`leads`, `leaderIds`, `visibleEmployeeIds`, `syncLeaders`). `users.team_leader_id` dropped.
+- Admin/Assistant employee form: two TL selects (1 required for `EMPLOYEE`, 2 optional, not the same person). **TEAM_LEADER / Accountant / Assistant never get a TL** (fields hidden; posted ids ignored). List, profile, and payslip show both names.
+- Ops scope (T-8.3): shifts, rest days, daily reports, missing-report alerts, hours board, attendance history, punch photos, and clock GPS / auto clock-out notify use `leads()` / pivot `ledBy` — both TLs.
+- Approvals (T-8.4): either membership TL may accept/reject/force employee leave and vacation; `decided_by` stored. Queue uses membership, not the single `team_leader_id` snapshot. TL/Manager self-requests still go to Manager.
+- Evaluations (T-8.5): `attendance_daily_scores` unique `(attendance_id, team_leader_id)`; `evaluations` unique `(user_id, team_leader_id, month, year)`. Report review: own scores editable, other TL read-only. Monthly: own text + own daily avgs + system attendance avg. My Evaluation shows both TLs labeled. Combined month = avg of that month’s TL `total_score`s (annual = avg of those monthly combined values). Attendance % stays on `attendance`. One official daily-report reply still locks.
+- Notify (T-8.6): both membership TLs on clock geofence, auto clock-out, report submitted/missing/replied, leave, and vacation (actor skipped). Managers still CC’d. Payroll generate “by TL” = `ledBy` membership + that TL’s own row. `permissions`/`vacations`.`team_leader_id` remains a first-TL submit snapshot only.
+
+### 1.7f Login-as-user (impersonation) (shipped 2026-08-18)
+- Admin Settings toggle `impersonation_enabled` (default **off**). Manager-only; Assistant/TL cannot enable or start it.
+- When on, Manager may open any other account from Employees (no password). Session stores `impersonator_id`. Yellow banner + **Return to admin**. Nested switch is blocked. Logout ends the whole session.
+- Actions while switched (clock, reports, approvals) are stored as that user.
 
 | Role | Can View Payroll? |
 |------|-------------------|
@@ -167,7 +181,6 @@ users
 ├── role (enum: MANAGER, TEAM_LEADER, EMPLOYEE, ACCOUNTANT, ASSISTANT)
 ├── currency (EGP, AED)
 ├── language_preference (ar, en)
-├── team_leader_id (FK → users, nullable)
 ├── base_salary (decimal)
 ├── online_half_day_rate (decimal)        -- ADMIN sets per employee
 ├── online_full_day_rate (decimal)        -- ADMIN sets per employee
@@ -181,6 +194,8 @@ users
 ├── status (ACTIVE, INACTIVE)
 ├── created_at / updated_at
 ```
+
+Team membership is **`employee_team_leaders`** (user_id, team_leader_id, assigned_by; unique pair; max 2 TLs app-enforced). Not a column on `users`.
 
 ### 2.2 Attendance Table (Extended)
 ```sql
@@ -201,10 +216,21 @@ attendance
 ├── early_departure_minutes (int)
 ├── daily_report (text)
 ├── team_leader_response (text)
-├── performance_score / behavior_score / productivity_score / interest_return_score  -- TL daily %
 ├── attendance_score (decimal)            -- Auto daily %
 ├── created_at / updated_at
 ```
+
+### 2.2b attendance_daily_scores (per TL)
+```sql
+attendance_daily_scores
+├── id (PK)
+├── attendance_id (FK)
+├── team_leader_id (FK)                   -- evaluator (TL or Manager)
+├── scored_by (FK)                        -- actor
+├── performance_score / behavior_score / productivity_score / interest_return_score
+├── created_at / updated_at
+```
+Unique `(attendance_id, team_leader_id)`. Attendance % stays on `attendance`.
 
 ### 2.3 Permissions Table
 ```sql
@@ -255,17 +281,18 @@ vacation_balances
 evaluations
 ├── id (PK)
 ├── user_id (FK)
-├── team_leader_id (FK)
+├── team_leader_id (FK)                   -- evaluator; unique with month/year
 ├── month / year
-├── performance_score (decimal 0-100)     -- avg of daily TL scores
-├── behavior_score (decimal 0-100)        -- avg of daily TL scores
-├── productivity_score (decimal 0-100)    -- avg of daily TL scores
-├── interest_return_score (decimal 0-100) -- avg of daily TL scores
-├── attendance_score (decimal 0-100)      -- avg of daily auto scores
+├── performance_score (decimal 0-100)     -- avg of that evaluator's daily scores
+├── behavior_score (decimal 0-100)
+├── productivity_score (decimal 0-100)
+├── interest_return_score (decimal 0-100)
+├── attendance_score (decimal 0-100)      -- avg of daily auto scores (shared)
 ├── total_score (decimal 0-100)           -- Average of 5
-├── evaluation_text (text)                -- Monthly text only
+├── evaluation_text (text)                -- That evaluator's monthly text
 ├── created_at / updated_at
 ```
+Unique `(user_id, team_leader_id, month, year)`. Combined month = average of existing TL totals.
 
 ### 2.7 Payroll Records Table (Admin + Employee Only)
 ```sql
@@ -462,9 +489,9 @@ vacations.replace_rest_date / replace_rest_day_id  -- swap on submit
 | Employees / rates / settings / penalties | ✅ | ❌ | ❌ | ❌ |
 | Pre-assign Shifts / rest days | ✅ | ❌ | ✅ Team Only | ❌ |
 
-> **Accountant (T-7.1):** role `ACCOUNTANT` / محاسب. No `team_leader_id` (reports to Admin). Self-service + payroll (view/generate/edit) + advances CRUD. **Approve payroll stays Manager-only.**
+> **Accountant (T-7.1):** role `ACCOUNTANT` / محاسب. No team-leader membership (reports to Admin). Self-service + payroll (view/generate/edit) + advances CRUD. **Approve payroll stays Manager-only.**
 >
-> **Assistant (T-7.5 / T-7.6):** role `ASSISTANT` / مساعد إداري. Reports to Admin (`team_leader_id` null). Company-wide HR helper: employee data entry **including salary/rates**, shifts, rest days, **attendance history** (photos + GPS), follow all daily reports (view-only — no reply/scores), absences dashboard, missing-report alerts. Self-service clock/report/requests/profile/own salary. **No** payroll generate/review, advances admin, penalties, settings, annual reports, leave approvals, or evaluations of others.
+> **Assistant (T-7.5 / T-7.6):** role `ASSISTANT` / مساعد إداري. Reports to Admin (no team-leader membership). Company-wide HR helper: employee data entry **including salary/rates**, shifts, rest days, **attendance history** (photos + GPS), follow all daily reports (view-only — no reply/scores), absences dashboard, missing-report alerts. Self-service clock/report/requests/profile/own salary. **No** payroll generate/review, advances admin, penalties, settings, annual reports, leave approvals, or evaluations of others.
 
 ---
 
@@ -579,13 +606,13 @@ def calculate_attendance_status(clock_in, clock_out, shift_type, assigned_shift)
 ## 6. EVALUATION AUTO-CALCULATION
 
 ```python
-def calculate_monthly_evaluation(user_id, month, year):
-    # Each metric = AVG of that month's daily values on attendance rows
-    performance     = avg(daily.performance_score)       # TL daily
-    behavior        = avg(daily.behavior_score)          # TL daily
-    productivity    = avg(daily.productivity_score)      # TL daily
-    interest_return = avg(daily.interest_return_score)   # TL daily
-    attendance      = avg(daily.attendance_score)        # system daily auto
+def calculate_monthly_evaluation(user_id, month, year, evaluator_id):
+    # Four TL metrics = AVG of that evaluator's attendance_daily_scores
+    performance     = avg(daily_scores.performance_score where team_leader_id = evaluator_id)
+    behavior        = avg(daily_scores.behavior_score where team_leader_id = evaluator_id)
+    productivity    = avg(daily_scores.productivity_score where team_leader_id = evaluator_id)
+    interest_return = avg(daily_scores.interest_return_score where team_leader_id = evaluator_id)
+    attendance      = avg(attendance.attendance_score)        # system daily auto (shared)
 
     evaluation.performance_score      = performance
     evaluation.behavior_score         = behavior
@@ -598,7 +625,8 @@ def calculate_monthly_evaluation(user_id, month, year):
         performance + behavior + productivity + interest_return + attendance
     ) / 5
 
-    # evaluation_text is monthly TL narrative — not part of the numeric average
+    # evaluation_text is that evaluator's monthly narrative — not part of the numeric average
+    # Combined month (payslip / annual) = AVG of existing evaluation.total_score for the month
     return evaluation
 ```
 

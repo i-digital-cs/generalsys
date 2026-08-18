@@ -16,6 +16,8 @@ use Illuminate\Support\Str;
  */
 class EmployeeService
 {
+    public function __construct(private readonly TeamMembershipService $membership) {}
+
     /**
      * Next sequential code: EMP-001, EMP-002, … (skips non-numeric suffixes).
      */
@@ -35,9 +37,9 @@ class EmployeeService
     /**
      * @param  array<string, mixed>  $data  validated payload (see StoreEmployeeRequest)
      */
-    public function create(array $data, ?UploadedFile $photo = null): User
+    public function create(array $data, ?UploadedFile $photo = null, ?User $assignedBy = null): User
     {
-        return DB::transaction(function () use ($data, $photo) {
+        return DB::transaction(function () use ($data, $photo, $assignedBy) {
             /** @var User $user */
             $user = User::create($this->userAttributes($data));
 
@@ -48,6 +50,7 @@ class EmployeeService
 
             $this->syncQualifications($user, $data['qualifications'] ?? []);
             $this->syncEmergencyContacts($user, $data['contacts'] ?? []);
+            $this->syncTeamLeaders($user, $data, $assignedBy);
 
             return $user;
         });
@@ -56,9 +59,9 @@ class EmployeeService
     /**
      * @param  array<string, mixed>  $data  validated payload (see UpdateEmployeeRequest)
      */
-    public function update(User $user, array $data, ?UploadedFile $photo = null): User
+    public function update(User $user, array $data, ?UploadedFile $photo = null, ?User $assignedBy = null): User
     {
-        return DB::transaction(function () use ($user, $data, $photo) {
+        return DB::transaction(function () use ($user, $data, $photo, $assignedBy) {
             $attributes = $this->userAttributes($data);
 
             if (empty($attributes['password'])) {
@@ -78,6 +81,7 @@ class EmployeeService
 
             $this->syncQualifications($user, $data['qualifications'] ?? []);
             $this->syncEmergencyContacts($user, $data['contacts'] ?? []);
+            $this->syncTeamLeaders($user, $data, $assignedBy);
 
             return $user->refresh();
         });
@@ -95,7 +99,7 @@ class EmployeeService
             : [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT];
 
         return User::query()
-            ->with('profile')
+            ->with(['profile', 'teamLeaders'])
             ->whereIn('role', $roles)
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
@@ -103,7 +107,17 @@ class EmployeeService
                         ->orWhere('name_en', 'like', "%{$search}%")
                         ->orWhere('job_title_ar', 'like', "%{$search}%")
                         ->orWhere('job_title_en', 'like', "%{$search}%")
-                        ->orWhereHas('profile', fn ($profile) => $profile->where('employee_code', 'like', "%{$search}%"));
+                        ->orWhereHas('profile', fn ($profile) => $profile->where('employee_code', 'like', "%{$search}%"))
+                        ->orWhereExists(function ($sub) use ($search) {
+                            $sub->selectRaw('1')
+                                ->from('employee_team_leaders as etl')
+                                ->join('users as tls', 'tls.id', '=', 'etl.team_leader_id')
+                                ->whereColumn('etl.user_id', 'users.id')
+                                ->where(function ($names) use ($search) {
+                                    $names->where('tls.name_ar', 'like', "%{$search}%")
+                                        ->orWhere('tls.name_en', 'like', "%{$search}%");
+                                });
+                        });
                 });
             })
             ->when($status, fn ($query) => $query->where('status', $status))
@@ -120,7 +134,7 @@ class EmployeeService
         $attributes = array_merge(
             Arr::only($data, [
                 'name_ar', 'name_en', 'job_title_ar', 'job_title_en', 'email', 'role', 'currency', 'language_preference',
-                'team_leader_id', 'status',
+                'status',
                 'base_salary', 'online_half_day_rate', 'online_full_day_rate', 'overtime_hourly_rate',
             ]),
             ['password' => $data['password'] ?? null],
@@ -153,6 +167,27 @@ class EmployeeService
         }
 
         return $this->applyJobTitles($attributes);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function syncTeamLeaders(User $user, array $data, ?User $assignedBy = null): void
+    {
+        if (! $user->isEmployee()) {
+            $this->membership->syncLeaders($user, [], $assignedBy);
+
+            return;
+        }
+
+        $ids = [];
+        foreach ($data['team_leader_ids'] ?? [] as $raw) {
+            if ($raw === null || $raw === '') {
+                continue;
+            }
+            $ids[] = (int) $raw;
+        }
+        $this->membership->syncLeaders($user, $ids, $assignedBy);
     }
 
     /**

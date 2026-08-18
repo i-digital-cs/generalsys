@@ -25,6 +25,7 @@ return [
         'employee' => 'Employee',
         'role' => 'Role',
         'job_title' => 'Job title',
+        'team_leaders' => 'Team leaders',
         'period' => 'Pay period',
         'status' => 'Status',
         'currency' => 'Currency',

@@ -27,13 +27,13 @@ class EvaluationController extends Controller
             $year = (int) now()->year;
         }
 
-        $evaluation = $this->evaluations->findForUserMonth($user, $month, $year);
+        $evaluations = $this->evaluations->evaluationsForUserMonth($user, $month, $year);
         $history = $this->evaluations->listForUser($user);
 
         return view('employee.evaluation', [
             'month' => $month,
             'year' => $year,
-            'evaluation' => $evaluation,
+            'evaluations' => $evaluations,
             'history' => $history,
         ]);
     }

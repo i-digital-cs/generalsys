@@ -102,6 +102,17 @@
                             </li>
                             <li><hr class="dropdown-divider"></li>
                         @endif
+                        @if (! empty($impersonationBanner))
+                            <li>
+                                <form method="POST" action="{{ route('impersonation.leave') }}">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bi bi-arrow-return-left me-2" aria-hidden="true"></i>{{ __('impersonation.return') }}
+                                    </button>
+                                </form>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                        @endif
                         <li>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf

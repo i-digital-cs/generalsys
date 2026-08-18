@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Services\Attendance\ShiftConfig;
+use App\Services\Employees\TeamMembershipService;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -29,6 +31,10 @@ class User extends Authenticatable
     public const STATUS_ACTIVE = 'ACTIVE';
 
     public const STATUS_INACTIVE = 'INACTIVE';
+
+    private ?int $pendingTeamLeaderId = null;
+
+    private bool $hasPendingTeamLeader = false;
 
     /**
      * The attributes that are mass assignable.
@@ -280,6 +286,12 @@ class User extends Authenticatable
         return $this->role === self::ROLE_EMPLOYEE;
     }
 
+    /** Only EMPLOYEE accounts are assigned team leaders. */
+    public static function roleMayHaveTeamLeaders(?string $role): bool
+    {
+        return $role === self::ROLE_EMPLOYEE;
+    }
+
     public function isAccountant(): bool
     {
         return $this->role === self::ROLE_ACCOUNTANT;
@@ -339,6 +351,32 @@ class User extends Authenticatable
         }
 
         return false;
+    }
+
+    public function localizedName(): string
+    {
+        $ar = trim((string) $this->name_ar);
+        $en = trim((string) $this->name_en);
+        $preferred = app()->getLocale() === 'ar' ? $ar : $en;
+        $fallback = app()->getLocale() === 'ar' ? $en : $ar;
+
+        if ($preferred !== '') {
+            return $preferred;
+        }
+
+        return $fallback !== '' ? $fallback : (string) $this->email;
+    }
+
+    public function teamLeaderDisplayNames(): string
+    {
+        $leaders = $this->relationLoaded('teamLeaders')
+            ? $this->teamLeaders
+            : $this->teamLeaders()->get();
+
+        return $leaders
+            ->map(fn (User $leader): string => $leader->localizedName())
+            ->filter()
+            ->implode(' · ');
     }
 
     /** Admin or Accountant — may see/manage payroll money (approve stays Manager-only). */
@@ -402,6 +440,62 @@ class User extends Authenticatable
                 $user->work_start_time = collect($profiles)->min('start');
                 $user->work_end_time = collect($profiles)->max('end');
             }
+        });
+
+        static::saved(function (User $user): void {
+            if (! $user->hasPendingTeamLeader) {
+                return;
+            }
+
+            $ids = $user->pendingTeamLeaderId !== null ? [$user->pendingTeamLeaderId] : [];
+            $user->hasPendingTeamLeader = false;
+            $user->pendingTeamLeaderId = null;
+            app(TeamMembershipService::class)->syncLeaders($user, $ids);
+        });
+    }
+
+    public function setTeamLeaderIdAttribute(mixed $value): void
+    {
+        $this->pendingTeamLeaderId = ($value === null || $value === '') ? null : (int) $value;
+        $this->hasPendingTeamLeader = true;
+    }
+
+    public function getTeamLeaderIdAttribute(): ?int
+    {
+        if ($this->hasPendingTeamLeader && ! $this->exists) {
+            return $this->pendingTeamLeaderId;
+        }
+
+        $id = $this->relationLoaded('teamLeaders')
+            ? $this->teamLeaders->first()?->id
+            : $this->teamLeaders()->orderBy('employee_team_leaders.id')->value('users.id');
+
+        return $id === null ? null : (int) $id;
+    }
+
+    public function getTeamLeaderAttribute(): ?User
+    {
+        if ($this->relationLoaded('teamLeaders')) {
+            $first = $this->teamLeaders->first();
+
+            return $first instanceof User ? $first : null;
+        }
+
+        $first = $this->teamLeaders()->orderBy('employee_team_leaders.id')->first();
+
+        return $first instanceof User ? $first : null;
+    }
+
+    /**
+     * Employees this team leader is assigned to (T-8.1 pivot).
+     */
+    public function scopeLedBy(Builder $query, int $leaderId): void
+    {
+        $query->whereExists(function ($sub) use ($leaderId): void {
+            $sub->selectRaw('1')
+                ->from('employee_team_leaders')
+                ->whereColumn('employee_team_leaders.user_id', 'users.id')
+                ->where('employee_team_leaders.team_leader_id', $leaderId);
         });
     }
 
@@ -480,13 +574,18 @@ class User extends Authenticatable
         return $this->hasMany(Evaluation::class);
     }
 
-    public function teamLeader(): BelongsTo
+    public function teamLeaders(): BelongsToMany
     {
-        return $this->belongsTo(User::class, 'team_leader_id');
+        return $this->belongsToMany(User::class, 'employee_team_leaders', 'user_id', 'team_leader_id')
+            ->withPivot('assigned_by')
+            ->withTimestamps()
+            ->orderBy('employee_team_leaders.id');
     }
 
-    public function teamMembers(): HasMany
+    public function teamMembers(): BelongsToMany
     {
-        return $this->hasMany(User::class, 'team_leader_id');
+        return $this->belongsToMany(User::class, 'employee_team_leaders', 'team_leader_id', 'user_id')
+            ->withPivot('assigned_by')
+            ->withTimestamps();
     }
 }

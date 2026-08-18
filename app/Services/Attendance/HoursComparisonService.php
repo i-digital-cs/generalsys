@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Services\Employees\RestDayService;
+use App\Services\Employees\TeamMembershipService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -22,6 +23,7 @@ class HoursComparisonService
     public function __construct(
         private readonly ShiftConfig $shifts,
         private readonly RestDayService $restDays,
+        private readonly TeamMembershipService $membership,
     ) {}
 
     /**
@@ -248,7 +250,7 @@ class HoursComparisonService
 
         if ($actor->isTeamLeader()) {
             return $employee->isEmployee()
-                && (int) $employee->team_leader_id === (int) $actor->id;
+                && $this->membership->leads($actor, $employee);
         }
 
         return false;
@@ -257,24 +259,7 @@ class HoursComparisonService
     /** @return Collection<int, User> */
     public function visibleEmployees(User $actor): Collection
     {
-        if ($actor->canManageOperations()) {
-            return User::query()
-                ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
-                ->where('status', User::STATUS_ACTIVE)
-                ->orderBy('name_en')
-                ->get();
-        }
-
-        if ($actor->isTeamLeader()) {
-            return User::query()
-                ->where('role', User::ROLE_EMPLOYEE)
-                ->where('status', User::STATUS_ACTIVE)
-                ->where('team_leader_id', $actor->id)
-                ->orderBy('name_en')
-                ->get();
-        }
-
-        return collect();
+        return $this->membership->visibleEmployees($actor);
     }
 
     public function profilePlannedHours(User $user): float

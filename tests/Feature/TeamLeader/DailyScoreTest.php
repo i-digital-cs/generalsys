@@ -3,14 +3,17 @@
 namespace Tests\Feature\TeamLeader;
 
 use App\Models\Attendance;
+use App\Models\AttendanceDailyScore;
 use App\Models\User;
 use App\Services\Attendance\AttendanceService;
+use App\Services\Employees\TeamMembershipService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Gate 3.4 / T-3.1 — TL daily scores on report review; attendance_score is auto.
+ * Gate 3.4 / T-3.1 / T-8.5 — per-TL daily scores on report review; attendance_score is auto.
  */
 class DailyScoreTest extends TestCase
 {
@@ -27,6 +30,7 @@ class DailyScoreTest extends TestCase
         parent::setUp();
 
         $this->leader = User::factory()->teamLeader()->create([
+            'name_en' => 'Leader One',
             'language_preference' => 'en',
         ]);
         $this->employee = User::factory()->employee()->create([
@@ -78,12 +82,69 @@ class DailyScoreTest extends TestCase
             ->assertRedirect(route('team-leader.reports.show', $row))
             ->assertSessionHas('success');
 
-        $row->refresh();
-        $this->assertSame('90.00', (string) $row->performance_score);
-        $this->assertSame('85.50', (string) $row->behavior_score);
-        $this->assertSame('88.00', (string) $row->productivity_score);
-        $this->assertSame('92.00', (string) $row->interest_return_score);
-        $this->assertSame('100.00', (string) $row->attendance_score);
+        $this->assertDatabaseHas('attendance_daily_scores', [
+            'attendance_id' => $row->id,
+            'team_leader_id' => $this->leader->id,
+            'scored_by' => $this->leader->id,
+            'performance_score' => 90.00,
+            'behavior_score' => 85.50,
+            'productivity_score' => 88.00,
+            'interest_return_score' => 92.00,
+        ]);
+        $this->assertSame('100.00', (string) $row->fresh()->attendance_score);
+        $this->assertFalse(Schema::hasColumn('attendance', 'performance_score'));
+    }
+
+    public function test_two_team_leaders_save_separate_daily_scores(): void
+    {
+        app()->setLocale('en');
+        $leaderB = User::factory()->teamLeader()->create([
+            'name_en' => 'Leader Two',
+            'language_preference' => 'en',
+        ]);
+        app(TeamMembershipService::class)->syncLeaders($this->employee, [
+            $this->leader->id,
+            $leaderB->id,
+        ]);
+
+        $row = $this->closedShiftWithReport();
+
+        $this->actingAs($this->leader)
+            ->put(route('team-leader.reports.scores', $row), [
+                'performance_score' => 90,
+                'behavior_score' => 90,
+                'productivity_score' => 90,
+                'interest_return_score' => 90,
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($leaderB)
+            ->put(route('team-leader.reports.scores', $row), [
+                'performance_score' => 70,
+                'behavior_score' => 70,
+                'productivity_score' => 70,
+                'interest_return_score' => 70,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('attendance_daily_scores', [
+            'attendance_id' => $row->id,
+            'team_leader_id' => $this->leader->id,
+            'performance_score' => 90.00,
+        ]);
+        $this->assertDatabaseHas('attendance_daily_scores', [
+            'attendance_id' => $row->id,
+            'team_leader_id' => $leaderB->id,
+            'performance_score' => 70.00,
+        ]);
+        $this->assertSame(2, AttendanceDailyScore::query()->where('attendance_id', $row->id)->count());
+
+        $this->actingAs($this->leader)
+            ->get(route('team-leader.reports.show', $row))
+            ->assertOk()
+            ->assertSee('Leader Two', false)
+            ->assertSee('70.00', false)
+            ->assertSee('90.00', false);
     }
 
     public function test_validation_rejects_score_over_100(): void
@@ -137,7 +198,12 @@ class DailyScoreTest extends TestCase
             ])
             ->assertRedirect();
 
-        $this->assertSame('70.00', (string) $row->fresh()->performance_score);
+        $this->assertDatabaseHas('attendance_daily_scores', [
+            'attendance_id' => $row->id,
+            'team_leader_id' => $this->manager->id,
+            'scored_by' => $this->manager->id,
+            'performance_score' => 70.00,
+        ]);
     }
 
     public function test_employee_cannot_score(): void

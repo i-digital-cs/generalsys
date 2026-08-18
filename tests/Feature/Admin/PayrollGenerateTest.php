@@ -7,6 +7,7 @@ use App\Models\Attendance;
 use App\Models\PayrollRecord;
 use App\Models\RestDay;
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 use App\Services\Payroll\MonthCoverageException;
 use App\Services\Payroll\PayrollGenerator;
 use Carbon\Carbon;
@@ -204,6 +205,54 @@ class PayrollGenerateTest extends TestCase
         $this->assertSame(4, (int) $draft->rest_days);
         // 26 × (5000/30) = 4333.33
         $this->assertEqualsWithDelta(4333.33, (float) $draft->gross_pay, 0.01);
+    }
+
+    public function test_generate_by_team_leader_uses_membership_not_a_single_column(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $leaderA = User::factory()->teamLeader()->create(['base_salary' => 4000]);
+        $leaderB = User::factory()->teamLeader()->create(['base_salary' => 4000]);
+        $leaderC = User::factory()->teamLeader()->create(['base_salary' => 4000]);
+        $member = User::factory()->employee()->create(['base_salary' => 5000]);
+        $outsider = User::factory()->employee()->create([
+            'team_leader_id' => $leaderC->id,
+            'base_salary' => 3000,
+        ]);
+
+        app(TeamMembershipService::class)->syncLeaders($member, [
+            $leaderA->id,
+            $leaderB->id,
+        ]);
+
+        $ids = app(PayrollGenerator::class)->eligibleUserIds($leaderA->id);
+
+        $this->assertContains($member->id, $ids);
+        $this->assertContains($leaderA->id, $ids);
+        $this->assertNotContains($outsider->id, $ids);
+        $this->assertNotContains($leaderC->id, $ids);
+
+        $idsB = app(PayrollGenerator::class)->eligibleUserIds($leaderB->id);
+        $this->assertContains($member->id, $idsB);
+        $this->assertContains($leaderB->id, $idsB);
+        $this->assertNotContains($outsider->id, $idsB);
+
+        $this->seedFullMonth($member, 6, 2026);
+        $this->seedFullMonth($leaderA, 6, 2026);
+
+        $this->actingAs($manager)
+            ->post(route('admin.payroll.generate'), [
+                'month' => 6,
+                'year' => 2026,
+                'team_leader_id' => $leaderA->id,
+            ])
+            ->assertRedirect();
+
+        $this->assertTrue(
+            PayrollRecord::query()->where('user_id', $member->id)->where('month', 6)->exists()
+        );
+        $this->assertFalse(
+            PayrollRecord::query()->where('user_id', $outsider->id)->where('month', 6)->exists()
+        );
     }
 
     public function test_draft_show_refreshes_rest_days_after_pool_change(): void

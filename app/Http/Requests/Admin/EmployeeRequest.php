@@ -36,9 +36,24 @@ abstract class EmployeeRequest extends FormRequest
             ),
         ];
 
-        // Accountant / Assistant report to Admin — never assign a team leader.
-        if (in_array($this->input('role'), [User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT], true)) {
-            $payload['team_leader_id'] = null;
+        // Only EMPLOYEE accounts get team leaders (not TL / Accountant / Assistant).
+        if (! User::roleMayHaveTeamLeaders((string) $this->input('role'))) {
+            $payload['team_leader_ids'] = [];
+        } else {
+            $ids = [];
+            foreach ((array) $this->input('team_leader_ids', []) as $raw) {
+                if ($raw === null || $raw === '') {
+                    continue;
+                }
+                $id = (int) $raw;
+                if ($id > 0) {
+                    $ids[] = $id;
+                }
+            }
+            if ($ids === [] && filled($this->input('team_leader_id'))) {
+                $ids[] = (int) $this->input('team_leader_id');
+            }
+            $payload['team_leader_ids'] = $ids;
         }
 
         $rows = $this->input('default_shifts', []);
@@ -72,7 +87,41 @@ abstract class EmployeeRequest extends FormRequest
 
         $payload['default_shifts'] = array_values(is_array($rows) ? $rows : []);
 
+        foreach (['base_salary', 'online_half_day_rate', 'online_full_day_rate', 'overtime_hourly_rate'] as $moneyField) {
+            $payload[$moneyField] = $this->normalizeMoney($this->input($moneyField));
+        }
+
         $this->merge($payload);
+    }
+
+    /**
+     * Accept 5500, 5,500, 5500.00, and Arabic-Indic digits. Browser number
+     * inputs in ar/RTL often insert grouping separators that fail `numeric`.
+     */
+    private function normalizeMoney(mixed $value): mixed
+    {
+        if (! is_string($value) && ! is_int($value) && ! is_float($value)) {
+            return $value;
+        }
+
+        $value = trim((string) $value);
+        if ($value === '') {
+            return $value;
+        }
+
+        $value = strtr($value, [
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
+            '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+            '٫' => '.', '٬' => '', "\u{00A0}" => '', ' ' => '',
+        ]);
+
+        if (preg_match('/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/', $value) === 1) {
+            $value = str_replace(',', '', $value);
+        }
+
+        return $value;
     }
 
     /**
@@ -124,8 +173,17 @@ abstract class EmployeeRequest extends FormRequest
             'job_title_en' => ['nullable', 'string', 'max:150'],
             'currency' => ['required', Rule::in(['EGP', 'AED'])],
             'language_preference' => ['required', Rule::in(['ar', 'en'])],
-            'team_leader_id' => [
+            'team_leader_ids' => ['nullable', 'array', 'max:2'],
+            'team_leader_ids.0' => [
+                Rule::requiredIf(fn () => $this->input('role') === User::ROLE_EMPLOYEE),
                 'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where('role', User::ROLE_TEAM_LEADER),
+            ],
+            'team_leader_ids.1' => [
+                'nullable',
+                'integer',
+                'different:team_leader_ids.0',
                 Rule::exists('users', 'id')->where('role', User::ROLE_TEAM_LEADER),
             ],
             'default_shifts' => ['required', 'array', 'min:1', 'max:2'],
@@ -207,6 +265,15 @@ abstract class EmployeeRequest extends FormRequest
                     return;
                 }
                 $types[$type] = true;
+            }
+
+            $first = $this->input('team_leader_ids.0');
+            $second = $this->input('team_leader_ids.1');
+            if (filled($first) && filled($second) && (string) $first === (string) $second) {
+                $validator->errors()->add(
+                    'team_leader_ids.1',
+                    __('employees.team_leaders_distinct'),
+                );
             }
         });
     }

@@ -84,7 +84,7 @@ class PayrollController extends Controller
             $payroll = $this->drafts->recalculate($payroll);
         }
 
-        $payroll->load(['user', 'adjustments']);
+        $payroll->load(['user.teamLeaders', 'adjustments']);
 
         $scores = null;
         $evaluationText = null;

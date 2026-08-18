@@ -34,7 +34,6 @@ class UserFactory extends Factory
             'role' => User::ROLE_EMPLOYEE,
             'currency' => 'EGP',
             'language_preference' => 'ar',
-            'team_leader_id' => null,
             'base_salary' => 0,
             'online_half_day_rate' => 0,
             'online_full_day_rate' => 0,
@@ -51,7 +50,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => User::ROLE_MANAGER,
-            'team_leader_id' => null,
             'job_title_ar' => 'مدير',
             'job_title_en' => 'Manager',
         ]);
@@ -61,7 +59,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => User::ROLE_TEAM_LEADER,
-            'team_leader_id' => null,
             'job_title_ar' => 'قائد فريق',
             'job_title_en' => 'Team Leader',
         ]);
@@ -80,7 +77,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => User::ROLE_ACCOUNTANT,
-            'team_leader_id' => null,
             'job_title_ar' => 'محاسب',
             'job_title_en' => 'Accountant',
         ]);
@@ -90,7 +86,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => User::ROLE_ASSISTANT,
-            'team_leader_id' => null,
             'job_title_ar' => 'مساعد إداري',
             'job_title_en' => 'Admin Assistant',
         ]);

@@ -1,7 +1,7 @@
 | Account | Role | What you should see |
 |---------|------|---------------------|
 | `leader@hrpro.test` | Team Leader | Dashboard, **Clock**, **Daily report**, **My Requests**, Shifts, **Rest Days**, Approvals, Reports. No money. |
-| `admin@hrpro.test` | Manager | Admin dashboard, **Clock**, **Daily report**, **My Requests**, Employees (rest dates on edit), Approvals, **Rest Days**, Reports, settings. |
+| `admin@hrpro.test` | Manager | Admin dashboard, **Clock**, **Daily report**, **My Requests**, Employees (rest dates on edit), Approvals, **Rest Days**, Reports, settings. **Login as** on Employees when Settings → login-as-user is on. |
 | `radwa@hrpro.test` | Employee (EGP) | Dashboard, Clock, Daily report, **My Requests**. Under Team Leader. |
 | `mona@hrpro.test` | Employee (AED) | Same; also under Team Leader. |
 

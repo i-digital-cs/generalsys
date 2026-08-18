@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\RestDay;
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -99,6 +100,21 @@ class EmployeeProfileTest extends TestCase
         $this->actingAs($leader)
             ->get(route('employee.profile.show', $member))
             ->assertForbidden();
+    }
+
+    public function test_profile_shows_both_team_leaders(): void
+    {
+        $a = User::factory()->teamLeader()->create(['name_en' => 'Profile Lead A']);
+        $b = User::factory()->teamLeader()->create(['name_en' => 'Profile Lead B']);
+        $employee = User::factory()->employee()->create();
+        $employee->profile()->create(['employee_code' => 'EMP-TL2']);
+        app(TeamMembershipService::class)->syncLeaders($employee, [$a->id, $b->id]);
+
+        $this->withSession(['locale' => 'en'])->actingAs($employee)
+            ->get(route('employee.profile'))
+            ->assertOk()
+            ->assertSee('Profile Lead A')
+            ->assertSee('Profile Lead B');
     }
 
     public function test_guest_is_redirected(): void

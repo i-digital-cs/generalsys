@@ -81,6 +81,7 @@ class PermissionForceTest extends TestCase
 
         $row->refresh();
         $this->assertSame(Permission::STATUS_FORCED, $row->status);
+        $this->assertSame($this->employee->id, $row->decided_by);
         $this->assertTrue($row->is_double_penalty);
         $this->assertSame('240.00', (string) $row->penalty_amount);
     }
@@ -96,6 +97,7 @@ class PermissionForceTest extends TestCase
 
         $row->refresh();
         $this->assertSame(Permission::STATUS_FORCED, $row->status);
+        $this->assertSame($this->leader->id, $row->decided_by);
         $this->assertTrue($row->is_double_penalty);
         $this->assertSame('240.00', (string) $row->penalty_amount);
     }
@@ -137,6 +139,7 @@ class PermissionForceTest extends TestCase
             ->assertRedirect(route('team-leader.approvals', ['filter' => 'decided']));
 
         $this->assertSame(Permission::STATUS_FORCED, $row->fresh()->status);
+        $this->assertSame($manager->id, $row->fresh()->decided_by);
         $this->assertTrue($row->fresh()->is_double_penalty);
     }
 

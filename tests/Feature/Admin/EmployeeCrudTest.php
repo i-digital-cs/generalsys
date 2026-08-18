@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -13,11 +14,18 @@ class EmployeeCrudTest extends TestCase
 
     private User $manager;
 
+    private ?User $leader = null;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->manager = User::factory()->manager()->create();
+    }
+
+    private function defaultLeader(): User
+    {
+        return $this->leader ??= User::factory()->teamLeader()->create();
     }
 
     /**
@@ -33,7 +41,7 @@ class EmployeeCrudTest extends TestCase
             'role' => 'EMPLOYEE',
             'currency' => 'EGP',
             'language_preference' => 'ar',
-            'team_leader_id' => null,
+            'team_leader_ids' => [$this->defaultLeader()->id],
             'default_shifts' => [
                 [
                     'shift_type' => 'FULL_TIME',
@@ -80,7 +88,7 @@ class EmployeeCrudTest extends TestCase
         $leader = User::factory()->teamLeader()->create();
 
         $this->actingAs($this->manager)
-            ->post(route('admin.employees.store'), $this->validPayload(['team_leader_id' => $leader->id]))
+            ->post(route('admin.employees.store'), $this->validPayload(['team_leader_ids' => [$leader->id]]))
             ->assertRedirect();
 
         $employee = User::where('email', 'new.employee@hrpro.test')->firstOrFail();
@@ -140,6 +148,56 @@ class EmployeeCrudTest extends TestCase
         $this->assertSame(1, User::count());
     }
 
+    public function test_create_form_salary_fields_accept_plain_amounts(): void
+    {
+        $html = $this->actingAs($this->manager)
+            ->get(route('admin.employees.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<input\s+type="text"\s+inputmode="decimal"[^>]*name="base_salary"/s',
+            $html,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input\s+type="number"[^>]*name="base_salary"/s',
+            $html,
+        );
+    }
+
+    public function test_store_accepts_four_digit_salary(): void
+    {
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'base_salary' => 5500,
+            ]))
+            ->assertRedirect();
+
+        $this->assertSame('5500.00', User::where('email', 'new.employee@hrpro.test')->value('base_salary'));
+    }
+
+    public function test_store_accepts_salary_with_thousands_separator(): void
+    {
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'base_salary' => '5,500',
+            ]))
+            ->assertRedirect();
+
+        $this->assertSame('5500.00', User::where('email', 'new.employee@hrpro.test')->value('base_salary'));
+    }
+
+    public function test_store_accepts_salary_in_arabic_indic_digits(): void
+    {
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'base_salary' => '٥٥٠٠',
+            ]))
+            ->assertRedirect();
+
+        $this->assertSame('5500.00', User::where('email', 'new.employee@hrpro.test')->value('base_salary'));
+    }
+
     public function test_store_validation_rejects_duplicate_email(): void
     {
         User::factory()->employee()->create(['email' => 'new.employee@hrpro.test']);
@@ -170,8 +228,14 @@ class EmployeeCrudTest extends TestCase
             ->assertOk()
             ->assertSee('name="job_title_ar"', false)
             ->assertSee('name="job_title_en"', false)
+            ->assertSee('name="team_leader_ids[0]"', false)
+            ->assertSee('name="team_leader_ids[1]"', false)
             ->assertSee(__('employees.fields.job_title_ar'))
-            ->assertSee(__('employees.fields.job_title_en'));
+            ->assertSee(__('employees.fields.job_title_en'))
+            ->assertSee(__('employees.team_leader_1'))
+            ->assertSee(__('employees.team_leader_2'))
+            ->assertSee(__('employees.team_leader_1_hint'))
+            ->assertSee(__('employees.team_leader_2_hint'));
     }
 
     public function test_index_shows_and_searches_job_title(): void
@@ -383,7 +447,7 @@ class EmployeeCrudTest extends TestCase
             ->post(route('admin.employees.store'), $payload)
             ->assertSessionHasErrors(['qualifications.0.degree', 'contacts.0.phone']);
 
-        $this->assertSame(1, User::count());
+        $this->assertNull(User::where('email', 'new.employee@hrpro.test')->first());
     }
 
     public function test_update_replaces_contacts_and_qualifications_rows(): void
@@ -521,5 +585,105 @@ class EmployeeCrudTest extends TestCase
             ->get(route('admin.employees.index'))
             ->assertOk()
             ->assertSee(__('employees.empty_title'));
+    }
+
+    public function test_manager_creates_employee_with_two_team_leaders(): void
+    {
+        $first = User::factory()->teamLeader()->create(['name_en' => 'Leader Alpha']);
+        $second = User::factory()->teamLeader()->create(['name_en' => 'Leader Beta']);
+
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'team_leader_ids' => [$first->id, $second->id],
+            ]))
+            ->assertRedirect();
+
+        $employee = User::where('email', 'new.employee@hrpro.test')->firstOrFail();
+        $this->assertEqualsCanonicalizing(
+            [$first->id, $second->id],
+            $employee->teamLeaders()->pluck('users.id')->all(),
+        );
+    }
+
+    public function test_store_requires_first_team_leader_for_employee(): void
+    {
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'team_leader_ids' => [],
+            ]))
+            ->assertSessionHasErrors('team_leader_ids.0');
+    }
+
+    public function test_store_rejects_the_same_team_leader_twice(): void
+    {
+        $leader = User::factory()->teamLeader()->create();
+
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'team_leader_ids' => [$leader->id, $leader->id],
+            ]))
+            ->assertSessionHasErrors('team_leader_ids.1');
+    }
+
+    public function test_employee_form_script_hides_selected_leader_from_the_other_select(): void
+    {
+        $js = file_get_contents(base_path('resources/js/pages/employee-form.js'));
+
+        $this->assertIsString($js);
+        $this->assertStringContainsString('syncExclusiveLeaders', $js);
+        $this->assertStringContainsString('option.hidden = taken', $js);
+        $this->assertStringContainsString('option.disabled = taken', $js);
+        $this->assertStringContainsString("'TEAM_LEADER'", $js);
+    }
+
+    public function test_store_ignores_team_leaders_when_role_is_team_leader(): void
+    {
+        $other = User::factory()->teamLeader()->create();
+
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'email' => 'new.leader@hrpro.test',
+                'name_en' => 'New Leader',
+                'role' => User::ROLE_TEAM_LEADER,
+                'team_leader_ids' => [$other->id],
+            ]))
+            ->assertRedirect();
+
+        $created = User::query()->where('email', 'new.leader@hrpro.test')->firstOrFail();
+        $this->assertSame(User::ROLE_TEAM_LEADER, $created->role);
+        $this->assertSame([], $created->teamLeaders()->pluck('users.id')->all());
+    }
+
+    public function test_index_and_profile_show_both_team_leaders(): void
+    {
+        $first = User::factory()->teamLeader()->create(['name_en' => 'Alpha Lead', 'name_ar' => 'قائد ألفا']);
+        $second = User::factory()->teamLeader()->create(['name_en' => 'Beta Lead', 'name_ar' => 'قائد بيتا']);
+        $employee = User::factory()->employee()->create(['name_en' => 'Dual Member']);
+        $employee->profile()->create(['employee_code' => 'EMP-D2']);
+        app(TeamMembershipService::class)
+            ->syncLeaders($employee, [$first->id, $second->id]);
+
+        $this->withSession(['locale' => 'en'])->actingAs($this->manager)
+            ->get(route('admin.employees.index'))
+            ->assertOk()
+            ->assertSee(__('employees.team_leader_1'))
+            ->assertSee(__('employees.team_leader_2'))
+            ->assertSee('Alpha Lead')
+            ->assertSee('Beta Lead');
+
+        $outsider = User::factory()->employee()->create(['name_en' => 'Solo Member']);
+        $outsider->profile()->create(['employee_code' => 'EMP-S1']);
+
+        $this->withSession(['locale' => 'en'])->actingAs($this->manager)
+            ->get(route('admin.employees.index', ['q' => 'Alpha Lead']))
+            ->assertOk()
+            ->assertSee('Dual Member')
+            ->assertDontSee('Solo Member');
+
+        $this->withSession(['locale' => 'en'])->actingAs($employee)
+            ->get(route('employee.profile'))
+            ->assertOk()
+            ->assertSee('Alpha Lead')
+            ->assertSee('Beta Lead');
     }
 }

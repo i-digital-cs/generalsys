@@ -27,6 +27,7 @@ return [
     'before' => 'يجب أن يكون :attribute تاريخًا يسبق :date.',
     'after_or_equal' => 'يجب أن يكون :attribute تاريخًا لاحقًا لـ :date أو مساويًا له.',
     'in' => 'القيمة المحددة لـ :attribute غير صالحة.',
+    'different' => 'يجب أن يختلف :attribute عن :other.',
     'mimes' => 'يجب أن يكون :attribute ملفًا من النوع: :values.',
     'confirmed' => 'تأكيد :attribute غير متطابق.',
 
@@ -80,6 +81,8 @@ return [
         'currency' => 'العملة',
         'language_preference' => 'اللغة',
         'team_leader_id' => 'قائد الفريق',
+        'team_leader_ids.0' => 'قائد الفريق 1',
+        'team_leader_ids.1' => 'قائد الفريق 2',
         'shift_type_default' => 'نوع الدوام الافتراضي',
         'work_start_time' => 'موعد الحضور',
         'work_end_time' => 'موعد الانصراف',

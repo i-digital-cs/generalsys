@@ -7,6 +7,7 @@ use App\Models\RestDay;
 use App\Models\User;
 use App\Models\Vacation;
 use App\Services\Employees\RestDayService;
+use App\Services\Employees\TeamMembershipService;
 use App\Services\Notifications\AppNotificationService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  * - Cost = that rest day (removed on approve). No separate vacation-credit UI.
  * - Reject: rest day stays available.
  * - Force (A): REJECTED → FORCED; keep rest day; off day still counts as vacation.
- * - Employee → TL decides; TL/Manager → Manager decides.
+ * - Employee → either membership TL decides; TL/Manager → Manager decides.
  * - Force: self, TL (team), or Manager (same as leave/late).
  */
 class VacationRequestService
@@ -27,6 +28,7 @@ class VacationRequestService
     public function __construct(
         private readonly AppNotificationService $notifications,
         private readonly RestDayService $restDays,
+        private readonly TeamMembershipService $membership,
     ) {}
 
     /** Inclusive calendar days between two Y-m-d dates. */
@@ -76,7 +78,13 @@ class VacationRequestService
             throw VacationRequestException::cannotReplaceSameDay();
         }
 
-        $teamLeaderId = $user->isEmployee() ? $user->team_leader_id : null;
+        if ($user->isEmployee() && $this->membership->leaderIds($user) === []) {
+            throw VacationRequestException::noTeamLeader();
+        }
+
+        $teamLeaderId = $user->isEmployee()
+            ? ($this->membership->leaderIds($user)[0] ?? null)
+            : null;
 
         return DB::transaction(function () use ($user, $data, $start, $end, $days, $restDay, $teamLeaderId) {
             $vacation = Vacation::query()->create([
@@ -102,6 +110,7 @@ class VacationRequestService
         $perPage = min(max($perPage, 1), 50);
 
         return Vacation::query()
+            ->with('decidedBy')
             ->where('user_id', $user->id)
             ->orderByDesc('start_date')
             ->orderByDesc('id')
@@ -116,10 +125,10 @@ class VacationRequestService
         $perPage = min(max($perPage, 1), 50);
         $filter = in_array($filter, ['pending', 'decided', 'all'], true) ? $filter : 'pending';
 
-        $query = Vacation::query()->with('user');
+        $query = Vacation::query()->with(['user.teamLeaders', 'decidedBy']);
 
         if ($actor->isTeamLeader()) {
-            $query->where('team_leader_id', $actor->id);
+            $query->whereHas('user', fn ($q) => $q->where('role', User::ROLE_EMPLOYEE)->ledBy($actor->id));
         } elseif (! $actor->isManager()) {
             abort(403);
         }
@@ -164,6 +173,7 @@ class VacationRequestService
             $vacation->update([
                 'status' => Vacation::STATUS_APPROVED,
                 'replace_rest_day_id' => null,
+                'decided_by' => $actor->id,
             ]);
             $vacation = $vacation->refresh();
 
@@ -183,6 +193,7 @@ class VacationRequestService
             $vacation->update([
                 'status' => Vacation::STATUS_REJECTED,
                 'replace_rest_day_id' => null,
+                'decided_by' => $actor->id,
             ]);
             $vacation = $vacation->refresh();
 
@@ -209,6 +220,7 @@ class VacationRequestService
             $vacation->update([
                 'status' => Vacation::STATUS_FORCED,
                 'replace_rest_day_id' => null,
+                'decided_by' => $actor->id,
             ]);
             $vacation = $vacation->refresh();
 
@@ -226,12 +238,7 @@ class VacationRequestService
             return true;
         }
 
-        if (! $actor->isTeamLeader()) {
-            return false;
-        }
-
-        return (int) $vacation->team_leader_id === (int) $actor->id
-            || (int) $vacation->user?->team_leader_id === (int) $actor->id;
+        return $this->teamLeaderLeadsOwner($actor, $vacation->user);
     }
 
     public function actorMayForce(User $actor, Vacation $vacation): bool
@@ -246,12 +253,7 @@ class VacationRequestService
             return true;
         }
 
-        if ($actor->isTeamLeader()) {
-            return (int) $vacation->team_leader_id === (int) $actor->id
-                || (int) $vacation->user?->team_leader_id === (int) $actor->id;
-        }
-
-        return false;
+        return $this->teamLeaderLeadsOwner($actor, $vacation->user);
     }
 
     public function hasOverlap(User $user, string $startDate, string $endDate, ?int $exceptId = null): bool
@@ -271,6 +273,14 @@ class VacationRequestService
         }
 
         return $query->exists();
+    }
+
+    private function teamLeaderLeadsOwner(User $actor, ?User $owner): bool
+    {
+        return $actor->isTeamLeader()
+            && $owner instanceof User
+            && $owner->isEmployee()
+            && $this->membership->leads($actor, $owner);
     }
 
     private function assertActorMayDecide(User $actor, Vacation $vacation): void

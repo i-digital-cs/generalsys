@@ -4,6 +4,7 @@ namespace Tests\Feature\Employee;
 
 use App\Models\PayrollRecord;
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -58,6 +59,30 @@ class MySalaryTest extends TestCase
             ->assertOk()
             ->assertSee(__('salary.read_only_hint'), false)
             ->assertSee(__('payroll.earnings'), false);
+    }
+
+    public function test_payslip_shows_both_team_leaders(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $a = User::factory()->teamLeader()->create(['name_en' => 'Payslip Lead A']);
+        $b = User::factory()->teamLeader()->create(['name_en' => 'Payslip Lead B']);
+        $employee = User::factory()->employee()->create();
+        app(TeamMembershipService::class)->syncLeaders($employee, [$a->id, $b->id]);
+
+        $approved = PayrollRecord::factory()->create([
+            'user_id' => $employee->id,
+            'month' => 8,
+            'year' => 2026,
+            'status' => PayrollRecord::STATUS_APPROVED,
+            'net_pay' => 2808,
+            'created_by' => $manager->id,
+        ]);
+
+        $this->withSession(['locale' => 'en'])->actingAs($employee)
+            ->get(route('employee.salary.show', $approved))
+            ->assertOk()
+            ->assertSee('Payslip Lead A')
+            ->assertSee('Payslip Lead B');
     }
 
     public function test_employee_cannot_open_own_draft(): void

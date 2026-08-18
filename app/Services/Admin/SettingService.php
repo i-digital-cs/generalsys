@@ -21,6 +21,8 @@ class SettingService
 
     public const KEY_OFFICE_RADIUS_METERS = 'office_radius_meters';
 
+    public const KEY_IMPERSONATION_ENABLED = 'impersonation_enabled';
+
     public const CACHE_MULTIPLIERS = 'settings.payroll_multipliers';
 
     /** @var list<string> */
@@ -42,6 +44,16 @@ class SettingService
     public function set(string $key, ?string $value): void
     {
         Setting::query()->updateOrCreate(['key' => $key], ['value' => $value]);
+    }
+
+    public function boolean(string $key, bool $default = false): bool
+    {
+        $value = $this->get($key);
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        return $value === '1' || strtolower($value) === 'true';
     }
 
     public function multiplier(string $name): float

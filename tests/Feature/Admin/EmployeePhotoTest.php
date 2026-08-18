@@ -32,6 +32,7 @@ class EmployeePhotoTest extends TestCase
             'name_ar' => 'موظف', 'name_en' => 'Employee', 'email' => 'photo@hrpro.test',
             'password' => 'password123', 'role' => 'EMPLOYEE', 'currency' => 'EGP',
             'language_preference' => 'ar', 'shift_type_default' => 'FULL_TIME', 'status' => 'ACTIVE',
+            'team_leader_ids' => [User::factory()->teamLeader()->create()->id],
             'base_salary' => 0, 'online_half_day_rate' => 0, 'online_full_day_rate' => 0,
             'overtime_hourly_rate' => 0,
             'profile' => ['employee_code' => 'EMP-PH1'],
@@ -95,7 +96,7 @@ class EmployeePhotoTest extends TestCase
             ->post(route('admin.employees.store'), $this->basePayload() + ['photo' => $pdf])
             ->assertSessionHasErrors('photo');
 
-        $this->assertSame(1, User::count());
+        $this->assertNull(User::where('email', 'photo@hrpro.test')->first());
     }
 
     public function test_photo_rejects_oversize(): void

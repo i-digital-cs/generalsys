@@ -21,6 +21,8 @@ return [
         'reason' => 'Reason',
         'status' => 'Status',
         'interval' => 'Interval',
+        'submitted_for_team' => 'Submitted for team',
+        'decided_by' => 'Decided by',
     ],
     'types' => [
         'LEAVE_PERMISSION' => 'Leave permission',

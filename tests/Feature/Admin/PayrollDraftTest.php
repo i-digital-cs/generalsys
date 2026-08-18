@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Attendance;
+use App\Models\AttendanceDailyScore;
 use App\Models\PayrollAdjustment;
 use App\Models\PayrollRecord;
 use App\Models\User;
@@ -48,13 +49,21 @@ class PayrollDraftTest extends TestCase
     {
         [$manager, $payroll] = $this->draftPayslip();
         $employee = $payroll->user;
+        $leader = User::factory()->teamLeader()->create();
 
         Attendance::query()->where('user_id', $employee->id)->update([
+            'attendance_score' => 100,
+        ]);
+
+        $day = Attendance::query()->where('user_id', $employee->id)->first();
+        AttendanceDailyScore::factory()->create([
+            'attendance_id' => $day->id,
+            'team_leader_id' => $leader->id,
+            'scored_by' => $leader->id,
             'performance_score' => 80,
             'behavior_score' => 90,
             'productivity_score' => 70,
             'interest_return_score' => 60,
-            'attendance_score' => 100,
         ]);
 
         $this->actingAs($manager)

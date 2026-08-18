@@ -15,25 +15,24 @@ use App\Notifications\PermissionDecisionNotification;
 use App\Notifications\PermissionSubmittedNotification;
 use App\Notifications\VacationDecisionNotification;
 use App\Notifications\VacationSubmittedNotification;
+use App\Services\Employees\TeamMembershipService;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
  * In-app database notifications (Hostinger-safe; no websockets).
- * Managers are CC'd on every permission/report action.
+ * Membership TLs (max two) are notified on employee events; managers are CC'd.
  */
 class AppNotificationService
 {
+    public function __construct(private readonly TeamMembershipService $membership) {}
+
     public function vacationSubmitted(Vacation $vacation): void
     {
         $vacation->loadMissing('user');
         $notification = new VacationSubmittedNotification($vacation);
 
-        $leaderId = $vacation->team_leader_id ?? $vacation->user?->team_leader_id;
-        if ($leaderId !== null) {
-            User::query()->find($leaderId)?->notify($notification);
-        }
-
+        $this->notifyMembershipLeaders($vacation->user, $notification);
         $this->notifyManagers($notification);
     }
 
@@ -48,10 +47,7 @@ class AppNotificationService
             $vacation->user->notify($notification);
         }
 
-        if ($actor === null || ! $actor->isTeamLeader()) {
-            $this->notifyTeamLeaderOfVacation($vacation, $notification, $actor);
-        }
-
+        $this->notifyMembershipLeaders($vacation->user, $notification, $actor);
         $this->notifyManagers($notification, $actor);
     }
 
@@ -69,7 +65,7 @@ class AppNotificationService
             $vacation->user->notify($notification);
         }
 
-        $this->notifyTeamLeaderOfVacation($vacation, $notification, $actor);
+        $this->notifyMembershipLeaders($vacation->user, $notification, $actor);
         $this->notifyManagers($notification, $actor);
     }
 
@@ -78,7 +74,7 @@ class AppNotificationService
         $permission->loadMissing('user');
         $notification = new PermissionSubmittedNotification($permission);
 
-        $this->notifyTeamLeaderOf($permission, $notification);
+        $this->notifyMembershipLeaders($permission->user, $notification);
         $this->notifyManagers($notification);
     }
 
@@ -93,10 +89,7 @@ class AppNotificationService
             $permission->user->notify($notification);
         }
 
-        if ($actor === null || ! $actor->isTeamLeader()) {
-            $this->notifyTeamLeaderOf($permission, $notification, $actor);
-        }
-
+        $this->notifyMembershipLeaders($permission->user, $notification, $actor);
         $this->notifyManagers($notification, $actor);
     }
 
@@ -115,7 +108,7 @@ class AppNotificationService
             $permission->user->notify($notification);
         }
 
-        $this->notifyTeamLeaderOf($permission, $notification, $actor);
+        $this->notifyMembershipLeaders($permission->user, $notification, $actor);
         $this->notifyManagers($notification, $actor);
     }
 
@@ -124,16 +117,13 @@ class AppNotificationService
         $attendance->loadMissing('user');
         $notification = new DailyReportSubmittedNotification($attendance);
 
-        $leaderId = $attendance->user?->team_leader_id;
-        if ($leaderId !== null) {
-            User::query()->find($leaderId)?->notify($notification);
-        }
+        $this->notifyMembershipLeaders($attendance->user, $notification);
 
         $this->notifyOperationsAdmins($notification);
     }
 
     /**
-     * Missing daily report warning: notify the person's team leader
+     * Missing daily report warning: notify the person's team leaders
      * (employees only) + all managers and assistants.
      *
      * @return int recipients notified
@@ -147,9 +137,8 @@ class AppNotificationService
         $notification = new DailyReportMissingNotification($attendance, $person, $date, $kind);
         $sent = 0;
 
-        if ($person->isEmployee() && $person->team_leader_id !== null) {
-            User::query()->find($person->team_leader_id)?->notify($notification);
-            $sent++;
+        if ($person->isEmployee()) {
+            $sent += $this->notifyMembershipLeaders($person, $notification);
         }
 
         $ops = $this->activeOperationsAdmins();
@@ -169,6 +158,7 @@ class AppNotificationService
             $attendance->user->notify($notification);
         }
 
+        $this->notifyMembershipLeaders($attendance->user, $notification, $actor);
         $this->notifyManagers($notification, $actor);
     }
 
@@ -184,10 +174,7 @@ class AppNotificationService
             $attendance->user->notify($notification);
         }
 
-        $leaderId = $attendance->user?->team_leader_id;
-        if ($leaderId !== null) {
-            User::query()->find($leaderId)?->notify($notification);
-        }
+        $this->notifyMembershipLeaders($attendance->user, $notification);
 
         $this->notifyOperationsAdmins($notification);
     }
@@ -213,48 +200,40 @@ class AppNotificationService
             $attendance->user->notify($notification);
         }
 
-        $leaderId = $attendance->user?->team_leader_id;
-        if ($leaderId !== null) {
-            User::query()->find($leaderId)?->notify($notification);
-        }
+        $this->notifyMembershipLeaders($attendance->user, $notification);
 
         $this->notifyOperationsAdmins($notification);
     }
 
-    private function notifyTeamLeaderOf(
-        Permission $permission,
-        object $notification,
-        ?User $except = null,
-    ): void {
-        $leaderId = $permission->team_leader_id ?? $permission->user?->team_leader_id;
-
-        if ($leaderId === null) {
-            return;
+    /**
+     * Notify every TEAM_LEADER on the employee's membership (max two).
+     *
+     * @return int leaders notified
+     */
+    private function notifyMembershipLeaders(?User $person, object $notification, ?User $except = null): int
+    {
+        if ($person === null) {
+            return 0;
         }
 
-        if ($except !== null && (int) $except->id === (int) $leaderId) {
-            return;
+        $ids = $this->membership->leaderIds($person);
+        if ($ids === []) {
+            return 0;
         }
 
-        User::query()->find($leaderId)?->notify($notification);
-    }
+        $exceptId = $except !== null ? (int) $except->id : null;
+        $sent = 0;
 
-    private function notifyTeamLeaderOfVacation(
-        Vacation $vacation,
-        object $notification,
-        ?User $except = null,
-    ): void {
-        $leaderId = $vacation->team_leader_id ?? $vacation->user?->team_leader_id;
+        foreach (User::query()->whereIn('id', $ids)->where('status', User::STATUS_ACTIVE)->get() as $leader) {
+            if ($exceptId !== null && (int) $leader->id === $exceptId) {
+                continue;
+            }
 
-        if ($leaderId === null) {
-            return;
+            $leader->notify($notification);
+            $sent++;
         }
 
-        if ($except !== null && (int) $except->id === (int) $leaderId) {
-            return;
-        }
-
-        User::query()->find($leaderId)?->notify($notification);
+        return $sent;
     }
 
     private function notifyManagers(object $notification, ?User $except = null): void

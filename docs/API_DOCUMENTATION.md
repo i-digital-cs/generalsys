@@ -19,7 +19,7 @@
 → `200 { "token": "...", "user": { "id", "name_ar", "name_en", "job_title_ar", "job_title_en", "role", "currency", "language_preference" } }`
 
 ### POST /auth/logout · GET /auth/me
-`GET /auth/me` → current user + `team_leader_id`, `shift_type_default`, `work_start_time`, `work_end_time`.
+`GET /auth/me` → current user + first membership `team_leader_id` (accessor; column dropped), `shift_type_default`, `work_start_time`, `work_end_time`.
 
 > Rest days are managed **per date** (monthly quota, not a fixed weekday): Admin marks dates
 > Rest weekdays live on `users.rest_weekdays` (ISO weekdays). Phase-2 attendance sets
@@ -31,7 +31,7 @@
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| GET | /employees | MANAGER | List (filters: `role`, `status`, `team_leader_id`, `q`) |
+| GET | /employees | MANAGER | List (filters: `role`, `status`, `team_leader_id` via membership pivot, `q`) |
 | POST | /employees | MANAGER | Create user + profile + contract in one transaction |
 | GET | /employees/{id} | MANAGER, TL(own team), EMPLOYEE(self) | Full profile |
 | PUT | /employees/{id} | MANAGER | Update work config & rates |
@@ -93,7 +93,7 @@
 | GET | `team-leader.reports` | `/team-leader/reports?filter=` | TEAM_LEADER(team), MANAGER — `pending` \| `replied` \| `all` |
 | GET | `team-leader.reports.show` | `/team-leader/reports/{attendance}` | TEAM_LEADER(team), MANAGER |
 | POST | `team-leader.reports.respond` | `/team-leader/reports/{attendance}/respond` | TEAM_LEADER(team), MANAGER — `{ team_leader_response }` |
-| PUT | `team-leader.reports.scores` | `/team-leader/reports/{attendance}/scores` | TEAM_LEADER(team), MANAGER — `{ performance_score, behavior_score, productivity_score, interest_return_score }` (0–100); `attendance_score` read-only auto |
+| PUT | `team-leader.reports.scores` | `/team-leader/reports/{attendance}/scores` | TEAM_LEADER(team), MANAGER — `{ performance_score, behavior_score, productivity_score, interest_return_score }` (0–100) stored on `attendance_daily_scores` for **that actor**; other TL scores read-only; `attendance_score` read-only auto on `attendance` |
 
 **Clock-in rules enforced server-side (422 / session errors on violation):**
 - Preferred shift = today’s SCHEDULED `shift_assignment` if still available; else `shift_type_default` / first remaining type.
@@ -132,13 +132,13 @@
 |--------|------------|------|------|
 | GET | `employee.requests` | `/requests?tab=permissions\|vacations` | EMPLOYEE |
 | POST | `employee.requests.permissions.store` | `/requests/permissions` | EMPLOYEE — leave/late create |
-| GET | `team-leader.approvals` | `/team-leader/approvals` | TEAM_LEADER(team), MANAGER |
-| POST | `team-leader.approvals.permissions.approve` | `/team-leader/approvals/permissions/{permission}/approve` | TEAM_LEADER(team), MANAGER → `ACCEPTED`, penalty 0 |
-| POST | `team-leader.approvals.permissions.reject` | `/team-leader/approvals/permissions/{permission}/reject` | TEAM_LEADER(team), MANAGER → `REJECTED` + `penalty_amount` (minutes × rate from `config/penalties.php` until T-4.2); amount **not** shown in TL UI |
-| POST | `employee.requests.permissions.force` | `/requests/permissions/{permission}/force` | EMPLOYEE(self) — `REJECTED` → `FORCED`, penalty × `double_penalty_multiplier`, `is_double_penalty=true` |
-| POST | `team-leader.approvals.permissions.force` | `/team-leader/approvals/permissions/{permission}/force` | TEAM_LEADER(team) or MANAGER |
-| POST | `team-leader.approvals.vacations.approve` | `/team-leader/approvals/vacations/{vacation}/approve` | TEAM_LEADER(team), MANAGER → `APPROVED`; pending→used on year balance |
-| POST | `team-leader.approvals.vacations.reject` | `/team-leader/approvals/vacations/{vacation}/reject` | TEAM_LEADER(team), MANAGER → `REJECTED`; pending released |
+| GET | `team-leader.approvals` | `/team-leader/approvals` | TEAM_LEADER (either membership TL), MANAGER |
+| POST | `team-leader.approvals.permissions.approve` | `/team-leader/approvals/permissions/{permission}/approve` | TEAM_LEADER (either membership TL), MANAGER → `ACCEPTED`, penalty 0, `decided_by` |
+| POST | `team-leader.approvals.permissions.reject` | `/team-leader/approvals/permissions/{permission}/reject` | TEAM_LEADER (either membership TL), MANAGER → `REJECTED` + `penalty_amount` (minutes × rate from `config/penalties.php` until T-4.2); amount **not** shown in TL UI; `decided_by` |
+| POST | `employee.requests.permissions.force` | `/requests/permissions/{permission}/force` | EMPLOYEE(self) — `REJECTED` → `FORCED`, penalty × `double_penalty_multiplier`, `is_double_penalty=true`, `decided_by` |
+| POST | `team-leader.approvals.permissions.force` | `/team-leader/approvals/permissions/{permission}/force` | TEAM_LEADER (either membership TL) or MANAGER; `decided_by` |
+| POST | `team-leader.approvals.vacations.approve` | `/team-leader/approvals/vacations/{vacation}/approve` | TEAM_LEADER (either membership TL), MANAGER → `APPROVED`; rest-day swap; `decided_by` |
+| POST | `team-leader.approvals.vacations.reject` | `/team-leader/approvals/vacations/{vacation}/reject` | TEAM_LEADER (either membership TL), MANAGER → `REJECTED`; pending released; `decided_by` |
 
 ```json
 // PUT /permissions/44/force → 200
@@ -152,9 +152,9 @@
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
 | POST | `employee.requests.vacations.store` | ALL (self) | `{ "type", "start_date", "end_date", "days_requested" }` — allow submit with 0 remaining; 422 on overlap |
-| GET | `team-leader.approvals` | TL(team), MANAGER | Permissions + vacations queues; replace rest date visible |
-| POST | `team-leader.approvals.vacations.approve` | TL(team), MANAGER | `PENDING` → `APPROVED`; deletes swapped rest day |
-| POST | `team-leader.approvals.vacations.reject` | TL(team), MANAGER | `PENDING` → `REJECTED`; rest day stays available |
+| GET | `team-leader.approvals` | TL (either membership), MANAGER | Permissions + vacations queues; replace rest date visible; `decided_by` |
+| POST | `team-leader.approvals.vacations.approve` | TL (either membership), MANAGER | `PENDING` → `APPROVED`; deletes swapped rest day; `decided_by` |
+| POST | `team-leader.approvals.vacations.reject` | TL (either membership), MANAGER | `PENDING` → `REJECTED`; rest day stays available; `decided_by` |
 
 ---
 
@@ -177,7 +177,7 @@ Daily rotation **and** premium shifts. `shift_type` ∈ `FULL_TIME` | `ONLINE_HA
 | POST | `team-leader.shifts.cancel` | `/team-leader/shifts/{shiftAssignment}/cancel` | TEAM_LEADER(team), MANAGER |
 
 **Rules:**
-- TL may assign only employees with `team_leader_id = self`. Manager: any active employee.
+- TL may assign only employees they **lead** (`employee_team_leaders`). Manager: any active employee.
 - Duplicate SCHEDULED for same `user_id + date + shift_type` → 422.
 - Default multiplier: `1.0` (base types), `1.5` (EXTRA / OT) if omitted.
 - EMPLOYEE → 403 on all shift-assignment write/list UI routes.
@@ -200,9 +200,9 @@ Daily rotation **and** premium shifts. `shift_type` ∈ `FULL_TIME` | `ONLINE_HA
 |--------|------|------|------|
 | GET | `team-leader.evaluations` | `/team-leader/evaluations?month=&year=` | TEAM_LEADER(team), MANAGER |
 | GET | `team-leader.evaluations.show` | `/team-leader/evaluations/{employee}?month=&year=` | TEAM_LEADER(team), MANAGER |
-| GET | `employee.evaluation` | `/evaluation?month=&year=` | EMPLOYEE, TEAM_LEADER, MANAGER (self) — read-only saved monthly evaluation |
+| GET | `employee.evaluation` | `/evaluation?month=&year=` | EMPLOYEE, TEAM_LEADER, MANAGER (self) — read-only saved monthly evaluations (one card per TL) |
 
-> On save, server sets `performance_score`, `behavior_score`, `productivity_score`, `interest_return_score`, `attendance_score` from **AVG of that month's daily attendance scores**, then `total_score = sum(5)/5`. TL mainly submits **monthly `evaluation_text`**.
+> On save, server sets that evaluator’s `performance_score`, `behavior_score`, `productivity_score`, `interest_return_score` from **AVG of their `attendance_daily_scores`**, `attendance_score` from **AVG of `attendance.attendance_score`**, then `total_score = sum(5)/5`. Unique `(user_id, team_leader_id, month, year)`. Combined month = average of existing TL totals.
 
 ---
 
@@ -210,7 +210,7 @@ Daily rotation **and** premium shifts. `shift_type` ∈ `FULL_TIME` | `ONLINE_HA
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| POST | /payroll/generate | MANAGER | `{ "month": 6, "year": 2026, "team_leader_id": null }` → queued job, creates DRAFTs |
+| POST | /payroll/generate | MANAGER | `{ "month": 6, "year": 2026, "team_leader_id": null }` → queued job, creates DRAFTs. Optional `team_leader_id` filters by `employee_team_leaders` membership (`ledBy`) plus that TL’s own record — not a `users.team_leader_id` column. |
 | GET | /payroll | MANAGER | List, filters `month`, `year`, `status` |
 | GET | /payroll/{id} | MANAGER, EMPLOYEE(self, APPROVED/PAID only) | Full breakdown |
 | PUT | /payroll/{id} | MANAGER | Edit DRAFT (counts, manual lines) |
@@ -264,6 +264,14 @@ Payroll generation auto-pulls `deduction_amount_monthly` from `ACTIVE` advances 
 |--------|----------|-------------|
 | GET/POST/PUT/DELETE | /config/penalty-rules | Per-currency penalty rates (unique per `type`+`currency`) |
 | GET/POST/DELETE | /config/official-holidays | Holiday calendar `{ "date", "name_ar", "name_en" }` |
+
+**Shipped web routes (login-as-user):**
+
+| Method | Route name | Path | Role |
+|--------|------------|------|------|
+| GET/PUT | `admin.settings` / `admin.settings.update` | `/admin/settings` | MANAGER — includes `impersonation_enabled` (`1`/`0`, default off) |
+| POST | `admin.employees.impersonate` | `/admin/employees/{employee}/impersonate` | MANAGER, setting on, not self |
+| POST | `impersonation.leave` | `/impersonation/leave` | any authenticated session that has `impersonator_id` |
 
 ---
 

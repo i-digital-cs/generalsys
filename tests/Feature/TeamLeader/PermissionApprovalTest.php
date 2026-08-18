@@ -4,6 +4,7 @@ namespace Tests\Feature\TeamLeader;
 
 use App\Models\Permission;
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 use App\Services\Permissions\PermissionPenaltyCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -84,6 +85,7 @@ class PermissionApprovalTest extends TestCase
 
         $row->refresh();
         $this->assertSame(Permission::STATUS_ACCEPTED, $row->status);
+        $this->assertSame($this->leader->id, $row->decided_by);
         $this->assertSame('0.00', (string) $row->penalty_amount);
         $this->assertFalse($row->is_double_penalty);
     }
@@ -103,6 +105,7 @@ class PermissionApprovalTest extends TestCase
 
         $row->refresh();
         $this->assertSame(Permission::STATUS_REJECTED, $row->status);
+        $this->assertSame($this->leader->id, $row->decided_by);
         $this->assertSame(number_format($expected, 2, '.', ''), (string) $row->penalty_amount);
         $this->assertFalse($row->is_double_penalty);
         $this->assertSame(120.0, (float) $expected); // 120 min × 1.00 EGP
@@ -148,5 +151,68 @@ class PermissionApprovalTest extends TestCase
             ->assertRedirect(route('team-leader.approvals', ['filter' => 'pending']));
 
         $this->assertSame(Permission::STATUS_REJECTED, $row->fresh()->status);
+        $this->assertSame($manager->id, $row->fresh()->decided_by);
+    }
+
+    public function test_either_team_leader_sees_and_can_decide_the_same_member(): void
+    {
+        app()->setLocale('en');
+
+        $leaderA = User::factory()->teamLeader()->create(['name_en' => 'Alpha Dual TL']);
+        $leaderB = User::factory()->teamLeader()->create(['name_en' => 'Beta Dual TL']);
+        $leaderC = User::factory()->teamLeader()->create(['name_en' => 'Gamma Dual TL']);
+        $member = User::factory()->employee()->create([
+            'name_en' => 'Dual Approval Member',
+            'currency' => 'EGP',
+        ]);
+        app(TeamMembershipService::class)->syncLeaders($member, [
+            $leaderA->id,
+            $leaderB->id,
+        ]);
+
+        $row = $this->pendingPermission($member, ['team_leader_id' => $leaderA->id]);
+
+        $this->actingAs($leaderA)
+            ->get(route('team-leader.approvals'))
+            ->assertOk()
+            ->assertSee('Dual Approval Member', false)
+            ->assertSee(__('permissions.fields.submitted_for_team'), false)
+            ->assertSee('Alpha Dual TL', false)
+            ->assertSee('Beta Dual TL', false);
+
+        $this->actingAs($leaderB)
+            ->get(route('team-leader.approvals'))
+            ->assertOk()
+            ->assertSee('Dual Approval Member', false);
+
+        $this->actingAs($leaderC)
+            ->get(route('team-leader.approvals'))
+            ->assertOk()
+            ->assertDontSee('Dual Approval Member', false);
+
+        $this->actingAs($leaderC)
+            ->post(route('team-leader.approvals.permissions.approve', $row))
+            ->assertForbidden();
+
+        $this->actingAs($leaderB)
+            ->post(route('team-leader.approvals.permissions.approve', $row))
+            ->assertRedirect(route('team-leader.approvals', ['filter' => 'pending']));
+
+        $row->refresh();
+        $this->assertSame(Permission::STATUS_ACCEPTED, $row->status);
+        $this->assertSame($leaderB->id, $row->decided_by);
+
+        $this->actingAs($leaderA)
+            ->get(route('team-leader.approvals', ['filter' => 'decided']))
+            ->assertOk()
+            ->assertSee(__('permissions.fields.decided_by'), false)
+            ->assertSee('Beta Dual TL', false)
+            ->assertDontSee('120.00', false);
+
+        $this->actingAs($member)
+            ->get(route('employee.requests'))
+            ->assertOk()
+            ->assertSee(__('permissions.fields.decided_by'), false)
+            ->assertSee('Beta Dual TL', false);
     }
 }

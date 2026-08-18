@@ -37,7 +37,7 @@
                 </div>
             </div>
 
-            @if ($evaluation === null)
+            @if ($evaluations->isEmpty())
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
                         <x-empty-state
@@ -49,31 +49,36 @@
                 </div>
             @else
                 @php
-                    $monthLabel = \Carbon\Carbon::create($evaluation->year, $evaluation->month, 1)->translatedFormat('F Y');
+                    $monthLabel = \Carbon\Carbon::create($year, $month, 1)->translatedFormat('F Y');
                 @endphp
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-transparent">
-                        <h2 class="h6 mb-0">{{ $monthLabel }}</h2>
-                        <p class="small text-body-secondary mb-0 mt-1">{{ __('evaluation.me.read_only_hint') }}</p>
-                    </div>
-                    <div class="card-body">
-                        <x-score-bar :label="__('evaluation.fields.performance')" :value="$evaluation->performance_score" />
-                        <x-score-bar :label="__('evaluation.fields.behavior')" :value="$evaluation->behavior_score" />
-                        <x-score-bar :label="__('evaluation.fields.productivity')" :value="$evaluation->productivity_score" />
-                        <x-score-bar :label="__('evaluation.fields.interest_return')" :value="$evaluation->interest_return_score" />
-                        <x-score-bar :label="__('evaluation.fields.attendance')" :value="$evaluation->attendance_score" />
-                        <hr>
-                        <x-score-bar :label="__('evaluation.fields.total')" :value="$evaluation->total_score"
-                                     :hint="__('evaluation.tl.total_hint')" />
+                @foreach ($evaluations as $evaluation)
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-header bg-transparent">
+                            <h2 class="h6 mb-0">{{ $monthLabel }}</h2>
+                            <p class="small text-body-secondary mb-0 mt-1">
+                                {{ __('evaluation.me.by_leader', ['name' => $evaluation->teamLeader?->localizedName() ?? '—']) }}
+                                · {{ __('evaluation.me.read_only_hint') }}
+                            </p>
+                        </div>
+                        <div class="card-body">
+                            <x-score-bar :label="__('evaluation.fields.performance')" :value="$evaluation->performance_score" />
+                            <x-score-bar :label="__('evaluation.fields.behavior')" :value="$evaluation->behavior_score" />
+                            <x-score-bar :label="__('evaluation.fields.productivity')" :value="$evaluation->productivity_score" />
+                            <x-score-bar :label="__('evaluation.fields.interest_return')" :value="$evaluation->interest_return_score" />
+                            <x-score-bar :label="__('evaluation.fields.attendance')" :value="$evaluation->attendance_score" />
+                            <hr>
+                            <x-score-bar :label="__('evaluation.fields.total')" :value="$evaluation->total_score"
+                                         :hint="__('evaluation.tl.total_hint')" />
 
-                        <h2 class="h6 mt-4">{{ __('evaluation.me.text_title') }}</h2>
-                        @if (filled($evaluation->evaluation_text))
-                            <div class="border rounded p-3 bg-body-tertiary">{{ $evaluation->evaluation_text }}</div>
-                        @else
-                            <p class="text-body-secondary mb-0">{{ __('evaluation.me.text_empty') }}</p>
-                        @endif
+                            <h2 class="h6 mt-4">{{ __('evaluation.me.text_title') }}</h2>
+                            @if (filled($evaluation->evaluation_text))
+                                <div class="border rounded p-3 bg-body-tertiary">{{ $evaluation->evaluation_text }}</div>
+                            @else
+                                <p class="text-body-secondary mb-0">{{ __('evaluation.me.text_empty') }}</p>
+                            @endif
+                        </div>
                     </div>
-                </div>
+                @endforeach
             @endif
         </div>
 
@@ -94,6 +99,7 @@
                                     <thead>
                                         <tr>
                                             <th scope="col">{{ __('evaluation.tl.month') }}</th>
+                                            <th scope="col">{{ __('evaluation.me.leader') }}</th>
                                             <th scope="col" class="col-num">{{ __('evaluation.fields.total') }}</th>
                                         </tr>
                                     </thead>
@@ -102,22 +108,24 @@
                                             @php
                                                 $active = (int) $row->month === (int) $month && (int) $row->year === (int) $year;
                                                 $label = \Carbon\Carbon::create($row->year, $row->month, 1)->translatedFormat('F Y');
+                                                $leaderName = $row->teamLeader?->localizedName() ?? '—';
                                             @endphp
                                             <tr @class(['table-active' => $active])
-                                                data-filter-text="{{ $label }} {{ $row->month }} {{ $row->year }}">
+                                                data-filter-text="{{ $label }} {{ $leaderName }} {{ $row->month }} {{ $row->year }}">
                                                 <td>
                                                     <a href="{{ route('employee.evaluation', ['month' => $row->month, 'year' => $row->year]) }}"
                                                        class="fw-semibold text-decoration-none">
                                                         {{ $label }}
                                                     </a>
                                                 </td>
+                                                <td>{{ $leaderName }}</td>
                                                 <td class="col-num">
                                                     <span class="num-ltr">{{ number_format((float) $row->total_score, 2) }}%</span>
                                                 </td>
                                             </tr>
                                         @endforeach
                                         <tr data-table-empty-row class="d-none">
-                                            <td colspan="2" class="text-body-secondary text-center py-3">
+                                            <td colspan="3" class="text-body-secondary text-center py-3">
                                                 {{ __('general.no_filter_results') }}
                                             </td>
                                         </tr>

@@ -40,6 +40,12 @@
                 ])>{{ __('payroll.status.'.$payroll->status) }}</span>
             </p>
             <p class="small text-body-secondary mb-0 mt-1">{{ __('salary.read_only_hint') }}</p>
+            @if ($payroll->user)
+                <p class="small mb-0 mt-1">
+                    <span class="text-body-secondary">{{ __('employees.team_leader') }}:</span>
+                    {{ $payroll->user->teamLeaderDisplayNames() !== '' ? $payroll->user->teamLeaderDisplayNames() : __('general.not_available') }}
+                </p>
+            @endif
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{{ route('employee.salary') }}" class="btn btn-outline-secondary">{{ __('salary.back') }}</a>

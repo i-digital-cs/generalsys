@@ -84,6 +84,43 @@ class MyEvaluationTest extends TestCase
             ->assertDontSee(__('evaluation.tl.save'), false);
     }
 
+    public function test_employee_sees_both_team_leaders_labeled(): void
+    {
+        app()->setLocale('en');
+        $leaderB = User::factory()->teamLeader()->create([
+            'name_en' => 'Second Leader',
+            'language_preference' => 'en',
+        ]);
+        $this->leader->update(['name_en' => 'First Leader']);
+
+        Evaluation::factory()->create([
+            'user_id' => $this->employee->id,
+            'team_leader_id' => $this->leader->id,
+            'month' => 8,
+            'year' => 2026,
+            'total_score' => 90,
+            'evaluation_text' => 'Feedback from first',
+        ]);
+        Evaluation::factory()->create([
+            'user_id' => $this->employee->id,
+            'team_leader_id' => $leaderB->id,
+            'month' => 8,
+            'year' => 2026,
+            'total_score' => 70,
+            'evaluation_text' => 'Feedback from second',
+        ]);
+
+        $this->actingAs($this->employee)
+            ->get(route('employee.evaluation', ['month' => 8, 'year' => 2026]))
+            ->assertOk()
+            ->assertSee('First Leader', false)
+            ->assertSee('Second Leader', false)
+            ->assertSee('Feedback from first', false)
+            ->assertSee('Feedback from second', false)
+            ->assertSee('90.00', false)
+            ->assertSee('70.00', false);
+    }
+
     public function test_employee_history_lists_own_months_only(): void
     {
         Evaluation::factory()->create([

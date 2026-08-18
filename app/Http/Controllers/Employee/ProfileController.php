@@ -23,7 +23,7 @@ class ProfileController extends Controller
         $this->authorize('view', $user);
 
         $user->load([
-            'profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents',
+            'profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents', 'teamLeaders',
         ]);
 
         return view('employee.profile', ['employee' => $user]);

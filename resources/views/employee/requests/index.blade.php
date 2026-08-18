@@ -169,6 +169,12 @@
                                                     ])>
                                                         {{ __('vacations.statuses.'.$row->status) }}
                                                     </span>
+                                                    @if ($row->decidedBy)
+                                                        <div class="small text-body-secondary mt-1">
+                                                            {{ __('vacations.fields.decided_by') }}:
+                                                            {{ $row->decidedBy->localizedName() }}
+                                                        </div>
+                                                    @endif
                                                 </td>
                                                 <td class="text-end">
                                                     @if ($row->status === 'REJECTED')
@@ -369,6 +375,12 @@
                                                     ])>
                                                         {{ __('permissions.statuses.'.$row->status) }}
                                                     </span>
+                                                    @if ($row->decidedBy)
+                                                        <div class="small text-body-secondary mt-1">
+                                                            {{ __('permissions.fields.decided_by') }}:
+                                                            {{ $row->decidedBy->localizedName() }}
+                                                        </div>
+                                                    @endif
                                                 </td>
                                                 <td class="text-end">
                                                     @if ($row->status === 'REJECTED')

@@ -103,15 +103,19 @@
         ],
         [
             ['salary.pdf.job_title', $g($emp?->localizedJobTitle() ?: __('general.not_available'))],
+            ['salary.pdf.team_leaders', $g($emp?->teamLeaderDisplayNames() ?: __('general.not_available'))],
+        ],
+        [
             ['salary.pdf.period', $period],
-        ],
-        [
             ['salary.pdf.status', $t('payroll.status.'.$payroll->status)],
-            ['salary.pdf.currency', $t('general.currencies.'.$payroll->currency)],
         ],
         [
+            ['salary.pdf.currency', $t('general.currencies.'.$payroll->currency)],
             ['salary.pdf.document_no', $docRef],
+        ],
+        [
             ['salary.pdf.issue_date', $issuedAt],
+            [null, ''],
         ],
     ];
 

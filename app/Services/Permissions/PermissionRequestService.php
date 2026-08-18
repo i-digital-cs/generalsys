@@ -5,6 +5,7 @@ namespace App\Services\Permissions;
 use App\Exceptions\PermissionRequestException;
 use App\Models\Permission;
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 use App\Services\Notifications\AppNotificationService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -12,14 +13,16 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Leave/late permission requests (T-2.7–T-2.9).
- * Submit: any role (self). Employees need a team_leader_id; TL/Manager may omit (Admin decides).
- * Force: self, TL (team), or Manager. Penalty amounts never exposed on TL UI.
+ * Submit: any role (self). Employees need ≥1 team leader; TL/Manager may omit (Admin decides).
+ * Queue/decide: either membership TL, or Manager. Force: self, TL (team), or Manager.
+ * Penalty amounts never exposed on TL UI.
  */
 class PermissionRequestService
 {
     public function __construct(
         private readonly PermissionPenaltyCalculator $penalties,
         private readonly AppNotificationService $notifications,
+        private readonly TeamMembershipService $membership,
     ) {}
 
     /**
@@ -27,7 +30,7 @@ class PermissionRequestService
      */
     public function submit(User $user, array $data): Permission
     {
-        if ($user->isEmployee() && $user->team_leader_id === null) {
+        if ($user->isEmployee() && $this->membership->leaderIds($user) === []) {
             throw PermissionRequestException::noTeamLeader();
         }
 
@@ -47,7 +50,7 @@ class PermissionRequestService
                 'to_time' => $to,
                 'reason' => $data['reason'] ?? null,
                 'status' => Permission::STATUS_PENDING,
-                'team_leader_id' => $user->team_leader_id,
+                'team_leader_id' => $this->submitSnapshotLeaderId($user),
                 'penalty_amount' => 0,
                 'is_double_penalty' => false,
             ]);
@@ -63,6 +66,7 @@ class PermissionRequestService
         $perPage = min(max($perPage, 1), 50);
 
         return Permission::query()
+            ->with('decidedBy')
             ->where('user_id', $user->id)
             ->orderByDesc('request_date')
             ->orderByDesc('id')
@@ -82,10 +86,10 @@ class PermissionRequestService
         $perPage = min(max($perPage, 1), 50);
         $filter = in_array($filter, ['pending', 'decided', 'all'], true) ? $filter : 'pending';
 
-        $query = Permission::query()->with('user');
+        $query = Permission::query()->with(['user.teamLeaders', 'decidedBy']);
 
         if ($actor->isTeamLeader()) {
-            $query->where('team_leader_id', $actor->id);
+            $query->whereHas('user', fn ($q) => $q->where('role', User::ROLE_EMPLOYEE)->ledBy($actor->id));
         } elseif (! $actor->isManager()) {
             abort(403);
         }
@@ -119,6 +123,7 @@ class PermissionRequestService
                 'status' => Permission::STATUS_ACCEPTED,
                 'penalty_amount' => 0,
                 'is_double_penalty' => false,
+                'decided_by' => $actor->id,
             ]);
 
             $permission = $permission->refresh();
@@ -140,6 +145,7 @@ class PermissionRequestService
                 'status' => Permission::STATUS_REJECTED,
                 'penalty_amount' => $amount,
                 'is_double_penalty' => false,
+                'decided_by' => $actor->id,
             ]);
 
             $permission = $permission->refresh();
@@ -151,7 +157,7 @@ class PermissionRequestService
 
     /**
      * REJECTED → FORCED; penalty × double_penalty_multiplier; is_double_penalty = true.
-     * Actor: owning employee or Manager (not Team Leader).
+     * Actor: owning employee, TL (team), or Manager.
      */
     public function force(User $actor, Permission $permission): Permission
     {
@@ -179,6 +185,7 @@ class PermissionRequestService
                 'status' => Permission::STATUS_FORCED,
                 'penalty_amount' => $amount,
                 'is_double_penalty' => true,
+                'decided_by' => $actor->id,
             ]);
 
             $permission = $permission->refresh();
@@ -196,12 +203,7 @@ class PermissionRequestService
             return true;
         }
 
-        if (! $actor->isTeamLeader()) {
-            return false;
-        }
-
-        return (int) $permission->team_leader_id === (int) $actor->id
-            || (int) $permission->user?->team_leader_id === (int) $actor->id;
+        return $this->teamLeaderLeadsOwner($actor, $permission->user);
     }
 
     public function actorMayForce(User $actor, Permission $permission): bool
@@ -216,12 +218,24 @@ class PermissionRequestService
             return true;
         }
 
-        if ($actor->isTeamLeader()) {
-            return (int) $permission->team_leader_id === (int) $actor->id
-                || (int) $permission->user?->team_leader_id === (int) $actor->id;
+        return $this->teamLeaderLeadsOwner($actor, $permission->user);
+    }
+
+    private function teamLeaderLeadsOwner(User $actor, ?User $owner): bool
+    {
+        return $actor->isTeamLeader()
+            && $owner instanceof User
+            && $owner->isEmployee()
+            && $this->membership->leads($actor, $owner);
+    }
+
+    private function submitSnapshotLeaderId(User $user): ?int
+    {
+        if (! $user->isEmployee()) {
+            return null;
         }
 
-        return false;
+        return $this->membership->leaderIds($user)[0] ?? null;
     }
 
     private function assertActorMayDecide(User $actor, Permission $permission): void

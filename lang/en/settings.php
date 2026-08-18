@@ -25,4 +25,7 @@ return [
     'office_longitude' => 'Office longitude',
     'office_radius_meters' => 'Allowed radius (meters)',
     'office_radius_hint' => 'Default 1000 m (1 km). Leave lat/lng empty to disable distance checks (GPS is still required on punch).',
+    'impersonation_section' => 'Login as another user',
+    'impersonation_hint' => 'When on, a Manager can open any staff account from Employees and return to admin without that user’s password. Actions while switched (clock, reports, approvals) are saved as that user.',
+    'impersonation_enabled' => 'Allow managers to log in as any user',
 ];

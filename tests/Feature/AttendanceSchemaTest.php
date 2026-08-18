@@ -35,6 +35,9 @@ class AttendanceSchemaTest extends TestCase
             $this->assertTrue(Schema::hasTable($table), "Missing table: {$table}");
         }
 
+        $this->assertTrue(Schema::hasTable('attendance_daily_scores'));
+        $this->assertFalse(Schema::hasColumn('attendance', 'performance_score'));
+
         foreach ([
             'clock_in_lat',
             'clock_in_lng',
@@ -49,6 +52,9 @@ class AttendanceSchemaTest extends TestCase
         ] as $column) {
             $this->assertTrue(Schema::hasColumn('attendance', $column), "Missing column: {$column}");
         }
+
+        $this->assertTrue(Schema::hasColumn('permissions', 'decided_by'));
+        $this->assertTrue(Schema::hasColumn('vacations', 'decided_by'));
     }
 
     public function test_attendance_unique_per_user_date_shift(): void

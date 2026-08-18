@@ -26,7 +26,7 @@ class PayrollExportService
 
     public function downloadPayslipPdf(PayrollRecord $payroll): \Barryvdh\DomPDF\PDF
     {
-        $payroll->loadMissing(['user', 'adjustments']);
+        $payroll->loadMissing(['user.teamLeaders', 'adjustments']);
 
         return $this->makePdf('exports.payslip-pdf', [
             'payroll' => $payroll,
@@ -38,7 +38,7 @@ class PayrollExportService
      */
     public function downloadReviewPdf(PayrollRecord $payroll): \Barryvdh\DomPDF\PDF
     {
-        $payroll->loadMissing(['user', 'adjustments']);
+        $payroll->loadMissing(['user.teamLeaders', 'adjustments']);
 
         $scores = null;
         $evaluationText = null;

@@ -34,8 +34,8 @@ class EvaluationController extends Controller
         $actor = $request->user();
         $employees = $this->evaluations->evaluableEmployees($actor);
 
-        $rows = $employees->map(function (User $employee) use ($month, $year) {
-            $snapshot = $this->evaluations->snapshot($employee, $month, $year);
+        $rows = $employees->map(function (User $employee) use ($actor, $month, $year) {
+            $snapshot = $this->evaluations->snapshot($employee, $month, $year, $actor);
 
             return [
                 'employee' => $employee,
@@ -65,7 +65,7 @@ class EvaluationController extends Controller
             $year = (int) now()->year;
         }
 
-        $snapshot = $this->evaluations->snapshot($employee, $month, $year);
+        $snapshot = $this->evaluations->snapshot($employee, $month, $year, $request->user());
 
         return view('team-leader.evaluations.show', [
             'employee' => $employee,
@@ -74,6 +74,7 @@ class EvaluationController extends Controller
             'scores' => $snapshot['scores'],
             'evaluationText' => old('evaluation_text', $snapshot['evaluation_text']),
             'saved' => $snapshot['evaluation'] !== null,
+            'otherEvaluations' => $snapshot['others'],
         ]);
     }
 

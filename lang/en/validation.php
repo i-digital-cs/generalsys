@@ -27,6 +27,7 @@ return [
     'before' => 'The :attribute must be a date before :date.',
     'after_or_equal' => 'The :attribute must be a date after or equal to :date.',
     'in' => 'The selected :attribute is invalid.',
+    'different' => 'The :attribute and :other must be different.',
     'mimes' => 'The :attribute must be a file of type: :values.',
     'confirmed' => 'The :attribute confirmation does not match.',
 
@@ -80,6 +81,8 @@ return [
         'currency' => 'currency',
         'language_preference' => 'language',
         'team_leader_id' => 'team leader',
+        'team_leader_ids.0' => 'team leader 1',
+        'team_leader_ids.1' => 'team leader 2',
         'shift_type_default' => 'default work type',
         'work_start_time' => 'work start time',
         'work_end_time' => 'work end time',

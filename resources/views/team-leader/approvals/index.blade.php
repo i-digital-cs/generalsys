@@ -58,11 +58,16 @@
                         </thead>
                         <tbody>
                             @foreach ($permissions as $row)
-                                @php
-                                    $name = app()->getLocale() === 'ar' ? $row->user?->name_ar : $row->user?->name_en;
-                                @endphp
                                 <tr>
-                                    <td class="fw-semibold">{{ $name }}</td>
+                                    <td>
+                                        <div class="fw-semibold">{{ $row->user?->localizedName() }}</div>
+                                        @if (filled($row->user?->teamLeaderDisplayNames()))
+                                            <div class="small text-body-secondary">
+                                                {{ __('permissions.fields.submitted_for_team') }}:
+                                                {{ $row->user->teamLeaderDisplayNames() }}
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td class="col-num text-nowrap"><span class="num-ltr">{{ $row->request_date->toDateString() }}</span></td>
                                     <td>{{ __('permissions.types.'.$row->type) }}</td>
                                     <td class="col-num text-nowrap"><span class="num-ltr">{{ $row->from_time }}–{{ $row->to_time }}</span></td>
@@ -76,6 +81,12 @@
                                         ])>
                                             {{ __('permissions.statuses.'.$row->status) }}
                                         </span>
+                                        @if ($row->decidedBy)
+                                            <div class="small text-body-secondary mt-1">
+                                                {{ __('permissions.fields.decided_by') }}:
+                                                {{ $row->decidedBy->localizedName() }}
+                                            </div>
+                                        @endif
                                     </td>
                                     <td class="text-body-secondary small">{{ filled($row->reason) ? $row->reason : '—' }}</td>
                                     <td class="text-end">
@@ -152,11 +163,16 @@
                         </thead>
                         <tbody>
                             @foreach ($vacations as $row)
-                                @php
-                                    $name = app()->getLocale() === 'ar' ? $row->user?->name_ar : $row->user?->name_en;
-                                @endphp
                                 <tr>
-                                    <td class="fw-semibold">{{ $name }}</td>
+                                    <td>
+                                        <div class="fw-semibold">{{ $row->user?->localizedName() }}</div>
+                                        @if (filled($row->user?->teamLeaderDisplayNames()))
+                                            <div class="small text-body-secondary">
+                                                {{ __('vacations.fields.submitted_for_team') }}:
+                                                {{ $row->user->teamLeaderDisplayNames() }}
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td>{{ __('vacations.types.'.$row->type) }}</td>
                                     <td class="col-num text-nowrap">
                                         <span class="num-ltr">{{ $row->start_date->toDateString() }}</span>
@@ -175,6 +191,12 @@
                                         ])>
                                             {{ __('vacations.statuses.'.$row->status) }}
                                         </span>
+                                        @if ($row->decidedBy)
+                                            <div class="small text-body-secondary mt-1">
+                                                {{ __('vacations.fields.decided_by') }}:
+                                                {{ $row->decidedBy->localizedName() }}
+                                            </div>
+                                        @endif
                                     </td>
                                     <td class="text-end">
                                         <div class="d-flex flex-nowrap gap-2 justify-content-end">

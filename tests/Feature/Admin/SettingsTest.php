@@ -44,6 +44,48 @@ class SettingsTest extends TestCase
         $this->assertDatabaseHas('settings', ['key' => 'default_currency', 'value' => 'AED']);
     }
 
+    public function test_manager_can_enable_impersonation(): void
+    {
+        $manager = User::factory()->manager()->create();
+
+        $this->actingAs($manager)
+            ->get(route('admin.settings'))
+            ->assertOk()
+            ->assertSee('impersonation_enabled');
+
+        $this->actingAs($manager)
+            ->put(route('admin.settings.update'), $this->settingsPayload([
+                'impersonation_enabled' => '1',
+            ]))
+            ->assertRedirect(route('admin.settings'));
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'impersonation_enabled',
+            'value' => '1',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function settingsPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'default_language' => 'ar',
+            'default_currency' => 'EGP',
+            'multipliers' => [
+                'friday_full_time' => 1,
+                'friday_online' => 0.5,
+                'day_off_full_time' => 2,
+                'day_off_online' => 1.5,
+                'overtime' => 1.5,
+                'official_holiday_work' => 1,
+                'extra_pay' => 1,
+            ],
+        ], $overrides);
+    }
+
     public function test_manager_can_change_overtime_multiplier(): void
     {
         $manager = User::factory()->manager()->create();

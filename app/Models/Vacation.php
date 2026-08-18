@@ -37,6 +37,7 @@ class Vacation extends Model
         'replace_rest_day_id',
         'status',
         'team_leader_id',
+        'decided_by',
     ];
 
     protected function casts(): array
@@ -57,6 +58,11 @@ class Vacation extends Model
     public function teamLeader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'team_leader_id');
+    }
+
+    public function decidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'decided_by');
     }
 
     public function replaceRestDay(): BelongsTo

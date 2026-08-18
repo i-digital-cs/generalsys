@@ -14,6 +14,7 @@
 </head>
 <body class="bg-body-tertiary d-flex flex-column min-vh-100">
     @include('layouts.partials.navbar')
+    @include('layouts.partials.impersonation-banner')
 
     <div class="d-flex flex-grow-1">
         @include('layouts.partials.sidebar')

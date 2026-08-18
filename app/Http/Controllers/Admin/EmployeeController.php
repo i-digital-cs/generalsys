@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreEmployeeRequest;
 use App\Http\Requests\Admin\UpdateEmployeeRequest;
 use App\Models\User;
+use App\Services\Auth\ImpersonationService;
 use App\Services\Employees\EmployeeService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +15,10 @@ use Illuminate\View\View;
 
 class EmployeeController extends Controller
 {
-    public function __construct(private readonly EmployeeService $employees) {}
+    public function __construct(
+        private readonly EmployeeService $employees,
+        private readonly ImpersonationService $impersonation,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -29,6 +33,7 @@ class EmployeeController extends Controller
             ),
             'q' => $request->string('q')->toString(),
             'status' => $request->string('status')->toString(),
+            'canImpersonate' => $this->impersonation->actorMayStart($request->user()),
         ]);
     }
 
@@ -46,24 +51,25 @@ class EmployeeController extends Controller
     {
         $this->authorize('create', User::class);
 
-        $employee = $this->employees->create($request->validated(), $request->file('photo'));
+        $employee = $this->employees->create($request->validated(), $request->file('photo'), $request->user());
 
         return redirect()
             ->route('admin.employees.edit', $employee)
             ->with('success', __('employees.flash.created'));
     }
 
-    public function edit(User $employee): View
+    public function edit(Request $request, User $employee): View
     {
         $this->authorize('update', $employee);
 
         $employee->load([
-            'profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents',
+            'profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents', 'teamLeaders',
         ]);
 
         return view('admin.employees.edit', [
             'employee' => $employee,
             'teamLeaders' => $this->teamLeaders(),
+            'canImpersonateThis' => $this->impersonation->canStart($request->user(), $employee),
         ]);
     }
 
@@ -71,7 +77,7 @@ class EmployeeController extends Controller
     {
         $this->authorize('update', $employee);
 
-        $this->employees->update($employee, $request->validated(), $request->file('photo'));
+        $this->employees->update($employee, $request->validated(), $request->file('photo'), $request->user());
 
         return redirect()
             ->route('admin.employees.edit', $employee)

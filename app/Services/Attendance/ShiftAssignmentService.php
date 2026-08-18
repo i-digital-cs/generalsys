@@ -5,6 +5,7 @@ namespace App\Services\Attendance;
 use App\Exceptions\ShiftAssignmentException;
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\DB;
  */
 class ShiftAssignmentService
 {
+    public function __construct(private readonly TeamMembershipService $membership) {}
+
     /**
      * @param  array{
      *     user_id: int,
@@ -170,7 +173,7 @@ class ShiftAssignmentService
         }
 
         if ($actor->isTeamLeader()) {
-            $query->whereHas('user', fn ($q) => $q->where('team_leader_id', $actor->id));
+            $query->whereHas('user', fn ($q) => $q->ledBy($actor->id));
         }
 
         return $query->paginate(25)->withQueryString();
@@ -190,7 +193,7 @@ class ShiftAssignmentService
         return User::query()
             ->where('role', User::ROLE_EMPLOYEE)
             ->where('status', User::STATUS_ACTIVE)
-            ->where('team_leader_id', $actor->id)
+            ->ledBy($actor->id)
             ->orderBy('name_en')
             ->get();
     }
@@ -207,6 +210,6 @@ class ShiftAssignmentService
 
         return $actor->isTeamLeader()
             && $target->isEmployee()
-            && (int) $target->team_leader_id === (int) $actor->id;
+            && $this->membership->leads($actor, $target);
     }
 }

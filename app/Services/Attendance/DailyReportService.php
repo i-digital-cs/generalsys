@@ -5,6 +5,7 @@ namespace App\Services\Attendance;
 use App\Exceptions\DailyReportException;
 use App\Models\Attendance;
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 use App\Services\Notifications\AppNotificationService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -23,7 +24,10 @@ use Illuminate\Support\Facades\DB;
  */
 class DailyReportService
 {
-    public function __construct(private readonly AppNotificationService $notifications) {}
+    public function __construct(
+        private readonly AppNotificationService $notifications,
+        private readonly TeamMembershipService $membership,
+    ) {}
 
     public function mainAttendanceForDate(User $user, string $date): ?Attendance
     {
@@ -265,7 +269,9 @@ class DailyReportService
             return false;
         }
 
-        return (int) $attendance->user?->team_leader_id === (int) $actor->id;
+        $user = $attendance->user;
+
+        return $user instanceof User && $this->membership->leads($actor, $user);
     }
 
     /** @return Collection<int, int> */
@@ -290,7 +296,7 @@ class DailyReportService
             ->where('status', User::STATUS_ACTIVE);
 
         if ($actor->isTeamLeader()) {
-            $query->where('team_leader_id', $actor->id);
+            $query->ledBy($actor->id);
         } else {
             return collect();
         }

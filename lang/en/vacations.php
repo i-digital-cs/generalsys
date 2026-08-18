@@ -28,6 +28,8 @@ return [
         'replace_rest_day_placeholder' => 'Choose a rest day…',
         'status' => 'Status',
         'range' => 'Off date',
+        'submitted_for_team' => 'Submitted for team',
+        'decided_by' => 'Decided by',
     ],
     'types' => [
         'ANNUAL' => 'Annual',
@@ -80,6 +82,7 @@ return [
         'overlap' => 'These dates overlap another pending or approved vacation.',
         'not_pending' => 'This vacation request is no longer pending.',
         'not_team_member' => 'You can only decide vacations for your team.',
+        'no_team_leader' => 'You must be assigned to a team leader before requesting vacation.',
         'must_be_single_day' => 'Vacation swap is one day at a time (start and end must match).',
         'invalid_rest_day' => 'Choose one of your available rest days.',
         'rest_day_reserved' => 'That rest day is already used in another pending request.',

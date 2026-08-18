@@ -61,12 +61,17 @@ class ReportReviewController extends Controller
         abort_if($main === null || $main->id !== $attendance->id, 404);
         abort_if(blank($main->daily_report), 404);
 
-        $main->loadMissing('photos');
+        $main->loadMissing(['photos', 'dailyScores.teamLeader']);
+
+        $actor = $request->user();
 
         return view('team-leader.reports.show', [
             'attendance' => $main,
             'isLocked' => $this->reports->isLocked($main),
-            'canRespond' => $this->reports->actorMayRespond($request->user(), $main),
+            'canRespond' => $this->reports->actorMayRespond($actor, $main),
+            'canScore' => $this->scores->actorMayScore($actor, $main),
+            'ownScore' => $this->scores->forActor($main, $actor),
+            'otherScores' => $this->scores->othersForActor($main, $actor),
         ]);
     }
 

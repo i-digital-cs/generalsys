@@ -46,6 +46,8 @@
                                 <th scope="col">{{ __('employees.code') }}</th>
                                 <th scope="col">{{ __('employees.name') }}</th>
                                 <th scope="col">{{ __('employees.fields.job_title') }}</th>
+                                <th scope="col">{{ __('employees.team_leader_1') }}</th>
+                                <th scope="col">{{ __('employees.team_leader_2') }}</th>
                                 <th scope="col">{{ __('employees.fields.phone') }}</th>
                                 <th scope="col">{{ __('employees.fields.shift_types_default') }}</th>
                                 <th scope="col">{{ __('employees.email') }}</th>
@@ -58,6 +60,7 @@
                             @foreach ($employees as $employee)
                                 @php
                                     $displayName = app()->getLocale() === 'ar' ? $employee->name_ar : $employee->name_en;
+                                    $assignedLeaders = $employee->teamLeaders->values();
                                 @endphp
                                 <tr>
                                     <td>{{ $employee->profile?->employee_code ?? __('general.not_available') }}</td>
@@ -78,6 +81,8 @@
                                         </div>
                                     </td>
                                     <td>{{ $employee->localizedJobTitle() ?? __('general.not_available') }}</td>
+                                    <td>{{ $assignedLeaders->get(0)?->localizedName() ?? __('employees.no_team_leader') }}</td>
+                                    <td>{{ $assignedLeaders->get(1)?->localizedName() ?? __('employees.no_second_team_leader') }}</td>
                                     <td>
                                         @if ($employee->profile?->phone)
                                             <span class="num-ltr">{{ $employee->profile->phone }}</span>
@@ -100,10 +105,15 @@
                                         </span>
                                     </td>
                                     <td class="text-end">
-                                        <a href="{{ route('admin.employees.edit', $employee) }}"
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-pencil me-1" aria-hidden="true"></i>{{ __('general.edit') }}
-                                        </a>
+                                        <div class="d-flex flex-wrap justify-content-end gap-1">
+                                            @if ($canImpersonate && $employee->id !== auth()->id())
+                                                <x-impersonate-button :user="$employee" />
+                                            @endif
+                                            <a href="{{ route('admin.employees.edit', $employee) }}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil me-1" aria-hidden="true"></i>{{ __('general.edit') }}
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach

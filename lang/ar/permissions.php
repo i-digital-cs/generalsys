@@ -21,6 +21,8 @@ return [
         'reason' => 'السبب',
         'status' => 'الحالة',
         'interval' => 'الفترة',
+        'submitted_for_team' => 'مقدم لفريق',
+        'decided_by' => 'قرر بواسطة',
     ],
     'types' => [
         'LEAVE_PERMISSION' => 'إذن انصراف',

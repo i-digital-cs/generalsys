@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AnnualReportController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\EmployeeDocumentController;
+use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\PayrollController;
 use App\Http\Controllers\Admin\PenaltyRuleController;
 use App\Http\Controllers\Admin\RestDayController as AdminRestDayController;
@@ -41,6 +42,9 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')->name('logout');
+
+Route::post('/impersonation/leave', [ImpersonationController::class, 'destroy'])
+    ->middleware('auth')->name('impersonation.leave');
 
 Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -96,6 +100,8 @@ Route::middleware(['auth', 'role:MANAGER,ASSISTANT'])->prefix('admin')->name('ad
 Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/settings', [SettingController::class, 'edit'])->name('settings');
     Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
+    Route::post('/employees/{employee}/impersonate', [ImpersonationController::class, 'store'])
+        ->name('employees.impersonate');
 
     Route::get('/config/penalties', [PenaltyRuleController::class, 'index'])->name('config.penalties');
     Route::get('/config/penalties/create', [PenaltyRuleController::class, 'create'])->name('config.penalties.create');

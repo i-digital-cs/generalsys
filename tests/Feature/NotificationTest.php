@@ -4,10 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\Attendance;
 use App\Models\Permission;
+use App\Models\RestDay;
 use App\Models\User;
+use App\Models\Vacation;
 use App\Services\Attendance\AttendanceService;
 use App\Services\Attendance\DailyReportService;
+use App\Services\Attendance\MissingDailyReportService;
+use App\Services\Employees\TeamMembershipService;
 use App\Services\Permissions\PermissionRequestService;
+use App\Services\Vacations\VacationRequestService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -186,5 +191,133 @@ class NotificationTest extends TestCase
         $this->assertSame(1, $this->employee->fresh()->unreadNotifications()->count());
         $this->assertSame(0, $this->leader->fresh()->unreadNotifications()->count());
         $this->assertSame(1, $manager->fresh()->unreadNotifications()->count());
+    }
+
+    public function test_permission_submit_notifies_both_membership_leaders(): void
+    {
+        $leaderB = User::factory()->teamLeader()->create();
+        $outsider = User::factory()->teamLeader()->create();
+        app(TeamMembershipService::class)->syncLeaders($this->employee, [
+            $this->leader->id,
+            $leaderB->id,
+        ]);
+
+        app(PermissionRequestService::class)->submit($this->employee, [
+            'type' => Permission::TYPE_LEAVE,
+            'request_date' => '2026-08-05',
+            'from_time' => '14:00',
+            'to_time' => '16:00',
+        ]);
+
+        $this->assertSame(1, $this->leader->fresh()->unreadNotifications()->count());
+        $this->assertSame(1, $leaderB->fresh()->unreadNotifications()->count());
+        $this->assertSame(0, $outsider->fresh()->unreadNotifications()->count());
+        $this->assertSame('permission_submitted', $leaderB->notifications()->first()->data['kind']);
+    }
+
+    public function test_permission_reject_notifies_the_other_team_leader(): void
+    {
+        $leaderB = User::factory()->teamLeader()->create();
+        app(TeamMembershipService::class)->syncLeaders($this->employee, [
+            $this->leader->id,
+            $leaderB->id,
+        ]);
+
+        $permission = app(PermissionRequestService::class)->submit($this->employee, [
+            'type' => Permission::TYPE_LEAVE,
+            'request_date' => '2026-08-05',
+            'from_time' => '14:00',
+            'to_time' => '16:00',
+        ]);
+
+        $this->leader->notifications()->delete();
+        $leaderB->notifications()->delete();
+        $this->employee->notifications()->delete();
+
+        app(PermissionRequestService::class)->reject($this->leader, $permission);
+
+        $this->assertSame(0, $this->leader->fresh()->unreadNotifications()->count());
+        $this->assertSame(1, $leaderB->fresh()->unreadNotifications()->count());
+        $this->assertSame('permission_decision', $leaderB->notifications()->first()->data['kind']);
+        $this->assertSame(1, $this->employee->fresh()->unreadNotifications()->count());
+    }
+
+    public function test_vacation_submit_notifies_both_membership_leaders(): void
+    {
+        $leaderB = User::factory()->teamLeader()->create();
+        $outsider = User::factory()->teamLeader()->create();
+        app(TeamMembershipService::class)->syncLeaders($this->employee, [
+            $this->leader->id,
+            $leaderB->id,
+        ]);
+
+        $rest = RestDay::factory()->create([
+            'user_id' => $this->employee->id,
+            'date' => '2026-08-07',
+            'created_by' => $this->leader->id,
+        ]);
+
+        app(VacationRequestService::class)->submit($this->employee, [
+            'type' => Vacation::TYPE_EMERGENCY,
+            'start_date' => '2026-08-05',
+            'replace_rest_day_id' => $rest->id,
+        ]);
+
+        $this->assertSame(1, $this->leader->fresh()->unreadNotifications()->count());
+        $this->assertSame(1, $leaderB->fresh()->unreadNotifications()->count());
+        $this->assertSame(0, $outsider->fresh()->unreadNotifications()->count());
+        $this->assertSame('vacation_submitted', $this->leader->notifications()->first()->data['kind']);
+    }
+
+    public function test_daily_report_reply_notifies_the_other_team_leader(): void
+    {
+        $leaderB = User::factory()->teamLeader()->create();
+        app(TeamMembershipService::class)->syncLeaders($this->employee, [
+            $this->leader->id,
+            $leaderB->id,
+        ]);
+
+        $service = app(AttendanceService::class);
+        $service->clockIn($this->employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 10:00:00'));
+        $service->clockOut($this->employee, Carbon::parse('2026-08-03 18:00:00'));
+
+        $reports = app(DailyReportService::class);
+        $row = $reports->submit($this->employee, '2026-08-03', 'Finished work');
+
+        $this->assertSame(1, $this->leader->fresh()->unreadNotifications()->count());
+        $this->assertSame(1, $leaderB->fresh()->unreadNotifications()->count());
+
+        $this->leader->notifications()->delete();
+        $leaderB->notifications()->delete();
+        $this->employee->notifications()->delete();
+
+        $reports->respond($this->leader, $row, 'Well done');
+
+        $this->assertSame(0, $this->leader->fresh()->unreadNotifications()->count());
+        $this->assertSame(1, $leaderB->fresh()->unreadNotifications()->count());
+        $this->assertSame('report_replied', $leaderB->notifications()->first()->data['kind']);
+        $this->assertSame(1, $this->employee->fresh()->unreadNotifications()->count());
+    }
+
+    public function test_missing_report_notifies_both_membership_leaders(): void
+    {
+        $leaderB = User::factory()->teamLeader()->create();
+        $outsider = User::factory()->teamLeader()->create();
+        app(TeamMembershipService::class)->syncLeaders($this->employee, [
+            $this->leader->id,
+            $leaderB->id,
+        ]);
+
+        $date = Carbon::parse('2026-08-10');
+        app(MissingDailyReportService::class)->notifyForDate(
+            $date,
+            MissingDailyReportService::KIND_TODAY,
+        );
+
+        $kindsA = $this->leader->fresh()->notifications->pluck('data.kind');
+        $kindsB = $leaderB->fresh()->notifications->pluck('data.kind');
+        $this->assertTrue($kindsA->contains('report_missing_today'));
+        $this->assertTrue($kindsB->contains('report_missing_today'));
+        $this->assertSame(0, $outsider->fresh()->unreadNotifications()->count());
     }
 }

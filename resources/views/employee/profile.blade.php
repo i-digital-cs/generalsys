@@ -82,7 +82,7 @@
                         <i class="bi bi-people text-primary" aria-hidden="true"></i>
                         <span class="text-body-secondary">{{ __('employees.team_leader') }}:</span>
                         <span class="text-truncate">
-                            {{ $employee->teamLeader ? ($localeIsAr ? $employee->teamLeader->name_ar : $employee->teamLeader->name_en) : __('general.not_available') }}
+                            {{ $employee->teamLeaderDisplayNames() !== '' ? $employee->teamLeaderDisplayNames() : __('general.not_available') }}
                         </span>
                     </li>
                 </ul>

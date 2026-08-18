@@ -82,17 +82,45 @@
                        class="form-control @error('job_title_en') is-invalid @enderror" maxlength="150">
                 @error('job_title_en') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
-            <div class="col-md-4">
-                <label for="team_leader_id" class="form-label">{{ __('employees.team_leader') }}</label>
-                <select id="team_leader_id" name="team_leader_id" class="form-select @error('team_leader_id') is-invalid @enderror">
+            @php
+                $savedLeaderIds = $editing
+                    ? $employee->teamLeaders->pluck('id')->all()
+                    : [];
+                $postedLeaderIds = old('team_leader_ids');
+                $leaderIds = is_array($postedLeaderIds)
+                    ? array_values($postedLeaderIds)
+                    : $savedLeaderIds;
+                $firstLeaderId = $leaderIds[0] ?? old('team_leader_id', '');
+                $secondLeaderId = $leaderIds[1] ?? '';
+                $hideTeamLeaderFields = ! \App\Models\User::roleMayHaveTeamLeaders((string) $val('role', 'EMPLOYEE'));
+            @endphp
+            <div class="col-12 col-md-6 @if ($hideTeamLeaderFields) d-none @endif" data-team-leader-fields>
+                <label for="team_leader_ids_0" class="form-label">{{ __('employees.team_leader_1') }}</label>
+                <select id="team_leader_ids_0" name="team_leader_ids[0]"
+                        class="form-select @error('team_leader_ids.0') is-invalid @enderror">
                     <option value="">{{ __('employees.no_team_leader') }}</option>
                     @foreach ($teamLeaders as $leader)
-                        <option value="{{ $leader->id }}" @selected((string) $val('team_leader_id') === (string) $leader->id)>
-                            {{ app()->getLocale() === 'ar' ? $leader->name_ar : $leader->name_en }}
+                        <option value="{{ $leader->id }}" @selected((string) $firstLeaderId === (string) $leader->id)>
+                            {{ $leader->localizedName() }}
                         </option>
                     @endforeach
                 </select>
-                @error('team_leader_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                <div class="form-text">{{ __('employees.team_leader_1_hint') }}</div>
+                @error('team_leader_ids.0') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="col-12 col-md-6 @if ($hideTeamLeaderFields) d-none @endif" data-team-leader-fields>
+                <label for="team_leader_ids_1" class="form-label">{{ __('employees.team_leader_2') }}</label>
+                <select id="team_leader_ids_1" name="team_leader_ids[1]"
+                        class="form-select @error('team_leader_ids.1') is-invalid @enderror">
+                    <option value="">{{ __('employees.no_second_team_leader') }}</option>
+                    @foreach ($teamLeaders as $leader)
+                        <option value="{{ $leader->id }}" @selected((string) $secondLeaderId === (string) $leader->id)>
+                            {{ $leader->localizedName() }}
+                        </option>
+                    @endforeach
+                </select>
+                <div class="form-text">{{ __('employees.team_leader_2_hint') }}</div>
+                @error('team_leader_ids.1') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
             <div class="col-md-4">
                 <label for="status" class="form-label">{{ __('employees.fields.status') }}</label>
@@ -238,10 +266,12 @@
                 @error('currency') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
             @foreach (['base_salary', 'online_half_day_rate', 'online_full_day_rate', 'overtime_hourly_rate'] as $rateField)
-                <div class="col-md-4 col-lg-2">
+                <div class="col-6 col-md-4">
                     <label for="{{ $rateField }}" class="form-label">{{ __("employees.fields.{$rateField}") }}</label>
-                    <input type="number" step="0.01" min="0" id="{{ $rateField }}" name="{{ $rateField }}"
-                           value="{{ $val($rateField, '0') }}" dir="ltr"
+                    {{-- text+decimal: type=number in ar/RTL rejects 5500 (grouping) while 600 works --}}
+                    <input type="text" inputmode="decimal" lang="en" dir="ltr" autocomplete="off"
+                           id="{{ $rateField }}" name="{{ $rateField }}"
+                           value="{{ $val($rateField, '0') }}" maxlength="20"
                            class="form-control @error($rateField) is-invalid @enderror" required>
                     @error($rateField) <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>

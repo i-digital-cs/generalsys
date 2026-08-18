@@ -32,6 +32,11 @@ class VacationRequestException extends RuntimeException
         return new self('vacations.errors.not_team_member');
     }
 
+    public static function noTeamLeader(): self
+    {
+        return new self('vacations.errors.no_team_leader');
+    }
+
     public static function mustBeSingleDay(): self
     {
         return new self('vacations.errors.must_be_single_day');

@@ -20,12 +20,18 @@ class ReportService
      */
     public function annualEvaluation(User $user, int $year): ?float
     {
-        $avg = Evaluation::query()
+        $monthAvgs = Evaluation::query()
             ->where('user_id', $user->id)
             ->where('year', $year)
-            ->avg('total_score');
+            ->selectRaw('AVG(total_score) as month_avg')
+            ->groupBy('month')
+            ->pluck('month_avg');
 
-        return $avg === null ? null : round((float) $avg, 2);
+        if ($monthAvgs->isEmpty()) {
+            return null;
+        }
+
+        return round((float) $monthAvgs->avg(), 2);
     }
 
     /**
@@ -53,7 +59,7 @@ class ReportService
             ->where('user_id', $user->id)
             ->where('year', $year)
             ->get()
-            ->keyBy('month');
+            ->groupBy('month');
 
         $payrolls = PayrollRecord::query()
             ->with('adjustments')
@@ -64,12 +70,14 @@ class ReportService
 
         $months = [];
         for ($month = 1; $month <= 12; $month++) {
-            $eval = $evaluations->get($month);
+            $evalGroup = $evaluations->get($month, collect());
             $pay = $payrolls->get($month);
 
             $months[$month] = [
                 'month' => $month,
-                'evaluation' => $eval !== null ? (float) $eval->total_score : null,
+                'evaluation' => $evalGroup->isNotEmpty()
+                    ? round((float) $evalGroup->avg('total_score'), 2)
+                    : null,
                 'penalties' => $pay !== null ? $this->penaltiesTotal($pay) : 0.0,
                 'bonuses' => $pay !== null ? $this->bonusesTotal($pay) : 0.0,
                 'deductions' => $pay !== null ? (float) $pay->total_deductions : 0.0,

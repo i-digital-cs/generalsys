@@ -77,15 +77,15 @@ $border-radius: .5rem;
 | Daily Report | `employee/report` **(shipped T-2.5)** | date picker; one report/day on first shift after clock-out; locked after TL reply; response read-only escaped |
 | My Requests | `employee/requests` **(shipped T-2.7 + T-2.9 + T-2.10)** | permissions + vacations; **Force** on REJECTED permissions |
 | My Salary | `employee/salary` | payslip card (APPROVED/PAID only), PDF download |
-| My Evaluation | `employee/evaluation` **(shipped T-3.4)** | 5 `<x-score-bar>` + monthly TL text (read-only); history list |
+| My Evaluation | `employee/evaluation` **(shipped T-3.4 / T-8.5)** | per-TL 5 `<x-score-bar>` + text labeled by name; history lists TL |
 
 ### Team Leader (`team-leader/`)
 | Screen | View | Key components |
 |--------|------|----------------|
 | Team Dashboard | `team-leader/dashboard` **(shipped T-2.13)** | today who’s-in board + %; month team totals; employee filter; day list planned vs actual; calendar (selected employee, shift+hours) |
-| Pending Approvals | `team-leader/approvals` **(shipped T-2.8 + T-2.9 + T-2.11)** | permissions Accept/Reject/Force + vacations Accept/Reject with rest-day swap; team-scoped; **no money** |
-| Reports Review | `team-leader/reports` **(shipped T-2.6 + T-3.1)** | pending/replied/all queue; detail + reply form; locks employee report; daily 4-score inputs + auto attendance % |
-| Monthly Evaluation | `team-leader/evaluations` **(shipped T-3.3)** | 5 `<x-score-bar>` averages from daily + monthly text (editable); TL team / Manager |
+| Pending Approvals | `team-leader/approvals` **(shipped T-2.8 + T-2.9 + T-2.11 + T-8.4)** | permissions Accept/Reject/Force + vacations Accept/Reject with rest-day swap; both TLs; **Submitted for team** + **Decided by**; **no money** |
+| Reports Review | `team-leader/reports` **(shipped T-2.6 + T-3.1 + T-8.5)** | pending/replied/all queue; detail + reply form; locks employee report; own daily 4-score inputs; other TL scores read-only; auto attendance % |
+| Monthly Evaluation | `team-leader/evaluations` **(shipped T-3.3 + T-8.5)** | own 5 `<x-score-bar>` from that TL’s daily scores + own monthly text; other TL eval read-only |
 | Rest Days | `team-leader/rest-days` **(shipped)** | add/remove specific rest dates per team member |
 | Attendance history | `team-leader/attendance` **(shipped T-7.6)** | person + date range + present/absent/rest/vacation; punch photos + Maps; TL team / Manager+Assistant all |
 | Shift Assignment | `team-leader/shifts` **(shipped T-2.14)** | **My team** roster for date; assign form; list with **Edit** + Cancel; edit page for SCHEDULED |
@@ -102,7 +102,8 @@ $border-radius: .5rem;
 | Holidays | `admin/config/holidays` | date + AR/EN name list |
 | Payroll Generation | `admin/payroll/*` | month picker → draft review table → per-employee breakdown modal → approve → export PDF/Excel |
 | Annual Reports | `admin/reports/annual` | contract dates, per-month grid, year evaluation average |
-| Settings | `admin/settings` | language/currency defaults |
+| Settings | `admin/settings` | language/currency defaults, geofence, payroll multipliers, **login-as-user** toggle |
+| Impersonation | banner + `admin/employees` **Login as** | Manager-only when Settings enabled; **Return to admin** restores session |
 
 ## 6. Component Examples
 

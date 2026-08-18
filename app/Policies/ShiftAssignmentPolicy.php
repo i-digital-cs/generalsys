@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 
 /**
  * Shift roster authorization (API §6 / T-2.14).
@@ -11,6 +12,8 @@ use App\Models\User;
  */
 class ShiftAssignmentPolicy
 {
+    public function __construct(private readonly TeamMembershipService $membership) {}
+
     public function viewAny(User $authUser): bool
     {
         return $authUser->canManageOperations() || $authUser->isTeamLeader();
@@ -36,6 +39,8 @@ class ShiftAssignmentPolicy
             return false;
         }
 
-        return (int) $assignment->user?->team_leader_id === (int) $authUser->id;
+        $owner = $assignment->user;
+
+        return $owner instanceof User && $this->membership->leads($authUser, $owner);
     }
 }

@@ -25,6 +25,7 @@ return [
         'employee' => 'الموظف',
         'role' => 'الدور',
         'job_title' => 'المسمى الوظيفي',
+        'team_leaders' => 'قادة الفريق',
         'period' => 'فترة الراتب',
         'status' => 'الحالة',
         'currency' => 'العملة',

@@ -40,6 +40,27 @@
                                  :hint="__('evaluation.tl.total_hint')" />
                 </div>
             </div>
+
+            @foreach ($otherEvaluations ?? [] as $other)
+                <div class="card border-0 shadow-sm mt-3">
+                    <div class="card-header bg-transparent">
+                        <h2 class="h6 mb-0">{{ __('evaluation.tl.other_title') }}</h2>
+                        <p class="small text-body-secondary mb-0 mt-1">{{ $other->teamLeader?->localizedName() }}</p>
+                    </div>
+                    <div class="card-body">
+                        <x-score-bar :label="__('evaluation.fields.performance')" :value="$other->performance_score" />
+                        <x-score-bar :label="__('evaluation.fields.behavior')" :value="$other->behavior_score" />
+                        <x-score-bar :label="__('evaluation.fields.productivity')" :value="$other->productivity_score" />
+                        <x-score-bar :label="__('evaluation.fields.interest_return')" :value="$other->interest_return_score" />
+                        <x-score-bar :label="__('evaluation.fields.attendance')" :value="$other->attendance_score" />
+                        <hr>
+                        <x-score-bar :label="__('evaluation.fields.total')" :value="$other->total_score" />
+                        @if (filled($other->evaluation_text))
+                            <div class="border rounded p-3 bg-body-tertiary mt-3">{{ $other->evaluation_text }}</div>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
         </div>
 
         <div class="col-12 col-lg-6">

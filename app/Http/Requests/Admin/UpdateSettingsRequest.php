@@ -31,6 +31,14 @@ class UpdateSettingsRequest extends FormRequest
             'office_latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'office_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'office_radius_meters' => ['nullable', 'integer', 'min:50', 'max:50000'],
+            'impersonation_enabled' => ['required', 'boolean'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'impersonation_enabled' => $this->boolean('impersonation_enabled'),
+        ]);
     }
 }

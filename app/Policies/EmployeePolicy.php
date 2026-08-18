@@ -51,4 +51,12 @@ class EmployeePolicy
     {
         return $authUser->canManageOperations() || $authUser->is($employee);
     }
+
+    /**
+     * Session switch into another account — Manager only. Feature flag is in ImpersonationService.
+     */
+    public function impersonate(User $authUser, User $employee): bool
+    {
+        return $authUser->isManager() && ! $authUser->is($employee);
+    }
 }

@@ -45,7 +45,7 @@ class SalaryController extends Controller
     {
         $this->authorize('view', $payroll);
 
-        $payroll->load(['adjustments', 'user']);
+        $payroll->load(['adjustments', 'user.teamLeaders']);
 
         $scores = null;
         $evaluationText = null;

@@ -22,7 +22,7 @@
         && $evaluationYear
         && (
             $actor->isManager()
-            || ($actor->isTeamLeader() && (int) $evaluationSubject->team_leader_id === (int) $actor->id)
+            || ($actor->isTeamLeader() && app(\App\Services\Employees\TeamMembershipService::class)->leads($actor, $evaluationSubject))
         );
 @endphp
 

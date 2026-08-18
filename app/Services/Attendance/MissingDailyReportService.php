@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\OfficialHoliday;
 use App\Models\User;
 use App\Services\Employees\RestDayService;
+use App\Services\Employees\TeamMembershipService;
 use App\Services\Notifications\AppNotificationService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -34,6 +35,7 @@ class MissingDailyReportService
         private readonly RestDayService $restDays,
         private readonly DailyReportService $reports,
         private readonly AppNotificationService $notifications,
+        private readonly TeamMembershipService $membership,
     ) {}
 
     /**
@@ -88,7 +90,7 @@ class MissingDailyReportService
         if ($actor->isTeamLeader()) {
             return $this->missingPeopleForDate($date)
                 ->filter(fn (User $user) => $user->isEmployee()
-                    && (int) $user->team_leader_id === (int) $actor->id)
+                    && $this->membership->leads($actor, $user))
                 ->values();
         }
 

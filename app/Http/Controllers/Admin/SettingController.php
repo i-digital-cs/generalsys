@@ -23,6 +23,7 @@ class SettingController extends Controller
                 SettingService::KEY_OFFICE_RADIUS_METERS,
                 (string) config('attendance.location.radius_meters', 1000),
             ),
+            'impersonationEnabled' => $this->settings->boolean(SettingService::KEY_IMPERSONATION_ENABLED),
             'multipliers' => $this->settings->multipliers(),
         ]);
     }
@@ -42,6 +43,10 @@ class SettingController extends Controller
                 : (string) config('attendance.location.radius_meters', 1000),
         );
         $this->settings->setMultipliers($validated['multipliers']);
+        $this->settings->set(
+            SettingService::KEY_IMPERSONATION_ENABLED,
+            ! empty($validated['impersonation_enabled']) ? '1' : '0',
+        );
 
         return redirect()
             ->route('admin.settings')

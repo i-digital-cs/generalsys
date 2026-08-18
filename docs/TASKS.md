@@ -521,6 +521,86 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] AttendanceHistoryTest + LangParity; UI AR+EN RTL/LTR
   - [x] UI/UX gate (list + filters; table-responsive; 375/768/1280)
 
+### T-7.7 — Admin login-as-user (impersonation)
+- Depends on: T-1.2, T-1.4, T-7.5
+- Unlocks: —
+- [x] Task complete
+  - [x] Settings toggle `impersonation_enabled` (default off)
+  - [x] Manager Login as from employee list/edit; Return to admin (no password)
+  - [x] Nested switch blocked; Assistant/TL/employee 403; logout ends session
+  - [x] ImpersonationTest + SettingsTest + LangParity; UI/UX AR+EN RTL/LTR
+  - [x] UI/UX gate (settings toggle + list button + banner; 375/768/1280)
+
+---
+
+## Phase 8 — Dual team leaders (max 2) + attributed evaluations
+
+**Locked 2026-08-18 (user confirmed):**
+1. Max **two** TLs per employee; **one required**, second optional. Both equal for view/ops (not primary-only).
+2. Employee appears on **both** TL dashboards / lists / history / alerts.
+3. **Either** TL may act (approve, score, reply, assign shift/rest). The acting user is stored on that row (`*_by_id`). No silent overwrite of the other TL’s evaluation.
+4. Daily scores: **per TL** (new table), not one shared overwrite on `attendance`. Attendance % stays system-wide.
+5. Monthly evaluation: **one row per (employee, TL, month, year)** — that TL’s % averages + that TL’s text. Employee “My Evaluation” shows both. Annual/payroll combined = average of the two `total_score` values when both exist.
+6. Daily report: **one official reply still locks** the report; store `responded_by_id`. Second TL can read, not a second thread (unless user later asks).
+7. Notify **both** TLs + existing Admin/Assistant copies. TL still **never** sees money.
+8. Assistant/Admin assign the two TLs on the employee form. TL cannot assign themselves onto someone else’s employee.
+
+### T-8.1 — Schema: `employee_team_leaders` + drop single `users.team_leader_id`
+- Depends on: T-7.6
+- Unlocks: T-8.2
+- [x] Task complete
+  - [x] Table `employee_team_leaders`: `user_id`, `team_leader_id`, `assigned_by`, unique(user, tl); app rule max 2; both must be `TEAM_LEADER`
+  - [x] Backfill from `users.team_leader_id`; then drop `users.team_leader_id` (no unused column)
+  - [x] `TeamMembershipService` is the only “is this TL on this employee?” API (`leads`, `leaderIds`, `visibleEmployeeIds`)
+  - [x] Schema doc + User relations; DualTeamLeaderSchemaTest; `php -l` + Pint
+
+### T-8.2 — Employee form + lists: two TLs
+- Depends on: T-8.1
+- Unlocks: T-8.3
+- [x] Task complete
+  - [x] Admin/Assistant create/edit: two TL selects (1 required, 2 optional, not the same person)
+  - [x] Employee list/profile/payslip show both names; search still works
+  - [x] EmployeeCrudTest + LangParity; UI/UX gate AR+EN RTL/LTR 375/768/1280
+
+### T-8.3 — Scope every ops query through membership (by who)
+- Depends on: T-8.2
+- Unlocks: T-8.4
+- [x] Task complete
+  - [x] Replace every `where('team_leader_id', $actor->id)` / `$employee->team_leader_id === $actor->id` with `TeamMembershipService`
+  - [x] Shifts, rest days, reports, missing-report alerts, hours board, attendance history, photos policy, clock GPS notify
+  - [x] Persist actor on writes that already have an assigner (`assigned_by_tl_id`, `created_by`) — do not invent unused columns
+  - [x] DualTeamScopeTest: TL-A sees member, TL-B sees same member, TL-C 403; outsider still hidden
+
+### T-8.4 — Approvals / requests: either TL, record decider
+- Depends on: T-8.3
+- Unlocks: T-8.5
+- [x] Task complete
+  - [x] Permissions + vacations: both TLs in queue; add `decided_by` (FK users) on accept/reject/force
+  - [x] Submit still allowed if employee has ≥1 TL; snapshot is membership not a single id
+  - [x] UI: show submitted-for-team + **Decided by** name; no money to TL
+  - [x] PermissionApprovalTest + VacationApprovalTest dual-TL cases; UI/UX gate
+
+### T-8.5 — Evaluations: per-TL % and text (no overwrite)
+- Depends on: T-8.3
+- Unlocks: T-8.6
+- [x] Task complete
+  - [x] `attendance_daily_scores` (attendance_id, team_leader_id, 4 metrics, unique pair); `scored_by` = that TL. Attendance % stays on `attendance`
+  - [x] `evaluations` unique becomes `(user_id, team_leader_id, month, year)`; keep `evaluation_text` + 5 % + total
+  - [x] Report review: each TL saves **their** daily %; UI shows the other TL’s scores read-only
+  - [x] Monthly eval screen: each TL edits **their** text; % = avg of **their** daily scores + system attendance avg
+  - [x] My Evaluation: both TLs’ bars + texts labeled by name
+  - [x] Annual report combined = average of existing TL `total_score`s for that month
+  - [x] EvaluationServiceTest (legacy 0.97375 still on one-TL fixture) + MonthlyEvaluationTest dual; UI/UX gate
+
+### T-8.6 — Notifications + payroll read-path + leftover `team_leader_id`
+- Depends on: T-8.4, T-8.5
+- Unlocks: —
+- [x] Task complete
+  - [x] Notify both TLs (clock/report/leave/geofence/missing report)
+  - [x] Payroll generate filter “by TL” = membership, not `users.team_leader_id`
+  - [x] Grep: zero remaining employee-scoping via `users.team_leader_id`; permissions/vacations `team_leader_id` either migrated to membership or documented as submit snapshot + `decided_by`
+  - [x] NotificationTest + PayrollGenerateTest dual-TL; LangParity
+
 ## Dependency map
 
 ```text
@@ -543,6 +623,8 @@ T-0.1 → T-0.2 → T-0.3
               T-6.1 → T-6.3 → T-6.4 → T-6.5
               T-6.2 → T-6.3
               T-6.1 + T-2.3 + T-2.13 → T-6.6
+              T-7.6 → T-8.1 → T-8.2 → T-8.3 → T-8.4 → T-8.6
+                                      ↘ T-8.5 ↗
 ```
 
 ---
@@ -648,6 +730,17 @@ T-0.1 → T-0.2 → T-0.3
 - [x] 2026-08-05 Feature — Auto clock-out: after expected end + 60m grace, force close at end+grace (hours count); `is_auto_clock_out` badge; notify employee+TL+managers; `attendance:auto-clock-out` every 5m. AttendanceServiceTest green.
 - [x] 2026-08-05 Fix — Shift windows match Excel sheet: FT 10:00–18:00 (8h), Online½ **06:00–10:00** (4h, was wrongly 10–14/2pm), Online full 10:00–22:00 (12h). Late/auto clock-out use **shift-type** window (not only profile times).
 
+- [x] 2026-08-18 T-8.1 PASS — `employee_team_leaders` pivot (max 2, TEAM_LEADER only); backfill then drop `users.team_leader_id`. `TeamMembershipService` + User `ledBy` / factory mutator. DualTeamLeaderSchemaTest + full suite 437 green.
+- [x] 2026-08-18 T-8.2 PASS — Employee form two TL selects (1 required, 2 optional, distinct); list/profile/payslip show both names; search via pivot. EmployeeCrudTest + LangParity.
+- [x] 2026-08-18 T-8.3 PASS — Ops scope via `TeamMembershipService::leads()` / `ledBy`: shifts, rest days, reports, missing-report alerts, hours board, attendance history, punch photos; clock GPS + auto clock-out + report submitted/missing notify both TLs. Actor still `assigned_by_tl_id` / `created_by`. DualTeamScopeTest. Approvals T-8.4; per-TL eval T-8.5. Full suite 463 tests / 4562 assertions.
+- [x] 2026-08-18 T-8.4 PASS — Either membership TL may accept/reject/force leave + vacation; `decided_by` on both tables. Queue uses `ledBy`, not the first-TL snapshot. Submit requires ≥1 TL. UI: Submitted for team + Decided by (AR+EN); no money to TL. PermissionApprovalTest + VacationApprovalTest dual. TL self-requests still Manager-only (no new TL↔Admin path). Full suite 465 tests / 4618 assertions.
+- [x] 2026-08-18 T-8.5 PASS — Per-TL daily scores (`attendance_daily_scores`) + monthly eval unique `(user, TL, month, year)`. Own scores/text editable; other TL read-only labeled by name. Attendance % stays on `attendance`. Combined month = avg of TL totals (annual = avg of those months). Legacy 0.97375 kept. Dual DailyScore/MonthlyEvaluation/MyEvaluation tests. UI/UX AR+EN RTL/LTR 375/768/1280. Full suite 475 tests / 4671 assertions. Next: T-8.6.
+- [x] 2026-08-18 T-8.6 PASS — Both membership TLs notified on leave/vacation/report reply (actor skipped); clock geofence/auto clock-out/report submitted/missing already both. Payroll generate-by-TL = `ledBy` + that TL’s own row. `permissions`/`vacations`.`team_leader_id` documented as submit snapshot; queue/notify/scope use membership. NotificationTest + PayrollGenerateTest dual. Phase 8 complete. Full suite 481 tests / 4700 assertions.
+- [x] 2026-08-18 UX T-8.2 — Employee form: choosing team leader 1 hides that person from team leader 2 (and the reverse). Server still rejects the same id twice. AR+EN hints. EmployeeCrudTest + LangParity.
+- [x] 2026-08-18 UX T-8.2 — Employees list: separate columns for team leader 1 and team leader 2 (empty → none).
+- [x] 2026-08-18 UX T-8.2 — Hide TL selects when role is TEAM_LEADER (also Accountant/Assistant); posted ids ignored so a TL cannot be assigned another TL.
+- [x] 2026-08-18 T-7.7 PASS — Admin login-as-user: Settings `impersonation_enabled` (default off). Manager Login as from Employees + Return to admin banner. Nested switch blocked; Assistant/TL 403. ImpersonationTest + SettingsTest + LangParity green. Role chain N/A (Manager-only).
+
 <!--
 Example:
 - 2026-08-02 T-0.1 PASS — migrate/boot OK
@@ -663,3 +756,5 @@ Example:
 - [x] 2026-08-18 Amend T-7.5 — Assistant may add/edit/see employee salary and rates (user: yes). Payroll generate/review, advances admin, penalties, settings still blocked. TL still never sees money. AssistantRoleTest + RatesPrivacyTest.
 - [x] 2026-08-18 T-7.6 PASS — Attendance history `/team-leader/attendance`: employee + date range (≤92d) + present/absent/rest/vacation + photos/location/outside; Manager/Assistant all, TL team; Dashboard shortcut. AttendanceHistoryTest + LangParity green.
 - [x] 2026-08-18 Fix T-7.6 — pagination: Bootstrap 5 links, keep filters on page 2, clamp out-of-range page; showing X–Y of Z.
+- [x] 2026-08-18 Plan T-8 — Dual team leaders (max 2) + per-TL evaluations with actor on every write. **Not started** until user confirms the lock box in `docs/TASKS.md` Phase 8.
+- [x] 2026-08-18 Fix — Employee salary/rates: `type=number` in ar/RTL rejected 5500 (thousands grouping) while 600 worked. Text + `inputmode=decimal` + wider fields; normalize `5,500` / Arabic-Indic digits. EmployeeCrudTest green.

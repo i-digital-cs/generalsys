@@ -79,7 +79,7 @@
                     <p class="small text-body-secondary mb-0 mt-1">{{ __('evaluation.scores_subtitle') }}</p>
                 </div>
                 <div class="card-body">
-                    @if ($canRespond)
+                    @if ($canScore ?? false)
                         <form method="POST" action="{{ route('team-leader.reports.scores', $attendance) }}">
                             @csrf
                             @method('PUT')
@@ -93,7 +93,7 @@
                                 <div class="mb-3">
                                     <label for="{{ $field }}" class="form-label">{{ __('evaluation.fields.'.$labelKey) }}</label>
                                     <input type="number" step="0.01" min="0" max="100" id="{{ $field }}" name="{{ $field }}"
-                                           value="{{ old($field, $attendance->{$field}) }}"
+                                           value="{{ old($field, $ownScore?->{$field}) }}"
                                            class="form-control @error($field) is-invalid @enderror"
                                            required dir="ltr">
                                     @error($field)
@@ -114,19 +114,6 @@
                             </button>
                         </form>
                     @else
-                        @foreach ([
-                            'performance_score' => 'performance',
-                            'behavior_score' => 'behavior',
-                            'productivity_score' => 'productivity',
-                            'interest_return_score' => 'interest_return',
-                        ] as $field => $labelKey)
-                            <div class="mb-3">
-                                <div class="small text-body-secondary">{{ __('evaluation.fields.'.$labelKey) }}</div>
-                                <div class="fw-semibold" dir="ltr">
-                                    {{ $attendance->{$field} !== null ? number_format((float) $attendance->{$field}, 2) : __('general.not_available') }}
-                                </div>
-                            </div>
-                        @endforeach
                         <div class="mb-0">
                             <div class="small text-body-secondary">{{ __('evaluation.fields.attendance') }}</div>
                             <div class="fw-semibold" dir="ltr">
@@ -134,6 +121,24 @@
                             </div>
                         </div>
                     @endif
+
+                    @foreach ($otherScores ?? [] as $score)
+                        <div class="border rounded p-3 mt-3">
+                            <div class="small text-body-secondary mb-2">{{ __('evaluation.other_scores') }}</div>
+                            <div class="fw-semibold mb-2">{{ $score->teamLeader?->localizedName() }}</div>
+                            @foreach ([
+                                'performance_score' => 'performance',
+                                'behavior_score' => 'behavior',
+                                'productivity_score' => 'productivity',
+                                'interest_return_score' => 'interest_return',
+                            ] as $field => $labelKey)
+                                <div class="d-flex justify-content-between gap-2 small mb-1">
+                                    <span>{{ __('evaluation.fields.'.$labelKey) }}</span>
+                                    <span class="num-ltr">{{ number_format((float) $score->{$field}, 2) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endforeach
                 </div>
             </div>
         </div>

@@ -84,3 +84,78 @@ document.addEventListener('click', function (event) {
         });
     });
 })();
+
+(function () {
+    const role = document.getElementById('role');
+    const fields = document.querySelectorAll('[data-team-leader-fields]');
+    const first = document.getElementById('team_leader_ids_0');
+    const second = document.getElementById('team_leader_ids_1');
+
+    if (! role || fields.length === 0) {
+        return;
+    }
+
+    const hiddenRoles = ['ACCOUNTANT', 'ASSISTANT', 'TEAM_LEADER'];
+
+    function syncExclusiveLeaders() {
+        if (! first || ! second) {
+            return;
+        }
+
+        if (first.value && first.value === second.value) {
+            second.value = '';
+        }
+
+        const firstVal = first.value;
+        const secondVal = second.value;
+
+        Array.from(first.options).forEach(function (option) {
+            if (! option.value) {
+                return;
+            }
+            const taken = option.value === secondVal;
+            option.hidden = taken;
+            option.disabled = taken;
+        });
+
+        Array.from(second.options).forEach(function (option) {
+            if (! option.value) {
+                return;
+            }
+            const taken = option.value === firstVal;
+            option.hidden = taken;
+            option.disabled = taken;
+        });
+    }
+
+    function syncTeamLeaderFields() {
+        const hide = hiddenRoles.indexOf(role.value) !== -1;
+
+        fields.forEach(function (el) {
+            el.classList.toggle('d-none', hide);
+        });
+
+        if (first) {
+            first.required = ! hide && role.value === 'EMPLOYEE';
+            if (hide) {
+                first.value = '';
+            }
+        }
+
+        if (second && hide) {
+            second.value = '';
+        }
+
+        syncExclusiveLeaders();
+    }
+
+    role.addEventListener('change', syncTeamLeaderFields);
+    syncTeamLeaderFields();
+
+    if (first) {
+        first.addEventListener('change', syncExclusiveLeaders);
+    }
+    if (second) {
+        second.addEventListener('change', syncExclusiveLeaders);
+    }
+})();

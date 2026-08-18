@@ -36,6 +36,7 @@ class Permission extends Model
         'reason',
         'status',
         'team_leader_id',
+        'decided_by',
         'penalty_amount',
         'is_double_penalty',
     ];
@@ -67,5 +68,10 @@ class Permission extends Model
     public function teamLeader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'team_leader_id');
+    }
+
+    public function decidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'decided_by');
     }
 }

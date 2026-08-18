@@ -101,7 +101,13 @@
                                 'text-bg-primary' => $payroll->status === 'PAID',
                             ])>{{ __('payroll.status.'.$payroll->status) }}</span>
                         </div>
-                        <p class="small text-body-secondary mb-0">{{ $period }} · {{ __('payroll.breakdown') }}</p>
+                        <p class="small text-body-secondary mb-0">
+                            {{ $period }} · {{ __('payroll.breakdown') }}
+                            @if ($emp)
+                                · {{ __('employees.team_leader') }}:
+                                {{ $emp->teamLeaderDisplayNames() !== '' ? $emp->teamLeaderDisplayNames() : __('general.not_available') }}
+                            @endif
+                        </p>
                     </div>
                     <div class="d-flex flex-wrap gap-2">
                         <a href="{{ route('admin.payroll.export.pdf', $payroll) }}" class="btn btn-outline-primary">
