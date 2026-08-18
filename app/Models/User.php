@@ -24,6 +24,8 @@ class User extends Authenticatable
 
     public const ROLE_ACCOUNTANT = 'ACCOUNTANT';
 
+    public const ROLE_ASSISTANT = 'ASSISTANT';
+
     public const STATUS_ACTIVE = 'ACTIVE';
 
     public const STATUS_INACTIVE = 'INACTIVE';
@@ -244,6 +246,7 @@ class User extends Authenticatable
             self::ROLE_MANAGER => ['ar' => 'مدير', 'en' => 'Manager'],
             self::ROLE_TEAM_LEADER => ['ar' => 'قائد فريق', 'en' => 'Team Leader'],
             self::ROLE_ACCOUNTANT => ['ar' => 'محاسب', 'en' => 'Accountant'],
+            self::ROLE_ASSISTANT => ['ar' => 'مساعد إداري', 'en' => 'Admin Assistant'],
             default => ['ar' => 'موظف', 'en' => 'Employee'],
         };
     }
@@ -280,6 +283,62 @@ class User extends Authenticatable
     public function isAccountant(): bool
     {
         return $this->role === self::ROLE_ACCOUNTANT;
+    }
+
+    public function isAssistant(): bool
+    {
+        return $this->role === self::ROLE_ASSISTANT;
+    }
+
+    /**
+     * Company-wide HR operations: Manager or Assistant.
+     * Employee data entry, shifts, rest days, report follow, absences.
+     */
+    public function canManageOperations(): bool
+    {
+        return $this->isManager() || $this->isAssistant();
+    }
+
+    /** Employee salary/rates on staff records — Manager or Assistant (not TL). */
+    public function canManageRates(): bool
+    {
+        return $this->isManager() || $this->isAssistant();
+    }
+
+    /**
+     * Roles this actor may assign on create/edit staff.
+     *
+     * @return list<string>
+     */
+    public function staffRolesTheyMayAssign(): array
+    {
+        if ($this->isManager()) {
+            return [
+                self::ROLE_EMPLOYEE,
+                self::ROLE_TEAM_LEADER,
+                self::ROLE_ACCOUNTANT,
+                self::ROLE_ASSISTANT,
+            ];
+        }
+
+        if ($this->isAssistant()) {
+            return [self::ROLE_EMPLOYEE, self::ROLE_TEAM_LEADER];
+        }
+
+        return [];
+    }
+
+    public function mayEditStaff(User $target): bool
+    {
+        if ($this->isManager()) {
+            return ! $target->isManager();
+        }
+
+        if ($this->isAssistant()) {
+            return $target->isEmployee() || $target->isTeamLeader();
+        }
+
+        return false;
     }
 
     /** Admin or Accountant — may see/manage payroll money (approve stays Manager-only). */

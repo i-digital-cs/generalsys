@@ -179,7 +179,7 @@ class ShiftAssignmentService
     /** @return EloquentCollection<int, User> */
     public function assignableEmployees(User $actor): EloquentCollection
     {
-        if ($actor->isManager()) {
+        if ($actor->canManageOperations()) {
             return User::query()
                 ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
                 ->where('status', User::STATUS_ACTIVE)
@@ -201,7 +201,7 @@ class ShiftAssignmentService
             return false;
         }
 
-        if ($actor->isManager()) {
+        if ($actor->canManageOperations()) {
             return $target->isEmployee() || $target->isTeamLeader();
         }
 

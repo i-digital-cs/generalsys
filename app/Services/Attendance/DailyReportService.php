@@ -244,6 +244,15 @@ class DailyReportService
         });
     }
 
+    public function actorMayView(User $actor, Attendance $attendance): bool
+    {
+        if ($actor->canManageOperations()) {
+            return true;
+        }
+
+        return $this->actorMayRespond($actor, $attendance);
+    }
+
     public function actorMayRespond(User $actor, Attendance $attendance): bool
     {
         $attendance->loadMissing('user');
@@ -262,13 +271,15 @@ class DailyReportService
     /** @return Collection<int, int> */
     private function visibleEmployeeIds(User $actor): Collection
     {
-        // Manager reviews employees + team leaders (+ other managers' reports).
-        if ($actor->isManager()) {
+        // Operations admin reviews employees + team leaders (+ other managers' reports).
+        if ($actor->canManageOperations()) {
             return User::query()
                 ->whereIn('role', [
                     User::ROLE_EMPLOYEE,
                     User::ROLE_TEAM_LEADER,
                     User::ROLE_MANAGER,
+                    User::ROLE_ACCOUNTANT,
+                    User::ROLE_ASSISTANT,
                 ])
                 ->where('status', User::STATUS_ACTIVE)
                 ->pluck('id');

@@ -24,6 +24,8 @@ class EmployeeController extends Controller
             'employees' => $this->employees->paginate(
                 $request->string('q')->toString() ?: null,
                 $request->string('status')->toString() ?: null,
+                25,
+                $request->user(),
             ),
             'q' => $request->string('q')->toString(),
             'status' => $request->string('status')->toString(),

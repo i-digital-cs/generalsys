@@ -16,7 +16,7 @@ abstract class EmployeeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isManager() ?? false;
+        return $this->user()?->canManageOperations() ?? false;
     }
 
     /**
@@ -36,8 +36,8 @@ abstract class EmployeeRequest extends FormRequest
             ),
         ];
 
-        // Accountant reports to Admin — never assign a team leader.
-        if ($this->input('role') === User::ROLE_ACCOUNTANT) {
+        // Accountant / Assistant report to Admin — never assign a team leader.
+        if (in_array($this->input('role'), [User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT], true)) {
             $payload['team_leader_id'] = null;
         }
 
@@ -119,7 +119,7 @@ abstract class EmployeeRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($employee),
             ],
             'password' => $this->passwordRules(),
-            'role' => ['required', Rule::in([User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT])],
+            'role' => ['required', Rule::in($this->user()?->staffRolesTheyMayAssign() ?? [])],
             'job_title_ar' => ['nullable', 'string', 'max:150'],
             'job_title_en' => ['nullable', 'string', 'max:150'],
             'currency' => ['required', Rule::in(['EGP', 'AED'])],
@@ -140,7 +140,7 @@ abstract class EmployeeRequest extends FormRequest
             'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:2048'],
             'status' => ['required', Rule::in([User::STATUS_ACTIVE, User::STATUS_INACTIVE])],
 
-            // Rates (T-1.5) — MANAGER-only screen, never rendered to TEAM_LEADER
+            // Rates — Manager + Assistant (T-7.5 amend); never rendered to TEAM_LEADER
             'base_salary' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'online_half_day_rate' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'online_full_day_rate' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],

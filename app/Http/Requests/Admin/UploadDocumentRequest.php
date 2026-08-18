@@ -10,7 +10,7 @@ class UploadDocumentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isManager() ?? false;
+        return $this->user()?->canManageOperations() ?? false;
     }
 
     /**

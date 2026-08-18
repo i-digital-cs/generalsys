@@ -49,7 +49,7 @@ Never run tests against production.
 | 1.2 | Unit: factories create MANAGER / TEAM_LEADER / EMPLOYEE |
 | 1.3 | Feature: login success + bad credentials |
 | 1.4 | Feature: MANAGER can CRUD employees; EMPLOYEE cannot create employees (403) |
-| 1.5 | Feature: rates visible to MANAGER + self; **hidden / 403 for TEAM_LEADER** |
+| 1.5 | Feature: rates visible to MANAGER + ASSISTANT; **hidden / 403 for TEAM_LEADER** |
 | 1.6 | Feature: document upload mime/size rejection |
 | 1.7 | Lang keys AR + EN for screens touched |
 

@@ -81,7 +81,7 @@ class MissingDailyReportService
      */
     public function missingForActor(User $actor, CarbonInterface $date): Collection
     {
-        if ($actor->isManager()) {
+        if ($actor->canManageOperations()) {
             return $this->missingPeopleForDate($date);
         }
 

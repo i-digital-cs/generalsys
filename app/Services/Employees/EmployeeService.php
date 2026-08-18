@@ -88,11 +88,15 @@ class EmployeeService
      *
      * @return LengthAwarePaginator<User>
      */
-    public function paginate(?string $search, ?string $status, int $perPage = 25)
+    public function paginate(?string $search, ?string $status, int $perPage = 25, ?User $actor = null)
     {
+        $roles = $actor?->isAssistant()
+            ? [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER]
+            : [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT];
+
         return User::query()
             ->with('profile')
-            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT])
+            ->whereIn('role', $roles)
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('name_ar', 'like', "%{$search}%")

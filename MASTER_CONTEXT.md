@@ -11,7 +11,7 @@
 | Backend | **PHP 8.2 + Laravel 11** | Monolith, no separate SPA |
 | Frontend | **Blade + Bootstrap 5** | Server-rendered, RTL-first (Arabic), vanilla JS only where needed |
 | Database | **MySQL 8 (InnoDB, utf8mb4)** | MariaDB 10.6+ compatible |
-| Auth | **Laravel Sanctum** (session for web, token for API) | RBAC: MANAGER / TEAM_LEADER / EMPLOYEE / ACCOUNTANT |
+| Auth | **Laravel Sanctum** (session for web, token for API) | RBAC: MANAGER / TEAM_LEADER / EMPLOYEE / ACCOUNTANT / ASSISTANT |
 | Excel Import/Export | **maatwebsite/excel** | Payroll parity with existing sheets |
 | PDF Export | **barryvdh/laravel-dompdf** | Payslips, reports |
 | Queue/Cache | **database driver** | No Redis on shared hosting |
@@ -141,11 +141,12 @@
 - Do not auto-mirror TL↔Admin. Record the user’s answer in the task Progress log / this section when a decision is made.
 - Already decided **yes** (shipped): clock, daily report, leave/late submit + decide + force, Admin CC on notifications, **vacation submit/approve with rest-day swap**, vacation credit UI, date-based rest days (Admin+TL), **daily scores on report review**, **monthly evaluations screen** (TL team / Manager any), **clock punch photos view** (owner · TL team · Admin; T-6.6).
 - Upcoming (e.g. employee My Evaluation is self-only): no TL↔Admin ask needed.
-- **Never weaken:** TL never sees monetary amounts; payroll generate/approve stays Admin-only unless the user explicitly changes that.
+- **Never weaken:** TL never sees monetary amounts; payroll generate/approve stays Admin/Accountant (approve Manager-only) unless the user explicitly changes that. Assistant may add/edit/see **employee salary and rates** (user, 2026-08-18); still no payroll generate/review.
 
 | Role | Can View Payroll? |
 |------|-------------------|
 | Admin / Manager | ✅ All employees |
+| Assistant | ❌ NO — payroll module blocked; may edit employee salary/rates |
 | Team Leader | ❌ NO — cannot see any payroll data |
 | Employee | ✅ Own payroll only |
 
@@ -163,7 +164,7 @@ users
 ├── job_title_ar / job_title_en           -- المسمى الوظيفي (all users)
 ├── email
 ├── password_hash
-├── role (enum: MANAGER, TEAM_LEADER, EMPLOYEE, ACCOUNTANT)
+├── role (enum: MANAGER, TEAM_LEADER, EMPLOYEE, ACCOUNTANT, ASSISTANT)
 ├── currency (EGP, AED)
 ├── language_preference (ar, en)
 ├── team_leader_id (FK → users, nullable)
@@ -462,6 +463,8 @@ vacations.replace_rest_date / replace_rest_day_id  -- swap on submit
 | Pre-assign Shifts / rest days | ✅ | ❌ | ✅ Team Only | ❌ |
 
 > **Accountant (T-7.1):** role `ACCOUNTANT` / محاسب. No `team_leader_id` (reports to Admin). Self-service + payroll (view/generate/edit) + advances CRUD. **Approve payroll stays Manager-only.**
+>
+> **Assistant (T-7.5):** role `ASSISTANT` / مساعد إداري. Reports to Admin (`team_leader_id` null). Company-wide HR helper: employee data entry **including salary/rates**, shifts, rest days, follow all daily reports (view-only — no reply/scores), absences dashboard, missing-report alerts. Self-service clock/report/requests/profile/own salary. **No** payroll generate/review, advances admin, penalties, settings, annual reports, leave approvals, or evaluations of others.
 
 ---
 

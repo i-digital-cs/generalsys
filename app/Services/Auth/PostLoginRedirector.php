@@ -13,6 +13,7 @@ class PostLoginRedirector
     {
         return match ($user->role) {
             User::ROLE_MANAGER => 'admin.dashboard',
+            User::ROLE_ASSISTANT => 'admin.dashboard',
             User::ROLE_TEAM_LEADER => 'team-leader.dashboard',
             default => 'employee.dashboard',
         };

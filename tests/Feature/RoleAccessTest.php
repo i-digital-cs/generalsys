@@ -46,6 +46,18 @@ class RoleAccessTest extends TestCase
         $this->get(route('admin.settings'))->assertForbidden();
     }
 
+    public function test_assistant_can_open_ops_routes_but_not_settings(): void
+    {
+        $assistant = User::factory()->assistant()->create();
+
+        $this->actingAs($assistant);
+
+        $this->get(route('admin.dashboard'))->assertOk();
+        $this->get(route('admin.employees.index'))->assertOk();
+        $this->get(route('admin.employees.create'))->assertOk();
+        $this->get(route('admin.settings'))->assertForbidden();
+    }
+
     public function test_manager_can_open_admin_routes(): void
     {
         $manager = User::factory()->manager()->create();

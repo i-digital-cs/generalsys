@@ -86,6 +86,16 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function assistant(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => User::ROLE_ASSISTANT,
+            'team_leader_id' => null,
+            'job_title_ar' => 'مساعد إداري',
+            'job_title_en' => 'Admin Assistant',
+        ]);
+    }
+
     public function inactive(): static
     {
         return $this->state(fn (array $attributes) => [

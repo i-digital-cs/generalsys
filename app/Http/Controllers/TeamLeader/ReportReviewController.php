@@ -51,7 +51,7 @@ class ReportReviewController extends Controller
     {
         $attendance->loadMissing(['user', 'photos']);
 
-        abort_unless($this->reports->actorMayRespond($request->user(), $attendance), 403);
+        abort_unless($this->reports->actorMayView($request->user(), $attendance), 403);
 
         $main = $this->reports->mainAttendanceForDate(
             $attendance->user,
@@ -66,6 +66,7 @@ class ReportReviewController extends Controller
         return view('team-leader.reports.show', [
             'attendance' => $main,
             'isLocked' => $this->reports->isLocked($main),
+            'canRespond' => $this->reports->actorMayRespond($request->user(), $main),
         ]);
     }
 

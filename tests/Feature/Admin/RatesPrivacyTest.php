@@ -7,7 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Gate 1.5 — rates are MANAGER-only; TEAM_LEADER never sees money.
+ * Gate 1.5 — rates are Manager + Assistant; TEAM_LEADER never sees money.
  */
 class RatesPrivacyTest extends TestCase
 {
@@ -68,16 +68,34 @@ class RatesPrivacyTest extends TestCase
             ->assertDontSee(__('employees.sections.rates'));
     }
 
-    public function test_policy_denies_rates_update_to_non_managers(): void
+    public function test_assistant_sees_rates_on_employee_edit(): void
+    {
+        $assistant = User::factory()->assistant()->create();
+        $employee = User::factory()->employee()->create(['base_salary' => 5000]);
+        $employee->profile()->create(['employee_code' => 'EMP-R2']);
+
+        $this->actingAs($assistant)
+            ->get(route('admin.employees.edit', $employee))
+            ->assertOk()
+            ->assertSee('base_salary')
+            ->assertSee('online_half_day_rate')
+            ->assertSee('overtime_hourly_rate');
+    }
+
+    public function test_policy_denies_rates_update_to_team_leader_and_employee(): void
     {
         $manager = User::factory()->manager()->create();
+        $assistant = User::factory()->assistant()->create();
         $leader = User::factory()->teamLeader()->create();
         $employee = User::factory()->employee()->create();
 
         $this->assertTrue($manager->can('updateRates', $employee));
+        $this->assertTrue($assistant->can('updateRates', $employee));
         $this->assertFalse($leader->can('updateRates', $employee));
         $this->assertFalse($employee->can('updateRates', $employee));
         $this->assertFalse($leader->can('view', $employee));
         $this->assertTrue($employee->can('view', $employee));
+        $this->assertTrue($assistant->can('view', $employee));
+        $this->assertTrue($assistant->can('update', $employee));
     }
 }

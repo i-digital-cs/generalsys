@@ -120,11 +120,14 @@ class MissingDailyReportServiceTest extends TestCase
         $leader = User::factory()->teamLeader()->create();
         $otherLeader = User::factory()->teamLeader()->create();
         $manager = User::factory()->manager()->create();
+        $assistant = User::factory()->assistant()->create();
 
         $managerScope = $this->service->missingForActor($manager, Carbon::parse(self::DATE));
+        $assistantScope = $this->service->missingForActor($assistant, Carbon::parse(self::DATE));
         $otherScope = $this->service->missingForActor($otherLeader, Carbon::parse(self::DATE));
 
         $this->assertTrue($managerScope->contains(fn (User $u) => $u->id === $leader->id));
+        $this->assertTrue($assistantScope->contains(fn (User $u) => $u->id === $leader->id));
         $this->assertFalse($otherScope->contains(fn (User $u) => $u->id === $leader->id));
     }
 

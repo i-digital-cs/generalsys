@@ -13,7 +13,7 @@ class StoreVacationRequest extends FormRequest
         $user = $this->user();
 
         return $user !== null && (
-            $user->isEmployee() || $user->isTeamLeader() || $user->isManager() || $user->isAccountant()
+            $user->isEmployee() || $user->isTeamLeader() || $user->isManager() || $user->isAccountant() || $user->isAssistant()
         );
     }
 

@@ -45,7 +45,7 @@ class AttendanceAutoClockOutNotification extends Notification
             return route('employee.report', ['date' => $date]);
         }
 
-        if ($notifiable instanceof User && $notifiable->isManager()) {
+        if ($notifiable instanceof User && $notifiable->canManageOperations()) {
             return route('admin.dashboard');
         }
 

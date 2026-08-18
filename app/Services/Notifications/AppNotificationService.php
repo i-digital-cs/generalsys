@@ -129,12 +129,12 @@ class AppNotificationService
             User::query()->find($leaderId)?->notify($notification);
         }
 
-        $this->notifyManagers($notification);
+        $this->notifyOperationsAdmins($notification);
     }
 
     /**
      * Missing daily report warning: notify the person's team leader
-     * (employees only) + all managers.
+     * (employees only) + all managers and assistants.
      *
      * @return int recipients notified
      */
@@ -152,12 +152,12 @@ class AppNotificationService
             $sent++;
         }
 
-        $managers = $this->activeManagers();
-        foreach ($managers as $manager) {
-            $manager->notify($notification);
+        $ops = $this->activeOperationsAdmins();
+        foreach ($ops as $admin) {
+            $admin->notify($notification);
         }
 
-        return $sent + $managers->count();
+        return $sent + $ops->count();
     }
 
     public function reportReplied(Attendance $attendance, ?User $actor = null): void
@@ -189,11 +189,11 @@ class AppNotificationService
             User::query()->find($leaderId)?->notify($notification);
         }
 
-        $this->notifyManagers($notification);
+        $this->notifyOperationsAdmins($notification);
     }
 
     /**
-     * Soft geofence: punch accepted outside office — notify employee + TL + managers.
+     * Soft geofence: punch accepted outside office — notify employee + TL + managers + assistants.
      */
     public function attendanceGeofenceWarning(
         Attendance $attendance,
@@ -218,7 +218,7 @@ class AppNotificationService
             User::query()->find($leaderId)?->notify($notification);
         }
 
-        $this->notifyManagers($notification);
+        $this->notifyOperationsAdmins($notification);
     }
 
     private function notifyTeamLeaderOf(
@@ -269,6 +269,27 @@ class AppNotificationService
     {
         $query = User::query()
             ->where('role', User::ROLE_MANAGER)
+            ->where('status', User::STATUS_ACTIVE);
+
+        if ($except !== null) {
+            $query->where('id', '!=', $except->id);
+        }
+
+        return $query->get();
+    }
+
+    private function notifyOperationsAdmins(object $notification, ?User $except = null): void
+    {
+        foreach ($this->activeOperationsAdmins($except) as $admin) {
+            $admin->notify($notification);
+        }
+    }
+
+    /** @return Collection<int, User> */
+    private function activeOperationsAdmins(?User $except = null): Collection
+    {
+        $query = User::query()
+            ->whereIn('role', [User::ROLE_MANAGER, User::ROLE_ASSISTANT])
             ->where('status', User::STATUS_ACTIVE);
 
         if ($except !== null) {

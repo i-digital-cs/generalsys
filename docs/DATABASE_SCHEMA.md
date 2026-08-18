@@ -19,7 +19,7 @@ CREATE TABLE users (
     job_title_en            VARCHAR(150) NULL,
     email                   VARCHAR(190) NOT NULL UNIQUE,
     password                VARCHAR(255) NOT NULL,
-    role                    ENUM('MANAGER','TEAM_LEADER','EMPLOYEE','ACCOUNTANT') NOT NULL DEFAULT 'EMPLOYEE',
+    role                    ENUM('MANAGER','TEAM_LEADER','EMPLOYEE','ACCOUNTANT','ASSISTANT') NOT NULL DEFAULT 'EMPLOYEE',
     currency                ENUM('EGP','AED') NOT NULL,
     language_preference     ENUM('ar','en') NOT NULL DEFAULT 'ar',
     team_leader_id          BIGINT UNSIGNED NULL,

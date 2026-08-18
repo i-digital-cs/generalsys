@@ -25,6 +25,17 @@ class UserFactoryTest extends TestCase
         $this->assertTrue($user->isTeamLeader());
     }
 
+    public function test_factory_creates_an_assistant(): void
+    {
+        $user = User::factory()->assistant()->create();
+
+        $this->assertTrue($user->isAssistant());
+        $this->assertNull($user->team_leader_id);
+        $this->assertTrue($user->canManageOperations());
+        $this->assertTrue($user->canManageRates());
+        $this->assertFalse($user->canAccessPayroll());
+    }
+
     public function test_factory_creates_an_employee(): void
     {
         $user = User::factory()->employee()->create();

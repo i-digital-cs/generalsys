@@ -57,6 +57,22 @@ class DatabaseSeeder extends Seeder
             'team_leader_id' => null,
         ]);
 
+        $this->seedEmployee(User::factory()->assistant(), [
+            'name_ar' => 'المساعدة',
+            'name_en' => 'Assistant',
+            'job_title_ar' => 'مساعد إداري',
+            'job_title_en' => 'Admin Assistant',
+            'email' => 'assistant@hrpro.test',
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+            'shift_type_default' => 'FULL_TIME',
+            'base_salary' => 5000,
+            'online_half_day_rate' => 80,
+            'online_full_day_rate' => 160,
+            'overtime_hourly_rate' => 40,
+            'team_leader_id' => null,
+        ]);
+
         $radwa = $this->seedEmployee(User::factory()->employee(), [
             'name_ar' => 'رضوى',
             'name_en' => 'Radwa',

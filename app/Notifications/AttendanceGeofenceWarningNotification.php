@@ -53,13 +53,13 @@ class AttendanceGeofenceWarningNotification extends Notification
 
     private function urlFor(object $notifiable): string
     {
-        if ($notifiable instanceof User && (
-            $notifiable->isEmployee() || $notifiable->isAccountant()
-        )) {
+        $employee = $this->attendance->user;
+
+        if ($notifiable instanceof User && $employee !== null && (int) $notifiable->id === (int) $employee->id) {
             return route('employee.clock');
         }
 
-        if ($notifiable instanceof User && $notifiable->isManager()) {
+        if ($notifiable instanceof User && $notifiable->canManageOperations()) {
             return route('admin.dashboard');
         }
 

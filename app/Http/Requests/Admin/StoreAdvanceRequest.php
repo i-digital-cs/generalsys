@@ -27,6 +27,7 @@ class StoreAdvanceRequest extends FormRequest
                     User::ROLE_EMPLOYEE,
                     User::ROLE_TEAM_LEADER,
                     User::ROLE_ACCOUNTANT,
+                    User::ROLE_ASSISTANT,
                 ]),
             ],
             'amount' => ['required', 'numeric', 'min:0.01', 'max:9999999.99'],

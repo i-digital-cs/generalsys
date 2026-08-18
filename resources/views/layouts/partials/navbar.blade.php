@@ -5,7 +5,7 @@
         ? (app()->getLocale() === 'ar' ? $authUser->name_ar : $authUser->name_en)
         : '';
     $homeRoute = match (true) {
-        $authUser?->isManager() => 'admin.dashboard',
+        $authUser?->canManageOperations() => 'admin.dashboard',
         $authUser?->isTeamLeader() => 'team-leader.dashboard',
         $authUser?->isEmployee() => 'employee.dashboard',
         default => 'dashboard',

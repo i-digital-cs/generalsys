@@ -502,6 +502,16 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] EmployeeCrudTest + EmployeeProfileTest + LangParity; UI AR+EN RTL/LTR
   - [x] UI/UX gate (create/edit/list/profile; AR+EN keys; table-responsive)
 
+### T-7.5 — ASSISTANT role (Admin operations helper)
+- Depends on: T-1.4, T-2.6, T-2.14, T-7.1
+- Unlocks: —
+- [x] Task complete
+  - [x] Role `ASSISTANT`; seed `assistant@hrpro.test`; reports to Admin
+  - [x] Employee data entry including salary/rates; shifts + rest days company-wide
+  - [x] Follow all daily reports (view-only) + missing-report alerts + admin dashboard
+  - [x] Self-service clock/report/requests/profile/own salary; no payroll/approvals/evaluations
+  - [x] AssistantRoleTest + MenuConfigTest + RoleAccessTest; UI AR+EN
+
 ## Dependency map
 
 ```text
@@ -640,3 +650,5 @@ Example:
 - [x] 2026-08-13 T-7.2 PASS — Required punch GPS + soft 1-office geofence (Admin Settings lat/lng, default 1 km): store lat/lng/accuracy/distance/outside; accept outside with warn + notify employee/TL/Admin; Maps links like photos; TL↔Admin self-clock yes; ClockLocationTest + GeofenceServiceTest green.
 - [x] 2026-08-13 T-7.3b PASS — Payroll Hours: per-day required / present (موجود) / absent (غائب) per shift; month totals summed from exact day lines; PDF aligned.
 - [x] 2026-08-18 T-7.4 PASS — Job title AR+EN on `users` (covers employees + TLs + accountants + managers; no duplicate on profiles). Admin create/edit + list column + search; self profile + payslip; blank titles default to role. Existing rows backfilled. EmployeeCrudTest + EmployeeProfileTest + LangParity green.
+- [x] 2026-08-18 T-7.5 PASS — ASSISTANT role (مساعد إداري): company-wide employee data entry, shifts, rest days, view-all daily reports (no reply/scores), missing-report alerts, admin dashboard, self-service. No payroll/approvals/evaluations/settings. Seed assistant@hrpro.test. AssistantRoleTest green.
+- [x] 2026-08-18 Amend T-7.5 — Assistant may add/edit/see employee salary and rates (user: yes). Payroll generate/review, advances admin, penalties, settings still blocked. TL still never sees money. AssistantRoleTest + RatesPrivacyTest.

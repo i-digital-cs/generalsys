@@ -13,12 +13,12 @@ class ShiftAssignmentPolicy
 {
     public function viewAny(User $authUser): bool
     {
-        return $authUser->isManager() || $authUser->isTeamLeader();
+        return $authUser->canManageOperations() || $authUser->isTeamLeader();
     }
 
     public function create(User $authUser): bool
     {
-        return $authUser->isManager() || $authUser->isTeamLeader();
+        return $authUser->canManageOperations() || $authUser->isTeamLeader();
     }
 
     public function cancel(User $authUser, ShiftAssignment $assignment): bool
@@ -28,7 +28,7 @@ class ShiftAssignmentPolicy
 
     public function update(User $authUser, ShiftAssignment $assignment): bool
     {
-        if ($authUser->isManager()) {
+        if ($authUser->canManageOperations()) {
             return true;
         }
 

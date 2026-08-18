@@ -6,11 +6,11 @@ use Tests\TestCase;
 
 class MenuConfigTest extends TestCase
 {
-    public function test_menu_is_keyed_by_the_four_roles(): void
+    public function test_menu_is_keyed_by_the_five_roles(): void
     {
         $menu = config('menu');
 
-        $this->assertSame(['MANAGER', 'ACCOUNTANT', 'TEAM_LEADER', 'EMPLOYEE'], array_keys($menu));
+        $this->assertSame(['MANAGER', 'ASSISTANT', 'ACCOUNTANT', 'TEAM_LEADER', 'EMPLOYEE'], array_keys($menu));
 
         foreach ($menu as $role => $items) {
             $this->assertNotEmpty($items, "Menu for {$role} is empty");
@@ -37,6 +37,14 @@ class MenuConfigTest extends TestCase
             $this->assertStringNotContainsString('admin.advances', $item['route']);
         }
 
+        foreach (config('menu.ASSISTANT') as $item) {
+            $this->assertStringNotContainsString('payroll', $item['route']);
+            $this->assertStringNotContainsString('payroll', $item['key']);
+            $this->assertStringNotContainsString('admin.advances', $item['route']);
+            $this->assertStringNotContainsString('admin.settings', $item['route']);
+            $this->assertStringNotContainsString('approvals', $item['route']);
+        }
+
         $managerRoutes = array_column(config('menu.MANAGER'), 'route');
         $this->assertContains('admin.payroll.index', $managerRoutes);
         $this->assertContains('admin.advances.index', $managerRoutes);
@@ -50,6 +58,15 @@ class MenuConfigTest extends TestCase
         $this->assertContains('admin.advances.index', $accountantRoutes);
         $this->assertContains('employee.clock', $accountantRoutes);
         $this->assertNotContains('admin.employees.index', $accountantRoutes);
+
+        $assistantRoutes = array_column(config('menu.ASSISTANT'), 'route');
+        $this->assertContains('admin.employees.index', $assistantRoutes);
+        $this->assertContains('team-leader.shifts', $assistantRoutes);
+        $this->assertContains('team-leader.rest-days', $assistantRoutes);
+        $this->assertContains('team-leader.reports', $assistantRoutes);
+        $this->assertNotContains('admin.payroll.index', $assistantRoutes);
+        $this->assertNotContains('team-leader.approvals', $assistantRoutes);
+        $this->assertNotContains('team-leader.evaluations', $assistantRoutes);
     }
 
     public function test_every_menu_key_is_translated_in_ar_and_en(): void

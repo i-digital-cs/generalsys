@@ -76,8 +76,8 @@ Route::get('/employees/{user}/photo', [EmployeePhotoController::class, 'show'])
 Route::get('/attendance-photos/{photo}', [AttendancePhotoController::class, 'show'])
     ->middleware('auth')->name('attendance.photos.show');
 
-// Admin / MANAGER only (T-1.4 – T-1.7)
-Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->group(function () {
+// Admin operations — Manager + Assistant (employee CRUD includes salary/rates; no payroll)
+Route::middleware(['auth', 'role:MANAGER,ASSISTANT'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     Route::resource('employees', EmployeeController::class)->except(['show', 'destroy']);
@@ -89,7 +89,10 @@ Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->gr
         ->name('employees.documents.store');
     Route::delete('employees/{employee}/documents/{document}', [EmployeeDocumentController::class, 'destroy'])
         ->name('employees.documents.destroy');
+});
 
+// Admin / MANAGER only — money, settings, penalties
+Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/settings', [SettingController::class, 'edit'])->name('settings');
     Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
 
@@ -127,7 +130,7 @@ Route::middleware(['auth', 'role:MANAGER,ACCOUNTANT'])->prefix('admin')->name('a
 });
 
 // Employee + Accountant self home (profile / salary / my advances)
-Route::middleware(['auth', 'role:EMPLOYEE,ACCOUNTANT'])->group(function () {
+Route::middleware(['auth', 'role:EMPLOYEE,ACCOUNTANT,ASSISTANT'])->group(function () {
     Route::get('/employee/dashboard', EmployeeDashboardController::class)->name('employee.dashboard');
     Route::get('/profile', [ProfileController::class, 'showSelf'])->name('employee.profile');
     Route::get('/employees/{user}/profile', [ProfileController::class, 'show'])->name('employee.profile.show');
@@ -138,7 +141,7 @@ Route::middleware(['auth', 'role:EMPLOYEE,ACCOUNTANT'])->group(function () {
 });
 
 // Self-service: clock, daily report, my requests — all staff roles
-Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT'])->group(function () {
+Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT,ASSISTANT'])->group(function () {
     Route::get('/clock', [ClockController::class, 'show'])->name('employee.clock');
     Route::post('/clock/in', [ClockController::class, 'clockIn'])->name('employee.clock.in');
     Route::post('/clock/out', [ClockController::class, 'clockOut'])->name('employee.clock.out');
@@ -159,8 +162,8 @@ Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT'])->gro
     Route::get('/evaluation', [EmployeeEvaluationController::class, 'show'])->name('employee.evaluation');
 });
 
-// Team Leader (+ Manager for roster override) — T-2.14 shifts · T-2.6 report review
-Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER'])->prefix('team-leader')->name('team-leader.')->group(function () {
+// Ops roster + report follow — TL (team) / Manager / Assistant (company-wide)
+Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER,ASSISTANT'])->prefix('team-leader')->name('team-leader.')->group(function () {
     Route::get('/shifts', [ShiftAssignmentController::class, 'index'])->name('shifts');
     Route::post('/shifts', [ShiftAssignmentController::class, 'store'])->name('shifts.store');
     Route::get('/shifts/{shiftAssignment}/edit', [ShiftAssignmentController::class, 'edit'])->name('shifts.edit');
@@ -173,6 +176,10 @@ Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER'])->prefix('team-leader')->
 
     Route::get('/reports', [ReportReviewController::class, 'index'])->name('reports');
     Route::get('/reports/{attendance}', [ReportReviewController::class, 'show'])->name('reports.show');
+});
+
+// Decisions stay TL + Manager (Assistant is view-only on reports)
+Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER'])->prefix('team-leader')->name('team-leader.')->group(function () {
     Route::post('/reports/{attendance}/respond', [ReportReviewController::class, 'respond'])->name('reports.respond');
     Route::put('/reports/{attendance}/scores', [ReportReviewController::class, 'scores'])->name('reports.scores');
 

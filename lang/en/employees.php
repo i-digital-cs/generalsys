@@ -77,6 +77,7 @@ return [
         'TEAM_LEADER' => 'Team Leader',
         'EMPLOYEE' => 'Employee',
         'ACCOUNTANT' => 'Accountant',
+        'ASSISTANT' => 'Admin Assistant',
     ],
     'statuses' => [
         'ACTIVE' => 'Active',

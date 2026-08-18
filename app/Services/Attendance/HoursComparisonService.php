@@ -242,7 +242,7 @@ class HoursComparisonService
             return true;
         }
 
-        if ($actor->isManager()) {
+        if ($actor->canManageOperations()) {
             return $employee->isEmployee() || $employee->isTeamLeader();
         }
 
@@ -257,7 +257,7 @@ class HoursComparisonService
     /** @return Collection<int, User> */
     public function visibleEmployees(User $actor): Collection
     {
-        if ($actor->isManager()) {
+        if ($actor->canManageOperations()) {
             return User::query()
                 ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
                 ->where('status', User::STATUS_ACTIVE)

@@ -2,7 +2,7 @@
 
 - Base URL: `https://generalsys.idigital-cs.com/api/v1`
 - Auth: **Laravel Sanctum** — `Authorization: Bearer {token}` (web Blade app uses session cookies on the same guards)
-- Roles: `MANAGER` (admin), `TEAM_LEADER`, `EMPLOYEE`
+- Roles: `MANAGER` (admin), `ASSISTANT` (ops helper; employee salary/rates yes, payroll module no), `TEAM_LEADER`, `EMPLOYEE`, `ACCOUNTANT`
 - All responses JSON, UTF-8. Dates `YYYY-MM-DD`, datetimes ISO-8601, money as string `"1234.50"` with `currency` field.
 - Errors: RFC-7807 style → `{ "message": "...", "errors": { "field": ["..."] } }` with proper HTTP codes.
 - Rate limit: 60 req/min per user (Laravel `throttle` middleware).
@@ -62,7 +62,7 @@
                        "contract_end": "2026-10-08", "contract_type": "سنة" }
 }
 ```
-> `rates` is **only** present for MANAGER and the employee self — never for TEAM_LEADER (payroll privacy rule).
+> `rates` is present for MANAGER, ASSISTANT, and the employee self — never for TEAM_LEADER (payroll privacy rule).
 
 ---
 

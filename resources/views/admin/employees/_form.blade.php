@@ -62,7 +62,7 @@
             <div class="col-md-4">
                 <label for="role" class="form-label">{{ __('employees.fields.role') }}</label>
                 <select id="role" name="role" class="form-select @error('role') is-invalid @enderror" required>
-                    @foreach (['EMPLOYEE', 'TEAM_LEADER', 'ACCOUNTANT'] as $option)
+                    @foreach (auth()->user()->staffRolesTheyMayAssign() as $option)
                         <option value="{{ $option }}" @selected($val('role', 'EMPLOYEE') === $option)>
                             {{ __("employees.roles.{$option}") }}
                         </option>
@@ -221,7 +221,7 @@
     </div>
 </div>
 
-{{-- Rates (MANAGER-only screen — never rendered to TEAM_LEADER) --}}
+{{-- Rates & currency: Manager + Assistant (TL never sees money) --}}
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-transparent fw-semibold">{{ __('employees.sections.rates') }}</div>
     <div class="card-body">

@@ -44,24 +44,30 @@
                     <div class="border rounded p-3 bg-body-tertiary mb-4">{{ $attendance->daily_report }}</div>
 
                     <h2 class="h6">{{ __('report.tl.response_label') }}</h2>
-                    <form method="POST" action="{{ route('team-leader.reports.respond', $attendance) }}">
-                        @csrf
-                        <div class="mb-3">
-                            <label for="team_leader_response" class="form-label visually-hidden">
-                                {{ __('report.tl.response_label') }}
-                            </label>
-                            <textarea id="team_leader_response" name="team_leader_response" rows="6"
-                                      class="form-control @error('team_leader_response') is-invalid @enderror"
-                                      required maxlength="5000">{{ old('team_leader_response', $attendance->team_leader_response) }}</textarea>
-                            @error('team_leader_response')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <div class="form-text">{{ __('report.tl.response_hint') }}</div>
+                    @if ($canRespond)
+                        <form method="POST" action="{{ route('team-leader.reports.respond', $attendance) }}">
+                            @csrf
+                            <div class="mb-3">
+                                <label for="team_leader_response" class="form-label visually-hidden">
+                                    {{ __('report.tl.response_label') }}
+                                </label>
+                                <textarea id="team_leader_response" name="team_leader_response" rows="6"
+                                          class="form-control @error('team_leader_response') is-invalid @enderror"
+                                          required maxlength="5000">{{ old('team_leader_response', $attendance->team_leader_response) }}</textarea>
+                                @error('team_leader_response')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-text">{{ __('report.tl.response_hint') }}</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                {{ $isLocked ? __('report.tl.update_reply') : __('report.tl.send_reply') }}
+                            </button>
+                        </form>
+                    @else
+                        <div class="border rounded p-3 bg-body-tertiary mb-0">
+                            {{ $attendance->team_leader_response ?: __('general.not_available') }}
                         </div>
-                        <button type="submit" class="btn btn-primary">
-                            {{ $isLocked ? __('report.tl.update_reply') : __('report.tl.send_reply') }}
-                        </button>
-                    </form>
+                    @endif
                 </div>
             </div>
         </div>
@@ -73,10 +79,41 @@
                     <p class="small text-body-secondary mb-0 mt-1">{{ __('evaluation.scores_subtitle') }}</p>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('team-leader.reports.scores', $attendance) }}">
-                        @csrf
-                        @method('PUT')
+                    @if ($canRespond)
+                        <form method="POST" action="{{ route('team-leader.reports.scores', $attendance) }}">
+                            @csrf
+                            @method('PUT')
 
+                            @foreach ([
+                                'performance_score' => 'performance',
+                                'behavior_score' => 'behavior',
+                                'productivity_score' => 'productivity',
+                                'interest_return_score' => 'interest_return',
+                            ] as $field => $labelKey)
+                                <div class="mb-3">
+                                    <label for="{{ $field }}" class="form-label">{{ __('evaluation.fields.'.$labelKey) }}</label>
+                                    <input type="number" step="0.01" min="0" max="100" id="{{ $field }}" name="{{ $field }}"
+                                           value="{{ old($field, $attendance->{$field}) }}"
+                                           class="form-control @error($field) is-invalid @enderror"
+                                           required dir="ltr">
+                                    @error($field)
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endforeach
+
+                            <div class="mb-3">
+                                <label class="form-label">{{ __('evaluation.fields.attendance') }}</label>
+                                <input type="text" class="form-control" dir="ltr" disabled
+                                       value="{{ $attendance->attendance_score !== null ? number_format((float) $attendance->attendance_score, 2) : '—' }}">
+                                <div class="form-text">{{ __('evaluation.attendance_hint') }}</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">
+                                {{ __('evaluation.save_scores') }}
+                            </button>
+                        </form>
+                    @else
                         @foreach ([
                             'performance_score' => 'performance',
                             'behavior_score' => 'behavior',
@@ -84,28 +121,19 @@
                             'interest_return_score' => 'interest_return',
                         ] as $field => $labelKey)
                             <div class="mb-3">
-                                <label for="{{ $field }}" class="form-label">{{ __('evaluation.fields.'.$labelKey) }}</label>
-                                <input type="number" step="0.01" min="0" max="100" id="{{ $field }}" name="{{ $field }}"
-                                       value="{{ old($field, $attendance->{$field}) }}"
-                                       class="form-control @error($field) is-invalid @enderror"
-                                       required dir="ltr">
-                                @error($field)
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <div class="small text-body-secondary">{{ __('evaluation.fields.'.$labelKey) }}</div>
+                                <div class="fw-semibold" dir="ltr">
+                                    {{ $attendance->{$field} !== null ? number_format((float) $attendance->{$field}, 2) : __('general.not_available') }}
+                                </div>
                             </div>
                         @endforeach
-
-                        <div class="mb-3">
-                            <label class="form-label">{{ __('evaluation.fields.attendance') }}</label>
-                            <input type="text" class="form-control" dir="ltr" disabled
-                                   value="{{ $attendance->attendance_score !== null ? number_format((float) $attendance->attendance_score, 2) : '—' }}">
-                            <div class="form-text">{{ __('evaluation.attendance_hint') }}</div>
+                        <div class="mb-0">
+                            <div class="small text-body-secondary">{{ __('evaluation.fields.attendance') }}</div>
+                            <div class="fw-semibold" dir="ltr">
+                                {{ $attendance->attendance_score !== null ? number_format((float) $attendance->attendance_score, 2) : __('general.not_available') }}
+                            </div>
                         </div>
-
-                        <button type="submit" class="btn btn-primary w-100">
-                            {{ __('evaluation.save_scores') }}
-                        </button>
-                    </form>
+                    @endif
                 </div>
             </div>
         </div>
