@@ -13,6 +13,7 @@ return [
     'evaluations' => 'Monthly Evaluations',
     'shifts' => 'Work schedule',
     'rest_days' => 'Rest Days',
+    'attendance' => 'Attendance history',
     'employees' => 'Employee Management',
     'penalties' => 'Penalty Rules',
     'holidays' => 'Holidays',

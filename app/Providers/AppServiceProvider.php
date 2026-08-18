@@ -14,6 +14,7 @@ use App\Policies\EmployeePolicy;
 use App\Policies\PayrollPolicy;
 use App\Policies\PenaltyRulePolicy;
 use App\Policies\ShiftAssignmentPolicy;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -32,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::useBootstrapFive();
+
         Gate::policy(User::class, EmployeePolicy::class);
         Gate::policy(ShiftAssignment::class, ShiftAssignmentPolicy::class);
         Gate::policy(PenaltyRule::class, PenaltyRulePolicy::class);

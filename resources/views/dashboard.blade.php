@@ -104,10 +104,16 @@
                     <div class="card-body">
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                             <h2 class="h6 mb-0">{{ __('dashboard.hours.today_board') }}</h2>
-                            <a href="{{ route('team-leader.shifts', ['date' => now()->toDateString()]) }}"
-                               class="btn btn-sm btn-outline-primary">
-                                {{ __('dashboard.team_intervals.manage') }}
-                            </a>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="{{ route('team-leader.attendance') }}"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    {{ __('attendance.history.open') }}
+                                </a>
+                                <a href="{{ route('team-leader.shifts', ['date' => now()->toDateString()]) }}"
+                                   class="btn btn-sm btn-outline-primary">
+                                    {{ __('dashboard.team_intervals.manage') }}
+                                </a>
+                            </div>
                         </div>
 
                         @if ($todayStatus->isEmpty())

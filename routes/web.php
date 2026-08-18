@@ -24,6 +24,7 @@ use App\Http\Controllers\Employee\SalaryController;
 use App\Http\Controllers\EmployeePhotoController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TeamLeader\ApprovalController;
+use App\Http\Controllers\TeamLeader\AttendanceHistoryController;
 use App\Http\Controllers\TeamLeader\EvaluationController;
 use App\Http\Controllers\TeamLeader\ReportReviewController;
 use App\Http\Controllers\TeamLeader\RestDayController;
@@ -173,6 +174,8 @@ Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER,ASSISTANT'])->prefix('team-
     Route::get('/rest-days', [RestDayController::class, 'index'])->name('rest-days');
     Route::post('/rest-days/{employee}', [RestDayController::class, 'store'])->name('rest-days.store');
     Route::delete('/rest-days/{employee}/{restDay}', [RestDayController::class, 'destroy'])->name('rest-days.destroy');
+
+    Route::get('/attendance', [AttendanceHistoryController::class, 'index'])->name('attendance');
 
     Route::get('/reports', [ReportReviewController::class, 'index'])->name('reports');
     Route::get('/reports/{attendance}', [ReportReviewController::class, 'show'])->name('reports.show');

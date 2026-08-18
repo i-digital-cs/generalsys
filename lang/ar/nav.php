@@ -13,6 +13,7 @@ return [
     'evaluations' => 'التقييمات الشهرية',
     'shifts' => 'تعيين الدوام',
     'rest_days' => 'أيام الراحة',
+    'attendance' => 'سجل الحضور',
     'employees' => 'إدارة الموظفين',
     'penalties' => 'قواعد الجزاءات',
     'holidays' => 'العطلات الرسمية',

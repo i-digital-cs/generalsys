@@ -365,7 +365,7 @@ class HoursComparisonService
      * @param  Collection<int, ShiftAssignment>  $assignments
      * @return array{hours: float, from_profile: bool, intervals: list<array{label: string, start: ?string, end: ?string, hours: float, source: string}>}
      */
-    private function plannedForDay(User $user, Collection $assignments, bool $isRestDay = false): array
+    public function plannedForDay(User $user, Collection $assignments, bool $isRestDay = false): array
     {
         if ($assignments->isNotEmpty()) {
             $intervals = [];
@@ -577,7 +577,7 @@ class HoursComparisonService
      * @param  Collection<int, Attendance>  $attendances
      * @return array{hours: float, intervals: list<array{label: string, start: ?string, end: ?string, hours: float, open: bool, is_friday_work: bool, is_day_off_work: bool, is_official_holiday_work: bool}>}
      */
-    private function actualForDay(Collection $attendances): array
+    public function actualForDay(Collection $attendances): array
     {
         $intervals = [];
         $hours = 0.0;

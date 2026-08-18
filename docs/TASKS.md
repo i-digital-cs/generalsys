@@ -512,6 +512,15 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] Self-service clock/report/requests/profile/own salary; no payroll/approvals/evaluations
   - [x] AssistantRoleTest + MenuConfigTest + RoleAccessTest; UI AR+EN
 
+### T-7.6 — Attendance history (person / dates / absent / photos / location)
+- Depends on: T-2.13, T-6.6, T-7.2, T-7.5
+- Unlocks: —
+- [x] Task complete
+  - [x] Dedicated list: employee, date range, day type, photos, GPS
+  - [x] Manager + Assistant company-wide; TL team-only (same as dashboard hours; TL↔Admin already yes)
+  - [x] AttendanceHistoryTest + LangParity; UI AR+EN RTL/LTR
+  - [x] UI/UX gate (list + filters; table-responsive; 375/768/1280)
+
 ## Dependency map
 
 ```text
@@ -652,3 +661,5 @@ Example:
 - [x] 2026-08-18 T-7.4 PASS — Job title AR+EN on `users` (covers employees + TLs + accountants + managers; no duplicate on profiles). Admin create/edit + list column + search; self profile + payslip; blank titles default to role. Existing rows backfilled. EmployeeCrudTest + EmployeeProfileTest + LangParity green.
 - [x] 2026-08-18 T-7.5 PASS — ASSISTANT role (مساعد إداري): company-wide employee data entry, shifts, rest days, view-all daily reports (no reply/scores), missing-report alerts, admin dashboard, self-service. No payroll/approvals/evaluations/settings. Seed assistant@hrpro.test. AssistantRoleTest green.
 - [x] 2026-08-18 Amend T-7.5 — Assistant may add/edit/see employee salary and rates (user: yes). Payroll generate/review, advances admin, penalties, settings still blocked. TL still never sees money. AssistantRoleTest + RatesPrivacyTest.
+- [x] 2026-08-18 T-7.6 PASS — Attendance history `/team-leader/attendance`: employee + date range (≤92d) + present/absent/rest/vacation + photos/location/outside; Manager/Assistant all, TL team; Dashboard shortcut. AttendanceHistoryTest + LangParity green.
+- [x] 2026-08-18 Fix T-7.6 — pagination: Bootstrap 5 links, keep filters on page 2, clamp out-of-range page; showing X–Y of Z.

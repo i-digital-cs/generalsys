@@ -464,7 +464,7 @@ vacations.replace_rest_date / replace_rest_day_id  -- swap on submit
 
 > **Accountant (T-7.1):** role `ACCOUNTANT` / محاسب. No `team_leader_id` (reports to Admin). Self-service + payroll (view/generate/edit) + advances CRUD. **Approve payroll stays Manager-only.**
 >
-> **Assistant (T-7.5):** role `ASSISTANT` / مساعد إداري. Reports to Admin (`team_leader_id` null). Company-wide HR helper: employee data entry **including salary/rates**, shifts, rest days, follow all daily reports (view-only — no reply/scores), absences dashboard, missing-report alerts. Self-service clock/report/requests/profile/own salary. **No** payroll generate/review, advances admin, penalties, settings, annual reports, leave approvals, or evaluations of others.
+> **Assistant (T-7.5 / T-7.6):** role `ASSISTANT` / مساعد إداري. Reports to Admin (`team_leader_id` null). Company-wide HR helper: employee data entry **including salary/rates**, shifts, rest days, **attendance history** (photos + GPS), follow all daily reports (view-only — no reply/scores), absences dashboard, missing-report alerts. Self-service clock/report/requests/profile/own salary. **No** payroll generate/review, advances admin, penalties, settings, annual reports, leave approvals, or evaluations of others.
 
 ---
 

@@ -86,9 +86,10 @@
 | GET | `employee.clock` | `/clock` | EMPLOYEE/TL/MANAGER |
 | POST | `employee.clock.in` | `/clock/in` | EMPLOYEE/TL/MANAGER — `{ shift_type, photos[]? }` optional multi images |
 | POST | `employee.clock.out` | `/clock/out` | EMPLOYEE/TL/MANAGER — `{ photos[]? }` optional multi images |
-| GET | `attendance.photos.show` | `/attendance-photos/{photo}` | owner · team TL · Manager — stream punch photo |
+| GET | `attendance.photos.show` | `/attendance-photos/{photo}` | owner · team TL · Manager · Assistant — stream punch photo |
 | GET | `employee.report` | `/report?date=` | EMPLOYEE |
 | POST | `employee.report.store` | `/report` | EMPLOYEE — `{ date, daily_report }` |
+| GET | `team-leader.attendance` | `/team-leader/attendance` | TEAM_LEADER(team), MANAGER, ASSISTANT — `employee_id`, `from`, `to`, `kind` (all/present/absent/rest/vacation), `evidence` (all/photos/location/outside) |
 | GET | `team-leader.reports` | `/team-leader/reports?filter=` | TEAM_LEADER(team), MANAGER — `pending` \| `replied` \| `all` |
 | GET | `team-leader.reports.show` | `/team-leader/reports/{attendance}` | TEAM_LEADER(team), MANAGER |
 | POST | `team-leader.reports.respond` | `/team-leader/reports/{attendance}/respond` | TEAM_LEADER(team), MANAGER — `{ team_leader_response }` |

@@ -87,6 +87,7 @@ $border-radius: .5rem;
 | Reports Review | `team-leader/reports` **(shipped T-2.6 + T-3.1)** | pending/replied/all queue; detail + reply form; locks employee report; daily 4-score inputs + auto attendance % |
 | Monthly Evaluation | `team-leader/evaluations` **(shipped T-3.3)** | 5 `<x-score-bar>` averages from daily + monthly text (editable); TL team / Manager |
 | Rest Days | `team-leader/rest-days` **(shipped)** | add/remove specific rest dates per team member |
+| Attendance history | `team-leader/attendance` **(shipped T-7.6)** | person + date range + present/absent/rest/vacation; punch photos + Maps; TL team / Manager+Assistant all |
 | Shift Assignment | `team-leader/shifts` **(shipped T-2.14)** | **My team** roster for date; assign form; list with **Edit** + Cancel; edit page for SCHEDULED |
 
 > TL layout **never** shows money. Sidebar has no payroll item. Any URL hack → 403 page.

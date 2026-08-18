@@ -64,6 +64,9 @@ class MenuConfigTest extends TestCase
         $this->assertContains('team-leader.shifts', $assistantRoutes);
         $this->assertContains('team-leader.rest-days', $assistantRoutes);
         $this->assertContains('team-leader.reports', $assistantRoutes);
+        $this->assertContains('team-leader.attendance', $assistantRoutes);
+        $this->assertContains('team-leader.attendance', $managerRoutes);
+        $this->assertContains('team-leader.attendance', array_column(config('menu.TEAM_LEADER'), 'route'));
         $this->assertNotContains('admin.payroll.index', $assistantRoutes);
         $this->assertNotContains('team-leader.approvals', $assistantRoutes);
         $this->assertNotContains('team-leader.evaluations', $assistantRoutes);
