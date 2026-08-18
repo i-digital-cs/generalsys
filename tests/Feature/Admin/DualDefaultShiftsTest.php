@@ -251,7 +251,7 @@ class DualDefaultShiftsTest extends TestCase
 
         $available = $service->availableShiftTypes($employee, $morning);
         $this->assertContains(Attendance::SHIFT_FULL_TIME, $available);
-        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $available);
+        $this->assertNotContains(Attendance::SHIFT_ONLINE_HALF, $available);
         $this->assertSame(Attendance::SHIFT_FULL_TIME, $service->preferredShiftType($employee, $morning));
 
         $ft = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, $morning);
@@ -261,6 +261,75 @@ class DualDefaultShiftsTest extends TestCase
         $evening = Carbon::parse('2026-08-03 18:05:00');
         $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $service->availableShiftTypes($employee, $evening));
         $this->assertNotContains(Attendance::SHIFT_FULL_TIME, $service->availableShiftTypes($employee, $evening));
+    }
+
+    public function test_late_start_allowed_until_end_then_next_shift_opens(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '10:00', 'end' => '18:00'],
+                ['type' => Attendance::SHIFT_ONLINE_HALF, 'start' => '18:00', 'end' => '22:00'],
+            ],
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
+        $service = app(AttendanceService::class);
+
+        $lateMorning = Carbon::parse('2026-08-03 17:00:00');
+        $this->assertSame([Attendance::SHIFT_FULL_TIME], $service->availableShiftTypes($employee, $lateMorning));
+        $lateRow = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, $lateMorning);
+        $this->assertSame(Attendance::STATUS_LATE, $lateRow->status);
+        $service->clockOut($employee, Carbon::parse('2026-08-03 18:00:00'));
+
+        $afterFullTime = Carbon::parse('2026-08-03 18:01:00');
+        $this->assertSame([Attendance::SHIFT_ONLINE_HALF], $service->availableShiftTypes($employee, $afterFullTime));
+
+        $evening = $service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, Carbon::parse('2026-08-03 20:35:00'));
+        $this->assertSame(Attendance::SHIFT_ONLINE_HALF, $evening->shift_type);
+        $service->clockOut($employee, Carbon::parse('2026-08-03 22:00:00'));
+
+        $this->assertSame([], $service->availableShiftTypes($employee, Carbon::parse('2026-08-03 22:01:00')));
+    }
+
+    public function test_cannot_start_evening_shift_in_the_morning(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '10:00', 'end' => '18:00'],
+                ['type' => Attendance::SHIFT_ONLINE_HALF, 'start' => '18:00', 'end' => '22:00'],
+            ],
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
+        $service = app(AttendanceService::class);
+        $morning = Carbon::parse('2026-08-03 10:08:00');
+
+        $this->assertSame(
+            [Attendance::SHIFT_ONLINE_HALF],
+            $service->upcomingUnrecordedShiftTypes($employee, $morning),
+        );
+
+        $this->expectException(AttendanceException::class);
+        $this->expectExceptionMessage('clock.errors.shift_not_started_yet');
+        $service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, $morning);
+    }
+
+    public function test_cannot_start_finished_shift_but_next_stays_open(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '10:00', 'end' => '18:00'],
+                ['type' => Attendance::SHIFT_ONLINE_HALF, 'start' => '18:00', 'end' => '22:00'],
+            ],
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
+        $service = app(AttendanceService::class);
+        $evening = Carbon::parse('2026-08-03 20:35:00');
+
+        $this->assertSame([Attendance::SHIFT_ONLINE_HALF], $service->availableShiftTypes($employee, $evening));
+        $this->assertSame([Attendance::SHIFT_FULL_TIME], $service->closedUnrecordedShiftTypes($employee, $evening));
+
+        $this->expectException(AttendanceException::class);
+        $this->expectExceptionMessage('clock.errors.shift_window_closed');
+        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, $evening);
     }
 
     public function test_partial_assignment_does_not_drop_other_default_from_hours(): void

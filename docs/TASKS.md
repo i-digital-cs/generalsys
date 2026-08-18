@@ -759,3 +759,4 @@ Example:
 - [x] 2026-08-18 Plan T-8 — Dual team leaders (max 2) + per-TL evaluations with actor on every write. **Not started** until user confirms the lock box in `docs/TASKS.md` Phase 8.
 - [x] 2026-08-18 Fix — Employee salary/rates: `type=number` in ar/RTL rejected 5500 (thousands grouping) while 600 worked. Text + `inputmode=decimal` + wider fields; normalize `5,500` / Arabic-Indic digits. EmployeeCrudTest green.
 - [x] 2026-08-18 Fix — Dual defaults: list shows each shift + window (not one merged label). Clock keeps both types when TL assigns only one; morning prefers the in-window shift; closed-window copy if the other shift was missed. DualDefaultShiftsTest + ClockTest green.
+- [x] 2026-08-18 Fix — Clock-in: late start allowed until that shift’s end; after it finishes it cannot be started; the next shift opens at its start until its end. DualDefaultShiftsTest + ClockTest green.

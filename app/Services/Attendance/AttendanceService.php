@@ -53,7 +53,11 @@ class AttendanceService
             throw AttendanceException::planMismatch();
         }
 
-        if (! $this->shiftWindowStillOpen($user, $shiftType, $at)) {
+        if ($this->shiftHasNotStarted($user, $shiftType, $at)) {
+            throw AttendanceException::shiftNotStartedYet();
+        }
+
+        if ($this->shiftWindowHasEnded($user, $shiftType, $at)) {
             throw AttendanceException::shiftWindowClosed();
         }
 
@@ -292,44 +296,66 @@ class AttendanceService
     public function availableShiftTypes(User $user, ?CarbonInterface $at = null): array
     {
         $at = Carbon::parse($at ?? now());
-        $date = $at->toDateString();
-        $allowed = $this->plannedAllowedTypes($user, $date);
-
-        $used = Attendance::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', $date)
-            ->pluck('shift_type')
-            ->all();
-
-        $remaining = array_values(array_diff($allowed, $used));
+        $remaining = $this->remainingPlannedTypes($user, $at->toDateString());
 
         return array_values(array_filter(
             $remaining,
-            fn (string $type) => $this->shiftWindowStillOpen($user, $type, $at),
+            fn (string $type) => $this->shiftIsClockableNow($user, $type, $at),
         ));
     }
 
     /**
-     * Planned types that are not punched yet but whose clock-in window has ended.
+     * Planned types not punched yet whose shift has already finished.
      *
      * @return list<string>
      */
     public function closedUnrecordedShiftTypes(User $user, ?CarbonInterface $at = null): array
     {
         $at = Carbon::parse($at ?? now());
-        $date = $at->toDateString();
+        $remaining = $this->remainingPlannedTypes($user, $at->toDateString());
+
+        return array_values(array_filter(
+            $remaining,
+            fn (string $type) => $this->shiftWindowHasEnded($user, $type, $at),
+        ));
+    }
+
+    /**
+     * Planned types not punched yet that have not started (next shift still ahead).
+     *
+     * @return list<string>
+     */
+    public function upcomingUnrecordedShiftTypes(User $user, ?CarbonInterface $at = null): array
+    {
+        $at = Carbon::parse($at ?? now());
+        $remaining = $this->remainingPlannedTypes($user, $at->toDateString());
+        $upcoming = [];
+
+        foreach ($remaining as $type) {
+            if (! $this->shiftHasNotStarted($user, $type, $at)) {
+                continue;
+            }
+            $start = $this->expectedStartFor($user, $type, $at);
+            $upcoming[] = ['type' => $type, 'start' => $start];
+        }
+
+        usort($upcoming, fn (array $a, array $b) => $a['start'] <=> $b['start']);
+
+        return array_values(array_map(fn (array $row) => $row['type'], $upcoming));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function remainingPlannedTypes(User $user, string $date): array
+    {
         $used = Attendance::query()
             ->where('user_id', $user->id)
             ->whereDate('date', $date)
             ->pluck('shift_type')
             ->all();
 
-        $remaining = array_values(array_diff($this->plannedAllowedTypes($user, $date), $used));
-
-        return array_values(array_filter(
-            $remaining,
-            fn (string $type) => ! $this->shiftWindowStillOpen($user, $type, $at),
-        ));
+        return array_values(array_diff($this->plannedAllowedTypes($user, $date), $used));
     }
 
     /**
@@ -342,26 +368,14 @@ class AttendanceService
         $available = $this->availableShiftTypes($user, $at);
 
         if ($available === []) {
-            return Attendance::SHIFT_FULL_TIME;
+            $upcoming = $this->upcomingUnrecordedShiftTypes($user, $at);
+
+            return $upcoming[0] ?? Attendance::SHIFT_FULL_TIME;
         }
 
         $picked = $this->earliestAvailableByWindow($user, $available, $at);
-        if ($picked !== null) {
-            return $picked;
-        }
 
-        $assignment = $this->todaysPrimaryAssignment($user, $at);
-        if ($assignment !== null && in_array($assignment->shift_type, $available, true)) {
-            return $assignment->shift_type;
-        }
-
-        foreach ($user->defaultShiftTypes() as $default) {
-            if (in_array($default, $available, true)) {
-                return $default;
-            }
-        }
-
-        return $available[0];
+        return $picked ?? $available[0];
     }
 
     /**
@@ -370,53 +384,62 @@ class AttendanceService
     private function earliestAvailableByWindow(User $user, array $available, CarbonInterface $at): ?string
     {
         $inWindow = [];
-        $upcoming = [];
-
         foreach ($available as $type) {
             $start = $this->expectedStartFor($user, $type, $at);
             if ($start === null) {
                 continue;
             }
-
-            $end = $this->expectedEndFor($user, $type, $at);
-            $closeAt = $end?->copy()->addMinutes($this->clockInGraceMinutes());
-
-            if ($at->lt($start)) {
-                $upcoming[] = ['type' => $type, 'start' => $start];
-            } elseif ($closeAt === null || $at->lte($closeAt)) {
-                $inWindow[] = ['type' => $type, 'start' => $start];
-            }
+            $inWindow[] = ['type' => $type, 'start' => $start];
         }
 
-        $bucket = $inWindow !== [] ? $inWindow : $upcoming;
-        if ($bucket === []) {
+        if ($inWindow === []) {
             return null;
         }
 
-        usort($bucket, fn (array $a, array $b) => $a['start'] <=> $b['start']);
+        usort($inWindow, fn (array $a, array $b) => $a['start'] <=> $b['start']);
 
-        return $bucket[0]['type'];
+        return $inWindow[0]['type'];
     }
 
     /**
-     * Morning (etc.) can be started until expected end + grace; after that the
-     * window is missed (counts as absent) and only later shifts stay open.
+     * Late clock-in is allowed until the shift end. After it finishes, that
+     * shift cannot be started; the next shift opens at its own start.
      */
-    public function shiftWindowStillOpen(User $user, string $shiftType, ?CarbonInterface $at = null): bool
+    public function shiftIsClockableNow(User $user, string $shiftType, ?CarbonInterface $at = null): bool
+    {
+        $at = Carbon::parse($at ?? now());
+        $start = $this->expectedStartFor($user, $shiftType, $at);
+        $end = $this->expectedEndFor($user, $shiftType, $at);
+
+        if ($start === null && $end === null) {
+            return true;
+        }
+
+        if ($start !== null && $at->lt($start)) {
+            return false;
+        }
+
+        if ($end !== null && $at->gt($end)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function shiftHasNotStarted(User $user, string $shiftType, ?CarbonInterface $at = null): bool
+    {
+        $at = Carbon::parse($at ?? now());
+        $start = $this->expectedStartFor($user, $shiftType, $at);
+
+        return $start !== null && $at->lt($start);
+    }
+
+    public function shiftWindowHasEnded(User $user, string $shiftType, ?CarbonInterface $at = null): bool
     {
         $at = Carbon::parse($at ?? now());
         $end = $this->expectedEndFor($user, $shiftType, $at);
 
-        if ($end === null) {
-            return true;
-        }
-
-        return $at->lte($end->copy()->addMinutes($this->clockInGraceMinutes()));
-    }
-
-    private function clockInGraceMinutes(): int
-    {
-        return max(0, (int) config('attendance.auto_clock_out_grace_minutes', 60));
+        return $end !== null && $at->gt($end);
     }
 
     /**

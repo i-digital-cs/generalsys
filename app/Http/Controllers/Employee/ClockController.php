@@ -36,13 +36,17 @@ class ClockController extends Controller
         }
 
         $shiftTypes = $this->attendance->availableShiftTypes($user);
+        $upcomingShiftTypes = $this->attendance->upcomingUnrecordedShiftTypes($user);
+        $closedShiftTypes = $this->attendance->closedUnrecordedShiftTypes($user);
         $preferredShift = $this->attendance->preferredShiftType($user);
         if ($shiftTypes !== [] && ! in_array($preferredShift, $shiftTypes, true)) {
             $preferredShift = $shiftTypes[0];
+        } elseif ($shiftTypes === [] && $upcomingShiftTypes !== []) {
+            $preferredShift = $upcomingShiftTypes[0];
         }
 
         $scheduleShift = $open?->shift_type ?? $preferredShift;
-        $showSchedulePreview = $open !== null || $shiftTypes !== [];
+        $showSchedulePreview = $open !== null || $shiftTypes !== [] || $upcomingShiftTypes !== [];
         $expectedStart = $showSchedulePreview
             ? $this->attendance->expectedStartFor($user, $scheduleShift)
             : null;
@@ -61,8 +65,9 @@ class ClockController extends Controller
             'open' => $open,
             'missingReportDate' => $this->reports->latestUnreportedClosedDay($user)?->date->toDateString(),
             'shiftTypes' => $shiftTypes,
-            'closedShiftTypes' => $shiftTypes === []
-                ? $this->attendance->closedUnrecordedShiftTypes($user)
+            'upcomingShiftTypes' => $upcomingShiftTypes,
+            'closedShiftTypes' => ($shiftTypes === [] && $upcomingShiftTypes === [])
+                ? $closedShiftTypes
                 : [],
             'preferredShift' => $preferredShift,
             'scheduleShift' => $scheduleShift,

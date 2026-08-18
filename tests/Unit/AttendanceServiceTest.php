@@ -276,10 +276,10 @@ class AttendanceServiceTest extends TestCase
     {
         $employee = User::factory()->employee()->create();
 
-        $this->service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 06:00'));
+        $this->service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 10:00'));
 
         $this->expectException(AttendanceException::class);
-        $this->service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 07:00'));
+        $this->service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 10:30'));
     }
 
     public function test_extra_shift_requires_scheduled_assignment(): void
@@ -429,10 +429,14 @@ class AttendanceServiceTest extends TestCase
             'expected_hours' => 2,
         ]);
 
-        $available = $this->service->availableShiftTypes($employee, Carbon::parse('2026-08-03'));
+        $available = $this->service->availableShiftTypes($employee, Carbon::parse('2026-08-03 10:00:00'));
         $this->assertSame(
-            [Attendance::SHIFT_FULL_TIME, Attendance::SHIFT_OVERTIME],
+            [Attendance::SHIFT_FULL_TIME],
             $available,
+        );
+        $this->assertContains(
+            Attendance::SHIFT_OVERTIME,
+            $this->service->availableShiftTypes($employee, Carbon::parse('2026-08-03 18:00:00')),
         );
 
         $row = $this->service->clockIn(

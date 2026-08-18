@@ -146,7 +146,15 @@
                         </div>
                     @endif
                     @if ($shiftTypes === [])
-                        @if ($closedShiftTypes !== [])
+                        @if ($upcomingShiftTypes !== [])
+                            <div class="alert alert-info">
+                                {{ __('clock.upcoming_wait', [
+                                    'shift' => $shiftLabel,
+                                    'start' => $startLabel ?? '—',
+                                    'end' => $endLabel ?? '—',
+                                ]) }}
+                            </div>
+                        @elseif ($closedShiftTypes !== [])
                             <div class="alert alert-warning">
                                 {{ __('clock.windows_closed', [
                                     'shifts' => collect($closedShiftTypes)
