@@ -13,7 +13,11 @@ class EmployeeProfileTest extends TestCase
 
     public function test_employee_sees_own_profile(): void
     {
-        $employee = User::factory()->employee()->create(['name_en' => 'Radwa Adel']);
+        $employee = User::factory()->employee()->create([
+            'name_en' => 'Radwa Adel',
+            'job_title_en' => 'Customer Service Agent',
+            'job_title_ar' => 'أخصائي خدمة عملاء',
+        ]);
         $employee->profile()->create(['employee_code' => 'EMP-P1', 'national_id' => '12345678901234']);
         $employee->contracts()->create([
             'hire_date' => '2024-01-01', 'contract_start' => '2024-01-01',
@@ -22,10 +26,11 @@ class EmployeeProfileTest extends TestCase
         $employee->qualifications()->create(['degree' => 'BSc', 'specialization' => 'CS']);
         $employee->emergencyContacts()->create(['name' => 'Mother', 'phone' => '010']);
 
-        $this->actingAs($employee)
+        $this->withSession(['locale' => 'en'])->actingAs($employee)
             ->get(route('employee.profile'))
             ->assertOk()
             ->assertSee('Radwa Adel')
+            ->assertSee('Customer Service Agent')
             ->assertSee('EMP-P1')
             ->assertSee('BSc')
             ->assertSee('Mother');
@@ -52,6 +57,7 @@ class EmployeeProfileTest extends TestCase
             ->assertOk()
             ->assertSee('10:00')
             ->assertSee('18:00')
+            ->assertSee(__('employees.fields.job_title'))
             ->assertSee('2026-08-07', false)
             ->assertSee('2026-08-08', false);
     }

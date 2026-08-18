@@ -97,6 +97,8 @@ class EmployeeService
                 $query->where(function ($inner) use ($search) {
                     $inner->where('name_ar', 'like', "%{$search}%")
                         ->orWhere('name_en', 'like', "%{$search}%")
+                        ->orWhere('job_title_ar', 'like', "%{$search}%")
+                        ->orWhere('job_title_en', 'like', "%{$search}%")
                         ->orWhereHas('profile', fn ($profile) => $profile->where('employee_code', 'like', "%{$search}%"));
                 });
             })
@@ -113,7 +115,7 @@ class EmployeeService
     {
         $attributes = array_merge(
             Arr::only($data, [
-                'name_ar', 'name_en', 'email', 'role', 'currency', 'language_preference',
+                'name_ar', 'name_en', 'job_title_ar', 'job_title_en', 'email', 'role', 'currency', 'language_preference',
                 'team_leader_id', 'status',
                 'base_salary', 'online_half_day_rate', 'online_full_day_rate', 'overtime_hourly_rate',
             ]),
@@ -145,6 +147,31 @@ class EmployeeService
             $attributes['work_start_time'] = collect($profiles)->min('start');
             $attributes['work_end_time'] = collect($profiles)->max('end');
         }
+
+        return $this->applyJobTitles($attributes);
+    }
+
+    /**
+     * Blank titles fall back to the role default so every user has a job title.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function applyJobTitles(array $attributes): array
+    {
+        $ar = trim((string) ($attributes['job_title_ar'] ?? ''));
+        $en = trim((string) ($attributes['job_title_en'] ?? ''));
+
+        if ($ar === '' && $en === '') {
+            $defaults = User::defaultJobTitles($attributes['role'] ?? User::ROLE_EMPLOYEE);
+            $attributes['job_title_ar'] = $defaults['ar'];
+            $attributes['job_title_en'] = $defaults['en'];
+
+            return $attributes;
+        }
+
+        $attributes['job_title_ar'] = $ar !== '' ? $ar : null;
+        $attributes['job_title_en'] = $en !== '' ? $en : null;
 
         return $attributes;
     }

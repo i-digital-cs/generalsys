@@ -36,6 +36,8 @@ class User extends Authenticatable
     protected $fillable = [
         'name_ar',
         'name_en',
+        'job_title_ar',
+        'job_title_en',
         'email',
         'password',
         'role',
@@ -231,6 +233,33 @@ class User extends Authenticatable
     public function getWorkEndTimeAttribute(?string $value): ?string
     {
         return $value === null ? null : substr($value, 0, 5);
+    }
+
+    /**
+     * @return array{ar: string, en: string}
+     */
+    public static function defaultJobTitles(string $role): array
+    {
+        return match ($role) {
+            self::ROLE_MANAGER => ['ar' => 'مدير', 'en' => 'Manager'],
+            self::ROLE_TEAM_LEADER => ['ar' => 'قائد فريق', 'en' => 'Team Leader'],
+            self::ROLE_ACCOUNTANT => ['ar' => 'محاسب', 'en' => 'Accountant'],
+            default => ['ar' => 'موظف', 'en' => 'Employee'],
+        };
+    }
+
+    public function localizedJobTitle(): ?string
+    {
+        $ar = trim((string) $this->job_title_ar);
+        $en = trim((string) $this->job_title_en);
+        $preferred = app()->getLocale() === 'ar' ? $ar : $en;
+        $fallback = app()->getLocale() === 'ar' ? $en : $ar;
+
+        if ($preferred !== '') {
+            return $preferred;
+        }
+
+        return $fallback !== '' ? $fallback : null;
     }
 
     public function isManager(): bool

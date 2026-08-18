@@ -24,6 +24,7 @@ return [
         'employee_details' => 'بيانات الموظف',
         'employee' => 'الموظف',
         'role' => 'الدور',
+        'job_title' => 'المسمى الوظيفي',
         'period' => 'فترة الراتب',
         'status' => 'الحالة',
         'currency' => 'العملة',

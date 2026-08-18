@@ -44,7 +44,10 @@
                         </span>
                     @endif
                     <h1 class="h5 mb-1">{{ $displayName }}</h1>
-                    <p class="text-body-secondary small mb-3">{{ $secondaryName }}</p>
+                    <p class="text-body-secondary small {{ $employee->localizedJobTitle() ? 'mb-1' : 'mb-3' }}">{{ $secondaryName }}</p>
+                    @if ($employee->localizedJobTitle())
+                        <p class="small mb-3">{{ $employee->localizedJobTitle() }}</p>
+                    @endif
                     <div class="d-flex flex-wrap justify-content-center gap-2">
                         @if ($profile?->employee_code)
                             <span class="badge text-bg-primary">
@@ -118,6 +121,8 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
+                        <x-profile-item icon="bi-briefcase" :label="__('employees.fields.job_title')"
+                                        :value="$employee->localizedJobTitle()" />
                         <x-profile-item icon="bi-box-arrow-in-right" :label="__('employees.fields.work_start_time')"
                                         :value="$employee->work_start_time" :ltr="true" />
                         <x-profile-item icon="bi-box-arrow-left" :label="__('employees.fields.work_end_time')"

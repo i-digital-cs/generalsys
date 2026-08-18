@@ -120,6 +120,8 @@ abstract class EmployeeRequest extends FormRequest
             ],
             'password' => $this->passwordRules(),
             'role' => ['required', Rule::in([User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT])],
+            'job_title_ar' => ['nullable', 'string', 'max:150'],
+            'job_title_en' => ['nullable', 'string', 'max:150'],
             'currency' => ['required', Rule::in(['EGP', 'AED'])],
             'language_preference' => ['required', Rule::in(['ar', 'en'])],
             'team_leader_id' => [

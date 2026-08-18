@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
         $this->seedEmployee(User::factory()->manager(), [
             'name_ar' => 'مدير النظام',
             'name_en' => 'System Admin',
+            'job_title_ar' => 'مدير النظام',
+            'job_title_en' => 'System Manager',
             'email' => 'admin@hrpro.test',
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
@@ -31,6 +33,8 @@ class DatabaseSeeder extends Seeder
         $leader = $this->seedEmployee(User::factory()->teamLeader(), [
             'name_ar' => 'قائد الفريق',
             'name_en' => 'Team Leader',
+            'job_title_ar' => 'قائد فريق',
+            'job_title_en' => 'Team Leader',
             'email' => 'leader@hrpro.test',
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
@@ -40,6 +44,8 @@ class DatabaseSeeder extends Seeder
         $this->seedEmployee(User::factory()->accountant(), [
             'name_ar' => 'المحاسب',
             'name_en' => 'Accountant',
+            'job_title_ar' => 'محاسب',
+            'job_title_en' => 'Accountant',
             'email' => 'accountant@hrpro.test',
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
@@ -54,6 +60,8 @@ class DatabaseSeeder extends Seeder
         $radwa = $this->seedEmployee(User::factory()->employee(), [
             'name_ar' => 'رضوى',
             'name_en' => 'Radwa',
+            'job_title_ar' => 'أخصائي خدمة عملاء',
+            'job_title_en' => 'Customer Service Agent',
             'email' => 'radwa@hrpro.test',
             'currency' => 'EGP',
             'team_leader_id' => $leader->id,
@@ -68,6 +76,8 @@ class DatabaseSeeder extends Seeder
         $mona = $this->seedEmployee(User::factory()->employee(), [
             'name_ar' => 'منى',
             'name_en' => 'Mona',
+            'job_title_ar' => 'أخصائي خدمة عملاء',
+            'job_title_en' => 'Customer Service Agent',
             'email' => 'mona@hrpro.test',
             'currency' => 'AED',
             'team_leader_id' => $leader->id,

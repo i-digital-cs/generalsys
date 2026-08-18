@@ -45,6 +45,7 @@
                             <tr>
                                 <th scope="col">{{ __('employees.code') }}</th>
                                 <th scope="col">{{ __('employees.name') }}</th>
+                                <th scope="col">{{ __('employees.fields.job_title') }}</th>
                                 <th scope="col">{{ __('employees.fields.phone') }}</th>
                                 <th scope="col">{{ __('employees.fields.shift_types_default') }}</th>
                                 <th scope="col">{{ __('employees.email') }}</th>
@@ -76,6 +77,7 @@
                                             <span>{{ $displayName }}</span>
                                         </div>
                                     </td>
+                                    <td>{{ $employee->localizedJobTitle() ?? __('general.not_available') }}</td>
                                     <td>
                                         @if ($employee->profile?->phone)
                                             <span class="num-ltr">{{ $employee->profile->phone }}</span>

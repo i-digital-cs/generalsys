@@ -89,6 +89,8 @@ class EmployeeCrudTest extends TestCase
         $this->assertTrue($employee->teamLeader->is($leader));
         $this->assertSame('10:00', $employee->work_start_time);
         $this->assertSame('18:00', $employee->work_end_time);
+        $this->assertSame('موظف', $employee->job_title_ar);
+        $this->assertSame('Employee', $employee->job_title_en);
         $this->assertDatabaseHas('employee_profiles', ['user_id' => $employee->id, 'employee_code' => 'EMP-001']);
         $this->assertDatabaseHas('contracts', ['user_id' => $employee->id, 'is_active' => true, 'contract_type' => 'سنة']);
         $this->assertDatabaseHas('employee_qualifications', ['user_id' => $employee->id, 'degree' => 'BSc']);
@@ -147,6 +149,60 @@ class EmployeeCrudTest extends TestCase
             ->assertSessionHasErrors('email');
     }
 
+    public function test_manager_creates_employee_with_custom_job_titles(): void
+    {
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'job_title_ar' => 'أخصائي خدمة عملاء',
+                'job_title_en' => 'Customer Service Agent',
+            ]))
+            ->assertRedirect();
+
+        $employee = User::where('email', 'new.employee@hrpro.test')->firstOrFail();
+        $this->assertSame('أخصائي خدمة عملاء', $employee->job_title_ar);
+        $this->assertSame('Customer Service Agent', $employee->job_title_en);
+    }
+
+    public function test_create_form_includes_job_title_fields(): void
+    {
+        $this->actingAs($this->manager)
+            ->get(route('admin.employees.create'))
+            ->assertOk()
+            ->assertSee('name="job_title_ar"', false)
+            ->assertSee('name="job_title_en"', false)
+            ->assertSee(__('employees.fields.job_title_ar'))
+            ->assertSee(__('employees.fields.job_title_en'));
+    }
+
+    public function test_index_shows_and_searches_job_title(): void
+    {
+        $agent = User::factory()->employee()->create([
+            'name_en' => 'Title Agent',
+            'job_title_en' => 'Customer Service Agent',
+            'job_title_ar' => 'أخصائي خدمة عملاء',
+        ]);
+        $agent->profile()->create(['employee_code' => 'EMP-T1']);
+        $other = User::factory()->employee()->create([
+            'name_en' => 'Other Person',
+            'job_title_en' => 'Sales Representative',
+            'job_title_ar' => 'مندوب مبيعات',
+        ]);
+        $other->profile()->create(['employee_code' => 'EMP-T2']);
+
+        $this->withSession(['locale' => 'en'])->actingAs($this->manager)
+            ->get(route('admin.employees.index'))
+            ->assertOk()
+            ->assertSee(__('employees.fields.job_title'))
+            ->assertSee('Customer Service Agent')
+            ->assertSee('Sales Representative');
+
+        $this->withSession(['locale' => 'en'])->actingAs($this->manager)
+            ->get(route('admin.employees.index', ['q' => 'Customer Service']))
+            ->assertOk()
+            ->assertSee('Title Agent')
+            ->assertDontSee('Other Person');
+    }
+
     public function test_manager_updates_employee_and_related_records(): void
     {
         $employee = User::factory()->employee()->create();
@@ -160,6 +216,8 @@ class EmployeeCrudTest extends TestCase
             'email' => $employee->email,
             'password' => '',
             'base_salary' => 7500,
+            'job_title_ar' => 'مشرف مبيعات',
+            'job_title_en' => 'Sales Supervisor',
             'profile' => [
                 'employee_code' => 'EMP-HACKED', // ignored — code stays system-assigned
                 'phone' => '01222222222',
@@ -177,6 +235,8 @@ class EmployeeCrudTest extends TestCase
 
         $employee->refresh();
         $this->assertSame('7500.00', $employee->base_salary);
+        $this->assertSame('مشرف مبيعات', $employee->job_title_ar);
+        $this->assertSame('Sales Supervisor', $employee->job_title_en);
         $this->assertSame('EMP-200', $employee->profile->employee_code);
         $this->assertSame('2027-06-30', $employee->activeContract->contract_end->toDateString());
         $this->assertSame('سنتان', $employee->activeContract->contract_type);

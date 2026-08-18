@@ -16,7 +16,7 @@
 ```json
 { "email": "radwa@example.com", "password": "••••••", "device_name": "android" }
 ```
-→ `200 { "token": "...", "user": { "id", "name_ar", "name_en", "role", "currency", "language_preference" } }`
+→ `200 { "token": "...", "user": { "id", "name_ar", "name_en", "job_title_ar", "job_title_en", "role", "currency", "language_preference" } }`
 
 ### POST /auth/logout · GET /auth/me
 `GET /auth/me` → current user + `team_leader_id`, `shift_type_default`, `work_start_time`, `work_end_time`.
@@ -50,6 +50,7 @@
 ```json
 {
   "id": 7, "employee_code": "EMP-007", "name_ar": "رضوى", "name_en": "RADWA",
+  "job_title_ar": "أخصائي خدمة عملاء", "job_title_en": "Customer Service Agent",
   "role": "EMPLOYEE", "status": "ACTIVE", "currency": "EGP",
   "team_leader_id": 3, "shift_type_default": "ONLINE_FULL",
   "work_start_time": "10:00", "work_end_time": "18:00",

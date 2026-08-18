@@ -74,6 +74,8 @@ return [
         'email' => 'email',
         'password' => 'password',
         'role' => 'role',
+        'job_title_ar' => 'job title (Arabic)',
+        'job_title_en' => 'job title (English)',
         'status' => 'status',
         'currency' => 'currency',
         'language_preference' => 'language',

@@ -27,6 +27,8 @@ class UserFactory extends Factory
         return [
             'name_ar' => fake()->name(),
             'name_en' => fake()->name(),
+            'job_title_ar' => 'موظف',
+            'job_title_en' => 'Employee',
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'),
             'role' => User::ROLE_EMPLOYEE,
@@ -50,6 +52,8 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'role' => User::ROLE_MANAGER,
             'team_leader_id' => null,
+            'job_title_ar' => 'مدير',
+            'job_title_en' => 'Manager',
         ]);
     }
 
@@ -58,6 +62,8 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'role' => User::ROLE_TEAM_LEADER,
             'team_leader_id' => null,
+            'job_title_ar' => 'قائد فريق',
+            'job_title_en' => 'Team Leader',
         ]);
     }
 
@@ -65,6 +71,8 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => User::ROLE_EMPLOYEE,
+            'job_title_ar' => 'موظف',
+            'job_title_en' => 'Employee',
         ]);
     }
 
@@ -73,6 +81,8 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'role' => User::ROLE_ACCOUNTANT,
             'team_leader_id' => null,
+            'job_title_ar' => 'محاسب',
+            'job_title_en' => 'Accountant',
         ]);
     }
 

@@ -160,6 +160,7 @@
 users
 ├── id (PK)
 ├── name_ar / name_en
+├── job_title_ar / job_title_en           -- المسمى الوظيفي (all users)
 ├── email
 ├── password_hash
 ├── role (enum: MANAGER, TEAM_LEADER, EMPLOYEE, ACCOUNTANT)

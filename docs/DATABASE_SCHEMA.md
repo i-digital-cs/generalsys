@@ -15,6 +15,8 @@ CREATE TABLE users (
     id                      BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name_ar                 VARCHAR(150) NOT NULL,
     name_en                 VARCHAR(150) NOT NULL,
+    job_title_ar            VARCHAR(150) NULL,              -- المسمى الوظيفي
+    job_title_en            VARCHAR(150) NULL,
     email                   VARCHAR(190) NOT NULL UNIQUE,
     password                VARCHAR(255) NOT NULL,
     role                    ENUM('MANAGER','TEAM_LEADER','EMPLOYEE','ACCOUNTANT') NOT NULL DEFAULT 'EMPLOYEE',

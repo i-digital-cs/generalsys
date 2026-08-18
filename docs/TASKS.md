@@ -492,6 +492,16 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] Payroll Hours tab: required / actual / absent per shift; one salary
   - [x] DualDefaultShiftsTest + related suite green; UI AR+EN
 
+### T-7.4 — Job title on every user (employees, TLs, accountants, managers)
+- Depends on: T-1.4, T-1.8
+- Unlocks: —
+- [x] Task complete
+  - [x] `users.job_title_ar` / `users.job_title_en`; migrate backfill from role if blank
+  - [x] Admin create/edit + list + search; self profile + payslip
+  - [x] Blank form titles default to role label so every user has one
+  - [x] EmployeeCrudTest + EmployeeProfileTest + LangParity; UI AR+EN RTL/LTR
+  - [x] UI/UX gate (create/edit/list/profile; AR+EN keys; table-responsive)
+
 ## Dependency map
 
 ```text
@@ -629,3 +639,4 @@ Example:
 - [x] 2026-08-12 T-7.1 PASS — ACCOUNTANT role: self-service + payroll (no اعتماد) + advances CRUD; `team_leader_id` null → Manager decides leave; seed accountant@hrpro.test; TL still money-blocked.
 - [x] 2026-08-13 T-7.2 PASS — Required punch GPS + soft 1-office geofence (Admin Settings lat/lng, default 1 km): store lat/lng/accuracy/distance/outside; accept outside with warn + notify employee/TL/Admin; Maps links like photos; TL↔Admin self-clock yes; ClockLocationTest + GeofenceServiceTest green.
 - [x] 2026-08-13 T-7.3b PASS — Payroll Hours: per-day required / present (موجود) / absent (غائب) per shift; month totals summed from exact day lines; PDF aligned.
+- [x] 2026-08-18 T-7.4 PASS — Job title AR+EN on `users` (covers employees + TLs + accountants + managers; no duplicate on profiles). Admin create/edit + list column + search; self profile + payslip; blank titles default to role. Existing rows backfilled. EmployeeCrudTest + EmployeeProfileTest + LangParity green.

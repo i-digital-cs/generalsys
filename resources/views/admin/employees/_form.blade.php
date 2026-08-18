@@ -71,6 +71,18 @@
                 @error('role') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
             <div class="col-md-4">
+                <label for="job_title_ar" class="form-label">{{ __('employees.fields.job_title_ar') }}</label>
+                <input type="text" id="job_title_ar" name="job_title_ar" value="{{ $val('job_title_ar') }}"
+                       class="form-control @error('job_title_ar') is-invalid @enderror" maxlength="150">
+                @error('job_title_ar') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="col-md-4">
+                <label for="job_title_en" class="form-label">{{ __('employees.fields.job_title_en') }}</label>
+                <input type="text" id="job_title_en" name="job_title_en" value="{{ $val('job_title_en') }}"
+                       class="form-control @error('job_title_en') is-invalid @enderror" maxlength="150">
+                @error('job_title_en') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="col-md-4">
                 <label for="team_leader_id" class="form-label">{{ __('employees.team_leader') }}</label>
                 <select id="team_leader_id" name="team_leader_id" class="form-select @error('team_leader_id') is-invalid @enderror">
                     <option value="">{{ __('employees.no_team_leader') }}</option>
