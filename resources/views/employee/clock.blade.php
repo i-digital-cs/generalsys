@@ -146,7 +146,17 @@
                         </div>
                     @endif
                     @if ($shiftTypes === [])
-                        <div class="alert alert-warning">{{ __('clock.no_shifts_left') }}</div>
+                        @if ($closedShiftTypes !== [])
+                            <div class="alert alert-warning">
+                                {{ __('clock.windows_closed', [
+                                    'shifts' => collect($closedShiftTypes)
+                                        ->map(fn (string $type) => __('clock.shifts.'.$type))
+                                        ->implode(' · '),
+                                ]) }}
+                            </div>
+                        @else
+                            <div class="alert alert-warning">{{ __('clock.no_shifts_left') }}</div>
+                        @endif
                     @else
                         <div class="mb-3">
                             <label for="shift_type" class="form-label">{{ __('clock.shift_type') }}</label>

@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Exceptions\AttendanceException;
 use App\Models\Attendance;
 use App\Models\RestDay;
+use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Services\Attendance\AttendanceService;
 use App\Services\Attendance\HoursComparisonService;
@@ -220,5 +221,75 @@ class DualDefaultShiftsTest extends TestCase
             [Attendance::SHIFT_FULL_TIME, Attendance::SHIFT_ONLINE_HALF],
             User::normalizeDefaultShiftTypes([], Attendance::SHIFT_ONLINE_FULL),
         );
+    }
+
+    public function test_assigning_one_default_keeps_the_other_clockable(): void
+    {
+        $leader = User::factory()->teamLeader()->create();
+        $employee = User::factory()->employee()->create([
+            'team_leader_id' => $leader->id,
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '10:00', 'end' => '18:00'],
+                ['type' => Attendance::SHIFT_ONLINE_HALF, 'start' => '18:00', 'end' => '22:00'],
+            ],
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
+
+        ShiftAssignment::factory()->create([
+            'user_id' => $employee->id,
+            'assigned_by_tl_id' => $leader->id,
+            'date' => '2026-08-03',
+            'shift_type' => Attendance::SHIFT_ONLINE_HALF,
+            'expected_start_time' => '18:00',
+            'expected_end_time' => '22:00',
+            'expected_hours' => 4,
+            'status' => ShiftAssignment::STATUS_SCHEDULED,
+        ]);
+
+        $service = app(AttendanceService::class);
+        $morning = Carbon::parse('2026-08-03 10:08:00');
+
+        $available = $service->availableShiftTypes($employee, $morning);
+        $this->assertContains(Attendance::SHIFT_FULL_TIME, $available);
+        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $available);
+        $this->assertSame(Attendance::SHIFT_FULL_TIME, $service->preferredShiftType($employee, $morning));
+
+        $ft = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, $morning);
+        $service->clockOut($employee, Carbon::parse('2026-08-03 18:00:00'));
+        $this->assertSame(Attendance::SHIFT_FULL_TIME, $ft->shift_type);
+
+        $evening = Carbon::parse('2026-08-03 18:05:00');
+        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $service->availableShiftTypes($employee, $evening));
+        $this->assertNotContains(Attendance::SHIFT_FULL_TIME, $service->availableShiftTypes($employee, $evening));
+    }
+
+    public function test_partial_assignment_does_not_drop_other_default_from_hours(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '10:00', 'end' => '18:00'],
+                ['type' => Attendance::SHIFT_ONLINE_HALF, 'start' => '18:00', 'end' => '22:00'],
+            ],
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
+
+        ShiftAssignment::factory()->create([
+            'user_id' => $employee->id,
+            'date' => '2026-08-03',
+            'shift_type' => Attendance::SHIFT_ONLINE_HALF,
+            'expected_start_time' => '18:00',
+            'expected_end_time' => '22:00',
+            'expected_hours' => 4,
+            'status' => ShiftAssignment::STATUS_SCHEDULED,
+        ]);
+
+        $month = app(HoursComparisonService::class)->monthForUser($employee, '2026-08');
+        $day = collect($month['days'])->firstWhere('date', '2026-08-03');
+        $this->assertNotNull($day);
+        $this->assertSame(12.0, (float) $day['planned_hours']);
+
+        $byType = collect($day['shift_lines'])->keyBy('shift_type');
+        $this->assertSame(8.0, (float) $byType[Attendance::SHIFT_FULL_TIME]['required']);
+        $this->assertSame(4.0, (float) $byType[Attendance::SHIFT_ONLINE_HALF]['required']);
     }
 }

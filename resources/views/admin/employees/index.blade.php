@@ -91,11 +91,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        @forelse ($employee->defaultShiftTypes() as $defaultShift)
-                                            <span class="badge text-bg-light border me-1">{{ __("employees.shifts.{$defaultShift}") }}</span>
-                                        @empty
-                                            {{ __('general.not_available') }}
-                                        @endforelse
+                                        <x-shift-badges :user="$employee" />
                                     </td>
                                     <td><span class="num-ltr">{{ $employee->email }}</span></td>
                                     <td>{{ __("employees.roles.{$employee->role}") }}</td>

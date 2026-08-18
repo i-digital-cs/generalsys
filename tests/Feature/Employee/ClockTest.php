@@ -28,6 +28,8 @@ class ClockTest extends TestCase
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
         ]);
+
+        $this->freezeClockToMorningShift();
     }
 
     public function test_clock_in_blocked_and_banner_shown_when_previous_report_missing(): void
@@ -341,5 +343,36 @@ class ClockTest extends TestCase
             ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHasErrors('shift_type');
+    }
+
+    public function test_clock_explains_closed_window_when_other_shift_still_unrecorded(): void
+    {
+        $this->employee->update([
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '10:00', 'end' => '18:00'],
+                ['type' => Attendance::SHIFT_ONLINE_HALF, 'start' => '18:00', 'end' => '22:00'],
+            ],
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-08-03 18:05:00', config('app.timezone')));
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_ONLINE_HALF]))
+            ->assertRedirect();
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.out'), $this->withClockGps())
+            ->assertRedirect();
+
+        Carbon::setTestNow(Carbon::parse('2026-08-03 19:30:00', config('app.timezone')));
+
+        $this->actingAs($this->employee)
+            ->get(route('employee.clock'))
+            ->assertOk()
+            ->assertSee(__('clock.windows_closed', [
+                'shifts' => __('clock.shifts.FULL_TIME'),
+            ]), false)
+            ->assertDontSee(__('clock.no_shifts_left'), false);
+
+        Carbon::setTestNow();
     }
 }

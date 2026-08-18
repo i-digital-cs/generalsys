@@ -16,6 +16,7 @@ use Illuminate\Support\Collection;
  *
  * Planned: SCHEDULED+COMPLETED shift_assignments; if none that day →
  * sum of profile default shift windows (FULL_TIME and/or ONLINE_HALF).
+ * Dual defaults stay on the day when a TL assigns only one type (overlay).
  * Date rest days + approved vacation days: planned = 0 unless a shift is assigned.
  */
 class HoursComparisonService
@@ -125,7 +126,8 @@ class HoursComparisonService
 
     /**
      * Required vs worked vs absent hours per default base shift for a month (T-7.3).
-     * Sums exact per-day planned/actual lines (assignments override defaults that day).
+     * Sums exact per-day planned/actual lines (a single assignment overlays that
+     * type; dual defaults stay on the day).
      *
      * @return array{
      *     work_days: int,
@@ -352,45 +354,112 @@ class HoursComparisonService
      */
     public function plannedForDay(User $user, Collection $assignments, bool $isRestDay = false): array
     {
-        if ($assignments->isNotEmpty()) {
-            $intervals = [];
-            $hours = 0.0;
-
-            foreach ($assignments as $assignment) {
-                $h = round((float) $assignment->expected_hours, 2);
-                $hours += $h;
-                $intervals[] = [
-                    'label' => __('shifts.types.'.$assignment->shift_type),
-                    'start' => $assignment->expected_start_time,
-                    'end' => $assignment->expected_end_time,
-                    'hours' => $h,
-                    'source' => 'assignment',
-                    'shift_type' => $assignment->shift_type,
-                ];
-            }
-
-            return [
-                'hours' => round($hours, 2),
-                'from_profile' => false,
-                'intervals' => $intervals,
-            ];
-        }
-
         if ($isRestDay) {
-            return [
-                'hours' => 0.0,
-                'from_profile' => false,
-                'intervals' => [[
-                    'label' => __('dashboard.hours.rest_day'),
-                    'start' => null,
-                    'end' => null,
-                    'hours' => 0.0,
-                    'source' => 'rest_day',
-                    'shift_type' => null,
-                ]],
+            return $assignments->isEmpty()
+                ? $this->restDayPlan()
+                : $this->assignmentPlan($assignments);
+        }
+
+        if ($assignments->isEmpty()) {
+            return $this->profilePlan($user);
+        }
+
+        if (count($user->defaultShiftTypes()) >= 2) {
+            return $this->overlayAssignmentsOnDefaults($user, $assignments);
+        }
+
+        return $this->assignmentPlan($assignments);
+    }
+
+    /**
+     * @param  Collection<int, ShiftAssignment>  $assignments
+     * @return array{hours: float, from_profile: bool, intervals: list<array{label: string, start: ?string, end: ?string, hours: float, source: string, shift_type: ?string}>}
+     */
+    private function assignmentPlan(Collection $assignments): array
+    {
+        $intervals = [];
+        $hours = 0.0;
+
+        foreach ($assignments as $assignment) {
+            $h = round((float) $assignment->expected_hours, 2);
+            $hours += $h;
+            $intervals[] = [
+                'label' => __('shifts.types.'.$assignment->shift_type),
+                'start' => $assignment->expected_start_time,
+                'end' => $assignment->expected_end_time,
+                'hours' => $h,
+                'source' => 'assignment',
+                'shift_type' => $assignment->shift_type,
             ];
         }
 
+        return [
+            'hours' => round($hours, 2),
+            'from_profile' => false,
+            'intervals' => $intervals,
+        ];
+    }
+
+    /**
+     * Dual defaults stay on the day; matching assignments replace that type's window.
+     *
+     * @param  Collection<int, ShiftAssignment>  $assignments
+     * @return array{hours: float, from_profile: bool, intervals: list<array{label: string, start: ?string, end: ?string, hours: float, source: string, shift_type: ?string}>}
+     */
+    private function overlayAssignmentsOnDefaults(User $user, Collection $assignments): array
+    {
+        $byType = [];
+        foreach ($this->profilePlannedIntervals($user) as $interval) {
+            $type = $interval['shift_type'] ?? null;
+            if (is_string($type) && $type !== '') {
+                $byType[$type] = $interval;
+            }
+        }
+
+        foreach ($this->assignmentPlan($assignments)['intervals'] as $interval) {
+            $type = $interval['shift_type'] ?? null;
+            if (is_string($type) && $type !== '') {
+                $byType[$type] = $interval;
+            }
+        }
+
+        $intervals = array_values($byType);
+        $hours = 0.0;
+        foreach ($intervals as $interval) {
+            $hours += (float) $interval['hours'];
+        }
+
+        return [
+            'hours' => round($hours, 2),
+            'from_profile' => false,
+            'intervals' => $intervals,
+        ];
+    }
+
+    /**
+     * @return array{hours: float, from_profile: bool, intervals: list<array{label: string, start: ?string, end: ?string, hours: float, source: string, shift_type: ?string}>}
+     */
+    private function restDayPlan(): array
+    {
+        return [
+            'hours' => 0.0,
+            'from_profile' => false,
+            'intervals' => [[
+                'label' => __('dashboard.hours.rest_day'),
+                'start' => null,
+                'end' => null,
+                'hours' => 0.0,
+                'source' => 'rest_day',
+                'shift_type' => null,
+            ]],
+        ];
+    }
+
+    /**
+     * @return array{hours: float, from_profile: bool, intervals: list<array{label: string, start: ?string, end: ?string, hours: float, source: string, shift_type: ?string}>}
+     */
+    private function profilePlan(User $user): array
+    {
         $hours = $this->profilePlannedHours($user);
         $intervals = $this->profilePlannedIntervals($user);
 

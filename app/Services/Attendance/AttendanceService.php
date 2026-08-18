@@ -310,8 +310,31 @@ class AttendanceService
     }
 
     /**
-     * Preferred clock selection: today’s SCHEDULED assignment, else the shift
-     * whose window contains now, else the next upcoming start still available.
+     * Planned types that are not punched yet but whose clock-in window has ended.
+     *
+     * @return list<string>
+     */
+    public function closedUnrecordedShiftTypes(User $user, ?CarbonInterface $at = null): array
+    {
+        $at = Carbon::parse($at ?? now());
+        $date = $at->toDateString();
+        $used = Attendance::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->pluck('shift_type')
+            ->all();
+
+        $remaining = array_values(array_diff($this->plannedAllowedTypes($user, $date), $used));
+
+        return array_values(array_filter(
+            $remaining,
+            fn (string $type) => ! $this->shiftWindowStillOpen($user, $type, $at),
+        ));
+    }
+
+    /**
+     * Preferred clock selection: the shift whose window contains now, else the
+     * next upcoming start, else today’s assignment if still available.
      */
     public function preferredShiftType(User $user, ?CarbonInterface $at = null): string
     {
@@ -322,12 +345,30 @@ class AttendanceService
             return Attendance::SHIFT_FULL_TIME;
         }
 
-        $assignment = $this->todaysPrimaryAssignment($user, $at);
+        $picked = $this->earliestAvailableByWindow($user, $available, $at);
+        if ($picked !== null) {
+            return $picked;
+        }
 
+        $assignment = $this->todaysPrimaryAssignment($user, $at);
         if ($assignment !== null && in_array($assignment->shift_type, $available, true)) {
             return $assignment->shift_type;
         }
 
+        foreach ($user->defaultShiftTypes() as $default) {
+            if (in_array($default, $available, true)) {
+                return $default;
+            }
+        }
+
+        return $available[0];
+    }
+
+    /**
+     * @param  list<string>  $available
+     */
+    private function earliestAvailableByWindow(User $user, array $available, CarbonInterface $at): ?string
+    {
         $inWindow = [];
         $upcoming = [];
 
@@ -347,25 +388,14 @@ class AttendanceService
             }
         }
 
-        if ($inWindow !== []) {
-            usort($inWindow, fn (array $a, array $b) => $a['start'] <=> $b['start']);
-
-            return $inWindow[0]['type'];
+        $bucket = $inWindow !== [] ? $inWindow : $upcoming;
+        if ($bucket === []) {
+            return null;
         }
 
-        if ($upcoming !== []) {
-            usort($upcoming, fn (array $a, array $b) => $a['start'] <=> $b['start']);
+        usort($bucket, fn (array $a, array $b) => $a['start'] <=> $b['start']);
 
-            return $upcoming[0]['type'];
-        }
-
-        foreach ($user->defaultShiftTypes() as $default) {
-            if (in_array($default, $available, true)) {
-                return $default;
-            }
-        }
-
-        return $available[0];
+        return $bucket[0]['type'];
     }
 
     /**
@@ -405,12 +435,17 @@ class AttendanceService
 
         $baseScheduled = array_values(array_intersect($scheduled, ShiftAssignment::BASE_TYPES));
         $premiumScheduled = array_values(array_intersect($scheduled, ShiftAssignment::PREMIUM_TYPES));
+        $defaults = $user->defaultShiftTypes();
+
+        // Dual defaults apply every workday. Assigning one type overlays that
+        // window — it must not hide the other default (T-7.3).
+        if (count($defaults) >= 2) {
+            return array_values(array_unique([...$defaults, ...$baseScheduled, ...$premiumScheduled]));
+        }
 
         if ($baseScheduled !== []) {
             return array_values(array_unique([...$baseScheduled, ...$premiumScheduled]));
         }
-
-        $defaults = $user->defaultShiftTypes();
 
         return array_values(array_unique([...$defaults, ...$premiumScheduled]));
     }

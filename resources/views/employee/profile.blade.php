@@ -57,11 +57,7 @@
                         <span class="badge text-bg-secondary">
                             <i class="bi bi-person-badge me-1" aria-hidden="true"></i>{{ __("employees.roles.{$employee->role}") }}
                         </span>
-                        @foreach ($employee->defaultShiftTypes() as $defaultShift)
-                            <span class="badge text-bg-info">
-                                <i class="bi bi-clock-history me-1" aria-hidden="true"></i>{{ __("employees.shifts.{$defaultShift}") }}
-                            </span>
-                        @endforeach
+                        <x-shift-badges :user="$employee" :stacked="false" class="justify-content-center" />
                         @if ($workHours)
                             <span class="badge text-bg-light text-body-secondary border">
                                 <i class="bi bi-clock me-1" aria-hidden="true"></i><span dir="ltr">{{ $workHours }}</span>

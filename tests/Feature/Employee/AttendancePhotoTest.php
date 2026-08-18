@@ -44,6 +44,8 @@ class AttendancePhotoTest extends TestCase
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
         ]);
+
+        $this->freezeClockToMorningShift();
     }
 
     public function test_clock_screen_shows_optional_photo_input(): void

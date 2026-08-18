@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Attendance;
 use App\Models\User;
 use App\Services\Employees\TeamMembershipService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -539,6 +540,31 @@ class EmployeeCrudTest extends TestCase
             ->assertOk()
             ->assertSee('01001234567')
             ->assertSee(__('employees.shifts.ONLINE_HALF'));
+    }
+
+    public function test_index_lists_each_default_shift_with_its_window(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'name_en' => 'Two Shift Person',
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '10:00', 'end' => '18:00'],
+                ['type' => Attendance::SHIFT_ONLINE_HALF, 'start' => '18:00', 'end' => '22:00'],
+            ],
+            'shift_type_default' => Attendance::SHIFT_FULL_TIME,
+        ]);
+        $employee->profile()->create(['employee_code' => 'EMP-717091']);
+
+        $html = $this->withSession(['locale' => 'en'])->actingAs($this->manager)
+            ->get(route('admin.employees.index'))
+            ->assertOk()
+            ->assertSee('Two Shift Person')
+            ->assertSee(__('employees.shifts.FULL_TIME'))
+            ->assertSee(__('employees.shifts.ONLINE_HALF'))
+            ->assertSee('10:00–18:00', false)
+            ->assertSee('18:00–22:00', false)
+            ->getContent();
+
+        $this->assertStringContainsString('EMP-717091', $html);
     }
 
     public function test_form_exposes_two_default_shift_rows_like_assign(): void

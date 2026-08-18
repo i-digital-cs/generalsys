@@ -23,6 +23,7 @@ return [
     'rotation_hint' => 'Clock the work type planned for today. Overtime / extra work appear only when assigned.',
     'assigned_today' => 'Assigned today: :shift',
     'no_shifts_left' => 'You already recorded every available work type for today.',
+    'windows_closed' => 'You still have :shifts today, but the clock-in window has ended.',
     'flags' => [
         'friday' => 'Friday work',
         'rest_day' => 'Rest-day work',

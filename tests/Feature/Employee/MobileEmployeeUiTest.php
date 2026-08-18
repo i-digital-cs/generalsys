@@ -16,6 +16,7 @@ class MobileEmployeeUiTest extends TestCase
 
     public function test_clock_has_full_width_touch_cta(): void
     {
+        $this->freezeClockToMorningShift();
         $employee = User::factory()->employee()->create();
 
         $this->actingAs($employee)
@@ -59,6 +60,7 @@ class MobileEmployeeUiTest extends TestCase
 
     public function test_layout_declares_mobile_viewport(): void
     {
+        $this->freezeClockToMorningShift();
         $employee = User::factory()->employee()->create();
 
         $this->actingAs($employee)

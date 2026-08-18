@@ -61,6 +61,9 @@ class ClockController extends Controller
             'open' => $open,
             'missingReportDate' => $this->reports->latestUnreportedClosedDay($user)?->date->toDateString(),
             'shiftTypes' => $shiftTypes,
+            'closedShiftTypes' => $shiftTypes === []
+                ? $this->attendance->closedUnrecordedShiftTypes($user)
+                : [],
             'preferredShift' => $preferredShift,
             'scheduleShift' => $scheduleShift,
             'todaysAssignment' => $this->attendance->todaysPrimaryAssignment($user),
