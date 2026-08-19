@@ -10,36 +10,36 @@ class AuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_manager_logs_in_and_lands_on_admin_dashboard(): void
+    public function test_manager_logs_in_and_lands_on_portal_home(): void
     {
         $manager = User::factory()->manager()->create();
 
         $this->post(route('login.store'), [
             'email' => $manager->email,
             'password' => 'password',
-        ])->assertRedirect(route('admin.dashboard'));
+        ])->assertRedirect(route('portal.home'));
 
         $this->assertAuthenticatedAs($manager);
     }
 
-    public function test_team_leader_logs_in_and_lands_on_generic_dashboard(): void
+    public function test_team_leader_logs_in_and_lands_on_portal_home(): void
     {
         $leader = User::factory()->teamLeader()->create();
 
         $this->post(route('login.store'), [
             'email' => $leader->email,
             'password' => 'password',
-        ])->assertRedirect(route('team-leader.dashboard'));
+        ])->assertRedirect(route('portal.home'));
     }
 
-    public function test_employee_logs_in_and_lands_on_dashboard(): void
+    public function test_employee_logs_in_and_lands_on_portal_home(): void
     {
         $employee = User::factory()->employee()->create();
 
         $this->post(route('login.store'), [
             'email' => $employee->email,
             'password' => 'password',
-        ])->assertRedirect(route('employee.dashboard'));
+        ])->assertRedirect(route('portal.home'));
     }
 
     public function test_language_preference_is_applied_on_login(): void

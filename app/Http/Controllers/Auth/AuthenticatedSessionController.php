@@ -32,7 +32,7 @@ class AuthenticatedSessionController extends Controller
         // Apply the user's stored language preference (T-1.2).
         $request->session()->put('locale', $user->language_preference);
 
-        return redirect()->intended($this->redirector->urlFor($user));
+        return redirect()->to($this->redirector->urlFor($user));
     }
 
     public function destroy(Request $request): RedirectResponse

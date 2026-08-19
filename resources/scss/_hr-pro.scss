@@ -265,6 +265,68 @@ h6, .h6 { font-size: .9rem; }
     }
 }
 
+.portal-bar-chart {
+    display: flex;
+    align-items: stretch;
+    gap: .35rem;
+    min-height: 10rem;
+}
+
+.portal-bar {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+}
+
+.portal-bar-track {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background: var(--hp-primary-soft);
+    border-radius: .25rem;
+    min-height: 7rem;
+}
+
+.portal-bar-fill {
+    width: 100%;
+    background: var(--hp-primary);
+    border-radius: .25rem .25rem 0 0;
+    min-height: 2px;
+}
+
+.portal-bar-label {
+    font-size: .65rem;
+    margin-top: .25rem;
+    text-align: center;
+    line-height: 1.1;
+    word-break: break-word;
+}
+
+.portal-donut {
+    width: 8.5rem;
+    height: 8.5rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.portal-hours-track {
+    height: .65rem;
+    border-radius: 999px;
+    background: var(--hp-primary-soft);
+    overflow: hidden;
+}
+
+.portal-hours-fill {
+    height: 100%;
+    background: var(--hp-primary);
+    border-radius: 999px;
+}
+
 // ---- Welcome hero ----------------------------------------------------------
 .welcome-hero {
     background: linear-gradient(120deg, #0d6efd 0%, #3d8bfd 55%, #6ea8fe 100%);

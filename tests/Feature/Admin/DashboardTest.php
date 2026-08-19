@@ -133,7 +133,7 @@ class DashboardTest extends TestCase
     {
         $manager = User::factory()->manager()->create();
 
-        foreach (['admin.dashboard', 'admin.employees.index', 'admin.settings'] as $routeName) {
+        foreach (['admin.dashboard', 'admin.employees.index'] as $routeName) {
             $content = $this->actingAs($manager)->get(route($routeName))
                 ->assertOk()->getContent();
 
@@ -142,6 +142,11 @@ class DashboardTest extends TestCase
             $this->assertSame(1, substr_count($content, 'nav-link px-3 active'),
                 "Expected exactly one active sidebar item on {$routeName}");
         }
+
+        $settings = $this->actingAs($manager)->get(route('admin.settings'))
+            ->assertOk()->getContent();
+        $this->assertSame(0, substr_count($settings, 'nav-link px-3 active'),
+            'Settings lives outside HR and has no sidebar.');
     }
 
     public function test_non_managers_get_403(): void

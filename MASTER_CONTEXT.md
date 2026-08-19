@@ -157,6 +157,13 @@
 - When on, Manager may open any other account from Employees (no password). Session stores `impersonator_id`. Yellow banner + **Return to admin**. Nested switch is blocked. Logout ends the whole session.
 - Actions while switched (clock, reports, approvals) are stored as that user.
 
+### 1.7g Company portal — Service / Production / HR (T-9.1)
+- After login **every role** lands on `/home` (three modules). Navbar tabs stay available on every authenticated screen. Manager also sees **Settings** as a top tab (not inside the HR sidebar).
+- **HR** (`/hr`) opens the existing HR app (same role dashboards as before).
+- **Service** (`/service`) and **Production** (`/production`) are empty shells until their screens are specified.
+- `/home` shows operational statistics (headcount, today attendance, 14-day clock-in chart, month hours) plus **current Egypt time** (`APP_TIMEZONE=Africa/Cairo`). Team Leader sees **team only**. **No payroll money** on this page.
+- Impersonation still opens the target user’s **HR** home (not the portal picker).
+
 | Role | Can View Payroll? |
 |------|-------------------|
 | Admin / Manager | ✅ All employees |

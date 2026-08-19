@@ -26,7 +26,6 @@ return [
         ['key' => 'nav.payroll', 'route' => 'admin.payroll.index', 'icon' => 'bi-cash-stack'],
         ['key' => 'nav.advances', 'route' => 'admin.advances.index', 'icon' => 'bi-cash-coin'],
         ['key' => 'nav.annual_reports', 'route' => 'admin.reports.annual', 'icon' => 'bi-bar-chart'],
-        ['key' => 'nav.settings', 'route' => 'admin.settings', 'icon' => 'bi-gear'],
     ],
 
     'ASSISTANT' => [

@@ -1,5 +1,6 @@
 import * as bootstrap from 'bootstrap';
 import { initTableFilters } from './pages/table-filter';
+import './pages/portal-clock';
 
 window.bootstrap = bootstrap;
 

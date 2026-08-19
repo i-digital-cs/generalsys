@@ -41,6 +41,7 @@ class EmployeeDashboardTest extends TestCase
     public function test_dashboard_shows_open_punch_and_clock_out_cta(): void
     {
         app()->setLocale('en');
+        $this->freezeClockToMorningShift();
 
         $this->actingAs($this->employee)
             ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]));

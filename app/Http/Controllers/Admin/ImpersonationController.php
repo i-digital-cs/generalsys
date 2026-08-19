@@ -26,7 +26,7 @@ class ImpersonationController extends Controller
         }
 
         return redirect()
-            ->to($this->redirector->urlFor($employee))
+            ->to($this->redirector->hrUrlFor($employee))
             ->with('success', __('impersonation.flash.started', [
                 'name' => $this->impersonation->displayName($employee),
             ]));
@@ -45,7 +45,7 @@ class ImpersonationController extends Controller
         }
 
         return redirect()
-            ->to($this->redirector->urlFor($admin))
+            ->to($this->redirector->hrUrlFor($admin))
             ->with('success', __('impersonation.flash.stopped'));
     }
 }

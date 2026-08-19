@@ -49,6 +49,7 @@ class MenuConfigTest extends TestCase
         $this->assertContains('admin.payroll.index', $managerRoutes);
         $this->assertContains('admin.advances.index', $managerRoutes);
         $this->assertContains('team-leader.shifts', $managerRoutes);
+        $this->assertNotContains('admin.settings', $managerRoutes);
         $this->assertNotContains('employee.clock', $managerRoutes);
         $this->assertNotContains('employee.report', $managerRoutes);
         $this->assertNotContains('employee.requests', $managerRoutes);

@@ -24,6 +24,7 @@ use App\Http\Controllers\Employee\RequestController;
 use App\Http\Controllers\Employee\SalaryController;
 use App\Http\Controllers\EmployeePhotoController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PortalController;
 use App\Http\Controllers\TeamLeader\ApprovalController;
 use App\Http\Controllers\TeamLeader\AttendanceHistoryController;
 use App\Http\Controllers\TeamLeader\EvaluationController;
@@ -47,6 +48,11 @@ Route::post('/impersonation/leave', [ImpersonationController::class, 'destroy'])
     ->middleware('auth')->name('impersonation.leave');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/home', [PortalController::class, 'home'])->name('portal.home');
+    Route::get('/hr', [PortalController::class, 'enterHr'])->name('portal.hr');
+    Route::get('/service', [PortalController::class, 'service'])->name('portal.service');
+    Route::get('/production', [PortalController::class, 'production'])->name('portal.production');
+
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');

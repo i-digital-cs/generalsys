@@ -66,6 +66,8 @@
 
 ---
 
+**Web portal (T-9.1, session):** `GET /home` (all roles after login), `GET /hr` → existing role HR dashboard, `GET /service`, `GET /production` (empty shells).
+
 ## 3. Attendance
 
 | Method | Endpoint | Role | Description |

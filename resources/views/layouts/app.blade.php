@@ -17,7 +17,9 @@
     @include('layouts.partials.impersonation-banner')
 
     <div class="d-flex flex-grow-1">
-        @include('layouts.partials.sidebar')
+        @if ($showHrSidebar ?? true)
+            @include('layouts.partials.sidebar')
+        @endif
 
         <main class="flex-grow-1 p-3" style="min-width: 0;">
             @include('layouts.partials.breadcrumbs')

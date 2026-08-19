@@ -601,6 +601,33 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] Grep: zero remaining employee-scoping via `users.team_leader_id`; permissions/vacations `team_leader_id` either migrated to membership or documented as submit snapshot + `decided_by`
   - [x] NotificationTest + PayrollGenerateTest dual-TL; LangParity
 
+## Phase 9 — Company portal (Service / Production / HR)
+
+### T-9.1 — Module home + empty Service/Production shells
+- Depends on: T-1.2
+- Unlocks: Service/Production screens (next step, not started)
+- [x] Task complete
+  - [x] Login → `/home` for every role; navbar tabs Service · Production · HR
+  - [x] HR tab → existing role dashboard; HR sidebar only inside HR
+  - [x] Service + Production empty shells (fill next)
+  - [x] PortalModuleTest + AuthTest; LangParity; UI/UX gate
+
+### T-9.2 — Portal home statistics + charts
+- Depends on: T-9.1
+- Unlocks: —
+- [x] Task complete
+  - [x] KPI cards + 14-day attendance chart + roles + hours + module bars
+  - [x] Company-wide except TL (team only); no payroll money
+  - [x] PortalStatsServiceTest + PortalModuleTest; UI/UX AR+EN
+
+### T-9.3 — Settings tab outside HR
+- Depends on: T-9.1
+- Unlocks: —
+- [x] Task complete
+  - [x] Manager navbar + home card: Settings; no HR sidebar on that page
+  - [x] Removed from Manager HR sidebar; other roles still 403
+  - [x] PortalModuleTest + MenuConfigTest + DashboardTest; UI/UX AR+EN
+
 ## Dependency map
 
 ```text
@@ -625,6 +652,8 @@ T-0.1 → T-0.2 → T-0.3
               T-6.1 + T-2.3 + T-2.13 → T-6.6
               T-7.6 → T-8.1 → T-8.2 → T-8.3 → T-8.4 → T-8.6
                                       ↘ T-8.5 ↗
+              T-1.2 → T-9.1 → T-9.2
+                       T-9.1 → T-9.3
 ```
 
 ---
@@ -759,4 +788,5 @@ Example:
 - [x] 2026-08-18 Plan T-8 — Dual team leaders (max 2) + per-TL evaluations with actor on every write. **Not started** until user confirms the lock box in `docs/TASKS.md` Phase 8.
 - [x] 2026-08-18 Fix — Employee salary/rates: `type=number` in ar/RTL rejected 5500 (thousands grouping) while 600 worked. Text + `inputmode=decimal` + wider fields; normalize `5,500` / Arabic-Indic digits. EmployeeCrudTest green.
 - [x] 2026-08-18 Fix — Dual defaults: list shows each shift + window (not one merged label). Clock keeps both types when TL assigns only one; morning prefers the in-window shift; closed-window copy if the other shift was missed. DualDefaultShiftsTest + ClockTest green.
-- [x] 2026-08-18 Fix — Clock-in: late start allowed until that shift’s end; after it finishes it cannot be started; the next shift opens at its start until its end. DualDefaultShiftsTest + ClockTest green.
+- [x] 2026-08-19 T-9.2 PASS — `/home` system overview: staff/present/late/open/missing-report cards; 14-day clock-in bars; role doughnut; month hours; HR vs empty Service/Production. TL team-scoped, no payroll money. PortalStatsServiceTest + PortalModuleTest + LangParity green.
+- [x] 2026-08-19 T-9.3 PASS — Settings (الإعدادات) is a Manager top tab outside HR; removed from HR sidebar. PortalModuleTest + MenuConfigTest + DashboardTest green.

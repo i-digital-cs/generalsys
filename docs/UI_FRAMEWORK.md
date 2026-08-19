@@ -68,6 +68,16 @@ $border-radius: .5rem;
 
 ## 5. Screen Map (routes → Blade views)
 
+### Portal (all roles, T-9.1)
+| Screen | View | Key components |
+|--------|------|----------------|
+| Home | `portal/home` | three cards: Service, Production, HR (+ Settings card for Manager); KPI stats + charts (T-9.2) |
+| Service | `portal/module` | empty shell (fill later) |
+| Production | `portal/module` | empty shell (fill later) |
+| HR entry | redirect `portal.hr` | existing role dashboard |
+
+Navbar: Service · Production · HR tabs. HR sidebar only inside HR.
+
 ### Employee (mobile-first, `employee/`)
 | Screen | View | Key components |
 |--------|------|----------------|
