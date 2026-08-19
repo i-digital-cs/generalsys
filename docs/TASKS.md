@@ -601,11 +601,11 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] Grep: zero remaining employee-scoping via `users.team_leader_id`; permissions/vacations `team_leader_id` either migrated to membership or documented as submit snapshot + `decided_by`
   - [x] NotificationTest + PayrollGenerateTest dual-TL; LangParity
 
-## Phase 9 — Company portal (Service / Production / HR)
+## Phase 9 — Company portal (Service / Product / HR)
 
 ### T-9.1 — Module home + empty Service/Production shells
 - Depends on: T-1.2
-- Unlocks: Service/Production screens (next step, not started)
+- Unlocks: Service/Product screens (next step, not started)
 - [x] Task complete
   - [x] Login → `/home` for every role; navbar tabs Service · Production · HR
   - [x] HR tab → existing role dashboard; HR sidebar only inside HR
@@ -627,6 +627,68 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] Manager navbar + home card: Settings; no HR sidebar on that page
   - [x] Removed from Manager HR sidebar; other roles still 403
   - [x] PortalModuleTest + MenuConfigTest + DashboardTest; UI/UX AR+EN
+
+### T-9.4 — Daily Valuation (Service + Production)
+- Depends on: T-9.1
+- Unlocks: —
+- [x] Task complete
+  - [x] Admin assigns any user to Service and/or Production
+  - [x] Each assignee fills own daily sheet; formulas from Valuation 07-2026.xlsx
+  - [x] View: filler + Admin only; ValuationCalculatorTest + ValuationModuleTest
+
+### T-9.5 — Service/Product shell like HR + Product rename + valuation form layout
+- Depends on: T-9.4
+- Unlocks: —
+- [x] Task complete
+  - [x] Service and Product open a dashboard with the same sidebar shell as HR (not a dump of the form)
+  - [x] Sidebar **Valuation** → `/service/valuations` and `/product/valuations`
+  - [x] Rename Production → Product (`/product`; `/production` redirect); module value `product`
+  - [x] Valuation form layout: valid Bootstrap grid, King/Mart side by side, sales_spread labeled
+  - [x] PortalModuleTest + ValuationModuleTest + MenuConfigTest + LangParity; UI/UX AR+EN
+
+### T-9.6 — Valuation target/execution Excel layout + percents
+- Depends on: T-9.5
+- Unlocks: —
+- [x] Task complete
+  - [x] التارجت والتنفيذ as Excel rows: general / B2B / B2C × target · execution · percentage
+  - [x] Formulas from Valuation 07-2026 (H=E/B, KPI=E66/D70); display 37.78% / 52.26% etc.
+  - [x] ValuationCalculatorTest + ValuationModuleTest + LangParity
+
+### T-9.7 — Score 0–100, stars, editable general target
+- Depends on: T-9.6
+- Unlocks: —
+- [x] Task complete
+  - [x] Department/sales scores are 0–100 (not 0–1); 100=5★ 80=4★ (Excel ROUND)
+  - [x] التارجت العام is a typed input (count + amount), not a locked sum
+  - [x] ValuationCalculatorTest + ValuationModuleTest + LangParity
+
+### T-9.8 — Valuation show page is the full sheet
+- Depends on: T-9.7
+- Unlocks: —
+- [x] Task complete
+  - [x] `/service/valuations/{id}` shows market, King/Mart, sales, departments, targets, providers
+  - [x] ValuationModuleTest + LangParity
+
+### T-9.9 — Valuation sheet PDF
+- Depends on: T-9.8
+- Unlocks: T-9.10
+- [x] Task complete
+  - [x] Dompdf A4 download of the full daily sheet; filler + Manager; other users 403
+  - [x] AR glyph shaping + Tajawal; ValuationModuleTest + LangParity
+
+### T-9.10 — Valuation month stats (Hamad-Gross)
+- Depends on: T-9.9
+- Unlocks: T-9.11
+- [x] Task complete
+  - [x] Service/Product home + valuation index: MTD gross, target, gap, B2B/B2C, KPI from daily sheets
+  - [x] SQL JSON aggregates; own sheets unless Manager; ValuationStatsServiceTest + ValuationModuleTest + LangParity
+
+### T-9.11 — Compact valuation month strip
+- Depends on: T-9.10
+- Unlocks: —
+- [x] Task complete
+  - [x] User asked to restore dashboard **stat cards** (same tile style as `/home`)
+  - [x] One-row table reverted; still no capital/inventory/ads; ValuationModuleTest + LangParity
 
 ## Dependency map
 
@@ -789,4 +851,14 @@ Example:
 - [x] 2026-08-18 Fix — Employee salary/rates: `type=number` in ar/RTL rejected 5500 (thousands grouping) while 600 worked. Text + `inputmode=decimal` + wider fields; normalize `5,500` / Arabic-Indic digits. EmployeeCrudTest green.
 - [x] 2026-08-18 Fix — Dual defaults: list shows each shift + window (not one merged label). Clock keeps both types when TL assigns only one; morning prefers the in-window shift; closed-window copy if the other shift was missed. DualDefaultShiftsTest + ClockTest green.
 - [x] 2026-08-19 T-9.2 PASS — `/home` system overview: staff/present/late/open/missing-report cards; 14-day clock-in bars; role doughnut; month hours; HR vs empty Service/Production. TL team-scoped, no payroll money. PortalStatsServiceTest + PortalModuleTest + LangParity green.
-- [x] 2026-08-19 T-9.3 PASS — Settings (الإعدادات) is a Manager top tab outside HR; removed from HR sidebar. PortalModuleTest + MenuConfigTest + DashboardTest green.
+- [x] 2026-08-19 T-9.4 PASS — Daily Valuation on Service + Production: Admin assigns users per module; each person fills own Excel-parity sheet (0–1 scores, B2B/B2C, KPI/cash-flow labels). Filler + Admin view only. ValuationCalculatorTest + ValuationModuleTest + LangParity green.
+- [x] 2026-08-19 T-9.5 PASS — Service/Product same sidebar shell as HR; Valuation at `/service/valuations` and `/product/valuations`; Production renamed Product (`/production` → `/product`); valuation form grid (sales_spread + King/Mart). PortalModuleTest + ValuationModuleTest + MenuConfigTest + LangParity green.
+- [x] 2026-08-19 T-9.6 PASS — Target/execution block matches Excel rows (general/B2B/B2C × target · execution · %); KPI = amount total / 2500 → 52.26%; bands خسائر/سالب/low. ValuationCalculatorTest + ValuationModuleTest + LangParity green.
+- [x] 2026-08-19 T-9.7 PASS — Scores 0–100 with Excel stars (100=5, 80=4); التارجت العام is an input. ValuationCalculatorTest + ValuationModuleTest + LangParity green.
+- [x] 2026-08-19 T-9.8 PASS — Valuation show page renders the full sheet (market through providers), not only the target block. ValuationModuleTest green.
+- [x] 2026-08-19 T-9.9 PASS — Valuation PDF (`/{module}/valuations/{id}/export.pdf`) full sheet, filler+Manager, 403 others; AR glyphs. ValuationModuleTest + LangParity green.
+- [x] 2026-08-19 T-9.10 PASS — Hamad-Gross style MTD cards on Service/Product dashboard + valuation index (gross/target/gap/B2B/B2C/KPI from daily sheets). ValuationStatsServiceTest + ValuationModuleTest + LangParity green.
+- [x] 2026-08-19 T-9.11 PASS — Compact one-row valuation KPI strip (no capital/inventory/ads). ValuationModuleTest + LangParity green.
+- [x] 2026-08-19 T-9.11 amend — Restored `/home`-style stat cards for month Gross (user: tab/card style). LangParity + ValuationModuleTest green.
+- [x] 2026-08-19 Fix T-9.9/T-9.10 — Valuation PDF: keep AR mixed Latin/digits/brackets (`(0–100)`, B2B, King); gold ★ stars instead of `****-`; `/service/valuations` list is a card table with badges/actions. DompdfArabicTest + ValuationModuleTest + LangParity green.
+- [x] 2026-08-19 UX T-6.5 — Valuation sheets + assign lists use the same `.table-hr` + `<x-table-toolbar>` search/filters as HR lists. TableFilterUiTest + ValuationModuleTest + LangParity green.

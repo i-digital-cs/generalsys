@@ -596,7 +596,41 @@ users ─┬─ employee_profiles (1:1)
 official_holidays (standalone, referenced by attendance logic)
 penalty_rules (standalone config, referenced by payroll engine)
 settings (standalone key/value, backs Admin global settings)
+valuation_assignments / valuation_sheets (Service + Product daily valuation; T-9.4)
 ```
+
+## 21. Valuation (Service / Product)
+
+Admin assigns any active user to `service`, `product`, or both. Each assignee fills **their own** sheet **per day**. Filler + Manager may view; money figures are on the filler’s own sheet.
+
+```sql
+CREATE TABLE valuation_assignments (
+    id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id      BIGINT UNSIGNED NOT NULL,
+    assigned_by  BIGINT UNSIGNED NULL,
+    module       VARCHAR(20) NOT NULL, -- service | product
+    created_at   TIMESTAMP NULL,
+    updated_at   TIMESTAMP NULL,
+    UNIQUE KEY uq_val_asg_user_module (user_id, module),
+    INDEX idx_val_asg_module (module)
+);
+
+CREATE TABLE valuation_sheets (
+    id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT UNSIGNED NOT NULL,
+    module     VARCHAR(20) NOT NULL,
+    date       DATE NOT NULL,
+    status     VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    input      JSON NOT NULL,  -- typed Excel fields (scores 0–1, targets, notes)
+    result     JSON NOT NULL,  -- calculator output (ratios, kpi/cashflow labels, stars)
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_val_sheet (user_id, module, date),
+    INDEX idx_val_sheet_module_date (module, date)
+);
+```
+
+Result formulas match `docs/Valuation 07-2026.xlsx`: sales `AVERAGE` of six channels; count/amount totals and ratios; KPI `IF` bands خسائر/مقبول/مكسب/فوق المتوقع; cash-flow سالب/موجب/نقطة أمان; earnings high/low vs cash-flow base.
 
 ## Indexing & Performance Rules (Hostinger shared hosting)
 

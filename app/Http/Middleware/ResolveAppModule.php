@@ -15,7 +15,7 @@ class ResolveAppModule
         $module = AppModule::fromRequest($request);
 
         View::share('appModule', $module);
-        View::share('showHrSidebar', AppModule::showsHrSidebar($module));
+        View::share('showHrSidebar', AppModule::showsSidebar($module));
 
         return $next($request);
     }

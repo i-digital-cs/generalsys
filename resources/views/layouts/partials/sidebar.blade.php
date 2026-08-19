@@ -1,7 +1,10 @@
 @php
     // Guests never reach this layout (all app routes require auth).
     $role = auth()->user()->role ?? 'EMPLOYEE';
-    $items = config("menu.{$role}", config('menu.EMPLOYEE'));
+    $appModule = $appModule ?? \App\Support\AppModule::HR;
+    $items = in_array($appModule, [\App\Support\AppModule::SERVICE, \App\Support\AppModule::PRODUCT], true)
+        ? config("module_menu.{$appModule}", [])
+        : config("menu.{$role}", config('menu.EMPLOYEE'));
 @endphp
 <div class="offcanvas-lg offcanvas-start bg-body-tertiary border-end flex-shrink-0"
      tabindex="-1" id="sidebarNav" style="width: 210px;">
@@ -24,10 +27,14 @@
                         ? implode('.', array_slice($segments, 0, -1)) . '.*'
                         : $item['route'];
                     $isActive = request()->routeIs($pattern);
+                    $params = $item['params'] ?? [];
+                    if ($isActive && isset($params['module'])) {
+                        $isActive = request()->route('module') === $params['module'];
+                    }
                 @endphp
                 <li class="nav-item">
                     <a class="nav-link px-3 {{ $isActive ? 'active fw-semibold' : 'text-body' }}"
-                       href="{{ Route::has($item['route']) ? route($item['route']) : '#' }}">
+                       href="{{ Route::has($item['route']) ? route($item['route'], $params) : '#' }}">
                         <i class="bi {{ $item['icon'] }} me-2" aria-hidden="true"></i>{{ __($item['key']) }}
                     </a>
                 </li>

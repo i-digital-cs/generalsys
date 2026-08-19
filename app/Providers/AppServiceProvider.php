@@ -8,12 +8,16 @@ use App\Models\PayrollRecord;
 use App\Models\PenaltyRule;
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Models\ValuationAssignment;
+use App\Models\ValuationSheet;
 use App\Policies\AdvancePolicy;
 use App\Policies\AttendancePhotoPolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\PayrollPolicy;
 use App\Policies\PenaltyRulePolicy;
 use App\Policies\ShiftAssignmentPolicy;
+use App\Policies\ValuationAssignmentPolicy;
+use App\Policies\ValuationSheetPolicy;
 use App\Services\Auth\ImpersonationService;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
@@ -44,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PayrollRecord::class, PayrollPolicy::class);
         Gate::policy(Advance::class, AdvancePolicy::class);
         Gate::policy(AttendancePhoto::class, AttendancePhotoPolicy::class);
+        Gate::policy(ValuationSheet::class, ValuationSheetPolicy::class);
+        Gate::policy(ValuationAssignment::class, ValuationAssignmentPolicy::class);
 
         View::composer('layouts.app', function (IlluminateView $view): void {
             $service = app(ImpersonationService::class);

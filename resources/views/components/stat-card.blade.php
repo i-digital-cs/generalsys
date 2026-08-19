@@ -1,6 +1,6 @@
 @props([
     'title',
-    'value',
+    'value' => null,
     'icon' => 'bi-bar-chart',
     'color' => 'primary',
     'subtitle' => null,
@@ -13,7 +13,13 @@
         </span>
         <div>
             <div class="text-body-secondary small">{{ $title }}</div>
-            <div class="stat-value fw-bold">{{ $value }}</div>
+            <div class="stat-value fw-bold">
+                @if ($value !== null)
+                    {{ $value }}
+                @else
+                    {{ $slot }}
+                @endif
+            </div>
             @if ($subtitle)
                 <div class="text-body-secondary small">{{ $subtitle }}</div>
             @endif

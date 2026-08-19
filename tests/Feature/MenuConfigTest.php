@@ -75,7 +75,12 @@ class MenuConfigTest extends TestCase
 
     public function test_every_menu_key_is_translated_in_ar_and_en(): void
     {
-        foreach (config('menu') as $items) {
+        $allItems = config('menu');
+        foreach (config('module_menu') as $items) {
+            $allItems[] = $items;
+        }
+
+        foreach ($allItems as $items) {
             foreach ($items as $item) {
                 foreach (['ar', 'en'] as $locale) {
                     $this->assertNotSame(
@@ -86,5 +91,16 @@ class MenuConfigTest extends TestCase
                 }
             }
         }
+    }
+
+    public function test_service_and_product_menus_point_at_valuation(): void
+    {
+        $serviceRoutes = array_column(config('module_menu.service'), 'route');
+        $productRoutes = array_column(config('module_menu.product'), 'route');
+
+        $this->assertContains('portal.service', $serviceRoutes);
+        $this->assertContains('valuation.sheets.index', $serviceRoutes);
+        $this->assertContains('portal.product', $productRoutes);
+        $this->assertContains('valuation.sheets.index', $productRoutes);
     }
 }

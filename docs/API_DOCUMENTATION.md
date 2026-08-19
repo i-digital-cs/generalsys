@@ -66,7 +66,7 @@
 
 ---
 
-**Web portal (T-9.1, session):** `GET /home` (all roles after login), `GET /hr` → existing role HR dashboard, `GET /service`, `GET /production` (empty shells).
+**Web portal (T-9.1 / T-9.5, session):** `GET /home` (all roles after login), `GET /hr` → existing role HR dashboard, `GET /service` and `GET /product` (sidebar + Valuation), `GET /service/valuations`, `GET /product/valuations`. `GET /production` redirects to `/product`. `GET /{module}/valuations/{id}/export.pdf` (filler + Manager).
 
 ## 3. Attendance
 

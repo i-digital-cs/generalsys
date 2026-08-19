@@ -23,4 +23,5 @@ return [
     'settings' => 'Settings',
     'profile' => 'My Profile',
     'logout' => 'Log out',
+    'valuation' => 'Valuation',
 ];

@@ -574,6 +574,16 @@ class User extends Authenticatable
         return $this->hasMany(Evaluation::class);
     }
 
+    public function valuationAssignments(): HasMany
+    {
+        return $this->hasMany(ValuationAssignment::class);
+    }
+
+    public function valuationSheets(): HasMany
+    {
+        return $this->hasMany(ValuationSheet::class);
+    }
+
     public function teamLeaders(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'employee_team_leaders', 'user_id', 'team_leader_id')

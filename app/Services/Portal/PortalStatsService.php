@@ -242,7 +242,7 @@ class PortalStatsService
         return [
             ['key' => 'hr', 'label' => __('portal.hr'), 'value' => $hr],
             ['key' => 'service', 'label' => __('portal.service'), 'value' => 0],
-            ['key' => 'production', 'label' => __('portal.production'), 'value' => 0],
+            ['key' => 'product', 'label' => __('portal.product'), 'value' => 0],
         ];
     }
 

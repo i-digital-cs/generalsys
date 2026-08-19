@@ -5,7 +5,7 @@
         ? (app()->getLocale() === 'ar' ? $authUser->name_ar : $authUser->name_en)
         : '';
     $appModule = $appModule ?? \App\Support\AppModule::HR;
-    $showHrSidebar = $showHrSidebar ?? \App\Support\AppModule::showsHrSidebar($appModule);
+    $showHrSidebar = $showHrSidebar ?? \App\Support\AppModule::showsSidebar($appModule);
 @endphp
 <nav class="navbar navbar-dark bg-primary">
     <div class="container-fluid flex-nowrap gap-2">

@@ -31,6 +31,8 @@ use App\Http\Controllers\TeamLeader\EvaluationController;
 use App\Http\Controllers\TeamLeader\ReportReviewController;
 use App\Http\Controllers\TeamLeader\RestDayController;
 use App\Http\Controllers\TeamLeader\ShiftAssignmentController;
+use App\Http\Controllers\Valuation\ValuationAssignmentController;
+use App\Http\Controllers\Valuation\ValuationSheetController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -51,7 +53,27 @@ Route::middleware('auth')->group(function () {
     Route::get('/home', [PortalController::class, 'home'])->name('portal.home');
     Route::get('/hr', [PortalController::class, 'enterHr'])->name('portal.hr');
     Route::get('/service', [PortalController::class, 'service'])->name('portal.service');
-    Route::get('/production', [PortalController::class, 'production'])->name('portal.production');
+    Route::get('/product', [PortalController::class, 'product'])->name('portal.product');
+    Route::redirect('/production', '/product');
+
+    Route::get('/valuation/assignments', [ValuationAssignmentController::class, 'index'])->name('valuation.assignments.index');
+    Route::put('/valuation/assignments/{user}', [ValuationAssignmentController::class, 'update'])->name('valuation.assignments.update');
+
+    Route::get('/{module}/valuations', [ValuationSheetController::class, 'index'])
+        ->whereIn('module', ['service', 'product'])
+        ->name('valuation.sheets.index');
+    Route::get('/{module}/valuations/form', [ValuationSheetController::class, 'form'])
+        ->whereIn('module', ['service', 'product'])
+        ->name('valuation.sheets.form');
+    Route::post('/{module}/valuations', [ValuationSheetController::class, 'store'])
+        ->whereIn('module', ['service', 'product'])
+        ->name('valuation.sheets.store');
+    Route::get('/{module}/valuations/{sheet}/export.pdf', [ValuationSheetController::class, 'exportPdf'])
+        ->whereIn('module', ['service', 'product'])
+        ->name('valuation.sheets.export.pdf');
+    Route::get('/{module}/valuations/{sheet}', [ValuationSheetController::class, 'show'])
+        ->whereIn('module', ['service', 'product'])
+        ->name('valuation.sheets.show');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');

@@ -43,7 +43,7 @@ class PortalModuleTest extends TestCase
             ->get(route('portal.home'))
             ->assertOk()
             ->assertSee(__('portal.service'), false)
-            ->assertSee(__('portal.production'), false)
+            ->assertSee(__('portal.product'), false)
             ->assertSee(__('portal.hr'), false)
             ->assertSee(__('portal.stats_title'), false)
             ->assertSee(__('portal.cards.present_today'), false)
@@ -100,23 +100,35 @@ class PortalModuleTest extends TestCase
             ->assertRedirect(route('employee.dashboard'));
     }
 
-    public function test_service_and_production_are_empty_shells(): void
+    public function test_service_and_product_use_sidebar_like_hr(): void
     {
         $employee = User::factory()->employee()->create();
 
         $this->withSession(['locale' => 'en'])->actingAs($employee)
             ->get(route('portal.service'))
             ->assertOk()
-            ->assertSee(__('portal.service'), false)
-            ->assertSee(__('portal.empty_title'), false)
-            ->assertDontSee(__('nav.clock'), false);
+            ->assertSee(__('nav.valuation'), false)
+            ->assertSee(__('nav.dashboard'), false)
+            ->assertSee(__('valuation.stats.title'), false)
+            ->assertDontSee(__('nav.clock'), false)
+            ->assertDontSee(__('nav.payroll'), false);
 
         $this->withSession(['locale' => 'en'])->actingAs($employee)
-            ->get(route('portal.production'))
+            ->get(route('valuation.sheets.index', 'service'))
             ->assertOk()
-            ->assertSee(__('portal.production'), false)
-            ->assertSee(__('portal.empty_title'), false)
-            ->assertDontSee(__('nav.clock'), false);
+            ->assertSee(__('valuation.errors.not_assigned'), false)
+            ->assertSee(__('nav.valuation'), false)
+            ->assertSee(route('valuation.sheets.index', 'service'), false);
+
+        $this->withSession(['locale' => 'en'])->actingAs($employee)
+            ->get(route('portal.product'))
+            ->assertOk()
+            ->assertSee(__('portal.product'), false)
+            ->assertSee(__('nav.valuation'), false);
+
+        $this->actingAs($employee)
+            ->get('/production')
+            ->assertRedirect('/product');
     }
 
     public function test_hr_screens_keep_sidebar_and_module_tabs(): void

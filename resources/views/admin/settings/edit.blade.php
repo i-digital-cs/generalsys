@@ -135,6 +135,7 @@
         </div>
 
         <div class="col-12">
+            <a class="btn btn-outline-primary" href="{{ route('valuation.assignments.index') }}">{{ __('valuation.assign') }}</a>
             <button type="submit" class="btn btn-primary">{{ __('general.save') }}</button>
         </div>
     </form>

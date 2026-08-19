@@ -2,18 +2,19 @@
 
 return [
     'title' => 'Choose a module',
-    'subtitle' => 'Open HR for the current system. Service and Production will be filled next.',
+    'subtitle' => 'Open HR for the current system. Service and Product include daily valuation.',
     'stats_title' => 'System overview',
-    'stats_scope_company' => 'Live counts across HR. Service and Production will appear here when those modules are filled.',
+    'stats_scope_company' => 'Live counts across HR. Service and Product assignment counts appear in Valuation.',
     'stats_scope_team' => 'Live counts for your team. Payroll amounts are never shown here.',
     'modules_title' => 'Modules',
     'service' => 'Service',
-    'production' => 'Production',
+    'product' => 'Product',
     'hr' => 'HR',
     'settings' => 'Settings',
     'open' => 'Open',
     'empty_title' => 'Nothing here yet',
     'empty_text' => 'This module is ready. Screens will be added in the next step.',
+    'module_home_text' => 'Use the sidebar to open Valuation, or return to the company home from the top tabs.',
     'cards' => [
         'staff' => 'Staff',
         'staff_active' => 'Active',

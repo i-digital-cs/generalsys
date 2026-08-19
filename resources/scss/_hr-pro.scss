@@ -634,3 +634,47 @@ h6, .h6 { font-size: .9rem; }
         padding-bottom: 1.25rem;
     }
 }
+
+.valuation-excel-head {
+    background: #1b4f8a;
+    color: #fff;
+    font-weight: 600;
+    padding: .45rem .75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .5rem;
+}
+
+.table.valuation-excel-table {
+    --bs-table-bg: #d4e6f8;
+
+    td, th {
+        border-color: #fff;
+        vertical-align: middle;
+    }
+
+    .form-control {
+        min-width: 5.5rem;
+        max-width: 9rem;
+    }
+}
+
+.valuation-stars {
+    color: #e6a817;
+    letter-spacing: .12em;
+    white-space: nowrap;
+    line-height: 1;
+
+    .bi-star {
+        color: #ced4da;
+    }
+}
+
+.valuation-excel-status {
+    background: #c0392b;
+    color: #fff;
+    font-weight: 600;
+    text-align: center;
+    padding: .45rem .75rem;
+}

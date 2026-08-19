@@ -7,6 +7,8 @@ use App\Models\PayrollRecord;
 use App\Models\PenaltyRule;
 use App\Models\Permission;
 use App\Models\User;
+use App\Models\ValuationAssignment;
+use App\Models\ValuationSheet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -136,5 +138,40 @@ class TableFilterUiTest extends TestCase
             ->assertOk()
             ->assertSee('table-hr', false)
             ->assertSee('data-table-search', false);
+    }
+
+    public function test_valuation_list_screens_use_table_toolbar(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $hamad = User::factory()->employee()->create();
+
+        ValuationAssignment::query()->create([
+            'user_id' => $hamad->id,
+            'assigned_by' => $manager->id,
+            'module' => 'service',
+        ]);
+
+        $this->actingAs($hamad)
+            ->post(route('valuation.sheets.store', 'service'), [
+                'date' => now()->toDateString(),
+                'status' => ValuationSheet::STATUS_SUBMITTED,
+                'input' => ['actual_b2b_amount' => 100],
+            ]);
+
+        $this->actingAs($hamad)
+            ->get(route('valuation.sheets.index', 'service'))
+            ->assertOk()
+            ->assertSee('table-hr', false)
+            ->assertSee('data-table-filter-root', false)
+            ->assertSee('data-table-search', false)
+            ->assertSee('data-filter-status', false);
+
+        $this->actingAs($manager)
+            ->get(route('valuation.assignments.index'))
+            ->assertOk()
+            ->assertSee('table-hr', false)
+            ->assertSee('data-table-filter-root', false)
+            ->assertSee('data-table-search', false)
+            ->assertSee('data-filter-assignment', false);
     }
 }

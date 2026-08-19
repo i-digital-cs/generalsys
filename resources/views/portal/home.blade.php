@@ -161,7 +161,7 @@
         @php
             $moduleCards = [
                 ['id' => 'service', 'route' => 'portal.service', 'icon' => 'bi-headset'],
-                ['id' => 'production', 'route' => 'portal.production', 'icon' => 'bi-gear'],
+                ['id' => 'product', 'route' => 'portal.product', 'icon' => 'bi-gear'],
                 ['id' => 'hr', 'route' => 'portal.hr', 'icon' => 'bi-people'],
             ];
             if (auth()->user()?->isManager()) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Auth\PostLoginRedirector;
 use App\Services\Portal\PortalStatsService;
+use App\Services\Valuation\ValuationStatsService;
 use App\Support\AppModule;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -22,17 +23,19 @@ class PortalController extends Controller
         return redirect()->to($redirector->hrUrlFor(auth()->user()));
     }
 
-    public function service(): View
+    public function service(ValuationStatsService $stats): View
     {
-        return view('portal.module', [
+        return view('portal.module-home', [
             'module' => AppModule::SERVICE,
+            'stats' => $stats->monthSnapshot(auth()->user(), AppModule::SERVICE),
         ]);
     }
 
-    public function production(): View
+    public function product(ValuationStatsService $stats): View
     {
-        return view('portal.module', [
-            'module' => AppModule::PRODUCTION,
+        return view('portal.module-home', [
+            'module' => AppModule::PRODUCT,
+            'stats' => $stats->monthSnapshot(auth()->user(), AppModule::PRODUCT),
         ]);
     }
 }
