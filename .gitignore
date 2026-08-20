@@ -1,6 +1,6 @@
 /.phpunit.cache
 /node_modules
-/public/build
+# Track compiled Vite assets for Hostinger (no npm on server). Rebuild locally before commit.
 /public/hot
 /public/storage
 storage/fonts/*

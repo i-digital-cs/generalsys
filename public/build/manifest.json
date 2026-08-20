@@ -1,0 +1,44 @@
+{
+  "node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff": {
+    "file": "assets/bootstrap-icons-BeopsB42.woff",
+    "src": "node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff"
+  },
+  "node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff2": {
+    "file": "assets/bootstrap-icons-mSm7cUeB.woff2",
+    "src": "node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff2"
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-BU8roTK-.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/pages/clock-photos.js": {
+    "file": "assets/clock-photos-Bo0jInOr.js",
+    "name": "clock-photos",
+    "src": "resources/js/pages/clock-photos.js",
+    "isEntry": true
+  },
+  "resources/js/pages/employee-form.js": {
+    "file": "assets/employee-form-DfaC04TI.js",
+    "name": "employee-form",
+    "src": "resources/js/pages/employee-form.js",
+    "isEntry": true
+  },
+  "resources/js/pages/valuation-form.js": {
+    "file": "assets/valuation-form-cBv5xWF-.js",
+    "name": "valuation-form",
+    "src": "resources/js/pages/valuation-form.js",
+    "isEntry": true
+  },
+  "resources/scss/app.rtl.scss": {
+    "file": "assets/app-B2Dh83dx.css",
+    "src": "resources/scss/app.rtl.scss",
+    "isEntry": true
+  },
+  "resources/scss/app.scss": {
+    "file": "assets/app-CUQsZKSE.css",
+    "src": "resources/scss/app.scss",
+    "isEntry": true
+  }
+}
