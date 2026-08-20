@@ -46,9 +46,10 @@ return [
         'language_preference' => 'Language',
         'shift_type_default' => 'Default work type',
         'shift_types_default' => 'Default work types',
-        'shift_types_default_hint' => 'Two rows like Assign shift: type + start/end. Defaults apply every workday (in→out, then optional second in→out). Team-leader assign is for specific days only.',
+        'shift_types_default_hint' => 'Up to three rows like Assign shift: Full time, Online half, and/or Online full day — each with start/end. Defaults apply every workday. Team-leader assign is for specific days only.',
         'default_shift_primary' => 'Row 1',
         'default_shift_secondary' => 'Row 2',
+        'default_shift_tertiary' => 'Row 3',
         'default_shift_none' => '— None —',
         'optional' => 'Optional',
         'work_start_time' => 'Start',
@@ -108,6 +109,7 @@ return [
         'windows' => [
             'FULL_TIME' => '10:00–18:00',
             'ONLINE_HALF' => '06:00–10:00',
+            'ONLINE_FULL' => '10:00–22:00',
         ],
     ],
     'rows' => [

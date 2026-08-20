@@ -492,13 +492,21 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 
 ### T-7.3 — Dual default shifts (FULL_TIME + ONLINE_HALF)
 - Depends on: T-1.4, T-2.3, T-4.x payroll hours
-- Unlocks: —
+- Unlocks: T-7.7
 - [x] Task complete
   - [x] `shift_types_default` JSON; migrate ONLINE_FULL → both
   - [x] Admin create/edit: two Assign-style rows (type + start/end); clock allows both same day
   - [x] Planned hours = sum of defaults on workdays
   - [x] Payroll Hours tab: required / actual / absent per shift; one salary
   - [x] DualDefaultShiftsTest + related suite green; UI AR+EN
+
+### T-7.7 — Online full day as employee default shift
+- Depends on: T-7.3
+- Unlocks: —
+- [x] Task complete
+  - [x] `ONLINE_FULL` in `User::DEFAULT_SHIFT_OPTIONS` (create/edit up to 3 rows)
+  - [x] Clock / hours / payroll use profile defaults (12h window 10→22); AR+EN
+  - [x] DualDefaultShiftsTest + EmployeeCrudTest + LangParity
 
 ### T-7.4 — Job title on every user (employees, TLs, accountants, managers)
 - Depends on: T-1.4, T-1.8
@@ -855,6 +863,8 @@ Example:
 - [x] 2026-08-12 T-6.6 PASS — Optional multi punch photos on clock-in **and** clock-out (jpg/jpeg/png/webp ≤50MB, max 5); `attendance_photos` + AttendancePhotoService; authorized view self·TL(team)·Manager (TL↔Admin **yes**); UI on `/clock`, employee sessions, TL/Admin today board + hours day list, report review; AR+EN; AttendancePhotoTest + schema/Clock/LangParity green.
 - [x] 2026-08-12 Amend T-6.6 — removed punch-photo **count** limit (keep ≤50MB each); AR+EN hint updated; AttendancePhotoTest accepts 8 files.
 - [x] 2026-08-20 T-6.7 PASS — Optional description per punch photo (clock-in/out); schema + viewers; AttendancePhotoTest + LangParity green.
+- [x] 2026-08-20 T-7.7 PASS — Online full day (`ONLINE_FULL`) selectable on employee create/edit (up to 3 defaults); clock/hours/payroll. DualDefaultShiftsTest + EmployeeCrudTest + LangParity green.
+- [x] 2026-08-20 Amend T-7.7 — ClockTest updated for real ONLINE_FULL default (legacy no longer expands to FT+½); ClockTest + DualDefault + AttendanceService + LangParity green (84).
 - [x] 2026-08-12 UX — Admin payroll show: second button **Export full review PDF** (`export-review.pdf`) covers all tabs (pay / edit draft / attendance / evaluation / hours); Admin-only (TL 403); PayrollExportTest green.
 - [x] 2026-08-12 T-7.1 PASS — ACCOUNTANT role: self-service + payroll (no اعتماد) + advances CRUD; `team_leader_id` null → Manager decides leave; seed accountant@hrpro.test; TL still money-blocked.
 - [x] 2026-08-13 T-7.2 PASS — Required punch GPS + soft 1-office geofence (Admin Settings lat/lng, default 1 km): store lat/lng/accuracy/distance/outside; accept outside with warn + notify employee/TL/Admin; Maps links like photos; TL↔Admin self-clock yes; ClockLocationTest + GeofenceServiceTest green.

@@ -46,9 +46,10 @@ return [
         'language_preference' => 'اللغة',
         'shift_type_default' => 'نوع الدوام الافتراضي',
         'shift_types_default' => 'أنواع الدوام الافتراضية',
-        'shift_types_default_hint' => 'صفّان مثل تعيين الدوام: نوع + حضور/انصراف. الافتراضي يطبّق كل يوم عمل (حضور→انصراف ثم يمكن حضور→انصراف للصف الثاني). تعيين القائد لأيام محددة فقط.',
+        'shift_types_default_hint' => 'حتى ثلاثة صفوف مثل تعيين الدوام: دوام كامل و/أو أونلاين نصف يوم و/أو أونلاين يوم كامل — مع وقت بداية/نهاية. الافتراضي يطبّق كل يوم عمل. تعيين القائد لأيام محددة فقط.',
         'default_shift_primary' => 'الصف 1',
         'default_shift_secondary' => 'الصف 2',
+        'default_shift_tertiary' => 'الصف 3',
         'default_shift_none' => '— بدون —',
         'optional' => 'اختياري',
         'work_start_time' => 'حضور',
@@ -108,6 +109,7 @@ return [
         'windows' => [
             'FULL_TIME' => '10:00–18:00',
             'ONLINE_HALF' => '06:00–10:00',
+            'ONLINE_FULL' => '10:00–22:00',
         ],
     ],
     'rows' => [

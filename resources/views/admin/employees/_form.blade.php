@@ -171,18 +171,23 @@
                     ];
                 }
             }
-            while (count($defaultProfiles) < 2) {
+            while (count($defaultProfiles) < 3) {
                 $defaultProfiles[] = ['shift_type' => '', 'start' => '', 'end' => ''];
             }
-            $defaultProfiles = array_slice($defaultProfiles, 0, 2);
+            $defaultProfiles = array_slice($defaultProfiles, 0, 3);
             $shiftWindows = \App\Services\Attendance\ShiftConfig::DEFAULT_TIME_WINDOWS;
         @endphp
         <div class="d-flex flex-column gap-3" data-default-shifts data-shift-times="{{ json_encode($shiftWindows) }}">
             @foreach ($defaultProfiles as $index => $row)
                 <div class="border rounded p-3 bg-body-tertiary" data-default-shift-row>
                     <div class="small fw-semibold mb-2">
-                        {{ $index === 0 ? __('employees.fields.default_shift_primary') : __('employees.fields.default_shift_secondary') }}
-                        @if ($index === 1)
+                        @if ($index === 0)
+                            {{ __('employees.fields.default_shift_primary') }}
+                        @elseif ($index === 1)
+                            {{ __('employees.fields.default_shift_secondary') }}
+                            <span class="text-body-secondary fw-normal">({{ __('employees.fields.optional') }})</span>
+                        @else
+                            {{ __('employees.fields.default_shift_tertiary') }}
                             <span class="text-body-secondary fw-normal">({{ __('employees.fields.optional') }})</span>
                         @endif
                     </div>
@@ -194,7 +199,7 @@
                                     class="form-select @error('default_shifts.'.$index.'.shift_type') is-invalid @enderror"
                                     data-default-shift-type
                                     @if ($index === 0) required @endif>
-                                @if ($index === 1)
+                                @if ($index > 0)
                                     <option value="">{{ __('employees.fields.default_shift_none') }}</option>
                                 @endif
                                 @foreach (\App\Models\User::DEFAULT_SHIFT_OPTIONS as $option)

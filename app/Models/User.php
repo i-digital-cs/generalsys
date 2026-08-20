@@ -90,10 +90,11 @@ class User extends Authenticatable
         ];
     }
 
-    /** Base types allowed as employee defaults (T-7.3). */
+    /** Base types allowed as employee defaults (T-7.3 / T-7.7). */
     public const DEFAULT_SHIFT_OPTIONS = [
         Attendance::SHIFT_FULL_TIME,
         Attendance::SHIFT_ONLINE_HALF,
+        Attendance::SHIFT_ONLINE_FULL,
     ];
 
     /**
@@ -199,10 +200,7 @@ class User extends Authenticatable
         $legacy = is_string($legacy) ? $legacy : Attendance::SHIFT_FULL_TIME;
         $types = match ($legacy) {
             Attendance::SHIFT_ONLINE_HALF => [Attendance::SHIFT_ONLINE_HALF],
-            Attendance::SHIFT_ONLINE_FULL => [
-                Attendance::SHIFT_FULL_TIME,
-                Attendance::SHIFT_ONLINE_HALF,
-            ],
+            Attendance::SHIFT_ONLINE_FULL => [Attendance::SHIFT_ONLINE_FULL],
             default => [Attendance::SHIFT_FULL_TIME],
         };
 

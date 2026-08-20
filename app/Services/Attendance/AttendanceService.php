@@ -460,8 +460,8 @@ class AttendanceService
         $premiumScheduled = array_values(array_intersect($scheduled, ShiftAssignment::PREMIUM_TYPES));
         $defaults = $user->defaultShiftTypes();
 
-        // Dual defaults apply every workday. Assigning one type overlays that
-        // window — it must not hide the other default (T-7.3).
+        // Multiple defaults apply every workday. Assigning one type overlays that
+        // window — it must not hide the other defaults (T-7.3 / T-7.7).
         if (count($defaults) >= 2) {
             return array_values(array_unique([...$defaults, ...$baseScheduled, ...$premiumScheduled]));
         }

@@ -578,7 +578,10 @@ class EmployeeCrudTest extends TestCase
             ->assertSee('name="default_shifts[1][shift_type]"', false)
             ->assertSee('name="default_shifts[0][start]"', false)
             ->assertSee('name="default_shifts[1][end]"', false)
-            ->assertSee('&quot;ONLINE_HALF&quot;:[&quot;06:00&quot;,&quot;10:00&quot;]', false);
+            ->assertSee('name="default_shifts[2][shift_type]"', false)
+            ->assertSee(__('employees.shifts.ONLINE_FULL'), false)
+            ->assertSee('&quot;ONLINE_HALF&quot;:[&quot;06:00&quot;,&quot;10:00&quot;]', false)
+            ->assertSee('&quot;ONLINE_FULL&quot;:[&quot;10:00&quot;,&quot;22:00&quot;]', false);
 
         $employee = User::factory()->employee()->create();
 

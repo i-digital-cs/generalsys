@@ -193,7 +193,8 @@ users
 ├── online_full_day_rate (decimal)        -- ADMIN sets per employee
 ├── overtime_hourly_rate (decimal)        -- ADMIN sets per employee
 ├── monthly_vacation_accrual (decimal)    -- TL can update dynamically
-├── shift_type_default (FULL_TIME, ONLINE_HALF, ONLINE_FULL)
+├── shift_type_default (FULL_TIME, ONLINE_HALF, ONLINE_FULL)  -- primary of shift_types_default
+├── shift_types_default (JSON, up to 3 profiles: type + start/end; Full time / Online half / Online full)
 ├── work_start_time (time, nullable)      -- مواعيد العمل: حضور
 ├── work_end_time (time, nullable)        -- مواعيد العمل: انصراف
 ├── work_start_time / work_end_time

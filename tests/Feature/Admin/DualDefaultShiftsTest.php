@@ -215,12 +215,95 @@ class DualDefaultShiftsTest extends TestCase
         $this->assertSame(4.0, (float) $day['actual_hours']);
     }
 
-    public function test_online_full_legacy_normalizes_to_both(): void
+    public function test_online_full_legacy_normalizes_to_itself(): void
     {
         $this->assertSame(
-            [Attendance::SHIFT_FULL_TIME, Attendance::SHIFT_ONLINE_HALF],
+            [Attendance::SHIFT_ONLINE_FULL],
             User::normalizeDefaultShiftTypes([], Attendance::SHIFT_ONLINE_FULL),
         );
+    }
+
+    public function test_employee_form_saves_online_full_default(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $leader = User::factory()->teamLeader()->create();
+
+        $this->actingAs($manager)
+            ->post(route('admin.employees.store'), $this->employeePayload([
+                'email' => 'onlinefull@hrpro.test',
+                'team_leader_ids' => [$leader->id],
+                'default_shifts' => [
+                    [
+                        'shift_type' => Attendance::SHIFT_ONLINE_FULL,
+                        'start' => '10:00',
+                        'end' => '22:00',
+                    ],
+                    ['shift_type' => '', 'start' => '', 'end' => ''],
+                    ['shift_type' => '', 'start' => '', 'end' => ''],
+                ],
+            ]))
+            ->assertRedirect();
+
+        $employee = User::query()->where('email', 'onlinefull@hrpro.test')->firstOrFail();
+        $this->assertSame([Attendance::SHIFT_ONLINE_FULL], $employee->defaultShiftTypes());
+        $this->assertSame(['10:00', '22:00'], $employee->defaultWindowFor(Attendance::SHIFT_ONLINE_FULL));
+
+        $this->freezeClockToMorningShift();
+        Carbon::setTestNow(Carbon::parse('2026-08-03 10:30:00', config('app.timezone')));
+
+        $service = app(AttendanceService::class);
+        $this->assertSame(
+            [Attendance::SHIFT_ONLINE_FULL],
+            $service->availableShiftTypes($employee),
+        );
+
+        $row = $service->clockIn($employee, Attendance::SHIFT_ONLINE_FULL, Carbon::parse('2026-08-03 10:30:00'));
+        $this->assertSame(Attendance::SHIFT_ONLINE_FULL, $row->shift_type);
+        $this->assertEqualsWithDelta(12.0, (float) $row->planned_hours, 0.01);
+    }
+
+    public function test_employee_can_have_three_default_shifts(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $leader = User::factory()->teamLeader()->create();
+
+        $this->actingAs($manager)
+            ->post(route('admin.employees.store'), $this->employeePayload([
+                'email' => 'threeshifts@hrpro.test',
+                'team_leader_ids' => [$leader->id],
+                'default_shifts' => [
+                    [
+                        'shift_type' => Attendance::SHIFT_ONLINE_HALF,
+                        'start' => '06:00',
+                        'end' => '10:00',
+                    ],
+                    [
+                        'shift_type' => Attendance::SHIFT_FULL_TIME,
+                        'start' => '10:00',
+                        'end' => '18:00',
+                    ],
+                    [
+                        'shift_type' => Attendance::SHIFT_ONLINE_FULL,
+                        'start' => '18:00',
+                        'end' => '22:00',
+                    ],
+                ],
+            ]))
+            ->assertRedirect();
+
+        $employee = User::query()->where('email', 'threeshifts@hrpro.test')->firstOrFail();
+        $this->assertSame(
+            [Attendance::SHIFT_ONLINE_HALF, Attendance::SHIFT_FULL_TIME, Attendance::SHIFT_ONLINE_FULL],
+            $employee->defaultShiftTypes(),
+        );
+
+        $this->actingAs($manager)
+            ->get(route('admin.employees.edit', $employee))
+            ->assertOk()
+            ->assertSee(__('employees.shifts.ONLINE_FULL'), false)
+            ->assertSee('name="default_shifts[2][shift_type]"', false)
+            ->assertSee('value="ONLINE_FULL"', false)
+            ->assertSee(__('employees.fields.default_shift_tertiary'), false);
     }
 
     public function test_assigning_one_default_keeps_the_other_clockable(): void

@@ -296,23 +296,28 @@ class ClockTest extends TestCase
 
     public function test_without_assignment_prefers_profile_default(): void
     {
-        // Legacy ONLINE_FULL → both defaults; morning prefers Online½.
-        $this->employee->update(['shift_type_default' => Attendance::SHIFT_ONLINE_FULL]);
-        Carbon::setTestNow(Carbon::parse('2026-08-03 07:00:00', config('app.timezone')));
+        $this->employee->update([
+            'shift_type_default' => Attendance::SHIFT_ONLINE_FULL,
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_ONLINE_FULL, 'start' => '10:00', 'end' => '22:00'],
+            ],
+            'work_start_time' => '10:00',
+            'work_end_time' => '22:00',
+        ]);
+        Carbon::setTestNow(Carbon::parse('2026-08-03 10:15:00', config('app.timezone')));
 
         $html = $this->actingAs($this->employee)
             ->get(route('employee.clock'))
             ->assertOk()
+            ->assertSee(__('clock.shifts.ONLINE_FULL'), false)
             ->getContent();
 
         $this->assertMatchesRegularExpression(
-            '/option value="ONLINE_HALF"[^>]*selected/s',
+            '/option value="ONLINE_FULL"[^>]*selected/s',
             $html,
         );
         $this->assertDoesNotMatchRegularExpression('/option value="FULL_TIME"/', $html);
-        $this->assertStringNotContainsString(__('clock.assigned_today', [
-            'shift' => __('clock.shifts.FULL_TIME'),
-        ]), $html);
+        $this->assertDoesNotMatchRegularExpression('/option value="ONLINE_HALF"/', $html);
     }
 
     public function test_completed_full_time_is_hidden_and_rejected_same_day(): void
