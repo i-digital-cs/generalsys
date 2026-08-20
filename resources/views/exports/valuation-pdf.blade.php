@@ -35,7 +35,6 @@
     };
     $dateLabel = Carbon::parse($sheet->date)->locale($locale)->translatedFormat($rtl ? 'd / m / Y' : 'd M Y');
     $depts = [
-        ['drivers', 'drivers_score', 'drivers_notes'],
         ['marketing', 'marketing_score', 'marketing_notes'],
         ['graphic', 'graphic_score', 'graphic_notes'],
         ['social_requirements', 'social_requirements_score', 'social_requirements_notes'],
@@ -46,6 +45,22 @@
         ['quality', 'quality_score', 'quality_notes'],
         ['customer_care', 'customer_care_score', 'customer_care_notes'],
     ];
+    $driverUsers = $driverUsers ?? collect();
+    $driverRows = is_array($out['drivers'] ?? null)
+        ? $out['drivers']
+        : \App\Services\Valuation\ValuationFields::normalizeDrivers($in['drivers'] ?? []);
+    $driverName = static function (array $row) use ($driverUsers, $rtl): string {
+        return \App\Services\Valuation\ValuationFields::driverDisplayName($row, function (int $id) use ($driverUsers, $rtl): string {
+            $user = $driverUsers->get($id);
+            if ($user === null) {
+                return '';
+            }
+
+            return $rtl
+                ? ($user->name_ar ?: $user->name_en ?: '')
+                : ($user->name_en ?: $user->name_ar ?: '');
+        });
+    };
     $salesKeys = ['sales_online','sales_customer_care','sales_social','sales_outdoor','sales_ornes','sales_google'];
     $providerKeys = ['provider_mart','provider_kings','provider_golden','provider_rug','work_photo','work_video','work_software','ads_google','ads_meta'];
 @endphp
@@ -174,6 +189,31 @@
         <tr>{!! $kv($t('valuation.fields.sales_average'), number_format((float) ($out['sales_average'] ?? 0), 2).'% '.$stars($out['sales_average'] ?? 0), $rtl) !!}</tr>
         <tr>{!! $kv($t('valuation.fields.notes'), $note($in['sales_notes'] ?? ''), $rtl) !!}</tr>
     </table>
+
+    <div class="section-title">{{ $t('valuation.sections.drivers') }}</div>
+    @if ($driverRows === [])
+        <table>
+            <tr>{!! $kv($t('valuation.fields.score'), $pctScore($in['drivers_score'] ?? 0).' '.$stars($in['drivers_score'] ?? 0), $rtl) !!}</tr>
+            <tr>{!! $kv($t('valuation.fields.notes'), $note($in['drivers_notes'] ?? ''), $rtl) !!}</tr>
+        </table>
+    @else
+        <table>
+            <tr>{!! $kv($t('valuation.drivers.avg_score'), $pctScore($out['drivers_score_avg'] ?? $in['drivers_score'] ?? 0).' '.$stars($out['drivers_score_avg'] ?? $in['drivers_score'] ?? 0), $rtl) !!}</tr>
+        </table>
+        @foreach ($driverRows as $drow)
+            @php
+                $dOrders = (float) ($drow['orders'] ?? 0);
+                $dOver = (float) ($drow['over_target'] ?? \App\Services\Valuation\ValuationFields::driverOverTarget($dOrders));
+                $dScore = (float) ($drow['score'] ?? 0);
+            @endphp
+            <table>
+                <tr>{!! $kv($t('valuation.drivers.employee'), $g($driverName($drow)), $rtl) !!}</tr>
+                <tr>{!! $kv($t('valuation.drivers.orders'), $num($dOrders).($dOver > 0 ? ' · '.$t('valuation.drivers.over_target', ['x' => $dOver]) : ''), $rtl) !!}</tr>
+                <tr>{!! $kv($t('valuation.fields.score'), $pctScore($dScore).' '.$stars($dScore), $rtl) !!}</tr>
+                <tr>{!! $kv($t('valuation.fields.notes'), $note($drow['notes'] ?? ''), $rtl) !!}</tr>
+            </table>
+        @endforeach
+    @endif
 
     @foreach ($depts as [$key, $scoreKey, $notesKey])
         <div class="section-title">{{ $t('valuation.sections.'.$key) }}</div>

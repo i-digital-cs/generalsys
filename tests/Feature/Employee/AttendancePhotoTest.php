@@ -55,7 +55,9 @@ class AttendancePhotoTest extends TestCase
             ->assertOk()
             ->assertSee(__('clock.photos.label'), false)
             ->assertSee('name="photos[]"', false)
-            ->assertSee(__('clock.photos.optional'), false);
+            ->assertSee('data-clock-photos', false)
+            ->assertSee(__('clock.photos.optional'), false)
+            ->assertSee(__('clock.photos.description'), false);
     }
 
     public function test_clock_in_and_out_accept_optional_multi_photos(): void
@@ -67,11 +69,16 @@ class AttendancePhotoTest extends TestCase
             ->post(route('employee.clock.in'), $this->withClockGps([
                 'shift_type' => Attendance::SHIFT_FULL_TIME,
                 'photos' => [$inA, $inB],
+                'photo_descriptions' => ['Front desk', 'Kitchen'],
             ]))
             ->assertRedirect(route('employee.clock'));
 
         $attendance = Attendance::where('user_id', $this->employee->id)->firstOrFail();
         $this->assertSame(2, $attendance->photos()->where('kind', AttendancePhoto::KIND_CLOCK_IN)->count());
+        $this->assertSame(
+            ['Front desk', 'Kitchen'],
+            $attendance->photos()->where('kind', AttendancePhoto::KIND_CLOCK_IN)->orderBy('sort_order')->pluck('description')->all(),
+        );
 
         foreach ($attendance->photos as $photo) {
             Storage::disk('local')->assertExists($photo->file_path);
@@ -81,6 +88,8 @@ class AttendancePhotoTest extends TestCase
             ->get(route('employee.clock'))
             ->assertOk()
             ->assertSee(__('clock.photos.in_label'), false)
+            ->assertSee('Front desk', false)
+            ->assertSee('Kitchen', false)
             ->assertSee(route('attendance.photos.show', $attendance->photos->first()), false);
 
         $out = UploadedFile::fake()->image('out.webp', 200, 200);
@@ -91,10 +100,12 @@ class AttendancePhotoTest extends TestCase
         $this->actingAs($this->employee)
             ->post(route('employee.clock.out'), $this->withClockGps([
                 'photos' => [$out],
+                'photo_descriptions' => ['Leaving site'],
             ]))
             ->assertRedirect(route('employee.clock'));
 
         $this->assertSame(1, $attendance->fresh()->photos()->where('kind', AttendancePhoto::KIND_CLOCK_OUT)->count());
+        $this->assertSame('Leaving site', $attendance->fresh()->photos()->where('kind', AttendancePhoto::KIND_CLOCK_OUT)->value('description'));
         $this->assertSame(3, $attendance->fresh()->photos()->count());
     }
 

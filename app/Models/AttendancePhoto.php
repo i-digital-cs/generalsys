@@ -19,6 +19,7 @@ class AttendancePhoto extends Model
         'kind',
         'file_path',
         'original_name',
+        'description',
         'mime_type',
         'size_bytes',
         'sort_order',

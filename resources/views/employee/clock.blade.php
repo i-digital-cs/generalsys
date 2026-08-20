@@ -196,6 +196,7 @@
 @endsection
 
 @push('scripts')
+    @vite(['resources/js/pages/clock-photos.js'])
 <script>
 (function () {
     const el = document.getElementById('clock-elapsed');

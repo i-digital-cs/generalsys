@@ -19,6 +19,8 @@ final class ClockPhotoRules
         return [
             'photos' => ['nullable', 'array'],
             'photos.*' => ['file', 'mimes:'.$mimes, 'max:'.$maxKb],
+            'photo_descriptions' => ['nullable', 'array'],
+            'photo_descriptions.*' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

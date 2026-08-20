@@ -39,6 +39,11 @@ class ValuationModuleTest extends TestCase
                     'haroon_news' => 'No Haroon notes',
                     'laundry_king_positives' => 'King on time',
                     'drivers_notes' => 'Eighteen trips',
+                    'drivers' => [
+                        ['user_id' => $hamad->id, 'orders' => 30, 'score' => 80, 'notes' => 'Fast delivery'],
+                        ['name' => 'Freelance Driver', 'orders' => 40, 'score' => 100, 'notes' => 'Guest notes'],
+                        ['user_id' => '', 'orders' => ''],
+                    ],
                     'provider_mart' => 100,
                     'actual_b2b_count' => 17,
                     'actual_b2c_count' => 0,
@@ -57,6 +62,15 @@ class ValuationModuleTest extends TestCase
         $sheet = ValuationSheet::query()->firstOrFail();
         $this->assertSame('loss', $sheet->result['kpi_label']);
         $this->assertSame('service', $sheet->module);
+        $this->assertCount(2, $sheet->input['drivers']);
+        $this->assertEqualsWithDelta(5.0, $sheet->result['drivers'][0]['over_target'], 0.01);
+        $this->assertSame('Freelance Driver', $sheet->input['drivers'][1]['name']);
+        $this->assertEqualsWithDelta(15.0, $sheet->result['drivers'][1]['over_target'], 0.01);
+        $this->assertEqualsWithDelta(80.0, $sheet->input['drivers'][0]['score'], 0.01);
+        $this->assertSame('Fast delivery', $sheet->input['drivers'][0]['notes']);
+        $this->assertSame('Guest notes', $sheet->input['drivers'][1]['notes']);
+        $this->assertEqualsWithDelta(90.0, $sheet->result['drivers_score_avg'], 0.01);
+        $this->assertEqualsWithDelta(90.0, $sheet->input['drivers_score'], 0.01);
 
         $this->withSession(['locale' => 'en'])->actingAs($hamad)
             ->get(route('valuation.sheets.show', ['module' => 'service', 'sheet' => $sheet]))
@@ -77,7 +91,13 @@ class ValuationModuleTest extends TestCase
             ->assertSee(__('valuation.sections.laundry_king'), false)
             ->assertSee('King on time', false)
             ->assertSee(__('valuation.sections.drivers'), false)
-            ->assertSee('Eighteen trips', false)
+            ->assertSee(__('valuation.drivers.over_target', ['x' => 5]), false)
+            ->assertSee('Freelance Driver', false)
+            ->assertSee(__('valuation.drivers.over_target', ['x' => 15]), false)
+            ->assertSee('Fast delivery', false)
+            ->assertSee('Guest notes', false)
+            ->assertSee('80.00%', false)
+            ->assertSee('100.00%', false)
             ->assertSee(__('valuation.fields.provider_mart'), false)
             ->assertSee('100%', false)
             ->assertSee(__('valuation.export_pdf'), false);
@@ -92,12 +112,14 @@ class ValuationModuleTest extends TestCase
             'module' => 'service',
             'input' => $sheet->input,
             'result' => $sheet->result,
+            'driverUsers' => collect([$hamad->id => $hamad]),
         ])->render();
         $this->assertStringContainsString('37.78%', $pdfHtml);
         $this->assertStringContainsString("font-family: 'Tajawal'", $pdfHtml);
         $this->assertStringContainsString('King on time', $pdfHtml);
         $this->assertStringContainsString('class="stars"', $pdfHtml);
         $this->assertStringNotContainsString('*****', $pdfHtml);
+        $this->assertStringContainsString('Over target 5', $pdfHtml);
         $this->assertStringNotContainsString('****-', $pdfHtml);
 
         app()->setLocale('ar');
@@ -202,6 +224,14 @@ class ValuationModuleTest extends TestCase
             ->assertSee('id="target_count_total"', false)
             ->assertSee('name="input[target_count_total]"', false)
             ->assertSee(__('valuation.fields.score'), false)
+            ->assertSee(__('valuation.drivers.add'), false)
+            ->assertSee('name="input[drivers][0][user_id]"', false)
+            ->assertSee('name="input[drivers][0][name]"', false)
+            ->assertSee('name="input[drivers][0][orders]"', false)
+            ->assertSee('name="input[drivers][0][score]"', false)
+            ->assertSee('name="input[drivers][0][notes]"', false)
+            ->assertSee(__('valuation.drivers.or_manual_hint'), false)
+            ->assertDontSee('id="drivers_score"', false)
             ->getContent();
 
         $this->assertSame(1, substr_count($html, 'id="sales_spread"'));

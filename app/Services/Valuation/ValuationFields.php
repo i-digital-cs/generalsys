@@ -7,6 +7,9 @@ namespace App\Services\Valuation;
  */
 final class ValuationFields
 {
+    /** Per-driver daily orders target; above this = over target. */
+    public const DRIVER_ORDERS_TARGET = 25;
+
     /** @var list<string> */
     public const SCORE_KEYS = [
         'laundry_king_score',
@@ -59,6 +62,7 @@ final class ValuationFields
             'customer_care_logistics_notes' => '',
             'sales_notes' => '',
             'drivers_notes' => '',
+            'drivers' => [],
             'marketing_notes' => '',
             'graphic_notes' => '',
             'social_requirements_notes' => '',
@@ -87,5 +91,72 @@ final class ValuationFields
         }
 
         return $out;
+    }
+
+    /**
+     * Drop fully blank driver rows. Each row is either an employee (user_id)
+     * or a manual name — not both. Includes per-driver score (0–100) + notes.
+     *
+     * @return list<array{user_id: int|null, name: string, orders: float, score: float, notes: string}>
+     */
+    public static function normalizeDrivers(mixed $rows): array
+    {
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $userId = (int) ($row['user_id'] ?? 0);
+            $name = trim((string) ($row['name'] ?? ''));
+            $notes = trim((string) ($row['notes'] ?? ''));
+            $ordersRaw = $row['orders'] ?? null;
+            $orders = is_numeric($ordersRaw) ? (float) $ordersRaw : 0.0;
+            $ordersEmpty = $ordersRaw === null || $ordersRaw === '';
+            $scoreRaw = $row['score'] ?? null;
+            $scoreEmpty = $scoreRaw === null || $scoreRaw === '';
+            $score = is_numeric($scoreRaw) ? (float) $scoreRaw : 0.0;
+
+            if ($userId <= 0 && $name === '' && ($ordersEmpty || $orders <= 0.0) && $scoreEmpty && $notes === '') {
+                continue;
+            }
+
+            $out[] = [
+                'user_id' => $userId > 0 ? $userId : null,
+                'name' => $userId > 0 ? '' : mb_substr($name, 0, 150),
+                'orders' => round(max(0.0, $orders), 2),
+                'score' => round(max(0.0, min(100.0, $score)), 2),
+                'notes' => mb_substr($notes, 0, 5000),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array{user_id?: int|null, name?: string}  $row
+     */
+    public static function driverDisplayName(array $row, ?callable $resolveUserName = null): string
+    {
+        $userId = (int) ($row['user_id'] ?? 0);
+        if ($userId > 0 && $resolveUserName !== null) {
+            $resolved = trim((string) $resolveUserName($userId));
+            if ($resolved !== '') {
+                return $resolved;
+            }
+        }
+
+        $name = trim((string) ($row['name'] ?? ''));
+
+        return $name !== '' ? $name : '—';
+    }
+
+    public static function driverOverTarget(float $orders): float
+    {
+        return round(max(0.0, $orders - self::DRIVER_ORDERS_TARGET), 2);
     }
 }

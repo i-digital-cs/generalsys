@@ -115,8 +115,15 @@
     </div>
 </div>
 
+@include('valuation.sheets._drivers', [
+    'editable' => $editable,
+    'input' => $input,
+    'result' => $result ?? [],
+    'employees' => $employees ?? collect(),
+    'driverUsers' => $driverUsers ?? collect(),
+])
+
 @foreach ([
-    ['drivers', 'drivers_score', 'drivers_notes'],
     ['marketing', 'marketing_score', 'marketing_notes'],
     ['graphic', 'graphic_score', 'graphic_notes'],
     ['social_requirements', 'social_requirements_score', 'social_requirements_notes'],

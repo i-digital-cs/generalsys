@@ -38,7 +38,11 @@ class ValuationSheetService
         $this->assertMayWrite($actor, $owner, $module);
 
         $merged = array_merge(ValuationFields::defaults(), $input);
+        $merged['drivers'] = ValuationFields::normalizeDrivers($merged['drivers'] ?? []);
         $result = $this->calculator->compute($merged);
+        if ($merged['drivers'] !== []) {
+            $merged['drivers_score'] = $result['drivers_score_avg'];
+        }
 
         return DB::transaction(function () use ($owner, $module, $date, $merged, $result, $status) {
             $sheet = ValuationSheet::query()->firstOrNew([

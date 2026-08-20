@@ -26,7 +26,12 @@ class ValuationCalculator
             self::toPercent($in['sales_google']),
         ]);
 
-        return array_merge($this->targetBlock($in), [
+        $drivers = $this->driversBlock($in);
+        if ($drivers['drivers'] !== []) {
+            $in['drivers_score'] = $drivers['drivers_score_avg'];
+        }
+
+        return array_merge($this->targetBlock($in), $drivers, [
             'sales_average' => $salesAvg,
             'stars' => $this->starMap($in, $salesAvg),
         ]);
@@ -102,6 +107,49 @@ class ValuationCalculator
             'kpi_label' => $this->kpiLabel($kpiRatio),
             'cashflow_label' => $this->cashflowLabel($aAmount, $cashBase),
             'earnings_label' => $aAmount >= $cashBase ? 'high' : 'low',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $in
+     * @return array{
+     *     drivers: list<array{user_id: int|null, name: string, orders: float, score: float, notes: string, over_target: float, stars: int}>,
+     *     drivers_orders_total: float,
+     *     drivers_over_target_total: float,
+     *     drivers_score_avg: float,
+     *     driver_orders_target: int
+     * }
+     */
+    private function driversBlock(array $in): array
+    {
+        $rows = [];
+        $ordersTotal = 0.0;
+        $overTotal = 0.0;
+        $scores = [];
+
+        foreach (ValuationFields::normalizeDrivers($in['drivers'] ?? []) as $row) {
+            $over = ValuationFields::driverOverTarget($row['orders']);
+            $score = $row['score'];
+            $rows[] = [
+                'user_id' => $row['user_id'],
+                'name' => $row['name'],
+                'orders' => $row['orders'],
+                'score' => $score,
+                'notes' => $row['notes'],
+                'over_target' => $over,
+                'stars' => self::starsFromScore($score),
+            ];
+            $ordersTotal += $row['orders'];
+            $overTotal += $over;
+            $scores[] = self::toPercent($score);
+        }
+
+        return [
+            'drivers' => $rows,
+            'drivers_orders_total' => round($ordersTotal, 2),
+            'drivers_over_target_total' => round($overTotal, 2),
+            'drivers_score_avg' => $this->average($scores),
+            'driver_orders_target' => ValuationFields::DRIVER_ORDERS_TARGET,
         ];
     }
 

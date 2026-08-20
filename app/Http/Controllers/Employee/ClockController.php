@@ -95,6 +95,7 @@ class ClockController extends Controller
                 $attendance,
                 AttendancePhoto::KIND_CLOCK_IN,
                 $request->file('photos', []) ?? [],
+                $request->validated('photo_descriptions', []) ?? [],
             );
         } catch (AttendanceException $e) {
             throw ValidationException::withMessages(['shift_type' => __($e->getMessage())]);
@@ -124,6 +125,7 @@ class ClockController extends Controller
                 $attendance,
                 AttendancePhoto::KIND_CLOCK_OUT,
                 $request->file('photos', []) ?? [],
+                $request->validated('photo_descriptions', []) ?? [],
             );
         } catch (AttendanceException $e) {
             throw ValidationException::withMessages(['clock_out' => __($e->getMessage())]);

@@ -216,6 +216,7 @@ CREATE TABLE attendance_photos (
     kind            ENUM('CLOCK_IN','CLOCK_OUT') NOT NULL,
     file_path       VARCHAR(255) NOT NULL,
     original_name   VARCHAR(255) NULL,
+    description     VARCHAR(500) NULL,                   -- optional caption per image (T-6.7)
     mime_type       VARCHAR(100) NULL,
     size_bytes      INT UNSIGNED NOT NULL DEFAULT 0,
     sort_order      TINYINT UNSIGNED NOT NULL DEFAULT 0,
@@ -227,7 +228,7 @@ CREATE TABLE attendance_photos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-> Optional on both punches; **no count limit**; each file ≤ **50MB** (jpg/jpeg/png/webp) — see `config/attendance.php` `photos.*`. View: owner · team TL · Manager (employees + TLs). UI: `/clock`, employee sessions, TL/Admin today board + hours day list, report review.
+> Optional on both punches; **no count limit**; each file ≤ **50MB** (jpg/jpeg/png/webp) — see `config/attendance.php` `photos.*`. Optional **description** per image (T-6.7). View: owner · team TL · Manager (employees + TLs). UI: `/clock`, employee sessions, TL/Admin today board + hours day list, report review.
 
 ## 7c. attendance_daily_scores
 

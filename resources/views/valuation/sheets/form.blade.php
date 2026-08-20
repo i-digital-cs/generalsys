@@ -30,6 +30,7 @@
 @endsection
 
 @push('scripts')
+    @vite(['resources/js/pages/valuation-form.js'])
     <script>
         (function () {
             const form = document.querySelector('[data-valuation-form]');

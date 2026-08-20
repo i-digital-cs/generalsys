@@ -450,7 +450,7 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 
 ### T-6.6 — Optional multi photos on clock-in and clock-out
 - Depends on: T-6.1, T-2.3, T-2.13
-- Unlocks: —
+- Unlocks: T-6.7
 - [x] Task complete
   - [x] Schema `attendance_photos` + docs
   - [x] Optional multi jpg/jpeg/png/webp ≤50MB each (**no count limit**) on clock-in **and** clock-out
@@ -458,6 +458,14 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] Shown on clock screen + TL/Admin attendance (today board + hours day list) + employee sessions
   - [x] Unit/feature tests PASS
   - [x] UI/UX gate (AR+EN, RTL/LTR, responsive)
+
+### T-6.7 — Description per punch photo
+- Depends on: T-6.6
+- Unlocks: —
+- [x] Task complete
+  - [x] `attendance_photos.description` + schema doc
+  - [x] Clock-in/out: optional caption per selected image; shown on viewers
+  - [x] AttendancePhotoTest + LangParity
 
 ---
 
@@ -685,10 +693,18 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 
 ### T-9.11 — Compact valuation month strip
 - Depends on: T-9.10
-- Unlocks: —
+- Unlocks: T-9.12
 - [x] Task complete
   - [x] User asked to restore dashboard **stat cards** (same tile style as `/home`)
   - [x] One-row table reverted; still no capital/inventory/ads; ValuationModuleTest + LangParity
+
+### T-9.12 — Valuation drivers: employee + orders + over target
+- Depends on: T-9.11
+- Unlocks: —
+- [x] Task complete
+  - [x] Dynamic “Add driver” rows (like employee contacts): select employee **or** type name + orders
+  - [x] Orders > 25 → show over target X (orders − 25); keep score/notes
+  - [x] Form + show + PDF; AR+EN; ValuationCalculatorTest + ValuationModuleTest + LangParity
 
 ## Dependency map
 
@@ -838,6 +854,7 @@ Example:
 -->
 - [x] 2026-08-12 T-6.6 PASS — Optional multi punch photos on clock-in **and** clock-out (jpg/jpeg/png/webp ≤50MB, max 5); `attendance_photos` + AttendancePhotoService; authorized view self·TL(team)·Manager (TL↔Admin **yes**); UI on `/clock`, employee sessions, TL/Admin today board + hours day list, report review; AR+EN; AttendancePhotoTest + schema/Clock/LangParity green.
 - [x] 2026-08-12 Amend T-6.6 — removed punch-photo **count** limit (keep ≤50MB each); AR+EN hint updated; AttendancePhotoTest accepts 8 files.
+- [x] 2026-08-20 T-6.7 PASS — Optional description per punch photo (clock-in/out); schema + viewers; AttendancePhotoTest + LangParity green.
 - [x] 2026-08-12 UX — Admin payroll show: second button **Export full review PDF** (`export-review.pdf`) covers all tabs (pay / edit draft / attendance / evaluation / hours); Admin-only (TL 403); PayrollExportTest green.
 - [x] 2026-08-12 T-7.1 PASS — ACCOUNTANT role: self-service + payroll (no اعتماد) + advances CRUD; `team_leader_id` null → Manager decides leave; seed accountant@hrpro.test; TL still money-blocked.
 - [x] 2026-08-13 T-7.2 PASS — Required punch GPS + soft 1-office geofence (Admin Settings lat/lng, default 1 km): store lat/lng/accuracy/distance/outside; accept outside with warn + notify employee/TL/Admin; Maps links like photos; TL↔Admin self-clock yes; ClockLocationTest + GeofenceServiceTest green.
@@ -860,5 +877,8 @@ Example:
 - [x] 2026-08-19 T-9.10 PASS — Hamad-Gross style MTD cards on Service/Product dashboard + valuation index (gross/target/gap/B2B/B2C/KPI from daily sheets). ValuationStatsServiceTest + ValuationModuleTest + LangParity green.
 - [x] 2026-08-19 T-9.11 PASS — Compact one-row valuation KPI strip (no capital/inventory/ads). ValuationModuleTest + LangParity green.
 - [x] 2026-08-19 T-9.11 amend — Restored `/home`-style stat cards for month Gross (user: tab/card style). LangParity + ValuationModuleTest green.
+- [x] 2026-08-20 T-9.12 PASS — Valuation Drivers: Add driver rows (employee select + orders); >25 shows over target X; form/show/PDF. ValuationCalculatorTest + ValuationModuleTest + LangParity green.
+- [x] 2026-08-20 T-9.12 amend — Driver row: select employee **or** type manual name; over target unchanged. ValuationModuleTest + LangParity green.
+- [x] 2026-08-20 T-9.12 amend — Per-driver score % (0–100) + notes; section average for stars; form/show/PDF. ValuationCalculatorTest + ValuationModuleTest + LangParity green.
 - [x] 2026-08-19 Fix T-9.9/T-9.10 — Valuation PDF: keep AR mixed Latin/digits/brackets (`(0–100)`, B2B, King); gold ★ stars instead of `****-`; `/service/valuations` list is a card table with badges/actions. DompdfArabicTest + ValuationModuleTest + LangParity green.
 - [x] 2026-08-19 UX T-6.5 — Valuation sheets + assign lists use the same `.table-hr` + `<x-table-toolbar>` search/filters as HR lists. TableFilterUiTest + ValuationModuleTest + LangParity green.

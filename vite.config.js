@@ -9,6 +9,8 @@ export default defineConfig({
                 'resources/scss/app.rtl.scss',
                 'resources/js/app.js',
                 'resources/js/pages/employee-form.js',
+                'resources/js/pages/valuation-form.js',
+                'resources/js/pages/clock-photos.js',
             ],
             refresh: true,
         }),
