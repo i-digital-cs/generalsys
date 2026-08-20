@@ -42,7 +42,7 @@ class PortalStatsService
             'scope' => $actor->isTeamLeader() && ! $actor->canManageOperations() ? 'team' : 'company',
             'cards' => $this->cards($actor, $ids, $today, $now),
             'trend' => $this->attendanceTrend($ids, $now),
-            'roles' => $this->roleSeries($ids),
+            'roles' => $this->roleSeries($actor, $ids),
             'modules' => $this->moduleSeries($ids),
             'hours' => $this->monthHours($ids, $now),
         ];
@@ -184,15 +184,28 @@ class PortalStatsService
     }
 
     /**
+     * Company view: all five roles company-wide. Team TL view: roles among scoped staff ids.
+     *
      * @param  list<int>  $ids
      * @return list<array{key: string, label: string, value: int, color: string}>
      */
-    private function roleSeries(array $ids): array
+    private function roleSeries(User $actor, array $ids): array
     {
+        $teamOnly = $actor->isTeamLeader() && ! $actor->canManageOperations();
         $counts = [];
-        if ($ids !== []) {
+
+        if ($teamOnly) {
+            if ($ids !== []) {
+                $counts = User::query()
+                    ->whereIn('id', $ids)
+                    ->select('role', DB::raw('COUNT(*) as c'))
+                    ->groupBy('role')
+                    ->pluck('c', 'role')
+                    ->map(fn ($n): int => (int) $n)
+                    ->all();
+            }
+        } else {
             $counts = User::query()
-                ->whereIn('id', $ids)
                 ->select('role', DB::raw('COUNT(*) as c'))
                 ->groupBy('role')
                 ->pluck('c', 'role')
@@ -211,7 +224,7 @@ class PortalStatsService
         $out = [];
         foreach ($colors as $role => $color) {
             $value = $counts[$role] ?? 0;
-            if ($value === 0 && ! in_array($role, [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER], true)) {
+            if ($teamOnly && $value === 0 && ! in_array($role, [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER], true)) {
                 continue;
             }
             $out[] = [
