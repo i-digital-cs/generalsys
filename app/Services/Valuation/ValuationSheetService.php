@@ -5,7 +5,11 @@ namespace App\Services\Valuation;
 use App\Exceptions\ValuationException;
 use App\Models\User;
 use App\Models\ValuationSheet;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ValuationSheetService
@@ -17,6 +21,30 @@ class ValuationSheetService
 
     public function paginateFor(User $actor, string $module): LengthAwarePaginator
     {
+        return $this->sheetsQueryFor($actor, $module)->paginate(25);
+    }
+
+    /**
+     * Manager: every sheet in the module. Others: own sheets only.
+     *
+     * @return Collection<int, ValuationSheet>
+     */
+    public function monthSheetsFor(User $actor, string $module, ?CarbonInterface $now = null): Collection
+    {
+        $now = Carbon::parse($now ?? now())->timezone((string) config('app.timezone'));
+
+        return $this->sheetsQueryFor($actor, $module)
+            ->whereDate('date', '>=', $now->copy()->startOfMonth()->toDateString())
+            ->whereDate('date', '<=', $now->copy()->endOfMonth()->toDateString())
+            ->limit(50)
+            ->get();
+    }
+
+    /**
+     * @return Builder<ValuationSheet>
+     */
+    private function sheetsQueryFor(User $actor, string $module): Builder
+    {
         $query = ValuationSheet::query()
             ->with('user')
             ->where('module', $module)
@@ -27,7 +55,7 @@ class ValuationSheetService
             $query->where('user_id', $actor->id);
         }
 
-        return $query->paginate(25);
+        return $query;
     }
 
     /**

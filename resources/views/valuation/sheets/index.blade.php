@@ -5,7 +5,6 @@
 @section('content')
     @php
         $isManager = auth()->user()->isManager();
-        $colspan = $isManager ? 6 : 5;
     @endphp
     <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
         <div>
@@ -34,111 +33,13 @@
             @if ($sheets->isEmpty())
                 <x-empty-state :title="__('valuation.empty')" :text="__('valuation.empty_text')" icon="bi-clipboard-data" />
             @else
-                <div data-table-filter-root>
-                    <x-table-toolbar
-                        id="valuation-sheets-list"
-                        :search-placeholder="__('valuation.search_placeholder')"
-                        :filters="[
-                            [
-                                'name' => 'status',
-                                'label' => __('valuation.status'),
-                                'options' => [
-                                    'DRAFT' => __('valuation.statuses.DRAFT'),
-                                    'SUBMITTED' => __('valuation.statuses.SUBMITTED'),
-                                ],
-                            ],
-                            [
-                                'name' => 'kpi',
-                                'label' => __('valuation.kpi'),
-                                'options' => [
-                                    'loss' => __('valuation.labels.loss'),
-                                    'acceptable' => __('valuation.labels.acceptable'),
-                                    'gain' => __('valuation.labels.gain'),
-                                    'above' => __('valuation.labels.above'),
-                                ],
-                            ],
-                        ]"
-                    />
-                    <div class="table-responsive">
-                        <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="col-num">{{ __('valuation.date') }}</th>
-                                    @if ($isManager)
-                                        <th scope="col">{{ __('valuation.person') }}</th>
-                                    @endif
-                                    <th scope="col">{{ __('valuation.status') }}</th>
-                                    <th scope="col">{{ __('valuation.kpi') }}</th>
-                                    <th scope="col" class="col-num">{{ __('valuation.fields.actual_amount_total') }}</th>
-                                    <th scope="col" class="text-end">{{ __('general.actions') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($sheets as $row)
-                                    @php
-                                        $kpi = $row->result['kpi_label'] ?? null;
-                                        $amount = (float) ($row->result['actual_amount_total'] ?? 0);
-                                        $person = $row->user
-                                            ? (app()->getLocale() === 'ar' ? $row->user->name_ar : $row->user->name_en)
-                                            : '';
-                                        $filterText = trim($row->date->toDateString().' '.$person.' '.($row->user?->name_ar ?? '').' '.($row->user?->name_en ?? '').' '.__('valuation.statuses.'.$row->status).' '.($kpi ? __('valuation.labels.'.$kpi) : ''));
-                                    @endphp
-                                    <tr
-                                        data-filter-text="{{ $filterText }}"
-                                        data-filter-status="{{ $row->status }}"
-                                        data-filter-kpi="{{ $kpi ?? '' }}"
-                                    >
-                                        <td class="col-num text-nowrap">
-                                            <span class="num-ltr">{{ $row->date->toDateString() }}</span>
-                                        </td>
-                                        @if ($isManager)
-                                            <td class="fw-semibold">{{ $person }}</td>
-                                        @endif
-                                        <td>
-                                            <span @class([
-                                                'badge',
-                                                'text-bg-secondary' => $row->status === 'DRAFT',
-                                                'text-bg-success' => $row->status === 'SUBMITTED',
-                                            ])>
-                                                {{ __('valuation.statuses.'.$row->status) }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            @if ($kpi)
-                                                <span @class([
-                                                    'badge',
-                                                    'text-bg-danger' => $kpi === 'loss',
-                                                    'text-bg-warning' => $kpi === 'acceptable',
-                                                    'text-bg-success' => $kpi === 'gain',
-                                                    'text-bg-primary' => $kpi === 'above',
-                                                ])>
-                                                    {{ __('valuation.labels.'.$kpi) }}
-                                                </span>
-                                            @else
-                                                —
-                                            @endif
-                                        </td>
-                                        <td class="col-num">
-                                            <span class="num-ltr"><x-money :amount="$amount" :currency="$stats['currency'] ?? 'EGP'" /></span>
-                                        </td>
-                                        <td class="text-end text-nowrap">
-                                            <a class="btn btn-sm btn-outline-primary" href="{{ route('valuation.sheets.show', ['module' => $module, 'sheet' => $row]) }}">{{ __('valuation.view') }}</a>
-                                            <a class="btn btn-sm btn-outline-secondary" href="{{ route('valuation.sheets.export.pdf', ['module' => $module, 'sheet' => $row]) }}">{{ __('valuation.export_pdf') }}</a>
-                                            @if (auth()->id() === $row->user_id)
-                                                <a class="btn btn-sm btn-outline-primary" href="{{ route('valuation.sheets.form', ['module' => $module, 'date' => $row->date->toDateString()]) }}">{{ __('valuation.edit') }}</a>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @endforeach
-                                <tr data-table-empty-row class="d-none">
-                                    <td colspan="{{ $colspan }}" class="text-body-secondary text-center py-3">
-                                        {{ __('general.no_filter_results') }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                @include('valuation.sheets._list-table', [
+                    'sheets' => $sheets,
+                    'module' => $module,
+                    'showPerson' => $isManager,
+                    'toolbarId' => 'valuation-sheets-list',
+                    'currency' => $stats['currency'] ?? 'EGP',
+                ])
                 <div class="mt-3">
                     {{ $sheets->links() }}
                 </div>

@@ -238,4 +238,52 @@ class ValuationModuleTest extends TestCase
         $this->assertSame(1, substr_count($html, 'id="laundry_king_positives"'));
         $this->assertSame(1, substr_count($html, 'id="laundry_king_negatives"'));
     }
+
+    public function test_manager_sees_every_employees_sheets_on_service_home_and_index(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-19 12:00:00', config('app.timezone')));
+        $manager = User::factory()->manager()->create();
+        $hamad = User::factory()->employee()->create(['name_en' => 'Hamad Ali', 'name_ar' => 'حمد علي']);
+        $sara = User::factory()->employee()->create(['name_en' => 'Sara Noor', 'name_ar' => 'سارة نور']);
+
+        foreach ([$hamad, $sara] as $i => $user) {
+            ValuationAssignment::query()->create([
+                'user_id' => $user->id,
+                'assigned_by' => $manager->id,
+                'module' => 'service',
+            ]);
+            ValuationSheet::query()->create([
+                'user_id' => $user->id,
+                'module' => 'service',
+                'date' => '2026-08-1'.($i + 8),
+                'status' => ValuationSheet::STATUS_SUBMITTED,
+                'input' => ['actual_b2b_amount' => 50],
+                'result' => ['actual_amount_total' => 50, 'kpi_label' => 'gain'],
+            ]);
+        }
+
+        $this->withSession(['locale' => 'en'])->actingAs($manager)
+            ->get(route('portal.service'))
+            ->assertOk()
+            ->assertSee(__('valuation.month_sheets'), false)
+            ->assertSee('data-table-filter-root', false)
+            ->assertSee('data-table-search', false)
+            ->assertSee('data-table-filter="employee"', false)
+            ->assertSee('data-table-filter="date"', false)
+            ->assertSee('data-filter-employee="'.$hamad->id.'"', false)
+            ->assertSee('Hamad Ali', false)
+            ->assertSee('Sara Noor', false)
+            ->assertSee(route('admin.employees.edit', $hamad), false)
+            ->assertSee(route('admin.employees.edit', $sara), false);
+
+        $this->withSession(['locale' => 'en'])->actingAs($manager)
+            ->get(route('valuation.sheets.index', 'service'))
+            ->assertOk()
+            ->assertSee('Hamad Ali', false)
+            ->assertSee('Sara Noor', false)
+            ->assertSee('data-table-filter="employee"', false)
+            ->assertSee('data-table-filter="date"', false)
+            ->assertSee(route('admin.employees.edit', $hamad), false)
+            ->assertSee(__('valuation.stats.hint', ['count' => 2]), false);
+    }
 }

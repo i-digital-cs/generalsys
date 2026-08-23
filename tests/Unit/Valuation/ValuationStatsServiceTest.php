@@ -80,4 +80,31 @@ class ValuationStatsServiceTest extends TestCase
         $this->assertSame(1, $own['sheets']);
         $this->assertEqualsWithDelta(100.0, $own['gross'], 0.01);
     }
+
+    public function test_manager_month_snapshot_includes_every_employees_sheets(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $hamad = User::factory()->employee()->create();
+        $ahmed = User::factory()->employee()->create();
+        $calc = new ValuationCalculator;
+
+        foreach ([$hamad, $ahmed] as $i => $user) {
+            $input = array_merge(ValuationFields::defaults(), [
+                'actual_b2b_amount' => 100 * ($i + 1),
+                'target_amount_total' => 1000,
+            ]);
+            ValuationSheet::query()->create([
+                'user_id' => $user->id,
+                'module' => 'service',
+                'date' => '2026-08-1'.($i + 8),
+                'status' => ValuationSheet::STATUS_SUBMITTED,
+                'input' => $input,
+                'result' => $calc->compute($input),
+            ]);
+        }
+
+        $stats = app(ValuationStatsService::class)->monthSnapshot($manager, 'service');
+        $this->assertSame(2, $stats['sheets']);
+        $this->assertEqualsWithDelta(300.0, $stats['gross'], 0.01);
+    }
 }

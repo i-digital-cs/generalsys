@@ -891,5 +891,6 @@ Example:
 - [x] 2026-08-20 T-9.12 PASS — Valuation Drivers: Add driver rows (employee select + orders); >25 shows over target X; form/show/PDF. ValuationCalculatorTest + ValuationModuleTest + LangParity green.
 - [x] 2026-08-20 T-9.12 amend — Driver row: select employee **or** type manual name; over target unchanged. ValuationModuleTest + LangParity green.
 - [x] 2026-08-20 T-9.12 amend — Per-driver score % (0–100) + notes; section average for stars; form/show/PDF. ValuationCalculatorTest + ValuationModuleTest + LangParity green.
+- [x] 2026-08-23 Fix valuation — Manager Service/Product home lists all employees’ month sheets; stat-card RTL money alignment; LangParity + ValuationModuleTest + build.
 - [x] 2026-08-19 Fix T-9.9/T-9.10 — Valuation PDF: keep AR mixed Latin/digits/brackets (`(0–100)`, B2B, King); gold ★ stars instead of `****-`; `/service/valuations` list is a card table with badges/actions. DompdfArabicTest + ValuationModuleTest + LangParity green.
 - [x] 2026-08-19 UX T-6.5 — Valuation sheets + assign lists use the same `.table-hr` + `<x-table-toolbar>` search/filters as HR lists. TableFilterUiTest + ValuationModuleTest + LangParity green.

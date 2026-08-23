@@ -7,12 +7,12 @@
 ])
 
 <div class="card stat-card border-0 h-100">
-    <div class="card-body d-flex align-items-center gap-3">
-        <span class="stat-icon d-inline-flex align-items-center justify-content-center bg-{{ $color }} bg-opacity-10 text-{{ $color }} fs-4">
+    <div class="card-body d-flex align-items-start gap-2 gap-sm-3">
+        <span class="stat-icon d-inline-flex align-items-center justify-content-center bg-{{ $color }} bg-opacity-10 text-{{ $color }} flex-shrink-0">
             <i class="bi {{ $icon }}" aria-hidden="true"></i>
         </span>
-        <div>
-            <div class="text-body-secondary small">{{ $title }}</div>
+        <div class="stat-body min-w-0 flex-grow-1">
+            <div class="text-body-secondary small text-truncate" title="{{ $title }}">{{ $title }}</div>
             <div class="stat-value fw-bold">
                 @if ($value !== null)
                     {{ $value }}
@@ -21,7 +21,7 @@
                 @endif
             </div>
             @if ($subtitle)
-                <div class="text-body-secondary small">{{ $subtitle }}</div>
+                <div class="text-body-secondary small text-truncate" title="{{ $subtitle }}">{{ $subtitle }}</div>
             @endif
         </div>
     </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Auth\PostLoginRedirector;
 use App\Services\Portal\PortalStatsService;
+use App\Services\Valuation\ValuationSheetService;
 use App\Services\Valuation\ValuationStatsService;
 use App\Support\AppModule;
 use Illuminate\Contracts\View\View;
@@ -23,19 +24,24 @@ class PortalController extends Controller
         return redirect()->to($redirector->hrUrlFor(auth()->user()));
     }
 
-    public function service(ValuationStatsService $stats): View
+    public function service(ValuationStatsService $stats, ValuationSheetService $sheets): View
     {
-        return view('portal.module-home', [
-            'module' => AppModule::SERVICE,
-            'stats' => $stats->monthSnapshot(auth()->user(), AppModule::SERVICE),
-        ]);
+        return $this->moduleHome(AppModule::SERVICE, $stats, $sheets);
     }
 
-    public function product(ValuationStatsService $stats): View
+    public function product(ValuationStatsService $stats, ValuationSheetService $sheets): View
     {
+        return $this->moduleHome(AppModule::PRODUCT, $stats, $sheets);
+    }
+
+    private function moduleHome(string $module, ValuationStatsService $stats, ValuationSheetService $sheets): View
+    {
+        $user = auth()->user();
+
         return view('portal.module-home', [
-            'module' => AppModule::PRODUCT,
-            'stats' => $stats->monthSnapshot(auth()->user(), AppModule::PRODUCT),
+            'module' => $module,
+            'stats' => $stats->monthSnapshot($user, $module),
+            'monthSheets' => $user->isManager() ? $sheets->monthSheetsFor($user, $module) : collect(),
         ]);
     }
 }

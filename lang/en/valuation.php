@@ -4,6 +4,7 @@ return [
     'title' => 'Valuation',
     'subtitle' => 'Daily valuation sheets for this module.',
     'list' => 'Sheets',
+    'month_sheets' => 'All sheets this month',
     'search_placeholder' => 'Date, person, or KPI…',
     'assign_search_placeholder' => 'Name…',
     'assign_empty' => 'No people to assign',
@@ -32,7 +33,7 @@ return [
     'pdf_title' => 'Daily valuation sheet',
     'stats' => [
         'title' => 'Gross value this month',
-        'gross' => 'Gross (execution)',
+        'gross' => 'Gross — execution',
         'target' => 'Target',
         'gap' => 'Target gap',
         'kpi_avg' => 'Average KPI',

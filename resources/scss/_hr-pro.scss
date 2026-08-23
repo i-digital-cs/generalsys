@@ -245,6 +245,7 @@ h6, .h6 { font-size: .9rem; }
 // ---- Stat card ------------------------------------------------------------
 .stat-card {
     transition: transform .15s ease, box-shadow .15s ease;
+    overflow: hidden;
 
     &:hover {
         transform: translateY(-2px);
@@ -259,9 +260,21 @@ h6, .h6 { font-size: .9rem; }
         font-size: 1.15rem; // beats the fs-4 utility (later in source order)
     }
 
+    .stat-body {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
     .stat-value {
-        font-size: 1.35rem;
-        line-height: 1.2;
+        font-size: clamp(0.95rem, 2.8vw, 1.35rem);
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+
+        // <x-money> uses text-nowrap; allow wrap inside narrow KPI cards (RTL col-6).
+        .text-nowrap {
+            white-space: normal !important;
+        }
     }
 }
 
