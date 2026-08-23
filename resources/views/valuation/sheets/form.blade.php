@@ -94,17 +94,25 @@
                 }
             };
 
-            const kpiLabel = function (ratio) {
-                if (ratio <= 0.70) return labels.loss || '';
-                if (ratio <= 0.80) return labels.acceptable || '';
-                if (ratio <= 1.00) return labels.gain || '';
-                return labels.above || '';
+            const kpiLabelKey = function (ratio) {
+                if (ratio <= 0.70) return 'loss';
+                if (ratio <= 0.80) return 'acceptable';
+                if (ratio <= 1.00) return 'gain';
+                return 'above';
             };
 
-            const cashLabel = function (actual, base) {
-                if (actual < base) return labels.negative || '';
-                if (actual > base) return labels.positive || '';
-                return labels.safe || '';
+            const cashLabelKey = function (actual, base) {
+                if (actual < base) return 'negative';
+                if (actual > base) return 'positive';
+                return 'safe';
+            };
+
+            const paintStatus = function (el, key) {
+                if (!el) {
+                    return;
+                }
+                el.textContent = labels[key] || '';
+                el.className = 'valuation-excel-status valuation-excel-status--' + key;
             };
 
             const refreshStars = function () {
@@ -143,6 +151,9 @@
                 const aCount = aB2bC + aB2cC;
                 const aAmount = aB2bA + aB2cA;
                 const kpiRatio = kpiBase === 0 ? 0 : aAmount / kpiBase;
+                const kpiKey = kpiLabelKey(kpiRatio);
+                const cashKey = cashLabelKey(aAmount, cashBase);
+                const earnKey = aAmount >= cashBase ? 'high' : 'low';
 
                 setText(root.querySelector('[data-val="actual_count_total"]'), fmt(aCount));
                 setText(root.querySelector('[data-val="actual_amount_total"]'), fmt(aAmount));
@@ -153,9 +164,9 @@
                 setText(root.querySelector('[data-pct="amount_b2b_ratio"]'), pct(aB2bA, tB2bA));
                 setText(root.querySelector('[data-pct="amount_b2c_ratio"]'), pct(aB2cA, tB2cA));
                 setText(root.querySelector('[data-pct="kpi_ratio"]'), pct(aAmount, kpiBase));
-                setText(root.querySelector('[data-kpi-label]'), kpiLabel(kpiRatio));
-                setText(root.querySelector('[data-cashflow-label]'), cashLabel(aAmount, cashBase));
-                setText(root.querySelector('[data-earnings-label]'), aAmount >= cashBase ? (labels.high || '') : (labels.low || ''));
+                paintStatus(root.querySelector('[data-kpi-label]'), kpiKey);
+                paintStatus(root.querySelector('[data-cashflow-label]'), cashKey);
+                paintStatus(root.querySelector('[data-earnings-label]'), earnKey);
             };
 
             const refresh = function () {

@@ -685,9 +685,33 @@ h6, .h6 { font-size: .9rem; }
 }
 
 .valuation-excel-status {
-    background: #c0392b;
     color: #fff;
     font-weight: 600;
     text-align: center;
     padding: .45rem .75rem;
+
+    // Default / unknown
+    background: #6c757d;
+
+    // KPI ≤70% · cash-flow below base · earnings low
+    &--loss,
+    &--negative,
+    &--low {
+        background: #c0392b;
+    }
+
+    // KPI 70–80% · cash-flow at break-even
+    &--acceptable,
+    &--safe {
+        background: #f39c12;
+        color: #212529;
+    }
+
+    // KPI 80–100% · cash-flow موجب · earnings مرتفع · KPI >100% فوق المتوقع
+    &--gain,
+    &--positive,
+    &--high,
+    &--above {
+        background: #198754;
+    }
 }

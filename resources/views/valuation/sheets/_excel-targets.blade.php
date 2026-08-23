@@ -178,7 +178,7 @@
             </tbody>
         </table>
     </div>
-    <div class="valuation-excel-status" data-kpi-label>{{ isset($out['kpi_label']) ? __('valuation.labels.'.$out['kpi_label']) : '' }}</div>
+    <div @class([\App\Services\Valuation\ValuationCalculator::statusStripClass($out['kpi_label'] ?? 'loss')]) data-kpi-label data-status-kind="kpi">{{ isset($out['kpi_label']) ? __('valuation.labels.'.$out['kpi_label']) : '' }}</div>
 
     <div class="valuation-excel-head mt-3">
         <span>{{ __('valuation.sections.cashflow_details') }}</span>
@@ -201,11 +201,11 @@
             </tbody>
         </table>
     </div>
-    <div class="valuation-excel-status" data-cashflow-label>{{ isset($out['cashflow_label']) ? __('valuation.labels.'.$out['cashflow_label']) : '' }}</div>
+    <div @class([\App\Services\Valuation\ValuationCalculator::statusStripClass($out['cashflow_label'] ?? 'negative')]) data-cashflow-label data-status-kind="cashflow">{{ isset($out['cashflow_label']) ? __('valuation.labels.'.$out['cashflow_label']) : '' }}</div>
 
     <div class="valuation-excel-head mt-3">
         <span>{{ __('valuation.sections.earnings_method') }}</span>
     </div>
     <p class="small text-body-secondary px-2 mb-1">{{ __('valuation.earnings_subtitle') }}</p>
-    <div class="valuation-excel-status" data-earnings-label>{{ isset($out['earnings_label']) ? __('valuation.labels.'.$out['earnings_label']) : '' }}</div>
+    <div @class([\App\Services\Valuation\ValuationCalculator::statusStripClass($out['earnings_label'] ?? 'low')]) data-earnings-label data-status-kind="earnings">{{ isset($out['earnings_label']) ? __('valuation.labels.'.$out['earnings_label']) : '' }}</div>
 </div>

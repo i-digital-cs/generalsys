@@ -128,4 +128,20 @@ class ValuationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(50.0, $avg['sales_average'], 0.0001);
         $this->assertSame(3, $avg['stars']['sales']);
     }
+
+    public function test_status_tone_matches_band_conditions(): void
+    {
+        $this->assertSame('danger', ValuationCalculator::statusTone('loss'));
+        $this->assertSame('danger', ValuationCalculator::statusTone('negative'));
+        $this->assertSame('danger', ValuationCalculator::statusTone('low'));
+        $this->assertSame('warning', ValuationCalculator::statusTone('acceptable'));
+        $this->assertSame('warning', ValuationCalculator::statusTone('safe'));
+        $this->assertSame('success', ValuationCalculator::statusTone('gain'));
+        $this->assertSame('success', ValuationCalculator::statusTone('positive'));
+        $this->assertSame('success', ValuationCalculator::statusTone('high'));
+        $this->assertSame('success', ValuationCalculator::statusTone('above'));
+        $this->assertStringContainsString('--above', ValuationCalculator::statusStripClass('above'));
+        $this->assertStringContainsString('--positive', ValuationCalculator::statusStripClass('positive'));
+        $this->assertStringContainsString('--high', ValuationCalculator::statusStripClass('high'));
+    }
 }

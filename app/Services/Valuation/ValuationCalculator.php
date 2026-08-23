@@ -42,6 +42,28 @@ class ValuationCalculator
         return number_format($ratio * 100, 2, '.', '').'%';
     }
 
+    /**
+     * Bootstrap badge tone for KPI / cash-flow / earnings status keys.
+     * loss·negative·low → danger; acceptable·safe → warning;
+     * gain·positive·high·above → success (مكسب / موجب / مرتفع / فوق المتوقع).
+     */
+    public static function statusTone(string $key): string
+    {
+        return match ($key) {
+            'loss', 'negative', 'low' => 'danger',
+            'acceptable', 'safe' => 'warning',
+            'gain', 'positive', 'high', 'above' => 'success',
+            default => 'secondary',
+        };
+    }
+
+    public static function statusStripClass(string $key): string
+    {
+        $safe = preg_replace('/[^a-z_]/', '', $key) ?: 'loss';
+
+        return 'valuation-excel-status valuation-excel-status--'.$safe;
+    }
+
     public static function toPercent(mixed $score): float
     {
         $value = is_numeric($score) ? (float) $score : 0.0;

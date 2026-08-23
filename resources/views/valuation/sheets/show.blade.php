@@ -25,17 +25,35 @@
     </p>
 
     <div class="row g-3 mb-3">
+        @php
+            $kpiKey = $out['kpi_label'] ?? 'loss';
+            $cashKey = $out['cashflow_label'] ?? 'negative';
+            $earnKey = $out['earnings_label'] ?? 'low';
+            $tone = fn (string $key) => \App\Services\Valuation\ValuationCalculator::statusTone($key);
+        @endphp
         <div class="col-6 col-lg-3">
             <x-stat-card :title="__('valuation.fields.actual_amount_total')" :value="number_format((float) ($out['actual_amount_total'] ?? 0), 2)" icon="bi-cash" />
         </div>
         <div class="col-6 col-lg-3">
-            <x-stat-card :title="__('valuation.kpi')" :value="__('valuation.labels.'.$out['kpi_label'])" icon="bi-flag" />
+            <x-stat-card :title="__('valuation.kpi')" icon="bi-flag" :color="$tone($kpiKey)">
+                <span @class(['badge', 'text-bg-'.$tone($kpiKey), 'text-dark' => $tone($kpiKey) === 'warning'])>
+                    {{ __('valuation.labels.'.$kpiKey) }}
+                </span>
+            </x-stat-card>
         </div>
         <div class="col-6 col-lg-3">
-            <x-stat-card :title="__('valuation.cashflow')" :value="__('valuation.labels.'.$out['cashflow_label'])" icon="bi-activity" />
+            <x-stat-card :title="__('valuation.cashflow')" icon="bi-activity" :color="$tone($cashKey)">
+                <span @class(['badge', 'text-bg-'.$tone($cashKey), 'text-dark' => $tone($cashKey) === 'warning'])>
+                    {{ __('valuation.labels.'.$cashKey) }}
+                </span>
+            </x-stat-card>
         </div>
         <div class="col-6 col-lg-3">
-            <x-stat-card :title="__('valuation.earnings')" :value="__('valuation.labels.'.$out['earnings_label'])" icon="bi-graph-up" />
+            <x-stat-card :title="__('valuation.earnings')" icon="bi-graph-up" :color="$tone($earnKey)">
+                <span @class(['badge', 'text-bg-'.$tone($earnKey), 'text-dark' => $tone($earnKey) === 'warning'])>
+                    {{ __('valuation.labels.'.$earnKey) }}
+                </span>
+            </x-stat-card>
         </div>
     </div>
 

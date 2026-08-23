@@ -118,12 +118,11 @@
                         </td>
                         <td>
                             @if ($kpi)
+                                @php $kpiTone = \App\Services\Valuation\ValuationCalculator::statusTone($kpi); @endphp
                                 <span @class([
                                     'badge',
-                                    'text-bg-danger' => $kpi === 'loss',
-                                    'text-bg-warning' => $kpi === 'acceptable',
-                                    'text-bg-success' => $kpi === 'gain',
-                                    'text-bg-primary' => $kpi === 'above',
+                                    'text-bg-'.$kpiTone,
+                                    'text-dark' => $kpiTone === 'warning',
                                 ])>
                                     {{ __('valuation.labels.'.$kpi) }}
                                 </span>
