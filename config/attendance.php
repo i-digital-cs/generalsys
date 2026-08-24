@@ -53,4 +53,22 @@ return [
         'radius_meters' => (int) env('ATTENDANCE_OFFICE_RADIUS_METERS', 1000),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Clock CTA colors (minutes vs scheduled start or end)
+    |--------------------------------------------------------------------------
+    |
+    | Example start 10:00: green 09:55–10:05; yellow 09:45–09:54 and 10:06–10:30;
+    | orange ≤09:44 or ≥10:31. Clock-out uses the same windows vs expected end.
+    |
+    */
+    'cta_colors' => [
+        'green_before' => 5,
+        'green_after' => 5,
+        'yellow_before' => 15,
+        'yellow_after' => 30,
+        'orange_before' => 16,
+        'orange_after' => 31,
+    ],
+
 ];

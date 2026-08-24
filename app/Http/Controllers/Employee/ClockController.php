@@ -13,6 +13,7 @@ use App\Models\AttendancePhoto;
 use App\Models\User;
 use App\Services\Attendance\AttendancePhotoService;
 use App\Services\Attendance\AttendanceService;
+use App\Services\Attendance\ClockCtaColorService;
 use App\Services\Attendance\DailyReportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +29,7 @@ class ClockController extends Controller
         private readonly AttendanceService $attendance,
         private readonly DailyReportService $reports,
         private readonly AttendancePhotoService $photos,
+        private readonly ClockCtaColorService $ctaColors,
     ) {}
 
     public function show(Request $request): View
@@ -105,6 +107,8 @@ class ClockController extends Controller
             'fieldUploadsAllowed' => $user->requiresPunchPhotos() && $open !== null,
             'locationAlwaysRequired' => $user->requiresPunchLocation(),
             'locationRequiredShifts' => ClockLocationRules::requiredShiftTypes($user),
+            'cta' => $this->ctaColors->buttonState($user, $open, $preferredShift, $shiftTypes),
+            'ctaWindows' => $this->ctaColors->windows(),
         ]);
     }
 

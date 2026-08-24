@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Services\Employees\TeamMembershipService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -23,6 +24,8 @@ class EmployeeDashboardTest extends TestCase
         $this->employee = User::factory()->employee()->create([
             'shift_type_default' => Attendance::SHIFT_FULL_TIME,
             'language_preference' => 'en',
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
         ]);
     }
 
@@ -37,6 +40,17 @@ class EmployeeDashboardTest extends TestCase
             ->assertSee(__('dashboard.employee.go_clock_in'), false)
             ->assertSee(route('employee.clock'), false)
             ->assertSee(__('clock.shifts.FULL_TIME'), false);
+    }
+
+    public function test_dashboard_clock_in_cta_is_green_at_scheduled_start(): void
+    {
+        app()->setLocale('en');
+        Carbon::setTestNow(Carbon::parse('2026-08-24 10:00:00', config('app.timezone')));
+
+        $this->actingAs($this->employee)
+            ->get(route('employee.dashboard'))
+            ->assertOk()
+            ->assertSee('clock-cta--green', false);
     }
 
     public function test_dashboard_shows_open_punch_and_clock_out_cta(): void
@@ -54,7 +68,8 @@ class EmployeeDashboardTest extends TestCase
             ->assertSee(__('dashboard.employee.go_clock_out'), false)
             ->assertSee('data-table-filter-root', false)
             ->assertSee('table-hr', false)
-            ->assertSee('data-table-search', false);
+            ->assertSee('data-table-search', false)
+            ->assertSee('clock-cta--orange', false);
     }
 
     public function test_dashboard_shows_assigned_team_leaders(): void

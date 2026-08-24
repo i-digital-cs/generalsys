@@ -41,6 +41,8 @@ class DashboardController extends Controller
             'calendar' => $snapshot['calendar'],
             'hoursMonth' => $snapshot['hoursMonth'],
             'teamLeaders' => $snapshot['teamLeaders'],
+            'cta' => $snapshot['cta'],
+            'ctaWindows' => $snapshot['ctaWindows'],
             'calPrevUrl' => route('employee.dashboard', ['cal' => $cursor->copy()->subMonth()->format('Y-m')]),
             'calNextUrl' => route('employee.dashboard', ['cal' => $cursor->copy()->addMonth()->format('Y-m')]),
         ]);

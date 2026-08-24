@@ -192,9 +192,15 @@
                             'photosRequired' => $photosRequired ?? false,
                             'photoMaxMb' => $photoMaxMb ?? null,
                         ])
-                    <button type="submit" class="btn btn-danger btn-lg w-100 clock-cta" data-clock-submit>
+                    <button type="submit"
+                            class="btn btn-lg w-100 clock-cta clock-cta--{{ $cta['color'] }}"
+                            data-clock-submit
+                            data-clock-cta
+                            data-clock-cta-at="{{ $cta['expectedAt']?->toIso8601String() }}"
+                            data-clock-cta-windows='@json($ctaWindows)'>
                         <i class="bi bi-box-arrow-left me-2" aria-hidden="true"></i>{{ __('clock.clock_out') }}
                     </button>
+                    <x-clock-cta-legend />
                 </form>
             @else
                 <div class="text-center mb-4">
@@ -259,9 +265,16 @@
                             'photoMaxMb' => $photoMaxMb ?? null,
                         ])
 
-                        <button type="submit" class="btn btn-primary btn-lg w-100 clock-cta" data-clock-submit>
+                        <button type="submit"
+                                class="btn btn-lg w-100 clock-cta clock-cta--{{ $cta['color'] }}"
+                                data-clock-submit
+                                data-clock-cta
+                                data-clock-cta-at="{{ $cta['expectedAt']?->toIso8601String() }}"
+                                data-clock-cta-starts='@json($cta['clockInStarts'])'
+                                data-clock-cta-windows='@json($ctaWindows)'>
                             <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>{{ __('clock.clock_in') }}
                         </button>
+                        <x-clock-cta-legend />
                     @endif
                 </form>
 

@@ -279,6 +279,72 @@ h6, .h6 { font-size: .9rem; }
 .clock-cta {
     min-height: 3rem;
     font-size: 1.15rem;
+    border: 0;
+}
+
+.btn.clock-cta--green {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #198754;
+    --bs-btn-border-color: #198754;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #157347;
+    --bs-btn-hover-border-color: #146c43;
+}
+
+.btn.clock-cta--yellow {
+    --bs-btn-color: #212529;
+    --bs-btn-bg: #ffc107;
+    --bs-btn-border-color: #ffc107;
+    --bs-btn-hover-color: #212529;
+    --bs-btn-hover-bg: #ffca2c;
+    --bs-btn-hover-border-color: #ffc720;
+}
+
+.btn.clock-cta--orange {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #fd7e14;
+    --bs-btn-border-color: #fd7e14;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #e96b02;
+    --bs-btn-hover-border-color: #dc6502;
+    animation: clock-cta-glow 1.6s ease-in-out infinite;
+}
+
+.btn.clock-cta--red {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #dc3545;
+    --bs-btn-border-color: #dc3545;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #bb2d3b;
+    --bs-btn-hover-border-color: #b02a37;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn.clock-cta--orange {
+        animation: none;
+    }
+}
+
+@keyframes clock-cta-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(253, 126, 20, 0.55); }
+    50% { box-shadow: 0 0 0 0.45rem rgba(253, 126, 20, 0.2); }
+}
+
+.clock-cta-swatch {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.clock-cta-swatch--green { background-color: #198754; }
+.clock-cta-swatch--yellow { background-color: #ffc107; }
+.clock-cta-swatch--orange { background-color: #fd7e14; }
+.clock-cta-swatch--red { background-color: #dc3545; }
+
+[data-bs-theme="dark"] .clock-cta--yellow {
+    color: #212529;
 }
 
 // ---- Attendance punch photos (T-6.6) --------------------------------------

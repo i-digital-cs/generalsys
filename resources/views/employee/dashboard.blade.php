@@ -102,11 +102,15 @@
                     </p>
 
                     <a href="{{ route('employee.clock') }}"
-                       class="btn btn-{{ $isClockedIn ? 'danger' : 'primary' }} btn-lg w-100 w-lg-auto clock-cta">
+                       class="btn btn-lg w-100 w-lg-auto clock-cta clock-cta--{{ $cta['color'] }}"
+                       data-clock-cta
+                       data-clock-cta-at="{{ $cta['expectedAt']?->toIso8601String() }}"
+                       data-clock-cta-windows='@json($ctaWindows)'>
                         <i class="bi bi-{{ $isClockedIn ? 'box-arrow-left' : 'box-arrow-in-right' }} me-2"
                            aria-hidden="true"></i>
                         {{ $isClockedIn ? __('dashboard.employee.go_clock_out') : __('dashboard.employee.go_clock_in') }}
                     </a>
+                    <x-clock-cta-legend />
                 </div>
             </div>
         </div>

@@ -68,7 +68,9 @@ class ClockTest extends TestCase
             ->assertDontSee('value="ONLINE_FULL"', false)
             ->assertDontSee('value="OVERTIME"', false)
             ->assertDontSee('value="EXTRA_SHIFT"', false)
-            ->assertSee(__('clock.rotation_hint'), false);
+            ->assertSee(__('clock.rotation_hint'), false)
+            ->assertSee('clock-cta--yellow', false)
+            ->assertSee(__('clock.cta.green'), false);
     }
 
     public function test_clock_in_and_clock_out_happy_path(): void
@@ -90,7 +92,8 @@ class ClockTest extends TestCase
             ->assertOk()
             ->assertSee(__('clock.clock_out'), false)
             ->assertSee('id="clock-elapsed"', false)
-            ->assertSee(__('clock.late_minutes'), false);
+            ->assertSee(__('clock.late_minutes'), false)
+            ->assertSee('clock-cta--orange', false);
 
         // Missing daily report → routed to the report page with a reminder banner.
         $this->actingAs($this->employee)

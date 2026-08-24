@@ -32,6 +32,12 @@ return [
     'gap_status' => 'Break :status',
     'windows_closed' => ':shifts is past its planned end — you can still clock it; your team will be notified.',
     'upcoming_wait' => 'Your :shift is planned :start–:end. You may clock early; late is OK. Outside the window notifies your team.',
+    'cta' => [
+        'green' => 'On time (±5 min)',
+        'yellow' => '15 min before to 30 min after',
+        'orange' => '16+ min early or 31+ min late',
+        'red' => 'No scheduled time',
+    ],
     'flags' => [
         'friday' => 'Friday work',
         'rest_day' => 'Rest-day work',
