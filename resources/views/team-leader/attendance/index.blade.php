@@ -115,6 +115,8 @@
                                     $late = (int) ($row['late_minutes'] ?? 0);
                                     $gap = (int) ($row['gap_minutes'] ?? 0);
                                     $ot = (int) ($row['recommended_overtime_minutes'] ?? 0);
+                                    $teamLeaders = $row['user']->teamLeaderDisplayNames();
+                                    $teamLeadersLabel = $teamLeaders !== '' ? $teamLeaders : __('general.not_available');
                                 @endphp
                                 <tr>
                                     <td>
@@ -122,6 +124,10 @@
                                            class="link-body-emphasis text-decoration-none fw-semibold">
                                             {{ $name }}
                                         </a>
+                                        <div class="small text-body-secondary">
+                                            {{ __('employees.team_leader') }}:
+                                            {{ $teamLeadersLabel }}
+                                        </div>
                                     </td>
                                     <td class="col-num text-nowrap">
                                         <span class="num-ltr">{{ \Carbon\Carbon::parse($row['date'])->translatedFormat('d M Y') }}</span>
@@ -202,6 +208,8 @@
                         $late = (int) ($row['late_minutes'] ?? 0);
                         $gap = (int) ($row['gap_minutes'] ?? 0);
                         $ot = (int) ($row['recommended_overtime_minutes'] ?? 0);
+                        $teamLeaders = $row['user']->teamLeaderDisplayNames();
+                        $teamLeadersLabel = $teamLeaders !== '' ? $teamLeaders : __('general.not_available');
                     @endphp
                     <div class="modal fade attendance-detail-modal" id="{{ $modalId }}" tabindex="-1"
                          aria-labelledby="{{ $modalId }}-label" aria-hidden="true">
@@ -215,6 +223,8 @@
                                         <p class="small text-body-secondary mb-0 mt-1">
                                             <span class="num-ltr">{{ \Carbon\Carbon::parse($row['date'])->translatedFormat('d M Y') }}</span>
                                             · {{ __('attendance.history.kinds.'.$row['kind']) }}
+                                            · {{ __('employees.team_leader') }}:
+                                            {{ $teamLeadersLabel }}
                                         </p>
                                     </div>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"

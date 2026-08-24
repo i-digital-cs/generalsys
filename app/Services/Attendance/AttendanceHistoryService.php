@@ -83,7 +83,7 @@ class AttendanceHistoryService
     /** @return Collection<int, User> */
     public function filterableUsers(User $actor): Collection
     {
-        return $this->hours->visibleEmployees($actor);
+        return $this->hours->visibleEmployees($actor)->load('teamLeaders');
     }
 
     /**
@@ -91,7 +91,7 @@ class AttendanceHistoryService
      */
     private function scopedUsers(User $actor, ?int $employeeId): Collection
     {
-        $users = $this->hours->visibleEmployees($actor);
+        $users = $this->hours->visibleEmployees($actor)->load('teamLeaders');
 
         if ($employeeId === null || $employeeId === 0) {
             return $users;

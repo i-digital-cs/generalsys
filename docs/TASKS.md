@@ -961,4 +961,4 @@ Example:
 - [x] 2026-08-24 Amend T-1.5 — Dropped `online_half_day_rate` / `online_full_day_rate` / `overtime_hourly_rate` from users + employee form. Payroll always uses base÷30 formulas; draft OT multiplier unchanged. PayrollCalculatorTest + RatesPrivacy + Assistant + EmployeeCrud + PayrollDraft + LangParity green.
 - [x] 2026-08-24 T-9.13 PASS — Light/dark via Bootstrap `data-bs-theme` + `localStorage` `hr-pro-theme` (no DB). Navbar toggle next to language; head boot script (no flash); login unchanged. HR-Pro SCSS body/sidebar/cards/calendar/tabs themed. ThemeToggleTest + LangParity; `npm run build`; UI/UX AR+EN RTL/LTR.
 - [x] 2026-08-24 UX — Employee sees assigned team leader(s) on dashboard + profile (name, email, phone). EmployeeDashboardTest + EmployeeProfileTest + LangParity.
-- [x] 2026-08-24 T-7.11 PASS — TL/Admin/Assistant End shift (actual time) when employee late to clock out; then OT TL recommend → Admin approve (existing R8). AttendanceForceClockOutTest + LangParity.
+- [x] 2026-08-24 UX — Attendance history (`/team-leader/attendance`) shows each employee’s team leader under the name and in the details modal. AttendanceHistoryTest green.

@@ -33,7 +33,10 @@ class AttendanceHistoryTest extends TestCase
 
         $this->manager = User::factory()->manager()->create();
         $this->assistant = User::factory()->assistant()->create();
-        $this->leader = User::factory()->teamLeader()->create();
+        $this->leader = User::factory()->teamLeader()->create([
+            'name_en' => 'History Team Lead',
+            'name_ar' => 'قائد سجل الحضور',
+        ]);
         $this->member = User::factory()->employee()->create([
             'team_leader_id' => $this->leader->id,
             'name_en' => 'History Member',
@@ -70,6 +73,7 @@ class AttendanceHistoryTest extends TestCase
             ->assertSee(__('attendance.history.minutes_column'), false)
             ->assertSee(__('attendance.history.open_details'), false)
             ->assertSee('History Member', false)
+            ->assertSee('History Team Lead', false)
             ->assertSee('History Outsider', false)
             ->assertSee(route('admin.employees.edit', $this->member), false);
 
