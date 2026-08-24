@@ -95,8 +95,8 @@ class EmployeeService
     public function paginate(?string $search, ?string $status, int $perPage = 25, ?User $actor = null)
     {
         $roles = $actor?->isAssistant()
-            ? [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER]
-            : [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT];
+            ? [User::ROLE_EMPLOYEE, User::ROLE_DRIVER, User::ROLE_TEAM_LEADER]
+            : [User::ROLE_EMPLOYEE, User::ROLE_DRIVER, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT];
 
         return User::query()
             ->with(['profile', 'teamLeaders'])
@@ -135,7 +135,7 @@ class EmployeeService
             Arr::only($data, [
                 'name_ar', 'name_en', 'job_title_ar', 'job_title_en', 'email', 'role', 'currency', 'language_preference',
                 'status',
-                'base_salary', 'online_half_day_rate', 'online_full_day_rate', 'overtime_hourly_rate',
+                'base_salary',
             ]),
             ['password' => $data['password'] ?? null],
         );
@@ -174,7 +174,7 @@ class EmployeeService
      */
     private function syncTeamLeaders(User $user, array $data, ?User $assignedBy = null): void
     {
-        if (! $user->isEmployee()) {
+        if (! $user->isFieldStaff()) {
             $this->membership->syncLeaders($user, [], $assignedBy);
 
             return;

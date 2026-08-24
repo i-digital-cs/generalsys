@@ -1,0 +1,48 @@
+<?php
+
+return [
+    'history' => [
+        'title' => 'Media history',
+        'subtitle' => 'All photos from your shifts — field uploads, clock-in, and clock-out.',
+        'list_title' => 'Your media',
+        'count' => ':count item|:count items',
+        'showing' => 'Showing :from–:to of :total',
+        'from' => 'From',
+        'to' => 'To',
+        'kind' => 'Type',
+        'location' => 'Location',
+        'search' => 'Search title',
+        'search_placeholder' => 'Title or file name…',
+        'apply' => 'Apply',
+        'clear' => 'Clear filters',
+        'date' => 'Date',
+        'uploaded_at' => 'Uploaded',
+        'shift' => 'Shift',
+        'title_col' => 'Title',
+        'file' => 'File',
+        'coords' => 'Coordinates',
+        'distance' => 'Distance',
+        'open' => 'Open',
+        'open_maps' => 'Maps',
+        'empty_title' => 'No media found',
+        'empty_text' => 'No photos match these filters. Try a wider date range or clear filters.',
+        'kinds' => [
+            'all' => 'All types',
+            'FIELD' => 'Field (during shift)',
+            'CLOCK_IN' => 'Clock-in',
+            'CLOCK_OUT' => 'Clock-out',
+        ],
+        'locations' => [
+            'all' => 'All locations',
+            'with_gps' => 'Has GPS',
+            'near' => 'Near office',
+            'outside' => 'Outside office',
+            'no_gps' => 'No GPS',
+        ],
+        'no_title' => 'No title',
+        'no_gps' => 'No location',
+        'errors' => [
+            'range' => 'Date range cannot exceed 92 days.',
+        ],
+    ],
+];

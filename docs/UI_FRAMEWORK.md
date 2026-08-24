@@ -112,7 +112,7 @@ Navbar: Service · Production · HR tabs. HR sidebar only inside HR.
 | Holidays | `admin/config/holidays` | date + AR/EN name list |
 | Payroll Generation | `admin/payroll/*` | month picker → draft review table → per-employee breakdown modal → approve → export PDF/Excel |
 | Annual Reports | `admin/reports/annual` | contract dates, per-month grid, year evaluation average |
-| Settings | `admin/settings` | language/currency defaults, geofence, payroll multipliers, **login-as-user** toggle |
+| Settings | `admin/settings` | language/currency defaults, geofence, **login-as-user** toggle |
 | Impersonation | banner + `admin/employees` **Login as** | Manager-only when Settings enabled; **Return to admin** restores session |
 
 ## 6. Component Examples

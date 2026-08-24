@@ -74,21 +74,23 @@ class PortalStatsServiceTest extends TestCase
         $this->assertSame(2, $todayBar['value']);
     }
 
-    public function test_company_role_chart_includes_all_five_roles(): void
+    public function test_company_role_chart_includes_all_six_roles(): void
     {
         $manager = User::factory()->manager()->create();
         User::factory()->assistant()->create();
         User::factory()->accountant()->create();
         User::factory()->teamLeader()->create();
         User::factory()->employee()->create();
+        User::factory()->driver()->create();
 
         $roles = collect(app(PortalStatsService::class)->snapshot($manager)['roles'])->keyBy('key');
 
-        $this->assertCount(5, $roles);
+        $this->assertCount(6, $roles);
         $this->assertSame(1, $roles[User::ROLE_MANAGER]['value']);
         $this->assertSame(1, $roles[User::ROLE_ASSISTANT]['value']);
         $this->assertSame(1, $roles[User::ROLE_ACCOUNTANT]['value']);
         $this->assertSame(1, $roles[User::ROLE_TEAM_LEADER]['value']);
         $this->assertSame(1, $roles[User::ROLE_EMPLOYEE]['value']);
+        $this->assertSame(1, $roles[User::ROLE_DRIVER]['value']);
     }
 }

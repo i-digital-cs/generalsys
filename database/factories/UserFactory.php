@@ -35,9 +35,6 @@ class UserFactory extends Factory
             'currency' => 'EGP',
             'language_preference' => 'ar',
             'base_salary' => 0,
-            'online_half_day_rate' => 0,
-            'online_full_day_rate' => 0,
-            'overtime_hourly_rate' => 0,
             'shift_type_default' => 'FULL_TIME',
             'work_start_time' => null,
             'work_end_time' => null,
@@ -88,6 +85,15 @@ class UserFactory extends Factory
             'role' => User::ROLE_ASSISTANT,
             'job_title_ar' => 'مساعد إداري',
             'job_title_en' => 'Admin Assistant',
+        ]);
+    }
+
+    public function driver(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => User::ROLE_DRIVER,
+            'job_title_ar' => 'سائق',
+            'job_title_en' => 'Driver',
         ]);
     }
 

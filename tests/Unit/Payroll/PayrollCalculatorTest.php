@@ -4,7 +4,6 @@ namespace Tests\Unit\Payroll;
 
 use App\Models\PayrollAdjustment;
 use App\Models\PenaltyRule;
-use App\Services\Admin\SettingService;
 use App\Services\Payroll\PayrollCalculationInput;
 use App\Services\Payroll\PayrollCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -135,37 +134,23 @@ class PayrollCalculatorTest extends TestCase
             fridayOnlineDays: 1,
             dayOffFullTimeDays: 1,
             dayOffOnlineDays: 1,
-            onlineHalfDayRate: 50, // friday online uses half-day rate override
-            onlineFullDayRate: 100,
         ));
 
-        $this->assertSame(150.0, $result->fridayBonus); // FT 1×100 + online half-rate 50×1
+        $this->assertSame(150.0, $result->fridayBonus); // FT 1×100 + online 100×0.5
         $this->assertSame(350.0, $result->dayOffBonus); // FT 2×100 + online 100×1.5
     }
 
-    public function test_online_rates_use_employee_fields_with_fallback(): void
+    public function test_online_pay_uses_base_salary_formula(): void
     {
-        $fallback = $this->calculator->calculate(new PayrollCalculationInput(
+        $result = $this->calculator->calculate(new PayrollCalculationInput(
             baseSalary: 6000,
             currency: 'EGP',
             onlineHalfDays: 2,
             onlineFullDays: 1,
         ));
 
-        $this->assertSame(200.0, $fallback->onlineHalfPay); // (6000/30/2)×2
-        $this->assertSame(200.0, $fallback->onlineFullPay); // (6000/30)×1
-
-        $custom = $this->calculator->calculate(new PayrollCalculationInput(
-            baseSalary: 6000,
-            currency: 'EGP',
-            onlineHalfDays: 2,
-            onlineFullDays: 1,
-            onlineHalfDayRate: 150,
-            onlineFullDayRate: 250,
-        ));
-
-        $this->assertSame(300.0, $custom->onlineHalfPay);
-        $this->assertSame(250.0, $custom->onlineFullPay);
+        $this->assertSame(200.0, $result->onlineHalfPay); // (6000/30/2)×2
+        $this->assertSame(200.0, $result->onlineFullPay); // (6000/30)×1
     }
 
     public function test_auto_penalties_off_zeros_minute_penalties_keeps_excel_deductions(): void
@@ -290,17 +275,9 @@ class PayrollCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(333.33, $result->extraPay, 0.01);
     }
 
-    public function test_overtime_multiplier_from_settings_is_dynamic(): void
+    public function test_overtime_multiplier_from_config_is_used(): void
     {
-        app(SettingService::class)->setMultipliers([
-            'friday_full_time' => 1,
-            'friday_online' => 0.5,
-            'day_off_full_time' => 2,
-            'day_off_online' => 1.5,
-            'overtime' => 2.0,
-            'official_holiday_work' => 1,
-            'extra_pay' => 1,
-        ]);
+        config(['payroll.multipliers.overtime' => 2.0]);
 
         $result = $this->calculator->calculate(new PayrollCalculationInput(
             baseSalary: 5000,
@@ -311,17 +288,9 @@ class PayrollCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(333.33, $result->overtimePay, 0.01);
     }
 
-    public function test_input_overtime_multiplier_overrides_settings(): void
+    public function test_input_overtime_multiplier_overrides_config(): void
     {
-        app(SettingService::class)->setMultipliers([
-            'friday_full_time' => 1,
-            'friday_online' => 0.5,
-            'day_off_full_time' => 2,
-            'day_off_online' => 1.5,
-            'overtime' => 2.0,
-            'official_holiday_work' => 1,
-            'extra_pay' => 1,
-        ]);
+        config(['payroll.multipliers.overtime' => 2.0]);
 
         $result = $this->calculator->calculate(new PayrollCalculationInput(
             baseSalary: 5000,

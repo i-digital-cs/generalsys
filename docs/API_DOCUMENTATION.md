@@ -35,7 +35,7 @@
 | POST | /employees | MANAGER | Create user + profile + contract in one transaction |
 | GET | /employees/{id} | MANAGER, TL(own team), EMPLOYEE(self) | Full profile |
 | PUT | /employees/{id} | MANAGER | Update work config & rates |
-| PUT | /employees/{id}/rates | MANAGER | `base_salary`, `online_half_day_rate`, `online_full_day_rate`, `overtime_hourly_rate` |
+| PUT | /employees/{id} | MANAGER/ASSISTANT | includes `base_salary` (online/OT derived in payroll) |
 | PATCH | /employees/{id}/status | MANAGER | `{ "status": "ACTIVE" \| "INACTIVE" }` |
 
 ### Sub-resources
@@ -54,8 +54,7 @@
   "role": "EMPLOYEE", "status": "ACTIVE", "currency": "EGP",
   "team_leader_id": 3, "shift_type_default": "ONLINE_FULL",
   "work_start_time": "10:00", "work_end_time": "18:00",
-  "rates": { "base_salary": "5000.00", "online_half_day_rate": "83.33",
-             "online_full_day_rate": "166.67", "overtime_hourly_rate": "31.25" },
+  "rates": { "base_salary": "5000.00" },
   "profile": { "national_id": "...", "birth_date": "1998-04-12", "age": 28,
                "phone": "...", "gender": "FEMALE", "marital_status": "SINGLE" },
   "active_contract": { "hire_date": "2025-10-08", "contract_start": "2025-10-08",
@@ -85,9 +84,11 @@
 
 | Method | Route name | Path | Role |
 |--------|------------|------|------|
-| GET | `employee.clock` | `/clock` | EMPLOYEE/TL/MANAGER |
-| POST | `employee.clock.in` | `/clock/in` | EMPLOYEE/TL/MANAGER — `{ shift_type, photos[]? }` optional multi images |
-| POST | `employee.clock.out` | `/clock/out` | EMPLOYEE/TL/MANAGER — `{ photos[]? }` optional multi images |
+| GET | `employee.clock` | `/clock` | EMPLOYEE/TL/MANAGER/DRIVER |
+| POST | `employee.clock.in` | `/clock/in` | EMPLOYEE/TL/MANAGER/DRIVER — `{ shift_type, photos[]? }` optional multi images |
+| POST | `employee.clock.out` | `/clock/out` | EMPLOYEE/TL/MANAGER/DRIVER — `{ photos[]? }` optional multi images |
+| POST | `employee.clock.field-photos` | `/clock/field-photos` | DRIVER — mid-shift images; GPS + title required each |
+| GET | `employee.media` | `/media` | DRIVER — own media history (filters: from/to/kind/location/q) |
 | GET | `attendance.photos.show` | `/attendance-photos/{photo}` | owner · team TL · Manager · Assistant — stream punch photo |
 | GET | `employee.report` | `/report?date=` | EMPLOYEE |
 | POST | `employee.report.store` | `/report` | EMPLOYEE — `{ date, daily_report }` |
@@ -271,7 +272,9 @@ Payroll generation auto-pulls `deduction_amount_monthly` from `ACTIVE` advances 
 
 | Method | Route name | Path | Role |
 |--------|------------|------|------|
-| GET/PUT | `admin.settings` / `admin.settings.update` | `/admin/settings` | MANAGER — includes `impersonation_enabled` (`1`/`0`, default off) |
+| GET/PUT | `admin.settings` / `admin.settings.update` | `/admin/settings` | MANAGER — language, currency, office geofence (not impersonation) |
+| POST | `admin.settings.impersonation.enable` | `/admin/settings/impersonation/enable` | MANAGER + matching `IMPERSONATION_ENABLE_OTP` (throttled) |
+| POST | `admin.settings.impersonation.disable` | `/admin/settings/impersonation/disable` | MANAGER — turns `impersonation_enabled` off |
 | POST | `admin.employees.impersonate` | `/admin/employees/{employee}/impersonate` | MANAGER, setting on, not self |
 | POST | `impersonation.leave` | `/impersonation/leave` | any authenticated session that has `impersonator_id` |
 

@@ -10,7 +10,8 @@ use App\Services\Admin\SettingService;
  * Pure payroll math (T-4.3) — docs/PAYROLL_CALCULATION.md §6–§9.
  *
  * Absence day multipliers and per-minute rates come from active penalty_rules
- * (config fallback). Pay multipliers come from Admin settings (config fallback).
+ * (config fallback). Pay multipliers come from config/payroll.php (draft OT
+ * multiplier / extra pay override per employee).
  */
 class PayrollCalculator
 {
@@ -157,22 +158,16 @@ class PayrollCalculator
 
     private function onlineHalfPay(PayrollCalculationInput $input, float $divisor): float
     {
-        $rate = $input->onlineHalfDayRate;
-        if ($rate === null) {
-            $rate = $this->dayRate($input->baseSalary, $divisor) / 2;
-        }
+        $rate = $this->dayRate($input->baseSalary, $divisor) / 2;
 
-        return (float) $rate * $input->onlineHalfDays;
+        return $rate * $input->onlineHalfDays;
     }
 
     private function onlineFullPay(PayrollCalculationInput $input, float $divisor): float
     {
-        $rate = $input->onlineFullDayRate;
-        if ($rate === null) {
-            $rate = $this->dayRate($input->baseSalary, $divisor);
-        }
+        $rate = $this->dayRate($input->baseSalary, $divisor);
 
-        return (float) $rate * $input->onlineFullDays;
+        return $rate * $input->onlineFullDays;
     }
 
     private function fridayBonus(PayrollCalculationInput $input, float $dayRate): float
@@ -183,10 +178,9 @@ class PayrollCalculator
             $this->settings->multiplier('friday_full_time'),
         );
 
-        $onlineRate = $input->onlineHalfDayRate
-            ?? ($dayRate * $this->settings->multiplier('friday_online'));
-
-        $online = (float) $onlineRate * $input->fridayOnlineDays;
+        $online = $dayRate
+            * $input->fridayOnlineDays
+            * $this->settings->multiplier('friday_online');
 
         return $ft + $online;
     }
@@ -199,8 +193,7 @@ class PayrollCalculator
             $this->settings->multiplier('day_off_full_time'),
         );
 
-        $onlineUnit = $input->onlineFullDayRate ?? $dayRate;
-        $online = (float) $onlineUnit
+        $online = $dayRate
             * $input->dayOffOnlineDays
             * $this->settings->multiplier('day_off_online');
 
@@ -214,19 +207,16 @@ class PayrollCalculator
             return 0.0;
         }
 
-        $hourly = $input->overtimeHourlyRate;
-        if ($hourly === null) {
-            $divisor = (float) config('payroll.month_divisor', 30);
-            $planned = (float) config('payroll.planned_hours_full_time', 8);
-            $hourly = $this->dayRate($input->baseSalary, $divisor) / max($planned, 1);
-        }
+        $divisor = (float) config('payroll.month_divisor', 30);
+        $planned = (float) config('payroll.planned_hours_full_time', 8);
+        $hourly = $this->dayRate($input->baseSalary, $divisor) / max($planned, 1);
 
         $mult = $input->overtimeMultiplier;
         if ($mult === null || $mult <= 0) {
             $mult = $this->settings->multiplier('overtime');
         }
 
-        return (float) $hourly * $hours * $mult;
+        return $hourly * $hours * $mult;
     }
 
     /**

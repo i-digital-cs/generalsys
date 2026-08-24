@@ -66,9 +66,19 @@ class Attendance extends Model
         'clock_out_outside_geofence',
         'planned_hours',
         'actual_hours',
+        'raw_actual_hours',
+        'credited_hours',
         'status',
         'late_minutes',
+        'adjusted_late_minutes',
         'early_departure_minutes',
+        'recommended_overtime_minutes',
+        'overtime_tl_recommendation',
+        'overtime_tl_by',
+        'overtime_tl_at',
+        'overtime_admin_decision',
+        'overtime_admin_by',
+        'overtime_admin_at',
         'is_auto_clock_out',
         'daily_report',
         'team_leader_response',
@@ -93,6 +103,8 @@ class Attendance extends Model
             'clock_out_outside_geofence' => 'boolean',
             'planned_hours' => 'decimal:2',
             'actual_hours' => 'decimal:2',
+            'raw_actual_hours' => 'decimal:2',
+            'credited_hours' => 'decimal:2',
             'attendance_score' => 'decimal:2',
         ];
     }
@@ -115,5 +127,34 @@ class Attendance extends Model
     public function dailyScores(): HasMany
     {
         return $this->hasMany(AttendanceDailyScore::class);
+    }
+
+    public function segments(): HasMany
+    {
+        return $this->hasMany(AttendanceSegment::class)->orderBy('sequence');
+    }
+
+    public function gaps(): HasMany
+    {
+        return $this->hasMany(AttendanceGap::class)->orderBy('gap_start');
+    }
+
+    public function overtimeTlDecider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'overtime_tl_by');
+    }
+
+    public function overtimeAdminDecider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'overtime_admin_by');
+    }
+
+    public function hasOpenSegment(): bool
+    {
+        if ($this->relationLoaded('segments')) {
+            return $this->segments->contains(fn (AttendanceSegment $s) => $s->isOpen());
+        }
+
+        return $this->segments()->whereNull('clock_out')->exists();
     }
 }

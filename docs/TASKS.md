@@ -547,6 +547,41 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] ImpersonationTest + SettingsTest + LangParity; UI/UX AR+EN RTL/LTR
   - [x] UI/UX gate (settings toggle + list button + banner; 375/768/1280)
 
+### T-7.8 — DRIVER role (clock + payroll photos)
+- Depends on: T-7.2, T-7.5, T-6.6, T-6.7, T-8.2
+- Unlocks: —
+- [x] Task complete
+  - [x] Role `DRIVER`; seed `driver@hrpro.test`; up to 2 TLs like employees
+  - [x] Self-service **clock + daily report** (no leave/salary menus); report gate same as employee
+  - [x] Punch photos required in+out (≥1 + description); **GPS required every punch**
+  - [x] Admin payroll includes Drivers; Manager+Assistant CRUD
+  - [x] DriverRoleTest + MenuConfigTest + PortalStats + LangParity; UI AR+EN
+
+### T-7.9 — Multi-punch same shift + gap approval + time review
+- Depends on: T-7.6, T-7.8, T-8.4
+- Unlocks: —
+- [x] Task complete
+  - [x] Schema: `attendance_segments`, `attendance_gaps`, credited/raw hours, late override, overtime TL→Admin
+  - [x] Employee/Driver: clock in → out → in again same shift; gaps notify TL then Admin queue
+  - [x] TL/Admin: gap approve/reject on `/team-leader/approvals`; time review on attendance history
+  - [x] Early/late + credited vs raw visible on clock + ops history; cap 8h unless OT approved
+  - [x] AttendanceMultiPunchTest + updated ClockTest/DualDefaultShiftsTest; 542 tests PASS
+
+### T-7.10 — Driver mid-day field uploads + force-close on clock-in
+- Depends on: T-7.8, T-7.9
+- Unlocks: —
+- [x] Task complete
+  - [x] R5: stale cross-day open punch force-closed on `/clock` + clock-in (≥1h before shift start; **no cron**)
+  - [x] R6b: DRIVER mid-day FIELD photos while shift open — GPS + photo + description required; linked to open segment
+  - [x] Schema `attendance_photos.kind` + FIELD GPS columns; DriverRoleTest field upload cases
+  - [x] R2: system recommended vs payroll-credited side-by-side (`x-attendance-time-breakdown`); TL reset to system; clock + hours dashboard + attendance history
+  - [x] R3: daily report reminder banner after clock-out (late/early hints)
+  - [x] R4: full breakdown everywhere — raw/credited/late/early/OT/gaps via metrics + breakdown components; clock, dashboard, report, history, hours list
+  - [x] R7: gap approval polish — pending/decided/all filters; TL note + Admin note; notifications w/ URLs; gap status component; dual-TL scope
+  - [x] R9: shift window validation on employee save + TL assign; reject windows longer than planned+1h; repair migration for leftover mismatches
+  - [x] R8: overtime workflow polish — TL recommend w/ system-suggested minutes; Admin/Assistant approve/reject; status badges + credited cap; approvals queue + notifications
+  - [x] R10: full suite green; AttendanceFlagsDisplayTest frozen to punch day (R5 stale-close); T-7.10 closed
+
 ---
 
 ## Phase 8 — Dual team leaders (max 2) + attributed evaluations
@@ -867,7 +902,18 @@ Example:
 - [x] 2026-08-20 Amend T-7.7 — ClockTest updated for real ONLINE_FULL default (legacy no longer expands to FT+½); ClockTest + DualDefault + AttendanceService + LangParity green (84).
 - [x] 2026-08-12 UX — Admin payroll show: second button **Export full review PDF** (`export-review.pdf`) covers all tabs (pay / edit draft / attendance / evaluation / hours); Admin-only (TL 403); PayrollExportTest green.
 - [x] 2026-08-12 T-7.1 PASS — ACCOUNTANT role: self-service + payroll (no اعتماد) + advances CRUD; `team_leader_id` null → Manager decides leave; seed accountant@hrpro.test; TL still money-blocked.
-- [x] 2026-08-13 T-7.2 PASS — Required punch GPS + soft 1-office geofence (Admin Settings lat/lng, default 1 km): store lat/lng/accuracy/distance/outside; accept outside with warn + notify employee/TL/Admin; Maps links like photos; TL↔Admin self-clock yes; ClockLocationTest + GeofenceServiceTest green.
+- [x] 2026-08-23 Amend T-7.2 / clock — GPS required for FULL_TIME only; free early/late/after-end clock-in with notify employee+TL+Admin; auto clock-out removed. ClockTest + ClockLocationTest + DualDefault + AttendanceServiceTest + LangParity green.
+- [x] 2026-08-23 T-7.8 PASS — DRIVER role: clock-only menu; required punch photos+descriptions in/out; TL membership; Admin payroll includes drivers; Manager+Assistant create. Seed driver@hrpro.test. DriverRoleTest + MenuConfigTest + PortalStats + LangParity green.
+- [x] 2026-08-23 T-7.9 PASS — Multi-punch same shift (segments+gaps); TL recommend + Admin final on breaks; credited/raw hours, late/early, OT review; clock + approvals + attendance history UI. AttendanceMultiPunchTest + full suite 542 PASS.
+- [x] 2026-08-23 T-7.10 (R5+R6b) PASS — Force-close stale open punch on clock screen/in (no cron); DRIVER mid-day FIELD uploads (GPS+photo+description). DriverRoleTest field cases green.
+- [x] 2026-08-23 T-7.10 (R2) PASS — System recommended vs payroll-credited time breakdown component; TL/Admin review form + reset to system; employee clock + hours day list. AttendanceTimeSummaryTest + AttendanceMultiPunchTest green; LangParity green.
+- [x] 2026-08-23 T-7.10 (R4) PASS — Full time metrics (raw, credited, late, early, gap min, OT +/-) on clock, employee dashboard, report, TL attendance history, today board, hours day list. AttendanceTimeBreakdownTest green; LangParity green.
+- [x] 2026-08-23 T-7.10 (R7) PASS — Gap approval polish: pending/decided/all filters, TL+Admin notes, notification inbox titles/URLs, dual-TL team scope, status badges on clock + approvals. AttendanceGapApprovalTest green; LangParity green.
+- [x] 2026-08-23 Amend R7 — Assistant may open `/team-leader/approvals` (gaps only) and finalize gaps after TL recommend; leave/vacation still TL+Manager. Menu + AssistantRoleTest + AttendanceGapApprovalTest green.
+- [x] 2026-08-23 T-7.10 (R9) PASS — ShiftWindowValidator blocks FT 09:00→01:00 typos on employee create/edit + TL assign; true overnight 22:00→06:00 OK; repair migration. ShiftWindowValidatorTest + EmployeeCrudTest + ShiftAssignmentTest green.
+- [x] 2026-08-23 T-7.10 (R8) PASS — Overtime TL recommend (system-suggested min) → Admin/Assistant approve/reject; `x-attendance-overtime-status` + `x-attendance-overtime-review`; credited cap on breakdown/metrics; approvals queue + inbox notifications. AttendanceOvertimeReviewTest green; LangParity green.
+- [x] 2026-08-23 T-7.10 (R10) PASS — Full suite **583** PASS; AttendanceFlagsDisplayTest setTestNow on punch day so R5 stale force-close does not clear open-shift flags; T-7.10 marked complete.
+- [x] 2026-08-23 Amend T-7.8 — Driver: GPS required every punch; daily report required same as employee (menu + gate + post clock-out). DriverRoleTest + MenuConfigTest green.
 - [x] 2026-08-13 T-7.3b PASS — Payroll Hours: per-day required / present (موجود) / absent (غائب) per shift; month totals summed from exact day lines; PDF aligned.
 - [x] 2026-08-18 T-7.4 PASS — Job title AR+EN on `users` (covers employees + TLs + accountants + managers; no duplicate on profiles). Admin create/edit + list column + search; self profile + payslip; blank titles default to role. Existing rows backfilled. EmployeeCrudTest + EmployeeProfileTest + LangParity green.
 - [x] 2026-08-18 T-7.5 PASS — ASSISTANT role (مساعد إداري): company-wide employee data entry, shifts, rest days, view-all daily reports (no reply/scores), missing-report alerts, admin dashboard, self-service. No payroll/approvals/evaluations/settings. Seed assistant@hrpro.test. AssistantRoleTest green.
@@ -894,3 +940,4 @@ Example:
 - [x] 2026-08-23 Fix valuation — Manager Service/Product home lists all employees’ month sheets; stat-card RTL money alignment; LangParity + ValuationModuleTest + build.
 - [x] 2026-08-19 Fix T-9.9/T-9.10 — Valuation PDF: keep AR mixed Latin/digits/brackets (`(0–100)`, B2B, King); gold ★ stars instead of `****-`; `/service/valuations` list is a card table with badges/actions. DompdfArabicTest + ValuationModuleTest + LangParity green.
 - [x] 2026-08-19 UX T-6.5 — Valuation sheets + assign lists use the same `.table-hr` + `<x-table-toolbar>` search/filters as HR lists. TableFilterUiTest + ValuationModuleTest + LangParity green.
+- [x] 2026-08-24 Amend T-1.5 — Dropped `online_half_day_rate` / `online_full_day_rate` / `overtime_hourly_rate` from users + employee form. Payroll always uses base÷30 formulas; draft OT multiplier unchanged. PayrollCalculatorTest + RatesPrivacy + Assistant + EmployeeCrud + PayrollDraft + LangParity green.

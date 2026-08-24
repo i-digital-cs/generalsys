@@ -1,4 +1,4 @@
-// Clock screen: after choosing punch photos, show an optional description per file.
+// Clock screen: after choosing punch photos, show a description per file.
 
 function renderClockPhotoCaptions(root) {
     const input = root.querySelector('[data-clock-photos-input]');
@@ -19,6 +19,7 @@ function renderClockPhotoCaptions(root) {
     const labelText = box.dataset.label || 'Description';
     const placeholder = box.dataset.placeholder || '';
     const fileLabel = box.dataset.fileLabel || 'Photo :n';
+    const required = box.dataset.required === '1' || root.dataset.required === '1';
 
     files.forEach(function (file, index) {
         const wrap = document.createElement('div');
@@ -28,7 +29,8 @@ function renderClockPhotoCaptions(root) {
         label.className = 'form-label small mb-1';
         const id = (input.id || 'photos') + '-desc-' + index;
         label.setAttribute('for', id);
-        label.textContent = fileLabel.replace(':n', String(index + 1)) + ' — ' + (file.name || labelText);
+        const numbered = fileLabel.replace(':n', String(index + 1));
+        label.textContent = numbered + ' — ' + labelText + (file.name ? ' (' + file.name + ')' : '');
 
         const field = document.createElement('input');
         field.type = 'text';
@@ -38,6 +40,9 @@ function renderClockPhotoCaptions(root) {
         field.maxLength = 500;
         field.placeholder = placeholder;
         field.autocomplete = 'off';
+        if (required) {
+            field.required = true;
+        }
 
         wrap.appendChild(label);
         wrap.appendChild(field);

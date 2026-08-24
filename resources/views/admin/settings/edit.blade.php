@@ -44,44 +44,12 @@
         <div class="col-12 col-lg-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-transparent">
-                    <div class="fw-semibold">{{ __('settings.multipliers_section') }}</div>
-                    <p class="small text-body-secondary mb-0">{{ __('settings.multipliers_hint') }}</p>
-                </div>
-                <div class="card-body">
-                    <div class="row g-2">
-                        @foreach ($multipliers as $name => $value)
-                            <div class="col-6">
-                                <label for="mult_{{ $name }}" class="form-label">{{ __('settings.multipliers.'.$name) }}</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    max="10"
-                                    id="mult_{{ $name }}"
-                                    name="multipliers[{{ $name }}]"
-                                    class="form-control @error('multipliers.'.$name) is-invalid @enderror"
-                                    value="{{ old('multipliers.'.$name, number_format((float) $value, 2, '.', '')) }}"
-                                    required
-                                >
-                                @error('multipliers.'.$name)
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent">
                     <div class="fw-semibold">{{ __('settings.office_section') }}</div>
                     <p class="small text-body-secondary mb-0">{{ __('settings.office_hint') }}</p>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-4 col-lg-12">
                             <label for="office_latitude" class="form-label">{{ __('settings.office_latitude') }}</label>
                             <input type="number" step="any" id="office_latitude" name="office_latitude"
                                    class="form-control @error('office_latitude') is-invalid @enderror"
@@ -90,7 +58,7 @@
                                    dir="ltr">
                             @error('office_latitude') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-4 col-lg-12">
                             <label for="office_longitude" class="form-label">{{ __('settings.office_longitude') }}</label>
                             <input type="number" step="any" id="office_longitude" name="office_longitude"
                                    class="form-control @error('office_longitude') is-invalid @enderror"
@@ -99,7 +67,7 @@
                                    dir="ltr">
                             @error('office_longitude') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-4 col-lg-12">
                             <label for="office_radius_meters" class="form-label">{{ __('settings.office_radius_meters') }}</label>
                             <input type="number" min="50" max="50000" step="1" id="office_radius_meters" name="office_radius_meters"
                                    class="form-control @error('office_radius_meters') is-invalid @enderror"
@@ -114,29 +82,44 @@
         </div>
 
         <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent">
-                    <div class="fw-semibold">{{ __('settings.impersonation_section') }}</div>
-                    <p class="small text-body-secondary mb-0">{{ __('settings.impersonation_hint') }}</p>
-                </div>
-                <div class="card-body">
-                    <div class="form-check form-switch">
-                        <input type="hidden" name="impersonation_enabled" value="0">
-                        <input type="checkbox" class="form-check-input" role="switch"
-                               id="impersonation_enabled" name="impersonation_enabled" value="1"
-                               @checked(old('impersonation_enabled', $impersonationEnabled))>
-                        <label class="form-check-label" for="impersonation_enabled">
-                            {{ __('settings.impersonation_enabled') }}
-                        </label>
-                    </div>
-                    @error('impersonation_enabled') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12">
             <a class="btn btn-outline-primary" href="{{ route('valuation.assignments.index') }}">{{ __('valuation.assign') }}</a>
             <button type="submit" class="btn btn-primary">{{ __('general.save') }}</button>
         </div>
     </form>
+
+    {{-- Collapsed on purpose: enable requires IMPERSONATION_ENABLE_OTP from .env --}}
+    <details class="mt-4" @if ($errors->has('otp') || old('otp')) open @endif>
+        <summary class="text-body-secondary small user-select-none" style="cursor: pointer;">⋯</summary>
+        <div class="card border-0 shadow-sm mt-2">
+            <div class="card-body py-3">
+                @if ($impersonationEnabled)
+                    <p class="small mb-2 text-success">{{ __('settings.impersonation_active') }}</p>
+                    <form method="POST" action="{{ route('admin.settings.impersonation.disable') }}">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                            {{ __('settings.impersonation_disable') }}
+                        </button>
+                    </form>
+                @elseif ($impersonationOtpConfigured)
+                    <form method="POST" action="{{ route('admin.settings.impersonation.enable') }}" class="row g-2 align-items-end">
+                        @csrf
+                        <div class="col-12 col-sm-auto flex-grow-1" style="max-width: 16rem;">
+                            <label for="impersonation_otp" class="form-label small mb-1">{{ __('settings.impersonation_otp') }}</label>
+                            <input type="password" id="impersonation_otp" name="otp" autocomplete="off"
+                                   class="form-control form-control-sm @error('otp') is-invalid @enderror"
+                                   dir="ltr" maxlength="64">
+                            @error('otp') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                {{ __('settings.impersonation_unlock') }}
+                            </button>
+                        </div>
+                    </form>
+                @else
+                    <p class="small text-body-secondary mb-0">{{ __('settings.impersonation_otp_missing') }}</p>
+                @endif
+            </div>
+        </div>
+    </details>
 @endsection

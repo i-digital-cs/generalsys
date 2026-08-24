@@ -271,7 +271,7 @@ class PayrollGenerator
     {
         $query = User::query()
             ->where('status', User::STATUS_ACTIVE)
-            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT])
+            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_DRIVER, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT])
             ->orderBy('id');
 
         if ($teamLeaderId !== null) {
@@ -289,10 +289,6 @@ class PayrollGenerator
      */
     private function toInput(User $user, array $agg, int $extraDays = 0, float $extraPay = 0.0, float $overtimeMultiplier = 0.0): PayrollCalculationInput
     {
-        $half = $user->online_half_day_rate;
-        $full = $user->online_full_day_rate;
-        $ot = $user->overtime_hourly_rate;
-
         return new PayrollCalculationInput(
             baseSalary: (float) $user->base_salary,
             currency: $user->currency ?: 'EGP',
@@ -319,9 +315,6 @@ class PayrollGenerator
             overtimeMultiplier: $overtimeMultiplier > 0 ? $overtimeMultiplier : null,
             extraDays: $extraDays,
             extraPay: $extraPay,
-            onlineHalfDayRate: ((float) $half > 0) ? (float) $half : null,
-            onlineFullDayRate: ((float) $full > 0) ? (float) $full : null,
-            overtimeHourlyRate: ((float) $ot > 0) ? (float) $ot : null,
             adjustments: $agg['adjustments'],
         );
     }

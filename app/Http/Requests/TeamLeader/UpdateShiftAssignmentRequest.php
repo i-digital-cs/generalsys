@@ -4,8 +4,10 @@ namespace App\Http\Requests\TeamLeader;
 
 use App\Models\ShiftAssignment;
 use App\Services\Attendance\ShiftAssignmentService;
+use App\Services\Attendance\ShiftWindowValidator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateShiftAssignmentRequest extends FormRequest
 {
@@ -45,6 +47,29 @@ class UpdateShiftAssignmentRequest extends FormRequest
             'multiplier' => ['nullable', 'numeric', 'min:0.5', 'max:5'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $type = (string) $this->input('shift_type', '');
+            $start = (string) $this->input('expected_start_time', '');
+            $end = (string) $this->input('expected_end_time', '');
+            $hours = $this->input('expected_hours');
+
+            if ($type === '' || $start === '' || $end === '' || $hours === null || $hours === '') {
+                return;
+            }
+
+            $windows = app(ShiftWindowValidator::class);
+            $planned = (float) $hours;
+            if (! $windows->isCompatible($type, $start, $end, $planned)) {
+                $validator->errors()->add(
+                    'expected_end_time',
+                    $windows->errorMessage($type, $start, $end, $planned),
+                );
+            }
+        });
     }
 
     /**

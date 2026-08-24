@@ -31,4 +31,9 @@ class ImpersonationException extends RuntimeException
     {
         return new self('impersonation.errors.impersonator_missing');
     }
+
+    public static function invalidEnableOtp(): self
+    {
+        return new self('impersonation.errors.invalid_otp');
+    }
 }

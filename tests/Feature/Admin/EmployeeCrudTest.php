@@ -57,9 +57,6 @@ class EmployeeCrudTest extends TestCase
             ],
             'status' => 'ACTIVE',
             'base_salary' => 5000,
-            'online_half_day_rate' => 100,
-            'online_full_day_rate' => 200,
-            'overtime_hourly_rate' => 50,
             'profile' => [
                 'national_id' => '29501010101010',
                 'birth_date' => '1995-01-01',
@@ -104,6 +101,44 @@ class EmployeeCrudTest extends TestCase
         $this->assertDatabaseHas('contracts', ['user_id' => $employee->id, 'is_active' => true, 'contract_type' => 'سنة']);
         $this->assertDatabaseHas('employee_qualifications', ['user_id' => $employee->id, 'degree' => 'BSc']);
         $this->assertDatabaseHas('emergency_contacts', ['user_id' => $employee->id, 'name' => 'Ahmed']);
+    }
+
+    public function test_store_rejects_mismatched_overnight_shift_window(): void
+    {
+        app()->setLocale('en');
+
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'default_shifts' => [
+                    [
+                        'shift_type' => 'FULL_TIME',
+                        'start' => '09:00',
+                        'end' => '01:00',
+                    ],
+                ],
+            ]))
+            ->assertSessionHasErrors('default_shifts.0.end');
+
+        $this->assertDatabaseMissing('users', ['email' => 'new.employee@hrpro.test']);
+    }
+
+    public function test_store_allows_true_overnight_eight_hour_window(): void
+    {
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'default_shifts' => [
+                    [
+                        'shift_type' => 'FULL_TIME',
+                        'start' => '22:00',
+                        'end' => '06:00',
+                    ],
+                ],
+            ]))
+            ->assertRedirect();
+
+        $employee = User::where('email', 'new.employee@hrpro.test')->firstOrFail();
+        $this->assertSame('22:00', $employee->work_start_time);
+        $this->assertSame('06:00', $employee->work_end_time);
     }
 
     public function test_employee_code_is_auto_generated_sequentially(): void

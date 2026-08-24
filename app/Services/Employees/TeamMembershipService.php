@@ -48,7 +48,7 @@ class TeamMembershipService
     {
         if ($actor->canManageOperations()) {
             return User::query()
-                ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
+                ->whereIn('role', User::operationsVisibleRoles())
                 ->where('status', User::STATUS_ACTIVE)
                 ->orderBy('name_en')
                 ->get();
@@ -56,7 +56,7 @@ class TeamMembershipService
 
         if ($actor->isTeamLeader()) {
             return User::query()
-                ->where('role', User::ROLE_EMPLOYEE)
+                ->whereIn('role', User::fieldStaffRoles())
                 ->where('status', User::STATUS_ACTIVE)
                 ->ledBy($actor->id)
                 ->orderBy('name_en')

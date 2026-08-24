@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('name_en', 150);
             $table->string('email', 190)->unique();
             $table->string('password');
-            $table->enum('role', ['MANAGER', 'TEAM_LEADER', 'EMPLOYEE', 'ACCOUNTANT', 'ASSISTANT'])->default('EMPLOYEE')->index();
+            $table->enum('role', ['MANAGER', 'TEAM_LEADER', 'EMPLOYEE', 'ACCOUNTANT', 'ASSISTANT', 'DRIVER'])->default('EMPLOYEE')->index();
             $table->enum('currency', ['EGP', 'AED']);
             $table->enum('language_preference', ['ar', 'en'])->default('ar');
             $table->foreignId('team_leader_id')->nullable()->index()

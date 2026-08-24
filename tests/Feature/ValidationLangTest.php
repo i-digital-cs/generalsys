@@ -42,9 +42,6 @@ class ValidationLangTest extends TestCase
             'shift_type_default' => 'FULL_TIME',
             'status' => 'ACTIVE',
             'base_salary' => 0,
-            'online_half_day_rate' => 0,
-            'online_full_day_rate' => 0,
-            'overtime_hourly_rate' => 0,
             'profile' => ['employee_code' => 'EMP-V1'],
             'contract' => [
                 'hire_date' => '2024-01-01', 'contract_start' => '2024-01-01',

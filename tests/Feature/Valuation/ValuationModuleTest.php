@@ -160,12 +160,11 @@ class ValuationModuleTest extends TestCase
 
         $this->actingAs($hamad)
             ->get(route('portal.product'))
-            ->assertOk();
+            ->assertForbidden();
 
         $this->actingAs($hamad)
             ->get(route('valuation.sheets.index', 'product'))
-            ->assertOk()
-            ->assertSee(__('valuation.errors.not_assigned'), false);
+            ->assertForbidden();
     }
 
     public function test_other_user_cannot_view_sheet_manager_can(): void

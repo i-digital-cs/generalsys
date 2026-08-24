@@ -64,7 +64,6 @@ return [
     'save' => 'Save',
     'empty' => 'No valuation sheets yet',
     'empty_text' => 'Fill today’s sheet, or wait for assigned people to submit.',
-    'empty_unassigned' => 'An admin must assign you to this module before you can fill a daily valuation sheet.',
     'sales_avg_hint' => 'Sales score is the average of the six channels (0 to 100). 100% = 5 stars, 80% = 4 stars.',
     'flash' => [
         'saved' => 'Valuation sheet saved.',

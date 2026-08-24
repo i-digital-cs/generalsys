@@ -26,6 +26,7 @@ class PostLoginRedirector
             User::ROLE_MANAGER => 'admin.dashboard',
             User::ROLE_ASSISTANT => 'admin.dashboard',
             User::ROLE_TEAM_LEADER => 'team-leader.dashboard',
+            User::ROLE_DRIVER => 'employee.clock',
             default => 'employee.dashboard',
         };
     }

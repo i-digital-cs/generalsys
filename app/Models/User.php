@@ -28,6 +28,8 @@ class User extends Authenticatable
 
     public const ROLE_ASSISTANT = 'ASSISTANT';
 
+    public const ROLE_DRIVER = 'DRIVER';
+
     public const STATUS_ACTIVE = 'ACTIVE';
 
     public const STATUS_INACTIVE = 'INACTIVE';
@@ -53,9 +55,6 @@ class User extends Authenticatable
         'language_preference',
         'team_leader_id',
         'base_salary',
-        'online_half_day_rate',
-        'online_full_day_rate',
-        'overtime_hourly_rate',
         'shift_type_default',
         'shift_types_default',
         'work_start_time',
@@ -83,9 +82,6 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
             'base_salary' => 'decimal:2',
-            'online_half_day_rate' => 'decimal:2',
-            'online_full_day_rate' => 'decimal:2',
-            'overtime_hourly_rate' => 'decimal:2',
             'shift_types_default' => 'array',
         ];
     }
@@ -251,8 +247,29 @@ class User extends Authenticatable
             self::ROLE_TEAM_LEADER => ['ar' => 'قائد فريق', 'en' => 'Team Leader'],
             self::ROLE_ACCOUNTANT => ['ar' => 'محاسب', 'en' => 'Accountant'],
             self::ROLE_ASSISTANT => ['ar' => 'مساعد إداري', 'en' => 'Admin Assistant'],
+            self::ROLE_DRIVER => ['ar' => 'سائق', 'en' => 'Driver'],
             default => ['ar' => 'موظف', 'en' => 'Employee'],
         };
+    }
+
+    /**
+     * Field staff under team leaders (employees + drivers).
+     *
+     * @return list<string>
+     */
+    public static function fieldStaffRoles(): array
+    {
+        return [self::ROLE_EMPLOYEE, self::ROLE_DRIVER];
+    }
+
+    /**
+     * Ops visibility: field staff + team leaders.
+     *
+     * @return list<string>
+     */
+    public static function operationsVisibleRoles(): array
+    {
+        return [self::ROLE_EMPLOYEE, self::ROLE_TEAM_LEADER, self::ROLE_DRIVER];
     }
 
     public function localizedJobTitle(): ?string
@@ -284,10 +301,21 @@ class User extends Authenticatable
         return $this->role === self::ROLE_EMPLOYEE;
     }
 
-    /** Only EMPLOYEE accounts are assigned team leaders. */
+    public function isDriver(): bool
+    {
+        return $this->role === self::ROLE_DRIVER;
+    }
+
+    /** EMPLOYEE or DRIVER — TL-led field staff. */
+    public function isFieldStaff(): bool
+    {
+        return $this->isEmployee() || $this->isDriver();
+    }
+
+    /** EMPLOYEE and DRIVER accounts are assigned team leaders. */
     public static function roleMayHaveTeamLeaders(?string $role): bool
     {
-        return $role === self::ROLE_EMPLOYEE;
+        return in_array($role, self::fieldStaffRoles(), true);
     }
 
     public function isAccountant(): bool
@@ -298,6 +326,34 @@ class User extends Authenticatable
     public function isAssistant(): bool
     {
         return $this->role === self::ROLE_ASSISTANT;
+    }
+
+    /** Punch photos required on every clock-in and clock-out. */
+    public function requiresPunchPhotos(): bool
+    {
+        return $this->isDriver();
+    }
+
+    /** GPS required on every punch (any shift). */
+    public function requiresPunchLocation(): bool
+    {
+        return $this->isDriver();
+    }
+
+    /** Daily report gate + self-service report (same as employees). */
+    public function mustSubmitDailyReports(): bool
+    {
+        return true;
+    }
+
+    public function mayUseClock(): bool
+    {
+        return $this->isEmployee()
+            || $this->isDriver()
+            || $this->isTeamLeader()
+            || $this->isManager()
+            || $this->isAccountant()
+            || $this->isAssistant();
     }
 
     /**
@@ -325,6 +381,7 @@ class User extends Authenticatable
         if ($this->isManager()) {
             return [
                 self::ROLE_EMPLOYEE,
+                self::ROLE_DRIVER,
                 self::ROLE_TEAM_LEADER,
                 self::ROLE_ACCOUNTANT,
                 self::ROLE_ASSISTANT,
@@ -332,7 +389,7 @@ class User extends Authenticatable
         }
 
         if ($this->isAssistant()) {
-            return [self::ROLE_EMPLOYEE, self::ROLE_TEAM_LEADER];
+            return [self::ROLE_EMPLOYEE, self::ROLE_DRIVER, self::ROLE_TEAM_LEADER];
         }
 
         return [];
@@ -345,7 +402,7 @@ class User extends Authenticatable
         }
 
         if ($this->isAssistant()) {
-            return $target->isEmployee() || $target->isTeamLeader();
+            return $target->isFieldStaff() || $target->isTeamLeader();
         }
 
         return false;

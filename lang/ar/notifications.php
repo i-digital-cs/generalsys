@@ -27,6 +27,16 @@ return [
         'report_missing_overdue' => 'تقرير يومي متأخر',
         'attendance_auto_clock_out' => 'انصراف تلقائي',
         'attendance_geofence_warning' => 'خارج نطاق المكتب',
+        'attendance_outside_shift_window' => 'خارج نافذة الدوام',
+        'attendance_gap_pending' => 'فجوة استراحة تحتاج مراجعة',
+        'attendance_gap_tl_decided' => 'مراجعة قائد الفريق لفجوة استراحة',
+        'attendance_gap_admin_decided' => 'قرار نهائي على فجوة استراحة',
+        'attendance_overtime_tl_decided' => 'مراجعة قائد الفريق للوقت الإضافي',
+        'attendance_overtime_admin_decided' => 'قرار نهائي على الوقت الإضافي',
+    ],
+    'outside_reasons' => [
+        'before_window' => 'قبل النافذة المخططة',
+        'after_window' => 'بعد النافذة المخططة',
     ],
     'bodies' => [
         'permission_submitted' => 'قدّم :name :type بتاريخ :date.',
@@ -41,5 +51,11 @@ return [
         'report_missing_overdue' => 'لم يقدّم :name تقرير الأمس (:date) — متأخر.',
         'attendance_auto_clock_out' => 'تم إنصراف :name تلقائيًا ليوم :date (:shift) الساعة :time بعد انتهاء فترة السماح.',
         'attendance_geofence_warning' => 'سجّل :name :punch ليوم :date على بعد حوالي :distance م من المكتب (المسموح :radius م).',
+        'attendance_outside_shift_window' => 'سجّل :name :punch ليوم :date (:shift) الساعة :time :reason.',
+        'attendance_gap_pending' => 'لدى :name فجوة استراحة :minutes د في :date (:shift) بانتظار المراجعة.',
+        'attendance_gap_tl_decided' => 'فجوة استراحة :minutes د لـ :name في :date :status من قائد الفريق — بانتظار الإدارة.',
+        'attendance_gap_admin_decided' => 'فجوة استراحتك :minutes د في :date :status.',
+        'attendance_overtime_tl_decided' => 'وقت إضافي :minutes د لـ :name في :date :status من قائد الفريق — بانتظار الإدارة.',
+        'attendance_overtime_admin_decided' => 'وقتك الإضافي :minutes د في :date :status.',
     ],
 ];

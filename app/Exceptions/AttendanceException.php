@@ -42,6 +42,11 @@ class AttendanceException extends RuntimeException
         return new self('clock.errors.report_required');
     }
 
+    public static function fieldUploadNotAllowed(): self
+    {
+        return new self('clock.errors.field_upload_not_allowed');
+    }
+
     public static function shiftNotStartedYet(): self
     {
         return new self('clock.errors.shift_not_started_yet');

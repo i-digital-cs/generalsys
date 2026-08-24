@@ -18,6 +18,12 @@ return [
         'showing' => 'عرض :from–:to من :total',
         'date' => 'التاريخ',
         'absent_hours' => 'ساعات الغياب',
+        'hours_column' => 'الساعات',
+        'minutes_column' => 'الدقائق',
+        'summary' => 'ملخص',
+        'open_details' => 'التفاصيل',
+        'has_photos' => 'صور',
+        'no_review' => 'لا يوجد دوام مغلق للمراجعة في هذا اليوم.',
         'empty_title' => 'لا أيام في هذا النطاق',
         'empty_text' => 'جرّب موظفًا أو فترة أو تصفية أخرى.',
         'kinds' => [

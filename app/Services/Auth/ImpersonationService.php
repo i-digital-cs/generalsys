@@ -9,8 +9,8 @@ use Illuminate\Contracts\Session\Session;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Admin "login as user" (session switch). Off unless Settings enables it.
- * Nested impersonation is blocked; logout still ends the whole session.
+ * Admin "login as user" (session switch). Off unless Settings enables it
+ * (enable requires IMPERSONATION_ENABLE_OTP from .env). Nested switch blocked.
  */
 class ImpersonationService
 {
@@ -24,6 +24,30 @@ class ImpersonationService
     public function isEnabled(): bool
     {
         return $this->settings->boolean(SettingService::KEY_IMPERSONATION_ENABLED);
+    }
+
+    public function otpConfigured(): bool
+    {
+        return $this->configuredOtp() !== '';
+    }
+
+    public function enableWithOtp(string $otp): void
+    {
+        if (! $this->otpConfigured() || ! hash_equals($this->configuredOtp(), $otp)) {
+            throw ImpersonationException::invalidEnableOtp();
+        }
+
+        $this->settings->set(SettingService::KEY_IMPERSONATION_ENABLED, '1');
+    }
+
+    public function disableFeature(): void
+    {
+        $this->settings->set(SettingService::KEY_IMPERSONATION_ENABLED, '0');
+    }
+
+    private function configuredOtp(): string
+    {
+        return (string) config('impersonation.enable_otp', '');
     }
 
     public function isImpersonating(): bool

@@ -19,13 +19,10 @@ CREATE TABLE users (
     job_title_en            VARCHAR(150) NULL,
     email                   VARCHAR(190) NOT NULL UNIQUE,
     password                VARCHAR(255) NOT NULL,
-    role                    ENUM('MANAGER','TEAM_LEADER','EMPLOYEE','ACCOUNTANT','ASSISTANT') NOT NULL DEFAULT 'EMPLOYEE',
+    role                    ENUM('MANAGER','TEAM_LEADER','EMPLOYEE','ACCOUNTANT','ASSISTANT','DRIVER') NOT NULL DEFAULT 'EMPLOYEE',
     currency                ENUM('EGP','AED') NOT NULL,
     language_preference     ENUM('ar','en') NOT NULL DEFAULT 'ar',
-    base_salary             DECIMAL(12,2) NOT NULL DEFAULT 0,
-    online_half_day_rate    DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin sets per employee
-    online_full_day_rate    DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin sets per employee
-    overtime_hourly_rate    DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin sets per employee
+    base_salary             DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin; online/OT derived (base÷30÷2, base÷30, base÷30÷8)
     shift_type_default      ENUM('FULL_TIME','ONLINE_HALF','ONLINE_FULL') NOT NULL DEFAULT 'FULL_TIME',
     shift_types_default     JSON NULL,                               -- list of profiles: FULL_TIME / ONLINE_HALF / ONLINE_FULL (up to 3; T-7.3 / T-7.7)
     work_start_time         TIME NULL,                          -- مواعيد العمل: حضور
@@ -179,11 +176,21 @@ CREATE TABLE attendance (
     clock_out_distance_m     INT UNSIGNED NULL,
     clock_out_outside_geofence TINYINT(1) NOT NULL DEFAULT 0,
     planned_hours            DECIMAL(4,2) NOT NULL DEFAULT 0, -- 8 / 4 / 12 / assigned hours
-    actual_hours             DECIMAL(4,2) NOT NULL DEFAULT 0,
+    actual_hours             DECIMAL(4,2) NOT NULL DEFAULT 0, -- credited hours (cap / TL override)
+    raw_actual_hours         DECIMAL(6,2) NOT NULL DEFAULT 0, -- sum of segment minutes / 60
+    credited_hours           DECIMAL(6,2) NULL,               -- TL/Admin manual override (NULL = auto)
     status                   ENUM('PRESENT','LATE','EARLY_LEAVE','REST_DAY','OFFICIAL_HOLIDAY',
                                   'EXCUSED_ABSENCE','UNEXCUSED_ABSENCE','VACATION') NOT NULL DEFAULT 'PRESENT',
     late_minutes             INT UNSIGNED NOT NULL DEFAULT 0,
+    adjusted_late_minutes    INT UNSIGNED NULL,               -- TL/Admin override (NULL = auto from 1st segment)
     early_departure_minutes  INT UNSIGNED NOT NULL DEFAULT 0,
+    recommended_overtime_minutes INT UNSIGNED NOT NULL DEFAULT 0,
+    overtime_tl_recommendation ENUM('NONE','RECOMMEND','NO_OVERTIME') NOT NULL DEFAULT 'NONE',
+    overtime_tl_by           BIGINT UNSIGNED NULL,
+    overtime_tl_at           TIMESTAMP NULL,
+    overtime_admin_decision  ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
+    overtime_admin_by        BIGINT UNSIGNED NULL,
+    overtime_admin_at        TIMESTAMP NULL,
     is_auto_clock_out        TINYINT(1) NOT NULL DEFAULT 0,   -- true when closed by scheduler (end + grace)
     daily_report             TEXT NULL,
     team_leader_response     TEXT NULL,
@@ -192,6 +199,8 @@ CREATE TABLE attendance (
     updated_at               TIMESTAMP NULL,
     CONSTRAINT fk_att_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_att_tl FOREIGN KEY (assigned_by_tl_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_att_ot_tl FOREIGN KEY (overtime_tl_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_att_ot_admin FOREIGN KEY (overtime_admin_by) REFERENCES users(id) ON DELETE SET NULL,
     UNIQUE KEY uq_att_user_date_shift (user_id, date, shift_type),
     INDEX idx_att_date (date),
     INDEX idx_att_user_month (user_id, date),
@@ -201,11 +210,68 @@ CREATE TABLE attendance (
 
 > Overnight shifts (e.g. 10:00 → 06:00 next day): store real datetimes. The Excel "modify TIME +12:00" hack is **not** carried into the app (see `docs/PAYROLL_CALCULATION.md` §3).
 >
-> Unique `(user_id, date, shift_type)`: one punch cycle per shift type per day. After clock-out, that type is hidden on `/clock`; employee may still clock a **different** type the same day.
+> Unique `(user_id, date, shift_type)`: one **attendance row** per shift type per day; **multiple segments** (clock-in/out pairs) on that row (T-7.9). After clock-out the employee may clock in again on the same shift (mid-shift break); gaps between segments go to TL recommend → Admin final decision. `actual_hours` = credited (min raw, planned, + approved OT); `raw_actual_hours` = segment sum. TL/Admin may override credited hours and late minutes; TL recommends overtime → Admin approves/rejects.
 >
-> **GPS (T-7.2):** lat/lng/accuracy required on manual clock-in/out (browser geolocation; no manual pick). Soft geofence vs Admin Settings office point + radius (default 1 km): outside still accepted; flags + notify employee/TL/Admin. Auto clock-out skips GPS. View like photos: owner · TL team · Manager.
+> **GPS (T-7.2):** lat/lng/accuracy **required for FULL_TIME** clock-in/out only (browser geolocation; no manual pick). Online½ / Online full / Extra / OT do not require GPS. Soft geofence vs Admin Settings office point + radius (default 1 km): outside still accepted; flags + notify employee/TL/Admin. Auto clock-out removed — manual clock-out only. View like photos: owner · TL team · Manager.
 
-## 7b. attendance_photos
+## 7b. attendance_segments
+
+Multiple clock-in → clock-out intervals within one shift row (T-7.9).
+
+```sql
+CREATE TABLE attendance_segments (
+    id                       BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    attendance_id            BIGINT UNSIGNED NOT NULL,
+    sequence                 SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+    clock_in                 DATETIME NOT NULL,
+    clock_out                DATETIME NULL,
+    clock_in_lat             DECIMAL(10,7) NULL,
+    clock_in_lng             DECIMAL(10,7) NULL,
+    clock_in_accuracy_m      INT UNSIGNED NULL,
+    clock_in_distance_m      INT UNSIGNED NULL,
+    clock_in_outside_geofence TINYINT(1) NOT NULL DEFAULT 0,
+    clock_out_lat            DECIMAL(10,7) NULL,
+    clock_out_lng            DECIMAL(10,7) NULL,
+    clock_out_accuracy_m     INT UNSIGNED NULL,
+    clock_out_distance_m     INT UNSIGNED NULL,
+    clock_out_outside_geofence TINYINT(1) NOT NULL DEFAULT 0,
+    created_at               TIMESTAMP NULL,
+    updated_at               TIMESTAMP NULL,
+    CONSTRAINT fk_att_seg_att FOREIGN KEY (attendance_id) REFERENCES attendance(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_att_seg_att_seq (attendance_id, sequence),
+    INDEX idx_att_seg_att (attendance_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+## 7c. attendance_gaps
+
+Unpaid gap between two segments on the same shift. TL recommends APPROVE/REJECT → Admin APPROVED/REJECTED (T-7.9).
+
+```sql
+CREATE TABLE attendance_gaps (
+    id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    attendance_id     BIGINT UNSIGNED NOT NULL,
+    gap_start         DATETIME NOT NULL,
+    gap_end           DATETIME NOT NULL,
+    minutes           INT UNSIGNED NOT NULL,
+    tl_recommendation ENUM('PENDING','APPROVE','REJECT') NOT NULL DEFAULT 'PENDING',
+    tl_decided_by     BIGINT UNSIGNED NULL,
+    tl_decided_at     TIMESTAMP NULL,
+    tl_note           VARCHAR(500) NULL,
+    admin_decision    ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
+    admin_decided_by  BIGINT UNSIGNED NULL,
+    admin_decided_at  TIMESTAMP NULL,
+    admin_note        VARCHAR(500) NULL,
+    created_at        TIMESTAMP NULL,
+    updated_at        TIMESTAMP NULL,
+    CONSTRAINT fk_att_gap_att FOREIGN KEY (attendance_id) REFERENCES attendance(id) ON DELETE CASCADE,
+    CONSTRAINT fk_att_gap_tl FOREIGN KEY (tl_decided_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_att_gap_admin FOREIGN KEY (admin_decided_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_att_gaps_att_admin (attendance_id, admin_decision)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+## 7d. attendance_photos
 
 Optional multi-image proof at clock-in and/or clock-out (T-6.6). Files on `local` disk outside web root; served via authorized route.
 
@@ -213,10 +279,16 @@ Optional multi-image proof at clock-in and/or clock-out (T-6.6). Files on `local
 CREATE TABLE attendance_photos (
     id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     attendance_id   BIGINT UNSIGNED NOT NULL,
-    kind            ENUM('CLOCK_IN','CLOCK_OUT') NOT NULL,
+    attendance_segment_id BIGINT UNSIGNED NULL,            -- links punch photos to segment (T-7.9)
+    kind            ENUM('CLOCK_IN','CLOCK_OUT','FIELD') NOT NULL,
     file_path       VARCHAR(255) NOT NULL,
     original_name   VARCHAR(255) NULL,
-    description     VARCHAR(500) NULL,                   -- optional caption per image (T-6.7)
+    description     VARCHAR(500) NULL,                   -- caption per image (required for DRIVER)
+    lat             DECIMAL(10,7) NULL,                  -- mid-day FIELD GPS (T-7.10)
+    lng             DECIMAL(10,7) NULL,
+    accuracy_m      INT UNSIGNED NULL,
+    distance_m      INT UNSIGNED NULL,
+    outside_geofence TINYINT(1) NOT NULL DEFAULT 0,
     mime_type       VARCHAR(100) NULL,
     size_bytes      INT UNSIGNED NOT NULL DEFAULT 0,
     sort_order      TINYINT UNSIGNED NOT NULL DEFAULT 0,
@@ -224,13 +296,14 @@ CREATE TABLE attendance_photos (
     created_at      TIMESTAMP NULL,
     updated_at      TIMESTAMP NULL,
     CONSTRAINT fk_att_photo_att FOREIGN KEY (attendance_id) REFERENCES attendance(id) ON DELETE CASCADE,
+    CONSTRAINT fk_att_photo_seg FOREIGN KEY (attendance_segment_id) REFERENCES attendance_segments(id) ON DELETE SET NULL,
     INDEX idx_att_photos_att_kind (attendance_id, kind)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-> Optional on both punches; **no count limit**; each file ≤ **50MB** (jpg/jpeg/png/webp) — see `config/attendance.php` `photos.*`. Optional **description** per image (T-6.7). View: owner · team TL · Manager (employees + TLs). UI: `/clock`, employee sessions, TL/Admin today board + hours day list, report review.
+> Optional on both punches; **no count limit**; each file ≤ **50MB** (jpg/jpeg/png/webp) — see `config/attendance.php` `photos.*`. Optional **description** per image (T-6.7); **required** for DRIVER. **FIELD** kind = mid-day uploads while shift is open (DRIVER only; GPS + description required). View: owner · team TL · Manager. UI: `/clock`, employee sessions, TL/Admin today board + hours day list, report review.
 
-## 7c. attendance_daily_scores
+## 7e. attendance_daily_scores
 
 Per-TL daily scores on an attendance row (T-8.5). Attendance % stays on `attendance`. Unique pair: one score row per TL per day.
 
@@ -410,7 +483,7 @@ CREATE TABLE payroll_records (
     rest_days                     SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     extra_shift_hours             DECIMAL(6,2) NOT NULL DEFAULT 0,  -- legacy; folded into overtime_hours (same OT formula)
     overtime_hours                DECIMAL(6,2) NOT NULL DEFAULT 0,  -- total OT hours (EXTRA + OT attendance)
-    overtime_multiplier           DECIMAL(5,2) NOT NULL DEFAULT 0,   -- 0 = use Admin Settings OT multiplier
+    overtime_multiplier           DECIMAL(5,2) NOT NULL DEFAULT 0,   -- 0 = use config/payroll.php overtime multiplier
     friday_work_days              SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     day_off_work_days             SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     official_holiday_work_days    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
@@ -536,9 +609,11 @@ CREATE TABLE official_holidays (
 
 ## 19. settings
 
-Small key/value store backing Admin global settings (language/currency defaults, office geofence, payroll multipliers, **login-as-user**).
+Small key/value store backing Admin global settings (language/currency defaults, office geofence, **login-as-user**).
 
-Known keys (no extra columns): `default_language`, `default_currency`, `office_latitude`, `office_longitude`, `office_radius_meters`, `payroll.multiplier.*`, `impersonation_enabled` (`1`/`0`, default off).
+Known keys (no extra columns): `default_language`, `default_currency`, `office_latitude`, `office_longitude`, `office_radius_meters`, `impersonation_enabled` (`1`/`0`, default off; enabling requires `.env` `IMPERSONATION_ENABLE_OTP`, not the normal Settings form).
+
+Payroll pay multipliers are **not** stored here — defaults live in `config/payroll.php`; per-employee overtime multiplier / extra pay are edited on each payroll draft.
 
 ```sql
 CREATE TABLE settings (

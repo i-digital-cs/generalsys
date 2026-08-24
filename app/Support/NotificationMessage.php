@@ -29,6 +29,12 @@ class NotificationMessage
             'report_missing_overdue' => __('notifications.kinds.report_missing_overdue'),
             'attendance_auto_clock_out' => __('notifications.kinds.attendance_auto_clock_out'),
             'attendance_geofence_warning' => __('notifications.kinds.attendance_geofence_warning'),
+            'attendance_outside_shift_window' => __('notifications.kinds.attendance_outside_shift_window'),
+            'attendance_gap_pending' => __('notifications.kinds.attendance_gap_pending'),
+            'attendance_gap_tl_decided' => __('notifications.kinds.attendance_gap_tl_decided'),
+            'attendance_gap_admin_decided' => __('notifications.kinds.attendance_gap_admin_decided'),
+            'attendance_overtime_tl_decided' => __('notifications.kinds.attendance_overtime_tl_decided'),
+            'attendance_overtime_admin_decided' => __('notifications.kinds.attendance_overtime_admin_decided'),
             default => __('notifications.kinds.generic'),
         };
     }
@@ -106,6 +112,44 @@ class NotificationMessage
                 'date' => $data['date'] ?? '',
                 'distance' => $data['distance_m'] ?? '',
                 'radius' => $data['radius_m'] ?? '',
+            ]),
+            'attendance_outside_shift_window' => __('notifications.bodies.attendance_outside_shift_window', [
+                'name' => $name !== '' ? $name : __('notifications.you'),
+                'punch' => ($data['punch'] ?? '') === 'CLOCK_OUT'
+                    ? __('clock.clock_out')
+                    : __('clock.clock_in'),
+                'date' => $data['date'] ?? '',
+                'shift' => __('clock.shifts.'.($data['shift_type'] ?? 'FULL_TIME')),
+                'time' => $data['time'] ?? '',
+                'reason' => __('notifications.outside_reasons.'.($data['reason'] ?? 'after_window')),
+            ]),
+            'attendance_gap_pending' => __('notifications.bodies.attendance_gap_pending', [
+                'name' => $name !== '' ? $name : ($data['employee'] ?? ''),
+                'minutes' => $data['minutes'] ?? 0,
+                'date' => $data['date'] ?? '',
+                'shift' => __('clock.shifts.'.($data['shift_type'] ?? 'FULL_TIME')),
+            ]),
+            'attendance_gap_tl_decided' => __('notifications.bodies.attendance_gap_tl_decided', [
+                'name' => $name !== '' ? $name : ($data['employee'] ?? ''),
+                'minutes' => $data['minutes'] ?? 0,
+                'date' => $data['date'] ?? '',
+                'status' => __('attendance_gaps.status.'.($data['tl_recommendation'] ?? 'PENDING')),
+            ]),
+            'attendance_gap_admin_decided' => __('notifications.bodies.attendance_gap_admin_decided', [
+                'minutes' => $data['minutes'] ?? 0,
+                'date' => $data['date'] ?? '',
+                'status' => __('attendance_gaps.status.'.($data['admin_decision'] ?? 'PENDING')),
+            ]),
+            'attendance_overtime_tl_decided' => __('notifications.bodies.attendance_overtime_tl_decided', [
+                'name' => $name !== '' ? $name : ($data['employee'] ?? ''),
+                'minutes' => $data['minutes'] ?? 0,
+                'date' => $data['date'] ?? '',
+                'status' => __('attendance_review.breakdown.ot_status.'.($data['tl_recommendation'] ?? 'NONE')),
+            ]),
+            'attendance_overtime_admin_decided' => __('notifications.bodies.attendance_overtime_admin_decided', [
+                'minutes' => $data['minutes'] ?? 0,
+                'date' => $data['date'] ?? '',
+                'status' => __('attendance_review.breakdown.ot_admin.'.($data['admin_decision'] ?? 'PENDING')),
             ]),
             default => '',
         };

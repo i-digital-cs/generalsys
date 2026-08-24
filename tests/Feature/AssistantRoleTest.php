@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Attendance;
 use App\Models\PayrollRecord;
+use App\Models\Permission;
 use App\Models\RestDay;
 use App\Models\ShiftAssignment;
 use App\Models\User;
@@ -12,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * T-7.5 — ASSISTANT: company-wide HR ops including employee salary/rates;
- * no payroll module, no approvals/scores.
+ * no payroll module; leave/vacation/eval still blocked; may finalize attendance gaps.
  */
 class AssistantRoleTest extends TestCase
 {
@@ -40,7 +41,6 @@ class AssistantRoleTest extends TestCase
         $this->employee = User::factory()->employee()->create([
             'team_leader_id' => $this->leader->id,
             'base_salary' => 6000,
-            'online_half_day_rate' => 100,
         ]);
         $this->employee->profile()->create(['employee_code' => 'EMP-A1']);
         $this->employee->contracts()->create([
@@ -72,9 +72,6 @@ class AssistantRoleTest extends TestCase
             ],
             'status' => 'ACTIVE',
             'base_salary' => 4500,
-            'online_half_day_rate' => 80,
-            'online_full_day_rate' => 160,
-            'overtime_hourly_rate' => 40,
             'profile' => [
                 'national_id' => null,
                 'birth_date' => null,
@@ -113,23 +110,17 @@ class AssistantRoleTest extends TestCase
             ->get(route('admin.employees.create'))
             ->assertOk()
             ->assertSee('name="base_salary"', false)
-            ->assertSee('name="online_half_day_rate"', false);
+            ->assertDontSee('name="online_half_day_rate"', false);
 
         $this->actingAs($this->assistant)
             ->post(route('admin.employees.store'), $this->employeePayload([
                 'base_salary' => 5500,
-                'online_half_day_rate' => 90,
-                'online_full_day_rate' => 180,
-                'overtime_hourly_rate' => 45,
             ]))
             ->assertRedirect();
 
         $created = User::where('email', 'assistant.created@hrpro.test')->firstOrFail();
         $this->assertTrue($created->isEmployee());
         $this->assertSame('5500.00', $created->base_salary);
-        $this->assertSame('90.00', $created->online_half_day_rate);
-        $this->assertSame('180.00', $created->online_full_day_rate);
-        $this->assertSame('45.00', $created->overtime_hourly_rate);
     }
 
     public function test_assistant_cannot_create_accountant_or_assistant(): void
@@ -162,9 +153,6 @@ class AssistantRoleTest extends TestCase
                 'password' => '',
                 'name_en' => 'Updated By Assistant',
                 'base_salary' => 7200,
-                'online_half_day_rate' => 110,
-                'online_full_day_rate' => 220,
-                'overtime_hourly_rate' => 55,
                 'contract' => [
                     'hire_date' => '2024-01-01',
                     'contract_start' => '2024-01-01',
@@ -177,9 +165,6 @@ class AssistantRoleTest extends TestCase
         $this->employee->refresh();
         $this->assertSame('Updated By Assistant', $this->employee->name_en);
         $this->assertSame('7200.00', $this->employee->base_salary);
-        $this->assertSame('110.00', $this->employee->online_half_day_rate);
-        $this->assertSame('220.00', $this->employee->online_full_day_rate);
-        $this->assertSame('55.00', $this->employee->overtime_hourly_rate);
     }
 
     public function test_assistant_is_blocked_from_payroll_and_decision_routes(): void
@@ -198,8 +183,25 @@ class AssistantRoleTest extends TestCase
         $this->get(route('admin.advances.index'))->assertForbidden();
         $this->get(route('admin.config.penalties'))->assertForbidden();
         $this->get(route('admin.reports.annual'))->assertForbidden();
-        $this->get(route('team-leader.approvals'))->assertForbidden();
         $this->get(route('team-leader.evaluations'))->assertForbidden();
+        $this->post(route('team-leader.approvals.permissions.approve', Permission::factory()->create([
+            'user_id' => $this->employee->id,
+            'team_leader_id' => $this->leader->id,
+            'status' => Permission::STATUS_PENDING,
+        ])))->assertForbidden();
+    }
+
+    public function test_assistant_can_open_approvals_for_gap_finalize_only(): void
+    {
+        app()->setLocale('en');
+
+        $this->actingAs($this->assistant)
+            ->get(route('team-leader.approvals'))
+            ->assertOk()
+            ->assertSee(__('attendance_gaps.title'), false)
+            ->assertSee(__('attendance_gaps.assistant_subtitle'), false)
+            ->assertDontSee(__('permissions.tl.section_permissions'), false)
+            ->assertDontSee(__('vacations.tl.credit_hint'), false);
     }
 
     public function test_assistant_can_assign_shifts_and_rest_days(): void
@@ -298,9 +300,6 @@ class AssistantRoleTest extends TestCase
                 'role' => User::ROLE_ASSISTANT,
                 'team_leader_id' => $this->leader->id,
                 'base_salary' => 4000,
-                'online_half_day_rate' => 50,
-                'online_full_day_rate' => 100,
-                'overtime_hourly_rate' => 30,
             ]))
             ->assertRedirect();
 

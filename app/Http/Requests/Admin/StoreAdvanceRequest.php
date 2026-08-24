@@ -25,6 +25,7 @@ class StoreAdvanceRequest extends FormRequest
                 'integer',
                 Rule::exists('users', 'id')->whereIn('role', [
                     User::ROLE_EMPLOYEE,
+                    User::ROLE_DRIVER,
                     User::ROLE_TEAM_LEADER,
                     User::ROLE_ACCOUNTANT,
                     User::ROLE_ASSISTANT,

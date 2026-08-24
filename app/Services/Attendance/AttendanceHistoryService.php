@@ -178,6 +178,13 @@ class AttendanceHistoryService
             'has_location' => $hasLocation,
             'outside' => $outside,
             'attendance' => $attendances->sortByDesc('id')->first(),
+            'attendances' => $attendances,
+            'late_minutes' => (int) $attendances->sum('late_minutes'),
+            'early_departure_minutes' => (int) $attendances->sum('early_departure_minutes'),
+            'raw_hours' => round((float) $attendances->sum(fn (Attendance $row) => (float) ($row->raw_actual_hours ?? $row->actual_hours)), 2),
+            'credited_hours' => round((float) $actual['hours'], 2),
+            'gap_minutes' => (int) $attendances->sum(fn (Attendance $row) => (int) $row->gaps->sum('minutes')),
+            'recommended_overtime_minutes' => (int) $attendances->sum('recommended_overtime_minutes'),
         ];
     }
 
@@ -261,7 +268,7 @@ class AttendanceHistoryService
             ->whereIn('user_id', $ids)
             ->whereDate('date', '>=', $from)
             ->whereDate('date', '<=', $to)
-            ->with('photos')
+            ->with(['photos', 'segments', 'gaps'])
             ->orderBy('clock_in')
             ->get()
             ->each(function (Attendance $row) use (&$grouped): void {

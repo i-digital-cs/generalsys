@@ -24,7 +24,7 @@ class SettingController extends Controller
                 (string) config('attendance.location.radius_meters', 1000),
             ),
             'impersonationEnabled' => $this->settings->boolean(SettingService::KEY_IMPERSONATION_ENABLED),
-            'multipliers' => $this->settings->multipliers(),
+            'impersonationOtpConfigured' => filled(config('impersonation.enable_otp')),
         ]);
     }
 
@@ -41,11 +41,6 @@ class SettingController extends Controller
             isset($validated['office_radius_meters'])
                 ? (string) (int) $validated['office_radius_meters']
                 : (string) config('attendance.location.radius_meters', 1000),
-        );
-        $this->settings->setMultipliers($validated['multipliers']);
-        $this->settings->set(
-            SettingService::KEY_IMPERSONATION_ENABLED,
-            ! empty($validated['impersonation_enabled']) ? '1' : '0',
         );
 
         return redirect()

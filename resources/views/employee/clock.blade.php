@@ -18,6 +18,8 @@
 
     <h1 class="h4 mb-3">{{ __('clock.title') }}</h1>
 
+    <x-report-reminder-banner />
+
     @if ($missingReportDate)
         <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2">
             <span>
@@ -37,6 +39,18 @@
                 {{ __('clock.auto_closed_notice', [
                     'time' => $todayAutoClockOut->clock_out?->timezone($tz)->format('H:i'),
                     'shift' => __('clock.shifts.'.$todayAutoClockOut->shift_type),
+                ]) }}
+            </span>
+        </div>
+    @endif
+
+    @if ($staleClosed ?? null)
+        <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+            <span>
+                {{ __('clock.stale_force_closed_notice', [
+                    'date' => $staleClosed->date->translatedFormat('d M Y'),
+                    'time' => $staleClosed->clock_out?->timezone($tz)->format('H:i'),
                 ]) }}
             </span>
         </div>
@@ -96,6 +110,15 @@
                     </div>
                 @endif
 
+                @php
+                    $fieldPhotos = $open?->photos?->where('kind', \App\Models\AttendancePhoto::KIND_FIELD) ?? collect();
+                @endphp
+                @if ($fieldPhotos->isNotEmpty())
+                    <div class="mb-4">
+                        <x-attendance-photos :photos="$fieldPhotos" kind="FIELD" />
+                    </div>
+                @endif
+
                 <div class="mb-4">
                     <x-attendance-location :attendance="$open" kind="CLOCK_IN" />
                 </div>
@@ -104,13 +127,59 @@
                     <x-attendance-flags :attendance="$open" class="mb-0 justify-content-center" />
                 </div>
 
-                <form method="POST" action="{{ route('employee.clock.out') }}" enctype="multipart/form-data" data-clock-form>
+                <div class="mb-4">
+                    <x-attendance-time-metrics :attendance="$open" />
+                </div>
+
+                @if ($fieldUploadsAllowed ?? false)
+                    <div class="card border border-primary-subtle bg-body-tertiary mb-4">
+                        <div class="card-body">
+                            <h2 class="h6 mb-2">{{ __('clock.field_upload.title') }}</h2>
+                            <p class="small text-body-secondary mb-3">{{ __('clock.field_upload.hint') }}</p>
+                            <form method="POST" action="{{ route('employee.clock.field-photos') }}" enctype="multipart/form-data"
+                                  data-clock-form
+                                  data-location-always="1"
+                                  data-location-required="1">
+                                @csrf
+                                @include('partials.clock-location-input', [
+                                    'id' => 'field-photos-gps',
+                                    'required' => true,
+                                    'locationHint' => __('clock.field_upload.location_hint'),
+                                ])
+                                @include('partials.clock-photos-input', [
+                                    'id' => 'field-photos',
+                                    'photosRequired' => true,
+                                    'useTitle' => true,
+                                    'photosLabel' => __('clock.field_upload.photos_label'),
+                                    'photosHint' => __('clock.field_upload.photos_hint', [
+                                        'mb' => $photoMaxMb ?? (int) round(((int) config('attendance.photos.max_kilobytes', 51200)) / 1024),
+                                    ]),
+                                    'photoMaxMb' => $photoMaxMb ?? null,
+                                ])
+                                <button type="submit" class="btn btn-outline-primary w-100" data-clock-submit>
+                                    <i class="bi bi-camera me-2" aria-hidden="true"></i>{{ __('clock.field_upload.submit') }}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('employee.clock.out') }}" enctype="multipart/form-data" data-clock-form
+                      data-location-always="{{ ($locationAlwaysRequired ?? false) ? '1' : '0' }}"
+                      data-location-required="{{ \App\Http\Requests\Employee\ClockLocationRules::isRequiredFor($open->shift_type, auth()->user()) ? '1' : '0' }}">
                     @csrf
                     @error('clock_out')
                         <div class="alert alert-danger">{{ $message }}</div>
                     @enderror
-                    @include('partials.clock-location-input', ['id' => 'clock-out-gps'])
-                    @include('partials.clock-photos-input', ['id' => 'clock-out-photos'])
+                    @include('partials.clock-location-input', [
+                        'id' => 'clock-out-gps',
+                        'required' => \App\Http\Requests\Employee\ClockLocationRules::isRequiredFor($open->shift_type, auth()->user()),
+                    ])
+                        @include('partials.clock-photos-input', [
+                            'id' => 'clock-out-photos',
+                            'photosRequired' => $photosRequired ?? false,
+                            'photoMaxMb' => $photoMaxMb ?? null,
+                        ])
                     <button type="submit" class="btn btn-danger btn-lg w-100 clock-cta" data-clock-submit>
                         <i class="bi bi-box-arrow-left me-2" aria-hidden="true"></i>{{ __('clock.clock_out') }}
                     </button>
@@ -138,7 +207,10 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('employee.clock.in') }}" class="mb-3" enctype="multipart/form-data" data-clock-form>
+                <form method="POST" action="{{ route('employee.clock.in') }}" class="mb-3" enctype="multipart/form-data" data-clock-form
+                      data-location-always="{{ ($locationAlwaysRequired ?? false) ? '1' : '0' }}"
+                      data-location-required-shifts='@json($locationRequiredShifts ?? [\App\Models\Attendance::SHIFT_FULL_TIME])'
+                      data-location-required="{{ \App\Http\Requests\Employee\ClockLocationRules::isRequiredFor(old('shift_type', $preferredShift), auth()->user()) ? '1' : '0' }}">
                     @csrf
                     @if ($todaysAssignment)
                         <div class="alert alert-info py-2">
@@ -146,30 +218,13 @@
                         </div>
                     @endif
                     @if ($shiftTypes === [])
-                        @if ($upcomingShiftTypes !== [])
-                            <div class="alert alert-info">
-                                {{ __('clock.upcoming_wait', [
-                                    'shift' => $shiftLabel,
-                                    'start' => $startLabel ?? '—',
-                                    'end' => $endLabel ?? '—',
-                                ]) }}
-                            </div>
-                        @elseif ($closedShiftTypes !== [])
-                            <div class="alert alert-warning">
-                                {{ __('clock.windows_closed', [
-                                    'shifts' => collect($closedShiftTypes)
-                                        ->map(fn (string $type) => __('clock.shifts.'.$type))
-                                        ->implode(' · '),
-                                ]) }}
-                            </div>
-                        @else
-                            <div class="alert alert-warning">{{ __('clock.no_shifts_left') }}</div>
-                        @endif
+                        <div class="alert alert-warning">{{ __('clock.no_shifts_left') }}</div>
                     @else
                         <div class="mb-3">
                             <label for="shift_type" class="form-label">{{ __('clock.shift_type') }}</label>
                             <select id="shift_type" name="shift_type"
-                                    class="form-select form-select-lg @error('shift_type') is-invalid @enderror" required>
+                                    class="form-select form-select-lg @error('shift_type') is-invalid @enderror"
+                                    data-clock-shift-select required>
                                 @foreach ($shiftTypes as $type)
                                     <option value="{{ $type }}" @selected(old('shift_type', $preferredShift) === $type)>
                                         {{ __('clock.shifts.'.$type) }}
@@ -182,14 +237,53 @@
                             <div class="form-text">{{ __('clock.rotation_hint') }}</div>
                         </div>
 
-                        @include('partials.clock-location-input', ['id' => 'clock-in-gps'])
-                        @include('partials.clock-photos-input', ['id' => 'clock-in-photos'])
+                        @include('partials.clock-location-input', [
+                            'id' => 'clock-in-gps',
+                            'required' => \App\Http\Requests\Employee\ClockLocationRules::isRequiredFor(old('shift_type', $preferredShift), auth()->user()),
+                        ])
+                        @include('partials.clock-photos-input', [
+                            'id' => 'clock-in-photos',
+                            'photosRequired' => $photosRequired ?? false,
+                            'photoMaxMb' => $photoMaxMb ?? null,
+                        ])
 
                         <button type="submit" class="btn btn-primary btn-lg w-100 clock-cta" data-clock-submit>
                             <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>{{ __('clock.clock_in') }}
                         </button>
                     @endif
                 </form>
+
+                @if (($todayAttendances ?? collect())->isNotEmpty())
+                    <div class="mt-4 border-top pt-4">
+                        <h2 class="h6 mb-3">{{ __('clock.today_segments') }}</h2>
+                        @foreach ($todayAttendances as $dayRow)
+                            <div class="mb-3">
+                                <div class="fw-semibold">{{ __('clock.shifts.'.$dayRow->shift_type) }}</div>
+                                <ul class="list-unstyled small mb-2">
+                                    @foreach ($dayRow->segments->sortBy('sequence') as $segment)
+                                        <li class="num-ltr" dir="ltr">
+                                            {{ $segment->clock_in?->timezone($tz)->format('H:i') }}
+                                            –
+                                            {{ $segment->clock_out?->timezone($tz)->format('H:i') ?? '…' }}
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                @foreach ($dayRow->gaps as $gap)
+                                    <div class="small text-body-secondary">
+                                        {{ __('clock.gap_minutes', ['minutes' => $gap->minutes]) }}
+                                        · <x-attendance-gap-status :gap="$gap" class="d-inline-flex" />
+                                    </div>
+                                @endforeach
+                                @if ($dayRow->clock_out !== null || ($dayRow->raw_actual_hours ?? 0) > 0)
+                                    <x-attendance-time-breakdown :attendance="$dayRow" class="mt-2" />
+                                @endif
+                            </div>
+                        @endforeach
+                        @if ($shiftTypes !== [])
+                            <p class="small text-body-secondary mb-0">{{ __('clock.resume_hint') }}</p>
+                        @endif
+                    </div>
+                @endif
             @endif
         </div>
     </div>
@@ -489,13 +583,47 @@
     });
 
     document.querySelectorAll('[data-clock-form]').forEach(function (form) {
+        const shiftSelect = form.querySelector('[data-clock-shift-select]');
+        const locationBox = form.querySelector('[data-location-block]');
+        const requiredShifts = JSON.parse(form.getAttribute('data-location-required-shifts') || '[]');
+
+        const syncLocationRequirement = function () {
+            if (! locationBox) {
+                return;
+            }
+            const always = form.getAttribute('data-location-always') === '1';
+            let required = always || form.getAttribute('data-location-required') === '1';
+            if (! always && shiftSelect && requiredShifts.length) {
+                required = requiredShifts.indexOf(shiftSelect.value) !== -1;
+                form.setAttribute('data-location-required', required ? '1' : '0');
+            }
+            if (always) {
+                form.setAttribute('data-location-required', '1');
+            }
+            locationBox.classList.toggle('d-none', !required);
+            locationBox.querySelectorAll('[data-clock-lat], [data-clock-lng], [data-clock-acc]').forEach(function (input) {
+                input.disabled = !required;
+                if (!required) {
+                    input.value = '';
+                }
+            });
+        };
+
+        if (shiftSelect) {
+            shiftSelect.addEventListener('change', syncLocationRequirement);
+        }
+        syncLocationRequirement();
+
         form.addEventListener('submit', function (event) {
             const box = form.querySelector('[data-clock-location]');
             const lat = form.querySelector('[data-clock-lat]');
             const lng = form.querySelector('[data-clock-lng]');
             const btn = form.querySelector('[data-clock-submit]');
+            const required = form.getAttribute('data-location-required') === '1';
 
-            if (!lat || !lng || !box) return;
+            if (!required || !lat || !lng || !box || box.classList.contains('d-none')) {
+                return;
+            }
 
             if (lat.value !== '' && lng.value !== '') {
                 return;

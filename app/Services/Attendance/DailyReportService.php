@@ -34,7 +34,7 @@ class DailyReportService
         return Attendance::query()
             ->where('user_id', $user->id)
             ->whereDate('date', $date)
-            ->with('photos')
+            ->with(['photos', 'segments', 'gaps'])
             ->orderBy('clock_in')
             ->orderBy('id')
             ->first();
@@ -282,6 +282,7 @@ class DailyReportService
             return User::query()
                 ->whereIn('role', [
                     User::ROLE_EMPLOYEE,
+                    User::ROLE_DRIVER,
                     User::ROLE_TEAM_LEADER,
                     User::ROLE_MANAGER,
                     User::ROLE_ACCOUNTANT,
@@ -292,7 +293,7 @@ class DailyReportService
         }
 
         $query = User::query()
-            ->where('role', User::ROLE_EMPLOYEE)
+            ->whereIn('role', User::fieldStaffRoles())
             ->where('status', User::STATUS_ACTIVE);
 
         if ($actor->isTeamLeader()) {

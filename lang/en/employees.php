@@ -32,6 +32,7 @@ return [
         'qualifications' => 'Qualifications',
         'contacts' => 'Emergency Contacts',
     ],
+    'rates_formula_hint' => 'Online and overtime pay use formulas from base salary (half day = base÷30÷2, full day = base÷30, OT hour = base÷30÷8). Adjust overtime multiplier per employee on the payroll draft.',
     'fields' => [
         'name_ar' => 'Name (Arabic)',
         'name_en' => 'Name (English)',
@@ -56,9 +57,6 @@ return [
         'work_end_time' => 'End',
         'status' => 'Status',
         'base_salary' => 'Base Salary',
-        'online_half_day_rate' => 'Online Half-Day Rate',
-        'online_full_day_rate' => 'Online Full-Day Rate',
-        'overtime_hourly_rate' => 'Overtime Hourly Rate',
         'employee_code' => 'Employee Code',
         'employee_code_hint' => 'Assigned automatically (EMP-001, EMP-002, …).',
         'photo' => 'Personal Photo',
@@ -87,6 +85,7 @@ return [
         'EMPLOYEE' => 'Employee',
         'ACCOUNTANT' => 'Accountant',
         'ASSISTANT' => 'Admin Assistant',
+        'DRIVER' => 'Driver',
     ],
     'statuses' => [
         'ACTIVE' => 'Active',
@@ -171,5 +170,6 @@ return [
     ],
     'validation' => [
         'default_shifts_distinct' => 'Each default shift type can be chosen only once.',
+        'shift_window_mismatch' => ':shift window :start–:end is :window h but planned is :planned h. Use an end near :suggested (or a true overnight window that matches planned hours).',
     ],
 ];

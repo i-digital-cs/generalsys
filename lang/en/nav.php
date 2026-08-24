@@ -5,6 +5,7 @@ return [
     'dashboard' => 'Dashboard',
     'clock' => 'Clock In/Out',
     'daily_report' => 'Daily Report',
+    'media' => 'Media history',
     'requests' => 'My Requests',
     'salary' => 'My Salary',
     'evaluation' => 'My Evaluation',

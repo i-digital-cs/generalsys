@@ -152,11 +152,11 @@ class RestDayService
         }
 
         if ($actor->canManageOperations()) {
-            return $employee->isEmployee() || $employee->isTeamLeader();
+            return $employee->isFieldStaff() || $employee->isTeamLeader();
         }
 
         if ($actor->isTeamLeader()) {
-            return $employee->isEmployee()
+            return $employee->isFieldStaff()
                 && $this->membership->leads($actor, $employee);
         }
 
@@ -168,7 +168,7 @@ class RestDayService
     {
         if ($actor->canManageOperations()) {
             return User::query()
-                ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
+                ->whereIn('role', User::operationsVisibleRoles())
                 ->where('status', User::STATUS_ACTIVE)
                 ->with(['restDays' => fn ($q) => $q->orderBy('date'), 'restDays.pendingReservation'])
                 ->orderBy('name_en')
@@ -177,7 +177,7 @@ class RestDayService
 
         if ($actor->isTeamLeader()) {
             return User::query()
-                ->where('role', User::ROLE_EMPLOYEE)
+                ->whereIn('role', User::fieldStaffRoles())
                 ->ledBy($actor->id)
                 ->where('status', User::STATUS_ACTIVE)
                 ->with(['restDays' => fn ($q) => $q->orderBy('date'), 'restDays.pendingReservation'])

@@ -15,6 +15,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Stale open punch — force-close on next clock-in (no cron)
+    |--------------------------------------------------------------------------
+    |
+    | When a cross-day open punch exists and the employee opens /clock or
+    | clocks in within this many minutes of today's shift start, close the
+    | stale segment at that day's expected end (Hostinger-safe; no scheduler).
+    |
+    */
+    'force_close_before_shift_minutes' => (int) env('ATTENDANCE_FORCE_CLOSE_BEFORE_SHIFT_MINUTES', 60),
+
+    /*
+    |--------------------------------------------------------------------------
     | Clock-in / clock-out photos (T-6.6)
     |--------------------------------------------------------------------------
     |

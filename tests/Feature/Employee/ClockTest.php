@@ -92,10 +92,13 @@ class ClockTest extends TestCase
             ->assertSee('id="clock-elapsed"', false)
             ->assertSee(__('clock.late_minutes'), false);
 
-        // Missing daily report → routed to the report page for that date.
+        // Missing daily report → routed to the report page with a reminder banner.
         $this->actingAs($this->employee)
+            ->followingRedirects()
             ->post(route('employee.clock.out'), $this->withClockGps())
-            ->assertRedirect(route('employee.report', ['date' => now()->toDateString()]));
+            ->assertOk()
+            ->assertSee(__('report.reminder.title', [], 'ar'), false)
+            ->assertSee('report-reminder-banner', false);
 
         $row = Attendance::where('user_id', $this->employee->id)->firstOrFail();
         $this->assertNotNull($row->clock_out);
@@ -134,6 +137,24 @@ class ClockTest extends TestCase
                 'minutes' => 25,
                 'shift' => __('clock.shifts.FULL_TIME'),
             ]), false);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_clock_out_report_reminder_mentions_lateness(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-05 10:25:00', config('app.timezone')));
+
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
+            ->assertRedirect();
+
+        $this->actingAs($this->employee)
+            ->followingRedirects()
+            ->post(route('employee.clock.out'), $this->withClockGps())
+            ->assertOk()
+            ->assertSee('report-reminder-banner', false)
+            ->assertSee('25', false);
 
         Carbon::setTestNow();
     }
@@ -320,7 +341,7 @@ class ClockTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/option value="ONLINE_HALF"/', $html);
     }
 
-    public function test_completed_full_time_is_hidden_and_rejected_same_day(): void
+    public function test_completed_full_time_can_resume_same_day(): void
     {
         $this->actingAs($this->employee)
             ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
@@ -334,24 +355,18 @@ class ClockTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertDoesNotMatchRegularExpression('/option value="FULL_TIME"/', $html);
-        $this->assertDoesNotMatchRegularExpression('/option value="ONLINE_HALF"/', $html);
-        $this->assertStringContainsString(__('clock.no_shifts_left'), $html);
-        $this->assertStringNotContainsString(__('clock.preview_late', [
-            'minutes' => 0,
-            'shift' => __('clock.shifts.FULL_TIME'),
-        ]), $html);
-        $this->assertStringNotContainsString('ستكون متأخرًا', $html);
-        $this->assertStringNotContainsString('will be late', $html);
+        $this->assertMatchesRegularExpression('/option value="FULL_TIME"/', $html);
+        $this->assertStringContainsString(__('clock.resume_hint'), $html);
+        $this->assertStringContainsString(__('clock.today_segments'), $html);
 
         $this->actingAs($this->employee)
             ->from(route('employee.clock'))
             ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect(route('employee.clock'))
-            ->assertSessionHasErrors('shift_type');
+            ->assertSessionHas('success');
     }
 
-    public function test_clock_explains_closed_window_when_other_shift_still_unrecorded(): void
+    public function test_clock_still_offers_missed_full_time_after_evening_online(): void
     {
         $this->employee->update([
             'shift_types_default' => [
@@ -363,10 +378,10 @@ class ClockTest extends TestCase
 
         Carbon::setTestNow(Carbon::parse('2026-08-03 18:05:00', config('app.timezone')));
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_ONLINE_HALF]))
+            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_ONLINE_HALF])
             ->assertRedirect();
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.out'), $this->withClockGps())
+            ->post(route('employee.clock.out'), [])
             ->assertRedirect();
 
         Carbon::setTestNow(Carbon::parse('2026-08-03 20:35:00', config('app.timezone')));
@@ -374,9 +389,7 @@ class ClockTest extends TestCase
         $this->actingAs($this->employee)
             ->get(route('employee.clock'))
             ->assertOk()
-            ->assertSee(__('clock.windows_closed', [
-                'shifts' => __('clock.shifts.FULL_TIME'),
-            ]), false)
+            ->assertSee('value="FULL_TIME"', false)
             ->assertDontSee(__('clock.no_shifts_left'), false);
 
         Carbon::setTestNow();
@@ -394,20 +407,15 @@ class ClockTest extends TestCase
 
         Carbon::setTestNow(Carbon::parse('2026-08-03 20:35:00', config('app.timezone')));
 
-        $html = $this->actingAs($this->employee)
+        $this->actingAs($this->employee)
             ->get(route('employee.clock'))
             ->assertOk()
             ->assertSee(__('clock.clock_in'), false)
             ->assertSee('value="ONLINE_HALF"', false)
-            ->assertDontSee('value="FULL_TIME"', false)
-            ->getContent();
-
-        $this->assertStringNotContainsString(__('clock.windows_closed', [
-            'shifts' => collect([__('clock.shifts.FULL_TIME'), __('clock.shifts.ONLINE_HALF')])->implode(' · '),
-        ]), $html);
+            ->assertSee('value="FULL_TIME"', false);
 
         $this->actingAs($this->employee)
-            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_ONLINE_HALF]))
+            ->post(route('employee.clock.in'), ['shift_type' => Attendance::SHIFT_ONLINE_HALF])
             ->assertRedirect(route('employee.clock'))
             ->assertSessionHas('success');
 

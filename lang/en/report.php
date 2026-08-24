@@ -30,6 +30,18 @@ return [
     'flash' => [
         'saved' => 'Daily report saved.',
     ],
+    'reminder' => [
+        'title' => 'Don\'t forget your daily report',
+        'body' => 'Update today\'s report now — your team leader reads it after you clock out.',
+        'action' => 'Write report now',
+        'late' => 'You were :minutes min late today. Explain why in your report.',
+        'early' => 'You left :minutes min early today. Explain why in your report.',
+        'both' => 'You were :late min late and left :early min early. Explain both in your report.',
+        'on_time' => 'If anything affected your day (breaks, tasks, delays), mention it in your report.',
+        'placeholder_late' => 'Explain why you were late today…',
+        'placeholder_early' => 'Explain why you left early today…',
+        'placeholder_both' => 'Explain why you were late and left early today…',
+    ],
     'errors' => [
         'clock_out_required' => 'Clock out first, then submit your daily report.',
         'locked' => 'This report is locked because your team leader already replied.',

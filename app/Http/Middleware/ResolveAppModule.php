@@ -12,6 +12,9 @@ class ResolveAppModule
 {
     public function handle(Request $request, Closure $next): Response
     {
+        $user = $request->user();
+        $user?->loadMissing('valuationAssignments');
+
         $module = AppModule::fromRequest($request);
 
         View::share('appModule', $module);

@@ -1,0 +1,99 @@
+<?php
+
+namespace App\Http\Controllers\TeamLeader;
+
+use App\Http\Controllers\Controller;
+use App\Models\Attendance;
+use App\Services\Attendance\AttendanceTimeReviewService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * TL/Admin manual credited hours, late override, overtime (T-9.1).
+ */
+class AttendanceReviewController extends Controller
+{
+    public function __construct(
+        private readonly AttendanceTimeReviewService $reviews,
+    ) {}
+
+    public function updateTime(Request $request, Attendance $attendance): RedirectResponse
+    {
+        try {
+            if ($request->boolean('reset_system')) {
+                $this->reviews->applyAdjustments($request->user(), $attendance, [
+                    'credited_hours' => null,
+                    'adjusted_late_minutes' => null,
+                ]);
+
+                return back()->with('success', __('attendance_review.flash.reset'));
+            }
+
+            $validated = $request->validate([
+                'credited_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
+                'adjusted_late_minutes' => ['nullable', 'integer', 'min:0', 'max:720'],
+            ]);
+
+            $this->reviews->applyAdjustments($request->user(), $attendance, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        }
+
+        return back()->with('success', __('attendance_review.flash.saved'));
+    }
+
+    public function tlRecommendOvertime(Request $request, Attendance $attendance): RedirectResponse
+    {
+        $validated = $request->validate([
+            'recommended_overtime_minutes' => ['required', 'integer', 'min:0', 'max:720'],
+            'overtime_tl_recommendation' => ['required', 'in:RECOMMEND,NO_OVERTIME'],
+        ]);
+
+        try {
+            $this->reviews->tlRecommendOvertime(
+                $request->user(),
+                $attendance,
+                (int) $validated['recommended_overtime_minutes'],
+                $validated['overtime_tl_recommendation'],
+            );
+        } catch (ValidationException $e) {
+            throw $e;
+        }
+
+        $filter = $request->input('filter');
+        if (is_string($filter) && in_array($filter, ['pending', 'decided', 'all'], true)) {
+            return redirect()
+                ->route('team-leader.approvals', ['filter' => $filter])
+                ->with('success', __('attendance_review.flash.overtime_tl'));
+        }
+
+        return back()->with('success', __('attendance_review.flash.overtime_tl'));
+    }
+
+    public function adminDecideOvertime(Request $request, Attendance $attendance): RedirectResponse
+    {
+        $validated = $request->validate([
+            'overtime_admin_decision' => ['required', 'in:APPROVED,REJECTED'],
+        ]);
+
+        try {
+            $this->reviews->adminDecideOvertime(
+                $request->user(),
+                $attendance,
+                $validated['overtime_admin_decision'],
+            );
+        } catch (ValidationException $e) {
+            throw $e;
+        }
+
+        $filter = $request->input('filter');
+        if (is_string($filter) && in_array($filter, ['pending', 'decided', 'all'], true)) {
+            return redirect()
+                ->route('team-leader.approvals', ['filter' => $filter])
+                ->with('success', __('attendance_review.flash.overtime_admin'));
+        }
+
+        return back()->with('success', __('attendance_review.flash.overtime_admin'));
+    }
+}

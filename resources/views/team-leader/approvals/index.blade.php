@@ -5,8 +5,12 @@
 @section('content')
     <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
         <div>
-            <h1 class="h4 mb-1">{{ __('permissions.tl.title') }}</h1>
-            <p class="text-body-secondary mb-0">{{ __('permissions.tl.subtitle') }}</p>
+            <h1 class="h4 mb-1">
+                {{ ($canDecideLeave ?? true) ? __('permissions.tl.title') : __('attendance_gaps.title') }}
+            </h1>
+            <p class="text-body-secondary mb-0">
+                {{ ($canDecideLeave ?? true) ? __('permissions.tl.subtitle') : __('attendance_gaps.assistant_subtitle') }}
+            </p>
         </div>
     </div>
 
@@ -31,6 +35,7 @@
         </li>
     </ul>
 
+    @if ($canDecideLeave ?? true)
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-transparent border-0 pt-3 pb-0">
             <h2 class="h6 mb-0">{{ __('permissions.tl.section_permissions') }}</h2>
@@ -134,7 +139,217 @@
             @endif
         </div>
     </div>
+    @endif
 
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-0 pt-3 pb-0">
+            <h2 class="h6 mb-0">{{ __('attendance_gaps.section') }}</h2>
+        </div>
+        <div class="card-body">
+            @php
+                $gapEmptyText = match (true) {
+                    ($canManageOperations ?? false) && $filter === 'pending' => __('attendance_gaps.empty_pending_admin'),
+                    ($canManageOperations ?? false) && $filter === 'decided' => __('attendance_gaps.empty_decided'),
+                    ($canManageOperations ?? false) => __('attendance_gaps.empty_all'),
+                    $filter === 'decided' => __('attendance_gaps.empty_decided'),
+                    default => __('attendance_gaps.empty_pending_tl'),
+                };
+            @endphp
+            @if (($gaps ?? collect())->isEmpty())
+                <x-empty-state
+                    :title="__('attendance_gaps.title')"
+                    :text="$gapEmptyText"
+                    icon="bi-pause-circle"
+                />
+            @else
+                <div class="table-responsive">
+                    <table class="table table-hr table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">{{ __('shifts.employee') }}</th>
+                                <th scope="col" class="col-num">{{ __('attendance.history.date') }}</th>
+                                <th scope="col">{{ __('attendance_gaps.shift') }}</th>
+                                <th scope="col" class="col-num">{{ __('attendance_gaps.section') }}</th>
+                                <th scope="col">{{ __('attendance_gaps.tl_recommend') }}</th>
+                                <th scope="col">{{ __('attendance_gaps.admin_decision') }}</th>
+                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($gaps as $gap)
+                                @php
+                                    $attendance = $gap->attendance;
+                                    $employee = $attendance?->user;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ $employee?->localizedName() }}</div>
+                                        @if (filled($employee?->teamLeaderDisplayNames()))
+                                            <div class="small text-body-secondary">
+                                                {{ __('permissions.fields.submitted_for_team') }}:
+                                                {{ $employee->teamLeaderDisplayNames() }}
+                                            </div>
+                                        @endif
+                                    </td>
+                                    <td class="col-num text-nowrap">
+                                        <span class="num-ltr">{{ $attendance?->date?->translatedFormat('d M Y') }}</span>
+                                    </td>
+                                    <td>{{ $attendance ? __('clock.shifts.'.$attendance->shift_type) : '—' }}</td>
+                                    <td class="col-num text-nowrap">
+                                        <div class="num-ltr">{{ __('attendance_gaps.interval', [
+                                            'start' => $gap->gap_start->format('H:i'),
+                                            'end' => $gap->gap_end->format('H:i'),
+                                        ]) }}</div>
+                                        <div class="small text-body-secondary">{{ __('attendance_gaps.minutes', ['count' => $gap->minutes]) }}</div>
+                                    </td>
+                                    <td>
+                                        <x-attendance-gap-status :gap="$gap" />
+                                        @if ($gap->tlDecider)
+                                            <div class="small text-body-secondary mt-1">
+                                                {{ __('attendance_gaps.decided_by_tl') }}:
+                                                {{ $gap->tlDecider->localizedName() }}
+                                            </div>
+                                        @endif
+                                        @if (filled($gap->tl_note))
+                                            <div class="small text-body-secondary mt-1">{{ $gap->tl_note }}</div>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($gap->admin_decision !== \App\Models\AttendanceGap::ADMIN_PENDING)
+                                            <span @class([
+                                                'badge',
+                                                'text-bg-success' => $gap->admin_decision === \App\Models\AttendanceGap::ADMIN_APPROVED,
+                                                'text-bg-danger' => $gap->admin_decision === \App\Models\AttendanceGap::ADMIN_REJECTED,
+                                            ])>
+                                                {{ __('attendance_gaps.status.'.$gap->admin_decision) }}
+                                            </span>
+                                        @else
+                                            <span class="badge text-bg-secondary">{{ __('attendance_gaps.pending_admin') }}</span>
+                                        @endif
+                                        @if ($gap->adminDecider)
+                                            <div class="small text-body-secondary mt-1">
+                                                {{ __('attendance_gaps.decided_by_admin') }}:
+                                                {{ $gap->adminDecider->localizedName() }}
+                                            </div>
+                                        @endif
+                                        @if (filled($gap->admin_note))
+                                            <div class="small text-body-secondary mt-1">{{ $gap->admin_note }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="text-end">
+                                        @if ($gap->tl_recommendation === \App\Models\AttendanceGap::TL_PENDING && auth()->user()?->isTeamLeader() && ! ($canManageOperations ?? false))
+                                            <form method="POST" action="{{ route('team-leader.approvals.gaps.recommend', $gap) }}" class="text-start">
+                                                @csrf
+                                                <input type="hidden" name="filter" value="{{ $filter }}">
+                                                <label class="form-label small mb-1">{{ __('attendance_gaps.note') }}</label>
+                                                <textarea name="note" rows="2" maxlength="500" class="form-control form-control-sm mb-2"></textarea>
+                                                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                                    <button type="submit" name="recommendation" value="APPROVE" class="btn btn-sm btn-success">
+                                                        {{ __('attendance_gaps.recommend_approve') }}
+                                                    </button>
+                                                    <button type="submit" name="recommendation" value="REJECT" class="btn btn-sm btn-outline-danger">
+                                                        {{ __('attendance_gaps.recommend_reject') }}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        @elseif ($gap->isPendingForAdmin() && ($canManageOperations ?? false))
+                                            <form method="POST" action="{{ route('team-leader.approvals.gaps.decide', $gap) }}" class="text-start">
+                                                @csrf
+                                                <input type="hidden" name="filter" value="{{ $filter }}">
+                                                <label class="form-label small mb-1">{{ __('attendance_gaps.note') }}</label>
+                                                <textarea name="note" rows="2" maxlength="500" class="form-control form-control-sm mb-2"></textarea>
+                                                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                                    <button type="submit" name="decision" value="APPROVED" class="btn btn-sm btn-success">
+                                                        {{ __('attendance_gaps.approve') }}
+                                                    </button>
+                                                    <button type="submit" name="decision" value="REJECTED" class="btn btn-sm btn-outline-danger">
+                                                        {{ __('attendance_gaps.reject') }}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        @else
+                                            <span class="small text-body-secondary">—</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-transparent border-0 pt-3 pb-0">
+            <h2 class="h6 mb-0">{{ __('attendance_review.overtime.section') }}</h2>
+        </div>
+        <div class="card-body">
+            @if ($overtimeRows->isEmpty())
+                @php
+                    $overtimeEmpty = match (true) {
+                        ($canManageOperations ?? false) && $filter === 'pending' => __('attendance_review.overtime.empty_pending_admin'),
+                        ($canManageOperations ?? false) && $filter === 'decided' => __('attendance_review.overtime.empty_decided'),
+                        ($canManageOperations ?? false) => __('attendance_review.overtime.empty_all'),
+                        $filter === 'decided' => __('attendance_review.overtime.empty_decided'),
+                        default => __('attendance_review.overtime.empty_pending_tl'),
+                    };
+                @endphp
+                <x-empty-state
+                    :title="__('attendance_review.overtime.section')"
+                    :text="$overtimeEmpty"
+                    icon="bi-clock-history"
+                />
+            @else
+                <div class="table-responsive">
+                    <table class="table table-hr table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">{{ __('attendance.history.employee') }}</th>
+                                <th scope="col" class="col-num">{{ __('attendance.history.date') }}</th>
+                                <th scope="col">{{ __('attendance_gaps.shift') }}</th>
+                                <th scope="col" class="col-num">{{ __('attendance_review.planned_hours') }}</th>
+                                <th scope="col" class="col-num">{{ __('attendance_review.raw_hours') }}</th>
+                                <th scope="col">{{ __('attendance_review.overtime.recommendation') }}</th>
+                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($overtimeRows as $overtimeRow)
+                                @php
+                                    $employee = $overtimeRow->user;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ $employee?->localizedName() }}</div>
+                                    </td>
+                                    <td class="col-num text-nowrap">
+                                        <span class="num-ltr">{{ $overtimeRow->date?->translatedFormat('d M Y') }}</span>
+                                    </td>
+                                    <td>{{ __('clock.shifts.'.$overtimeRow->shift_type) }}</td>
+                                    <td class="col-num num-ltr">{{ number_format((float) $overtimeRow->planned_hours, 2) }}h</td>
+                                    <td class="col-num num-ltr">{{ number_format((float) $overtimeRow->raw_actual_hours, 2) }}h</td>
+                                    <td>
+                                        <x-attendance-overtime-status :attendance="$overtimeRow" />
+                                    </td>
+                                    <td class="text-end">
+                                        <x-attendance-overtime-review
+                                            :attendance="$overtimeRow"
+                                            :filter="$filter"
+                                            compact
+                                            class="text-start d-inline-block"
+                                        />
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    @if ($canDecideLeave ?? true)
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-transparent border-0 pt-3 pb-0">
             <h2 class="h6 mb-0">{{ __('vacations.tl.section') }}</h2>
@@ -243,4 +458,5 @@
             @endif
         </div>
     </div>
+    @endif
 @endsection

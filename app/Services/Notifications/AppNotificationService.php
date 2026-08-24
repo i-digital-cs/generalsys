@@ -3,11 +3,15 @@
 namespace App\Services\Notifications;
 
 use App\Models\Attendance;
+use App\Models\AttendanceGap;
 use App\Models\Permission;
 use App\Models\User;
 use App\Models\Vacation;
 use App\Notifications\AttendanceAutoClockOutNotification;
+use App\Notifications\AttendanceGapNotification;
 use App\Notifications\AttendanceGeofenceWarningNotification;
+use App\Notifications\AttendanceOutsideShiftWindowNotification;
+use App\Notifications\AttendanceOvertimeNotification;
 use App\Notifications\DailyReportMissingNotification;
 use App\Notifications\DailyReportRepliedNotification;
 use App\Notifications\DailyReportSubmittedNotification;
@@ -137,7 +141,7 @@ class AppNotificationService
         $notification = new DailyReportMissingNotification($attendance, $person, $date, $kind);
         $sent = 0;
 
-        if ($person->isEmployee()) {
+        if ($person->isFieldStaff()) {
             $sent += $this->notifyMembershipLeaders($person, $notification);
         }
 
@@ -180,6 +184,29 @@ class AppNotificationService
     }
 
     /**
+     * Punch accepted outside planned window — notify employee + TL(s) + Manager/Assistant.
+     */
+    public function attendanceOutsideShiftWindow(
+        Attendance $attendance,
+        string $kindPunch,
+        string $reason,
+    ): void {
+        $attendance->loadMissing('user');
+        $notification = new AttendanceOutsideShiftWindowNotification(
+            $attendance,
+            $kindPunch,
+            $reason,
+        );
+
+        if ($attendance->user !== null) {
+            $attendance->user->notify($notification);
+        }
+
+        $this->notifyMembershipLeaders($attendance->user, $notification);
+        $this->notifyOperationsAdmins($notification);
+    }
+
+    /**
      * Soft geofence: punch accepted outside office — notify employee + TL + managers + assistants.
      */
     public function attendanceGeofenceWarning(
@@ -187,6 +214,8 @@ class AppNotificationService
         string $kindPunch,
         int $distanceM,
         int $radiusM,
+        ?float $lat = null,
+        ?float $lng = null,
     ): void {
         $attendance->loadMissing('user');
         $notification = new AttendanceGeofenceWarningNotification(
@@ -194,6 +223,8 @@ class AppNotificationService
             $kindPunch,
             $distanceM,
             $radiusM,
+            $lat,
+            $lng,
         );
 
         if ($attendance->user !== null) {
@@ -203,6 +234,54 @@ class AppNotificationService
         $this->notifyMembershipLeaders($attendance->user, $notification);
 
         $this->notifyOperationsAdmins($notification);
+    }
+
+    public function attendanceGapPending(AttendanceGap $gap, User $person): void
+    {
+        $notification = new AttendanceGapNotification($gap, 'attendance_gap_pending');
+        $person->notify($notification);
+        $this->notifyMembershipLeaders($person, $notification);
+        $this->notifyOperationsAdmins($notification);
+    }
+
+    public function attendanceGapTlRecommended(AttendanceGap $gap): void
+    {
+        $gap->loadMissing('attendance.user');
+        $notification = new AttendanceGapNotification($gap, 'attendance_gap_tl_decided');
+        if ($gap->attendance?->user !== null) {
+            $gap->attendance->user->notify($notification);
+        }
+        $this->notifyOperationsAdmins($notification);
+    }
+
+    public function attendanceGapAdminDecided(AttendanceGap $gap): void
+    {
+        $gap->loadMissing('attendance.user');
+        $notification = new AttendanceGapNotification($gap, 'attendance_gap_admin_decided');
+        if ($gap->attendance?->user !== null) {
+            $gap->attendance->user->notify($notification);
+        }
+        $this->notifyMembershipLeaders($gap->attendance?->user, $notification);
+    }
+
+    public function attendanceOvertimeTlRecommended(Attendance $attendance): void
+    {
+        $attendance->loadMissing('user');
+        $notification = new AttendanceOvertimeNotification($attendance, 'attendance_overtime_tl_decided');
+        if ($attendance->user !== null) {
+            $attendance->user->notify($notification);
+        }
+        $this->notifyOperationsAdmins($notification);
+    }
+
+    public function attendanceOvertimeAdminDecided(Attendance $attendance): void
+    {
+        $attendance->loadMissing('user');
+        $notification = new AttendanceOvertimeNotification($attendance, 'attendance_overtime_admin_decided');
+        if ($attendance->user !== null) {
+            $attendance->user->notify($notification);
+        }
+        $this->notifyMembershipLeaders($attendance->user, $notification);
     }
 
     /**

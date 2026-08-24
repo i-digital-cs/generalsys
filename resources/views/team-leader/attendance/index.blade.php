@@ -87,25 +87,42 @@
                 />
             @else
                 <div class="table-responsive">
-                    <table class="table table-hr table-sm table-hover align-middle mb-0">
+                    <table class="table table-hr table-attendance-history table-sm table-hover align-middle mb-0">
                         <thead>
                             <tr>
                                 <th scope="col">{{ __('attendance.history.employee') }}</th>
                                 <th scope="col" class="col-num">{{ __('attendance.history.date') }}</th>
                                 <th scope="col">{{ __('attendance.history.kind') }}</th>
-                                <th scope="col" class="col-num">{{ __('dashboard.hours.should_spend') }}</th>
-                                <th scope="col" class="col-num">{{ __('dashboard.hours.spent') }}</th>
-                                <th scope="col" class="col-num">{{ __('attendance.history.absent_hours') }}</th>
-                                <th scope="col">{{ __('clock.photos.title') }} / {{ __('clock.location.title') }}</th>
+                                <th scope="col">{{ __('attendance.history.summary') }}</th>
+                                <th scope="col" class="text-end">{{ __('general.actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($days as $row)
                                 @php
                                     $name = app()->getLocale() === 'ar' ? $row['user']->name_ar : $row['user']->name_en;
+                                    $employeeFilterUrl = route('team-leader.attendance', [
+                                        'employee_id' => $row['user']->id,
+                                        'from' => $from,
+                                        'to' => $to,
+                                        'kind' => $kind,
+                                        'evidence' => $evidence,
+                                    ]);
+                                    $employeeUrl = auth()->user()?->canManageOperations()
+                                        ? route('admin.employees.edit', $row['user'])
+                                        : $employeeFilterUrl;
+                                    $modalId = 'att-day-'.$row['user']->id.'-'.str_replace('-', '', $row['date']).'-'.$loop->index;
+                                    $late = (int) ($row['late_minutes'] ?? 0);
+                                    $gap = (int) ($row['gap_minutes'] ?? 0);
+                                    $ot = (int) ($row['recommended_overtime_minutes'] ?? 0);
                                 @endphp
                                 <tr>
-                                    <td class="fw-semibold">{{ $name }}</td>
+                                    <td>
+                                        <a href="{{ $employeeUrl }}"
+                                           class="link-body-emphasis text-decoration-none fw-semibold">
+                                            {{ $name }}
+                                        </a>
+                                    </td>
                                     <td class="col-num text-nowrap">
                                         <span class="num-ltr">{{ \Carbon\Carbon::parse($row['date'])->translatedFormat('d M Y') }}</span>
                                     </td>
@@ -120,29 +137,188 @@
                                             {{ __('attendance.history.kinds.'.$row['kind']) }}
                                         </span>
                                     </td>
-                                    <td class="col-num"><span class="num-ltr">{{ number_format($row['planned_hours'], 2) }}h</span></td>
-                                    <td class="col-num"><span class="num-ltr">{{ number_format($row['actual_hours'], 2) }}h</span></td>
-                                    <td class="col-num">
-                                        <span @class(['num-ltr', 'text-danger fw-semibold' => $row['absent_hours'] > 0.01])>
-                                            {{ number_format($row['absent_hours'], 2) }}h
-                                        </span>
-                                    </td>
                                     <td>
-                                        @if ($row['has_photos'])
-                                            <x-attendance-photos :photos="$row['photos']" compact />
-                                        @endif
-                                        @if ($row['attendance'])
-                                            <x-attendance-location :attendance="$row['attendance']" compact class="mt-1" />
-                                        @endif
-                                        @if (! $row['has_photos'] && ! $row['has_location'])
-                                            <span class="small text-body-secondary">{{ __('clock.photos.none') }}</span>
-                                        @endif
+                                        <div class="d-flex flex-wrap gap-1 align-items-center">
+                                            <span class="badge text-bg-light border text-dark">
+                                                {{ __('dashboard.hours.should_spend') }}:
+                                                <span class="num-ltr">{{ number_format($row['planned_hours'], 2) }}h</span>
+                                            </span>
+                                            <span class="badge text-bg-secondary">
+                                                {{ __('dashboard.hours.spent') }}:
+                                                <span class="num-ltr">{{ number_format($row['actual_hours'], 2) }}h</span>
+                                            </span>
+                                            @if ($late > 0)
+                                                <span class="badge text-bg-warning text-dark">
+                                                    {{ __('clock.late_minutes') }}:
+                                                    <span class="num-ltr">{{ $late }}</span>
+                                                </span>
+                                            @endif
+                                            @if ($gap > 0)
+                                                <span class="badge text-bg-dark">
+                                                    {{ __('attendance_review.breakdown.gap') }}:
+                                                    <span class="num-ltr">{{ $gap }}</span>
+                                                </span>
+                                            @endif
+                                            @if ($ot > 0)
+                                                <span class="badge text-bg-primary">
+                                                    {{ __('attendance_review.overtime_minutes') }}:
+                                                    <span class="num-ltr">{{ $ot }}</span>
+                                                </span>
+                                            @endif
+                                            @if ($row['has_photos'])
+                                                <span class="badge text-bg-info text-dark">
+                                                    <i class="bi bi-camera" aria-hidden="true"></i>
+                                                    {{ __('attendance.history.has_photos') }}
+                                                </span>
+                                            @endif
+                                            @foreach ($row['attendances'] ?? [] as $attRow)
+                                                <x-attendance-location-badges
+                                                    :attendance="$attRow"
+                                                    :user="$row['user']"
+                                                />
+                                            @endforeach
+                                        </div>
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-primary"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#{{ $modalId }}">
+                                            <i class="bi bi-window" aria-hidden="true"></i>
+                                            {{ __('attendance.history.open_details') }}
+                                        </button>
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
+
+                @foreach ($days as $row)
+                    @php
+                        $name = app()->getLocale() === 'ar' ? $row['user']->name_ar : $row['user']->name_en;
+                        $modalId = 'att-day-'.$row['user']->id.'-'.str_replace('-', '', $row['date']).'-'.$loop->index;
+                        $reviewable = collect($row['attendances'] ?? [])
+                            ->filter(fn ($a) => $a->clock_out !== null)
+                            ->values();
+                        $late = (int) ($row['late_minutes'] ?? 0);
+                        $gap = (int) ($row['gap_minutes'] ?? 0);
+                        $ot = (int) ($row['recommended_overtime_minutes'] ?? 0);
+                    @endphp
+                    <div class="modal fade attendance-detail-modal" id="{{ $modalId }}" tabindex="-1"
+                         aria-labelledby="{{ $modalId }}-label" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header border-0 pb-0">
+                                    <div>
+                                        <h2 class="modal-title h5 mb-0" id="{{ $modalId }}-label">
+                                            {{ $name }}
+                                        </h2>
+                                        <p class="small text-body-secondary mb-0 mt-1">
+                                            <span class="num-ltr">{{ \Carbon\Carbon::parse($row['date'])->translatedFormat('d M Y') }}</span>
+                                            · {{ __('attendance.history.kinds.'.$row['kind']) }}
+                                        </p>
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                            aria-label="{{ __('general.close') }}"></button>
+                                </div>
+                                <div class="modal-body pt-3">
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <div class="attendance-detail-section h-100">
+                                                <h3 class="h6 mb-3">{{ __('attendance.history.hours_column') }}</h3>
+                                                <dl class="row mb-0 small">
+                                                    <dt class="col-7">{{ __('dashboard.hours.should_spend') }}</dt>
+                                                    <dd class="col-5 num-ltr text-end mb-2">{{ number_format($row['planned_hours'], 2) }}h</dd>
+                                                    <dt class="col-7">{{ __('attendance_review.raw_hours') }}</dt>
+                                                    <dd class="col-5 num-ltr text-end mb-2">{{ number_format($row['raw_hours'], 2) }}h</dd>
+                                                    <dt class="col-7">{{ __('dashboard.hours.spent') }}</dt>
+                                                    <dd class="col-5 num-ltr text-end mb-0">{{ number_format($row['actual_hours'], 2) }}h</dd>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="attendance-detail-section h-100">
+                                                <h3 class="h6 mb-3">{{ __('attendance.history.minutes_column') }}</h3>
+                                                <dl class="row mb-0 small">
+                                                    <dt class="col-7">{{ __('clock.late_minutes') }}</dt>
+                                                    <dd class="col-5 num-ltr text-end mb-2">{{ $late }}</dd>
+                                                    <dt class="col-7">{{ __('attendance_review.early_minutes') }}</dt>
+                                                    <dd class="col-5 num-ltr text-end mb-2">{{ (int) ($row['early_departure_minutes'] ?? 0) }}</dd>
+                                                    <dt class="col-7">{{ __('attendance_review.breakdown.gap') }}</dt>
+                                                    <dd class="col-5 num-ltr text-end mb-2">{{ $gap }}</dd>
+                                                    @if ($ot > 0)
+                                                        <dt class="col-7">{{ __('attendance_review.overtime_minutes') }}</dt>
+                                                        <dd class="col-5 num-ltr text-end mb-0">{{ $ot }}</dd>
+                                                    @endif
+                                                </dl>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if ($row['has_photos'] || $row['has_location'])
+                                        <div class="attendance-detail-section mb-3">
+                                            <h3 class="h6 mb-3">{{ __('attendance.history.evidence') }}</h3>
+                                            @if ($row['has_photos'])
+                                                <x-attendance-photos :photos="$row['photos']" />
+                                            @endif
+                                            @foreach ($row['attendances'] ?? [] as $attRow)
+                                                @if ($attRow->clock_in_lat !== null || $attRow->clock_out_lat !== null)
+                                                    <x-attendance-location
+                                                        :attendance="$attRow"
+                                                        :user="$row['user']"
+                                                        class="{{ $loop->first && ! $row['has_photos'] ? '' : 'mt-3' }}"
+                                                    />
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    @forelse ($reviewable as $attendanceRow)
+                                        <div @class(['attendance-detail-section', 'mb-3' => ! $loop->last])>
+                                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                                <h3 class="h6 mb-0">{{ __('clock.shifts.'.$attendanceRow->shift_type) }}</h3>
+                                                <x-attendance-location-badges
+                                                    :attendance="$attendanceRow"
+                                                    :user="$row['user']"
+                                                />
+                                            </div>
+
+                                            <x-attendance-shift-timeline
+                                                :attendance="$attendanceRow"
+                                                class="mb-3"
+                                            />
+
+                                            <x-attendance-time-breakdown
+                                                :attendance="$attendanceRow"
+                                                review
+                                                :show-overtime-section="false"
+                                            />
+
+                                            <x-attendance-overtime-review
+                                                :attendance="$attendanceRow"
+                                                embedded
+                                                class="mt-3"
+                                            />
+                                        </div>
+                                    @empty
+                                        <div class="attendance-detail-section">
+                                            <p class="small text-body-secondary mb-0">
+                                                {{ __('attendance.history.no_review') }}
+                                            </p>
+                                        </div>
+                                    @endforelse
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                        {{ __('general.close') }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+
                 <div class="mt-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
                     <p class="small text-body-secondary mb-0">
                         {{ __('attendance.history.showing', [

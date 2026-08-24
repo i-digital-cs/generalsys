@@ -11,9 +11,11 @@ class AttendanceGeofenceWarningNotification extends Notification
 {
     public function __construct(
         public Attendance $attendance,
-        public string $kindPunch, // CLOCK_IN | CLOCK_OUT
+        public string $kindPunch, // CLOCK_IN | CLOCK_OUT | FIELD
         public int $distanceM,
         public int $radiusM,
+        public ?float $latOverride = null,
+        public ?float $lngOverride = null,
     ) {}
 
     /** @return list<string> */
@@ -27,10 +29,16 @@ class AttendanceGeofenceWarningNotification extends Notification
     {
         $this->attendance->loadMissing('user');
         $employee = $this->attendance->user;
-        $isIn = $this->kindPunch === 'CLOCK_IN';
 
-        $lat = $isIn ? $this->attendance->clock_in_lat : $this->attendance->clock_out_lat;
-        $lng = $isIn ? $this->attendance->clock_in_lng : $this->attendance->clock_out_lng;
+        $lat = $this->latOverride;
+        $lng = $this->lngOverride;
+        if ($lat === null || $lng === null) {
+            $isIn = $this->kindPunch === 'CLOCK_IN';
+            $lat = $isIn ? $this->attendance->clock_in_lat : $this->attendance->clock_out_lat;
+            $lng = $isIn ? $this->attendance->clock_in_lng : $this->attendance->clock_out_lng;
+            $lat = $lat !== null ? (float) $lat : null;
+            $lng = $lng !== null ? (float) $lng : null;
+        }
 
         return [
             'kind' => 'attendance_geofence_warning',
@@ -42,8 +50,8 @@ class AttendanceGeofenceWarningNotification extends Notification
             'date' => $this->attendance->date->toDateString(),
             'distance_m' => $this->distanceM,
             'radius_m' => $this->radiusM,
-            'lat' => $lat !== null ? (float) $lat : null,
-            'lng' => $lng !== null ? (float) $lng : null,
+            'lat' => $lat,
+            'lng' => $lng,
             'maps_url' => ($lat !== null && $lng !== null)
                 ? sprintf('https://www.google.com/maps?q=%s,%s', $lat, $lng)
                 : null,

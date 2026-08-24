@@ -19,6 +19,8 @@
         @endunless
     </div>
 
+    <x-report-reminder-banner />
+
     <div class="row g-3">
         <div class="col-12 col-lg-7">
             <div class="card border-0 shadow-sm">
@@ -56,6 +58,8 @@
                             </div>
                         @endif
 
+                        <x-attendance-time-breakdown :attendance="$main" class="mb-4" />
+
                         @if ($isLocked)
                             <div class="alert alert-info">{{ __('report.errors.locked') }}</div>
                             <div class="mb-3">
@@ -63,6 +67,17 @@
                                 <div class="border rounded p-3 bg-body-tertiary">{{ $main->daily_report }}</div>
                             </div>
                         @elseif ($canSubmit)
+                            @php
+                                $reminder = session('report_reminder');
+                                $late = max(0, (int) ($reminder['late_minutes'] ?? 0));
+                                $early = max(0, (int) ($reminder['early_minutes'] ?? 0));
+                                $reportPlaceholder = match (true) {
+                                    $late > 0 && $early > 0 => __('report.reminder.placeholder_both'),
+                                    $late > 0 => __('report.reminder.placeholder_late'),
+                                    $early > 0 => __('report.reminder.placeholder_early'),
+                                    default => null,
+                                };
+                            @endphp
                             <form method="POST" action="{{ route('employee.report.store') }}">
                                 @csrf
                                 <input type="hidden" name="date" value="{{ $date }}">
@@ -70,7 +85,8 @@
                                     <label for="daily_report" class="form-label">{{ __('report.body') }}</label>
                                     <textarea id="daily_report" name="daily_report" rows="8"
                                               class="form-control @error('daily_report') is-invalid @enderror"
-                                              required maxlength="5000">{{ old('daily_report', $main->daily_report) }}</textarea>
+                                              required maxlength="5000"
+                                              @if ($reportPlaceholder) placeholder="{{ $reportPlaceholder }}" @endif>{{ old('daily_report', $main->daily_report) }}</textarea>
                                     @error('daily_report')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror

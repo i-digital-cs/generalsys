@@ -26,6 +26,7 @@
                     <th scope="col">{{ __('clock.photos.title') }} / {{ __('clock.location.title') }}</th>
                     <th scope="col" class="col-num">{{ __('dashboard.hours.should_spend') }}</th>
                     <th scope="col" class="col-num">{{ __('dashboard.hours.spent') }}</th>
+                    <th scope="col">{{ __('attendance_review.comparison.title') }}</th>
                     <th scope="col" class="col-num">{{ __('dashboard.hours.pct') }}</th>
                 </tr>
             </thead>
@@ -64,6 +65,19 @@
                         </td>
                         <td class="col-num"><span class="num-ltr">{{ number_format($row['planned'], 2) }}h</span></td>
                         <td class="col-num"><span class="num-ltr">{{ number_format($row['actual'], 2) }}h</span></td>
+                        <td>
+                            @foreach (($row['attendances'] ?? collect()) as $attendanceRow)
+                                <div class="mb-1">
+                                    <span class="small text-body-secondary">{{ __('clock.shifts.'.$attendanceRow->shift_type) }}</span>
+                                    <x-attendance-time-metrics :attendance="$attendanceRow" />
+                                </div>
+                            @endforeach
+                            @if (empty($row['attendances']) && ! empty($row['attendance']))
+                                <x-attendance-time-metrics :attendance="$row['attendance']" />
+                            @elseif (empty($row['attendances']) && empty($row['attendance']))
+                                <span class="small text-body-secondary">—</span>
+                            @endif
+                        </td>
                         <td class="col-num">
                             <span class="num-ltr">
                                 {{ $row['pct'] === null ? '—' : number_format($row['pct'], 1).'%' }}
@@ -72,7 +86,7 @@
                     </tr>
                 @endforeach
                 <tr data-table-empty-row class="d-none">
-                    <td colspan="6" class="text-body-secondary text-center py-3">
+                    <td colspan="7" class="text-body-secondary text-center py-3">
                         {{ __('general.no_filter_results') }}
                     </td>
                 </tr>

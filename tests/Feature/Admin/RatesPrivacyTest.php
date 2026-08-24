@@ -23,8 +23,7 @@ class RatesPrivacyTest extends TestCase
             ->get(route('admin.employees.edit', $employee))
             ->assertOk()
             ->assertSee('base_salary')
-            ->assertSee('online_half_day_rate')
-            ->assertSee('overtime_hourly_rate');
+            ->assertSee(__('employees.rates_formula_hint'), false);
     }
 
     public function test_team_leader_gets_403_on_rates_screen(): void
@@ -54,7 +53,6 @@ class RatesPrivacyTest extends TestCase
     {
         $employee = User::factory()->employee()->create([
             'base_salary' => 9876,
-            'online_half_day_rate' => 123,
         ]);
         $employee->profile()->create(['employee_code' => 'EMP-P1']);
 
@@ -62,9 +60,6 @@ class RatesPrivacyTest extends TestCase
             ->get(route('employee.profile'))
             ->assertOk()
             ->assertDontSee('base_salary')
-            ->assertDontSee('online_half_day_rate')
-            ->assertDontSee('online_full_day_rate')
-            ->assertDontSee('overtime_hourly_rate')
             ->assertDontSee(__('employees.sections.rates'));
     }
 
@@ -78,8 +73,7 @@ class RatesPrivacyTest extends TestCase
             ->get(route('admin.employees.edit', $employee))
             ->assertOk()
             ->assertSee('base_salary')
-            ->assertSee('online_half_day_rate')
-            ->assertSee('overtime_hourly_rate');
+            ->assertSee(__('employees.rates_formula_hint'), false);
     }
 
     public function test_policy_denies_rates_update_to_team_leader_and_employee(): void

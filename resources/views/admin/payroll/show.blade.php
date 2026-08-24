@@ -52,9 +52,7 @@
         ];
         $dayRate = $emp ? round(((float) $emp->base_salary) / 30, 2) : 0;
         $plannedHours = (float) config('payroll.planned_hours_full_time', 8);
-        $otHourly = $emp && (float) $emp->overtime_hourly_rate > 0
-            ? (float) $emp->overtime_hourly_rate
-            : ($dayRate > 0 ? round($dayRate / max($plannedHours, 1), 4) : 0);
+        $otHourly = $dayRate > 0 ? round($dayRate / max($plannedHours, 1), 4) : 0;
         // EXTRA + OT attendance pay the same formula — one editable total.
         $otHoursTotal = (float) $payroll->overtime_hours + (float) $payroll->extra_shift_hours;
         $otMult = (float) $payroll->overtime_multiplier > 0

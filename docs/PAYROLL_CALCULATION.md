@@ -170,13 +170,13 @@ All logic lives in services (never controllers) — see `AGENTS.md`:
 | J6–J9 + Interest Return avgs | `EvaluationService::monthlyFromDaily()` — `AVG` of daily score columns | `attendance` scores |
 | Total | `EvaluationService` — `array_sum($scores)/5` | 5 scores (Excel J10 was /4) |
 | D39/D41 `base/30×days` | `PayrollCalculator::dayRatePay()` — `base / divisor × days` (divisor from `penalty_rules`/settings, default 30) | counts, base |
-| D40 `base/30/2×days` | default online-half rate = `base/divisor/2`, **overridden by `users.online_half_day_rate`** (spec §1.6) | rate config |
+| D40 `base/30/2×days` | online-half rate = `base/divisor/2` (always; no per-employee override) | counts, base |
 | E39 holiday bonus | `dayRate × official_holiday_work_days × 1.0` | counts |
 | G39/H39 absence | `dayRate × days × multiplier` — multiplier from `penalty_rules` (excused 1×, unexcused **3×** per spec §8) | counts, rules |
 | I39 hours deduction | `base / (divisor × 8) × hours_deduction` (hourly), or per-minute penalty per spec §1.1 — mode from settings | hours, rules |
 | J43–J49 manual lines | `payroll_adjustments` rows (commissions / bonuses / advances) | admin input |
 | J42 gross / J50 net | `PayrollCalculator::calculate()` — `gross = Σ earnings`, `net = gross − Σ deductions` (commissions/bonuses in earnings) | all above |
-| Friday / day-off / OT multipliers (spec §1.2, not in these sheets) | `PayrollCalculator::multiplierPay()` — FT Friday 1×, online Friday 0.5×, day-off FT 2×, day-off online 1.5×, OT 1.5× | flags on `attendance`, `users.overtime_hourly_rate` |
+| Friday / day-off / OT multipliers (spec §1.2, not in these sheets) | `PayrollCalculator::multiplierPay()` — FT Friday 1×, online Friday 0.5×, day-off FT 2×, day-off online 1.5×, OT 1.5× (hourly = `base/30/8`) | flags on `attendance` |
 | L33 year average | `ReportService::annualEvaluation()` — `AVG(total_score)` | `evaluations` |
 
 ## 8. ⚠️ Discrepancies: Excel Practice vs MASTER_CONTEXT (resolve before Phase 4)
@@ -184,7 +184,7 @@ All logic lives in services (never controllers) — see `AGENTS.md`:
 | # | Topic | Excel (current practice) | MASTER_CONTEXT | Resolution in engine |
 |---|-------|--------------------------|----------------|----------------------|
 | 1 | Unexcused absence | **1×** daily rate (H39) | **3×** daily rate | Multiplier stored in `penalty_rules` — default **3×** per spec §1.1; editable by admin |
-| 2 | Online half-day rate | `base/30/2` (fixed 50%) | Dynamic per-employee rate (§1.6) | Use `users.online_half_day_rate`; fallback default = `base/30/2` |
+| 2 | Online half-day rate | `base/30/2` (fixed 50%) | Same as Excel (amended 2026-08-24) | Always `base/30/2` |
 | 3 | Late deduction | Proportional hours: `base/monthHours × late hours` | Per-minute penalty rate (§1.1) | Both supported; mode + rate in `penalty_rules` per currency |
 | 4 | Month divisor | Fixed **30** | "Monthly working days" | Fixed 30 (Excel is real practice); configurable setting |
 | 5 | Official-holiday work | 1× daily rate | Not specified | Keep 1× (sheet practice) |

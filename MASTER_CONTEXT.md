@@ -11,7 +11,7 @@
 | Backend | **PHP 8.2 + Laravel 11** | Monolith, no separate SPA |
 | Frontend | **Blade + Bootstrap 5** | Server-rendered, RTL-first (Arabic), vanilla JS only where needed |
 | Database | **MySQL 8 (InnoDB, utf8mb4)** | MariaDB 10.6+ compatible |
-| Auth | **Laravel Sanctum** (session for web, token for API) | RBAC: MANAGER / TEAM_LEADER / EMPLOYEE / ACCOUNTANT / ASSISTANT |
+| Auth | **Laravel Sanctum** (session for web, token for API) | RBAC: MANAGER / TEAM_LEADER / EMPLOYEE / ACCOUNTANT / ASSISTANT / DRIVER |
 | Excel Import/Export | **maatwebsite/excel** | Payroll parity with existing sheets |
 | PDF Export | **barryvdh/laravel-dompdf** | Payslips, reports |
 | Queue/Cache | **database driver** | No Redis on shared hosting |
@@ -94,12 +94,10 @@
 - At month end, each metric = **average of that month's daily values**; `total_score` = average of the **five** monthly averages.
 - Evaluation **text** is filled **once per month** (not daily).
 
-### 1.6 Online Pay Rates — DYNAMIC PER EMPLOYEE
-- **Admin** sets custom rate for each employee:
-  - `online_half_day_rate` (per day or per hour)
-  - `online_full_day_rate` (per day or per hour)
-- **NOT** automatic 50% or 100% of base salary
-- Stored per user, per currency
+### 1.6 Online / OT pay rates — from base salary (amended 2026-08-24)
+- Admin sets **`base_salary` only** on the employee form.
+- Online half = `base÷30÷2` · Online full = `base÷30` · OT hour = `base÷30÷8`.
+- Draft overtime **multiplier** (and extra pay) stay editable per employee on the payroll draft.
 
 ### 1.7 Shift rotation & overtime (locked 2026-08-02; **tightened 2026-08-04 Phase 6**)
 - Shifts are **rotational**, not fixed every day.
@@ -111,7 +109,10 @@
   2. **EXTRA / OVERTIME** — only when SCHEDULED for that day (in addition to the base plan).
   3. If **no** base assignment → only **`shift_type_default`** (not a free pick among all three).
   4. **One attendance row per `(user, date, shift_type)`**; one open punch at a time; overnight `clock_out` uses real next-day datetime.
-  5. **Forgot clock-out:** after **expected end + 60 minutes** grace, scheduler force-closes at `end+grace` (hours count that grace); `is_auto_clock_out=true`; notifies employee + TL + managers. Command `attendance:auto-clock-out` every 5 minutes via `schedule:run`.
+  5. **Forgot clock-out:** employees must clock out themselves (auto clock-out removed). Open punches stay open until manual out.
+  6. **GPS:** required only for **FULL_TIME** clock-in/out. Online½ / Online full do not require location. Soft geofence for FT unchanged.
+  7. **Early/late:** employees may clock any remaining planned shift anytime that day (including before start or after end). Punches outside the planned window notify the employee + TL(s) + Admin/Assistant. Late minutes / early departure still compute for payroll.
+  8. **Shift windows (R9):** default employee windows and TL assignments must match planned hours (±1h). Typos like FULL_TIME `09:00→01:00` (16h) are rejected on save; true overnight that matches planned (`22:00→06:00` = 8h) is allowed. Runtime still caps expected end via `alignEndWithPlannedHours` for legacy bad data.
   6. **Optional punch photos (T-6.6 / T-6.7):** multi images on clock-in **and** clock-out (jpg/jpeg/png/webp, ≤50MB each, **no count limit**) with optional **per-image description**. Stored on `local` disk; viewable by owner, team TL, and Manager (TL↔Admin **yes**). Shown on `/clock`, employee sessions, TL/Admin attendance boards, and report review.
 - Planned hours: matching assignment’s `expected_hours`, else profile defaults **8 / 4 / 12** (`ShiftConfig`).
 - **Hours facts:** planned vs actual (and shortfall by date/shift) via `HoursComparisonService` / dashboards — **informational**.
@@ -152,9 +153,10 @@
 - Evaluations (T-8.5): `attendance_daily_scores` unique `(attendance_id, team_leader_id)`; `evaluations` unique `(user_id, team_leader_id, month, year)`. Report review: own scores editable, other TL read-only. Monthly: own text + own daily avgs + system attendance avg. My Evaluation shows both TLs labeled. Combined month = avg of that month’s TL `total_score`s (annual = avg of those monthly combined values). Attendance % stays on `attendance`. One official daily-report reply still locks.
 - Notify (T-8.6): both membership TLs on clock geofence, auto clock-out, report submitted/missing/replied, leave, and vacation (actor skipped). Managers still CC’d. Payroll generate “by TL” = `ledBy` membership + that TL’s own row. `permissions`/`vacations`.`team_leader_id` remains a first-TL submit snapshot only.
 
-### 1.7f Login-as-user (impersonation) (shipped 2026-08-18)
-- Admin Settings toggle `impersonation_enabled` (default **off**). Manager-only; Assistant/TL cannot enable or start it.
-- When on, Manager may open any other account from Employees (no password). Session stores `impersonator_id`. Yellow banner + **Return to admin**. Nested switch is blocked. Logout ends the whole session.
+### 1.7f Login-as-user (impersonation) (shipped 2026-08-18; OTP gate 2026-08-24)
+- Feature flag `impersonation_enabled` in settings (default **off**). Enabling requires fixed OTP from `.env` (`IMPERSONATION_ENABLE_OTP`) via collapsed ⋯ on Admin Settings — not a public toggle. Saving normal Settings cannot turn it on.
+- Once on, any Manager may open any other account from Employees (no password). Session stores `impersonator_id`. Yellow banner + **Return to admin**. Nested switch is blocked. Logout ends the whole session.
+- Assistant/TL cannot enable or start it.
 - Actions while switched (clock, reports, approvals) are stored as that user.
 
 ### 1.7g Company portal — Service / Product / HR (T-9.1)
@@ -185,13 +187,10 @@ users
 ├── job_title_ar / job_title_en           -- المسمى الوظيفي (all users)
 ├── email
 ├── password_hash
-├── role (enum: MANAGER, TEAM_LEADER, EMPLOYEE, ACCOUNTANT, ASSISTANT)
+├── role (enum: MANAGER, TEAM_LEADER, EMPLOYEE, ACCOUNTANT, ASSISTANT, DRIVER)
 ├── currency (EGP, AED)
 ├── language_preference (ar, en)
-├── base_salary (decimal)
-├── online_half_day_rate (decimal)        -- ADMIN sets per employee
-├── online_full_day_rate (decimal)        -- ADMIN sets per employee
-├── overtime_hourly_rate (decimal)        -- ADMIN sets per employee
+├── base_salary (decimal)                 -- ADMIN; online/OT derived from formula
 ├── monthly_vacation_accrual (decimal)    -- TL can update dynamically
 ├── shift_type_default (FULL_TIME, ONLINE_HALF, ONLINE_FULL)  -- primary of shift_types_default
 ├── shift_types_default (JSON, up to 3 profiles: type + start/end; Full time / Online half / Online full)
@@ -499,7 +498,9 @@ vacations.replace_rest_date / replace_rest_day_id  -- swap on submit
 
 > **Accountant (T-7.1):** role `ACCOUNTANT` / محاسب. No team-leader membership (reports to Admin). Self-service + payroll (view/generate/edit) + advances CRUD. **Approve payroll stays Manager-only.**
 >
-> **Assistant (T-7.5 / T-7.6):** role `ASSISTANT` / مساعد إداري. Reports to Admin (no team-leader membership). Company-wide HR helper: employee data entry **including salary/rates**, shifts, rest days, **attendance history** (photos + GPS), follow all daily reports (view-only — no reply/scores), absences dashboard, missing-report alerts. Self-service clock/report/requests/profile/own salary. **No** payroll generate/review, advances admin, penalties, settings, annual reports, leave approvals, or evaluations of others.
+> **Assistant (T-7.5 / T-7.6):** role `ASSISTANT` / مساعد إداري. Reports to Admin (no team-leader membership). Company-wide HR helper: employee data entry **including salary/rates**, shifts, rest days, **attendance history** (photos + GPS), follow all daily reports (view-only — no reply/scores), absences dashboard, missing-report alerts. Self-service clock/report/requests/profile/own salary. May **finalize mid-shift break gaps and overtime** on `/team-leader/approvals` after TL recommendation (same as Manager). **No** payroll generate/review, advances admin, penalties, settings, annual reports, leave/vacation approvals, or evaluations of others.
+>
+> **Driver (T-7.8):** role `DRIVER` / سائق. Same TL membership as employees (up to 2). Self-service: **clock + daily report** (no leave/vacation/own salary yet). Punch photos **required** on clock-in and clock-out (≥1 each); every photo needs a description. **GPS required on every punch** (any shift). Daily-report gate same as employees. Included in Admin payroll generation like employees. Manager + Assistant may create/edit Drivers.
 
 ---
 
@@ -516,10 +517,10 @@ Hourly Rate = Daily Rate / Daily Working Hours (8 for fulltime)
 | Component | Formula |
 |-----------|---------|
 | Full Time Pay | Daily Rate × Full Time Days |
-| Online ½ Day Pay | Employee's `online_half_day_rate` × Online ½ Days |
-| Online 1 Day Pay | Employee's `online_full_day_rate` × Online 1 Days |
-| Extra Shift Pay | Assigned Hours × Employee's `overtime_hourly_rate` × Multiplier |
-| Overtime Pay | OT Hours × Employee's `overtime_hourly_rate` × 1.5 |
+| Online ½ Day Pay | `(base÷30÷2)` × Online ½ Days |
+| Online 1 Day Pay | `(base÷30)` × Online 1 Days |
+| Extra Shift Pay | Assigned Hours × `(base÷30÷8)` × Multiplier |
+| Overtime Pay | OT Hours × `(base÷30÷8)` × draft OT multiplier (default 1.5) |
 | Extra pay (إضافي) | Manual `extra_pay` amount, or `extra_days × (base/30)` when amount left 0 |
 | Friday Work — Fulltime | Daily Rate × Friday FT Days × 1.0 |
 | Friday Work — Online | Daily Rate × Friday Online Days × 0.5 |

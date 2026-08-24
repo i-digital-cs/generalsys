@@ -106,7 +106,7 @@ class ReportService
     public function eligibleEmployees(): Collection
     {
         return User::query()
-            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
+            ->whereIn('role', User::operationsVisibleRoles())
             ->where('status', User::STATUS_ACTIVE)
             ->orderBy('name_en')
             ->get();

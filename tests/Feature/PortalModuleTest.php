@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\ValuationAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -35,25 +36,39 @@ class PortalModuleTest extends TestCase
         }
     }
 
-    public function test_home_shows_three_modules_without_hr_sidebar(): void
+    public function test_home_shows_assigned_modules_only(): void
     {
         $employee = User::factory()->employee()->create();
 
         $this->withSession(['locale' => 'en'])->actingAs($employee)
             ->get(route('portal.home'))
             ->assertOk()
-            ->assertSee(__('portal.service'), false)
-            ->assertSee(__('portal.product'), false)
+            ->assertDontSee(route('portal.service'), false)
+            ->assertDontSee(route('portal.product'), false)
             ->assertSee(__('portal.hr'), false)
+            ->assertSee(route('portal.hr'), false)
             ->assertSee(__('portal.stats_title'), false)
             ->assertSee(__('portal.cards.present_today'), false)
             ->assertSee(__('portal.charts.attendance_trend'), false)
             ->assertSee(__('portal.clock.now'), false)
             ->assertSee('data-timezone="'.config('app.timezone').'"', false)
             ->assertSee('Africa/Cairo', false)
-            ->assertDontSee(__('portal.settings'), false)
+            ->assertDontSee(route('admin.settings'), false)
             ->assertDontSee(__('nav.clock'), false)
             ->assertDontSee(__('nav.payroll'), false);
+
+        ValuationAssignment::query()->create([
+            'user_id' => $employee->id,
+            'assigned_by' => User::factory()->manager()->create()->id,
+            'module' => 'service',
+        ]);
+
+        $this->withSession(['locale' => 'en'])->actingAs($employee->fresh())
+            ->get(route('portal.home'))
+            ->assertOk()
+            ->assertSee(route('portal.service'), false)
+            ->assertDontSee(route('portal.product'), false)
+            ->assertSee(__('portal.hr'), false);
     }
 
     public function test_home_hides_payroll_money_from_team_leader(): void
@@ -100,11 +115,30 @@ class PortalModuleTest extends TestCase
             ->assertRedirect(route('employee.dashboard'));
     }
 
-    public function test_service_and_product_use_sidebar_like_hr(): void
+    public function test_service_and_product_require_assignment(): void
     {
         $employee = User::factory()->employee()->create();
+        $manager = User::factory()->manager()->create();
 
-        $this->withSession(['locale' => 'en'])->actingAs($employee)
+        $this->actingAs($employee)
+            ->get(route('portal.service'))
+            ->assertForbidden();
+
+        $this->actingAs($employee)
+            ->get(route('valuation.sheets.index', 'service'))
+            ->assertForbidden();
+
+        $this->actingAs($employee)
+            ->get(route('portal.product'))
+            ->assertForbidden();
+
+        ValuationAssignment::query()->create([
+            'user_id' => $employee->id,
+            'assigned_by' => $manager->id,
+            'module' => 'service',
+        ]);
+
+        $this->withSession(['locale' => 'en'])->actingAs($employee->fresh())
             ->get(route('portal.service'))
             ->assertOk()
             ->assertSee(__('nav.valuation'), false)
@@ -113,25 +147,16 @@ class PortalModuleTest extends TestCase
             ->assertDontSee(__('nav.clock'), false)
             ->assertDontSee(__('nav.payroll'), false);
 
-        $this->withSession(['locale' => 'en'])->actingAs($employee)
-            ->get(route('valuation.sheets.index', 'service'))
-            ->assertOk()
-            ->assertSee(__('valuation.errors.not_assigned'), false)
-            ->assertSee(__('nav.valuation'), false)
-            ->assertSee(route('valuation.sheets.index', 'service'), false);
-
-        $this->withSession(['locale' => 'en'])->actingAs($employee)
+        $this->actingAs($employee->fresh())
             ->get(route('portal.product'))
-            ->assertOk()
-            ->assertSee(__('portal.product'), false)
-            ->assertSee(__('nav.valuation'), false);
+            ->assertForbidden();
 
         $this->actingAs($employee)
             ->get('/production')
             ->assertRedirect('/product');
     }
 
-    public function test_hr_screens_keep_sidebar_and_module_tabs(): void
+    public function test_hr_screens_keep_sidebar_and_only_assigned_module_tabs(): void
     {
         $employee = User::factory()->employee()->create();
 
@@ -139,7 +164,21 @@ class PortalModuleTest extends TestCase
             ->get(route('employee.dashboard'))
             ->assertOk()
             ->assertSee(__('nav.clock'), false)
-            ->assertSee(__('portal.service'), false)
+            ->assertDontSee(route('portal.service'), false)
+            ->assertDontSee(route('portal.product'), false)
+            ->assertSee(__('portal.hr'), false);
+
+        ValuationAssignment::query()->create([
+            'user_id' => $employee->id,
+            'assigned_by' => User::factory()->manager()->create()->id,
+            'module' => 'product',
+        ]);
+
+        $this->withSession(['locale' => 'en'])->actingAs($employee->fresh())
+            ->get(route('employee.dashboard'))
+            ->assertOk()
+            ->assertSee(route('portal.product'), false)
+            ->assertDontSee(route('portal.service'), false)
             ->assertSee(__('portal.hr'), false);
     }
 
@@ -163,6 +202,6 @@ class PortalModuleTest extends TestCase
         $this->withSession(['locale' => 'en'])->actingAs($employee)
             ->get(route('portal.home'))
             ->assertOk()
-            ->assertDontSee(__('portal.settings'), false);
+            ->assertDontSee(route('admin.settings'), false);
     }
 }

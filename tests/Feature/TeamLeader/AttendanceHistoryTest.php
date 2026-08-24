@@ -66,13 +66,27 @@ class AttendanceHistoryTest extends TestCase
             ->get(route('team-leader.attendance', $this->query()))
             ->assertOk()
             ->assertSee(__('attendance.history.title'), false)
+            ->assertSee(__('attendance.history.hours_column'), false)
+            ->assertSee(__('attendance.history.minutes_column'), false)
+            ->assertSee(__('attendance.history.open_details'), false)
             ->assertSee('History Member', false)
-            ->assertSee('History Outsider', false);
+            ->assertSee('History Outsider', false)
+            ->assertSee(route('admin.employees.edit', $this->member), false);
 
         $this->actingAs($this->assistant)
             ->get(route('team-leader.attendance', $this->query()))
             ->assertOk()
-            ->assertSee('History Member', false);
+            ->assertSee('History Member', false)
+            ->assertSee(route('admin.employees.edit', $this->member), false);
+    }
+
+    public function test_team_leader_name_links_to_attendance_filter_not_edit(): void
+    {
+        $this->actingAs($this->leader)
+            ->get(route('team-leader.attendance', $this->query()))
+            ->assertOk()
+            ->assertSee('employee_id='.$this->member->id, false)
+            ->assertDontSee(route('admin.employees.edit', $this->member), false);
     }
 
     public function test_team_leader_sees_only_own_team(): void
@@ -152,7 +166,12 @@ class AttendanceHistoryTest extends TestCase
             'planned_hours' => 8,
             'clock_in_lat' => 30.0444,
             'clock_in_lng' => 31.2357,
+            'clock_in_distance_m' => 40,
             'clock_in_outside_geofence' => false,
+            'clock_out_lat' => 30.0445,
+            'clock_out_lng' => 31.2358,
+            'clock_out_distance_m' => 55,
+            'clock_out_outside_geofence' => false,
         ]);
         AttendancePhoto::query()->create([
             'attendance_id' => $inside->id,
@@ -171,7 +190,48 @@ class AttendanceHistoryTest extends TestCase
                 'evidence' => 'photos',
             ])))
             ->assertOk()
-            ->assertSee(route('attendance.photos.show', $inside->photos()->first()), false);
+            ->assertSee(route('attendance.photos.show', $inside->photos()->first()), false)
+            ->assertSee(__('clock.location.badge_status', [
+                'punch' => __('clock.location.punch_in'),
+                'status' => __('clock.location.inside'),
+            ]), false)
+            ->assertSee(__('clock.location.badge_status', [
+                'punch' => __('clock.location.punch_out'),
+                'status' => __('clock.location.inside'),
+            ]), false)
+            ->assertSee(__('clock.shifts.FULL_TIME'), false)
+            ->assertSee(__('clock.location.office_expected'), false);
+
+        Attendance::factory()->create([
+            'user_id' => $this->member->id,
+            'date' => '2026-08-11',
+            'shift_type' => Attendance::SHIFT_ONLINE_HALF,
+            'clock_in' => '2026-08-11 06:00:00',
+            'clock_out' => '2026-08-11 10:00:00',
+            'actual_hours' => 4,
+            'planned_hours' => 4,
+            'clock_in_lat' => 29.0000,
+            'clock_in_lng' => 31.0000,
+            'clock_in_outside_geofence' => true,
+            'clock_out_lat' => 29.0001,
+            'clock_out_lng' => 31.0001,
+            'clock_out_outside_geofence' => true,
+        ]);
+
+        $this->actingAs($this->manager)
+            ->get(route('team-leader.attendance', $this->query([
+                'employee_id' => $this->member->id,
+                'from' => '2026-08-11',
+                'to' => '2026-08-11',
+            ])))
+            ->assertOk()
+            ->assertSee(__('clock.shifts.ONLINE_HALF'), false)
+            ->assertSee(__('clock.location.office_optional'), false)
+            ->assertSee(__('clock.location.outside_ok'), false)
+            ->assertDontSee(__('clock.location.badge_status', [
+                'punch' => __('clock.location.punch_in'),
+                'status' => __('clock.location.outside'),
+            ]), false);
 
         Attendance::factory()->create([
             'user_id' => $this->outsider->id,

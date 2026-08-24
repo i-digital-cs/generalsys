@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Exceptions\AttendanceException;
 use App\Models\Attendance;
 use App\Models\RestDay;
 use App\Models\ShiftAssignment;
@@ -52,9 +51,6 @@ class DualDefaultShiftsTest extends TestCase
             'work_end_time' => '18:00',
             'status' => User::STATUS_ACTIVE,
             'base_salary' => 5000,
-            'online_half_day_rate' => 100,
-            'online_full_day_rate' => 200,
-            'overtime_hourly_rate' => 50,
             'profile' => [
                 'national_id' => '29501010101010',
                 'birth_date' => '1995-01-01',
@@ -113,11 +109,11 @@ class DualDefaultShiftsTest extends TestCase
         $this->assertSame(8.0, (float) $ft->fresh()->actual_hours);
 
         $allowed = $service->availableShiftTypes($employee, Carbon::parse('2026-08-03 19:00:00'));
-        $this->assertNotContains(Attendance::SHIFT_FULL_TIME, $allowed);
-        $this->assertNotContains(Attendance::SHIFT_ONLINE_HALF, $allowed);
+        $this->assertContains(Attendance::SHIFT_FULL_TIME, $allowed);
+        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $allowed);
     }
 
-    public function test_evening_hides_morning_shift_and_prefers_full_time(): void
+    public function test_evening_still_lists_finished_morning_shift_and_allows_late_start(): void
     {
         $employee = User::factory()->employee()->create([
             'shift_types_default' => [
@@ -139,11 +135,13 @@ class DualDefaultShiftsTest extends TestCase
         $at = Carbon::parse('2026-08-03 17:01:00');
 
         $available = $service->availableShiftTypes($employee, $at);
-        $this->assertSame([Attendance::SHIFT_FULL_TIME], $available);
+        $this->assertContains(Attendance::SHIFT_FULL_TIME, $available);
+        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $available);
         $this->assertSame(Attendance::SHIFT_FULL_TIME, $service->preferredShiftType($employee, $at));
 
-        $this->expectException(AttendanceException::class);
-        $service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, $at);
+        $row = $service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, $at);
+        $this->assertSame(Attendance::SHIFT_ONLINE_HALF, $row->shift_type);
+        $this->assertSame('after_window', $service->outsideShiftWindowReason($employee, Attendance::SHIFT_ONLINE_HALF, $at));
     }
 
     public function test_monthly_breakdown_required_and_absent_per_shift(): void
@@ -334,7 +332,7 @@ class DualDefaultShiftsTest extends TestCase
 
         $available = $service->availableShiftTypes($employee, $morning);
         $this->assertContains(Attendance::SHIFT_FULL_TIME, $available);
-        $this->assertNotContains(Attendance::SHIFT_ONLINE_HALF, $available);
+        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $available);
         $this->assertSame(Attendance::SHIFT_FULL_TIME, $service->preferredShiftType($employee, $morning));
 
         $ft = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, $morning);
@@ -343,7 +341,7 @@ class DualDefaultShiftsTest extends TestCase
 
         $evening = Carbon::parse('2026-08-03 18:05:00');
         $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $service->availableShiftTypes($employee, $evening));
-        $this->assertNotContains(Attendance::SHIFT_FULL_TIME, $service->availableShiftTypes($employee, $evening));
+        $this->assertContains(Attendance::SHIFT_FULL_TIME, $service->availableShiftTypes($employee, $evening));
     }
 
     public function test_late_start_allowed_until_end_then_next_shift_opens(): void
@@ -358,22 +356,26 @@ class DualDefaultShiftsTest extends TestCase
         $service = app(AttendanceService::class);
 
         $lateMorning = Carbon::parse('2026-08-03 17:00:00');
-        $this->assertSame([Attendance::SHIFT_FULL_TIME], $service->availableShiftTypes($employee, $lateMorning));
+        $this->assertContains(Attendance::SHIFT_FULL_TIME, $service->availableShiftTypes($employee, $lateMorning));
+        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $service->availableShiftTypes($employee, $lateMorning));
         $lateRow = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, $lateMorning);
         $this->assertSame(Attendance::STATUS_LATE, $lateRow->status);
         $service->clockOut($employee, Carbon::parse('2026-08-03 18:00:00'));
 
         $afterFullTime = Carbon::parse('2026-08-03 18:01:00');
-        $this->assertSame([Attendance::SHIFT_ONLINE_HALF], $service->availableShiftTypes($employee, $afterFullTime));
+        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $service->availableShiftTypes($employee, $afterFullTime));
+        $this->assertContains(Attendance::SHIFT_FULL_TIME, $service->availableShiftTypes($employee, $afterFullTime));
 
         $evening = $service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, Carbon::parse('2026-08-03 20:35:00'));
         $this->assertSame(Attendance::SHIFT_ONLINE_HALF, $evening->shift_type);
         $service->clockOut($employee, Carbon::parse('2026-08-03 22:00:00'));
 
-        $this->assertSame([], $service->availableShiftTypes($employee, Carbon::parse('2026-08-03 22:01:00')));
+        $afterBoth = $service->availableShiftTypes($employee, Carbon::parse('2026-08-03 22:01:00'));
+        $this->assertContains(Attendance::SHIFT_FULL_TIME, $afterBoth);
+        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $afterBoth);
     }
 
-    public function test_cannot_start_evening_shift_in_the_morning(): void
+    public function test_can_start_evening_shift_early_in_the_morning_with_alert(): void
     {
         $employee = User::factory()->employee()->create([
             'shift_types_default' => [
@@ -385,17 +387,18 @@ class DualDefaultShiftsTest extends TestCase
         $service = app(AttendanceService::class);
         $morning = Carbon::parse('2026-08-03 10:08:00');
 
+        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $service->availableShiftTypes($employee, $morning));
         $this->assertSame(
             [Attendance::SHIFT_ONLINE_HALF],
             $service->upcomingUnrecordedShiftTypes($employee, $morning),
         );
 
-        $this->expectException(AttendanceException::class);
-        $this->expectExceptionMessage('clock.errors.shift_not_started_yet');
-        $service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, $morning);
+        $row = $service->clockIn($employee, Attendance::SHIFT_ONLINE_HALF, $morning);
+        $this->assertSame(Attendance::SHIFT_ONLINE_HALF, $row->shift_type);
+        $this->assertSame('before_window', $service->outsideShiftWindowReason($employee, Attendance::SHIFT_ONLINE_HALF, $morning));
     }
 
-    public function test_cannot_start_finished_shift_but_next_stays_open(): void
+    public function test_can_start_finished_shift_after_end_with_alert(): void
     {
         $employee = User::factory()->employee()->create([
             'shift_types_default' => [
@@ -407,12 +410,13 @@ class DualDefaultShiftsTest extends TestCase
         $service = app(AttendanceService::class);
         $evening = Carbon::parse('2026-08-03 20:35:00');
 
-        $this->assertSame([Attendance::SHIFT_ONLINE_HALF], $service->availableShiftTypes($employee, $evening));
+        $this->assertContains(Attendance::SHIFT_FULL_TIME, $service->availableShiftTypes($employee, $evening));
+        $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $service->availableShiftTypes($employee, $evening));
         $this->assertSame([Attendance::SHIFT_FULL_TIME], $service->closedUnrecordedShiftTypes($employee, $evening));
 
-        $this->expectException(AttendanceException::class);
-        $this->expectExceptionMessage('clock.errors.shift_window_closed');
-        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, $evening);
+        $row = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, $evening);
+        $this->assertSame(Attendance::SHIFT_FULL_TIME, $row->shift_type);
+        $this->assertSame('after_window', $service->outsideShiftWindowReason($employee, Attendance::SHIFT_FULL_TIME, $evening));
     }
 
     public function test_partial_assignment_does_not_drop_other_default_from_hours(): void

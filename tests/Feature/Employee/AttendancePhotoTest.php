@@ -80,6 +80,11 @@ class AttendancePhotoTest extends TestCase
             $attendance->photos()->where('kind', AttendancePhoto::KIND_CLOCK_IN)->orderBy('sort_order')->pluck('description')->all(),
         );
 
+        $inPhotos = $attendance->photos()->where('kind', AttendancePhoto::KIND_CLOCK_IN)->get();
+        $this->assertTrue($inPhotos->every(fn (AttendancePhoto $photo) => $photo->lat !== null && $photo->lng !== null));
+        $this->assertEqualsWithDelta(30.0444, (float) $inPhotos->first()->lat, 0.0001);
+        $this->assertEqualsWithDelta(31.2357, (float) $inPhotos->first()->lng, 0.0001);
+
         foreach ($attendance->photos as $photo) {
             Storage::disk('local')->assertExists($photo->file_path);
         }
@@ -106,6 +111,9 @@ class AttendancePhotoTest extends TestCase
 
         $this->assertSame(1, $attendance->fresh()->photos()->where('kind', AttendancePhoto::KIND_CLOCK_OUT)->count());
         $this->assertSame('Leaving site', $attendance->fresh()->photos()->where('kind', AttendancePhoto::KIND_CLOCK_OUT)->value('description'));
+        $outPhoto = $attendance->fresh()->photos()->where('kind', AttendancePhoto::KIND_CLOCK_OUT)->firstOrFail();
+        $this->assertNotNull($outPhoto->lat);
+        $this->assertNotNull($outPhoto->lng);
         $this->assertSame(3, $attendance->fresh()->photos()->count());
     }
 

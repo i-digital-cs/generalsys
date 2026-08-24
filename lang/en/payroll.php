@@ -21,7 +21,7 @@ return [
     'extra_pay_hint' => 'Extra pay (إضافي): type an amount (e.g. :rate), or set Extra days and leave amount 0 to fill as days × day rate (:rate).',
     'ot_formula_title' => 'Overtime formula',
     'ot_formula_hint' => 'OT pay = hours × hourly rate × multiplier → :hours × :rate × :mult = :pay',
-    'ot_formula_legend' => 'Hours = overtime + extra work. Hourly rate = employee OT rate (or base÷30÷8). Multiplier is editable on this draft (default from Settings).',
+    'ot_formula_legend' => 'Hours = overtime + extra work. Hourly rate = base÷30÷8. Multiplier is editable on this draft (default from config).',
     'sections' => [
         'attendance' => 'Attendance days & deductions',
         'excel_extra' => 'Extra pay (إضافي) — Excel-style amount',

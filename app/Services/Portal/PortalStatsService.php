@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\User;
 use App\Services\Attendance\MissingDailyReportService;
 use App\Services\Employees\TeamMembershipService;
+use App\Support\AppModule;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +44,7 @@ class PortalStatsService
             'cards' => $this->cards($actor, $ids, $today, $now),
             'trend' => $this->attendanceTrend($ids, $now),
             'roles' => $this->roleSeries($actor, $ids),
-            'modules' => $this->moduleSeries($ids),
+            'modules' => $this->moduleSeries($actor, $ids),
             'hours' => $this->monthHours($ids, $now),
         ];
     }
@@ -61,7 +62,7 @@ class PortalStatsService
         }
 
         return User::query()
-            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
+            ->whereIn('role', User::operationsVisibleRoles())
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->all();
@@ -215,6 +216,7 @@ class PortalStatsService
 
         $colors = [
             User::ROLE_EMPLOYEE => '#0d6efd',
+            User::ROLE_DRIVER => '#20c997',
             User::ROLE_TEAM_LEADER => '#198754',
             User::ROLE_ASSISTANT => '#6f42c1',
             User::ROLE_ACCOUNTANT => '#fd7e14',
@@ -224,7 +226,7 @@ class PortalStatsService
         $out = [];
         foreach ($colors as $role => $color) {
             $value = $counts[$role] ?? 0;
-            if ($teamOnly && $value === 0 && ! in_array($role, [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER], true)) {
+            if ($teamOnly && $value === 0 && ! in_array($role, User::operationsVisibleRoles(), true)) {
                 continue;
             }
             $out[] = [
@@ -242,7 +244,7 @@ class PortalStatsService
      * @param  list<int>  $ids
      * @return list<array{key: string, label: string, value: int}>
      */
-    private function moduleSeries(array $ids): array
+    private function moduleSeries(User $actor, array $ids): array
     {
         $hr = 0;
         if ($ids !== []) {
@@ -252,11 +254,18 @@ class PortalStatsService
                 ->count();
         }
 
-        return [
+        $series = [
             ['key' => 'hr', 'label' => __('portal.hr'), 'value' => $hr],
-            ['key' => 'service', 'label' => __('portal.service'), 'value' => 0],
-            ['key' => 'product', 'label' => __('portal.product'), 'value' => 0],
         ];
+
+        if (AppModule::mayAccessModule($actor, AppModule::SERVICE)) {
+            $series[] = ['key' => 'service', 'label' => __('portal.service'), 'value' => 0];
+        }
+        if (AppModule::mayAccessModule($actor, AppModule::PRODUCT)) {
+            $series[] = ['key' => 'product', 'label' => __('portal.product'), 'value' => 0];
+        }
+
+        return $series;
     }
 
     /**

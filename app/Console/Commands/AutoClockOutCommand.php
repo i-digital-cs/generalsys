@@ -2,23 +2,21 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Attendance\AttendanceService;
 use Illuminate\Console\Command;
 
 /**
- * Hostinger: runs via schedule:run — force-close forgotten punches after grace.
+ * Auto clock-out removed — employees must clock out themselves.
+ * Command kept so old Hostinger cron lines fail soft instead of missing-command errors.
  */
 class AutoClockOutCommand extends Command
 {
     protected $signature = 'attendance:auto-clock-out';
 
-    protected $description = 'Force clock-out open punches after expected end + grace (mark automatic)';
+    protected $description = 'Deprecated: auto clock-out is disabled; employees must clock out manually.';
 
-    public function handle(AttendanceService $attendance): int
+    public function handle(): int
     {
-        $closed = $attendance->autoClockOutOverdue();
-
-        $this->info("Auto clock-out closed {$closed} open punch(es).");
+        $this->info('Auto clock-out is disabled. No open punches were closed.');
 
         return self::SUCCESS;
     }

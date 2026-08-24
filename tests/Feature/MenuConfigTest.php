@@ -6,11 +6,14 @@ use Tests\TestCase;
 
 class MenuConfigTest extends TestCase
 {
-    public function test_menu_is_keyed_by_the_five_roles(): void
+    public function test_menu_is_keyed_by_the_six_roles(): void
     {
         $menu = config('menu');
 
-        $this->assertSame(['MANAGER', 'ASSISTANT', 'ACCOUNTANT', 'TEAM_LEADER', 'EMPLOYEE'], array_keys($menu));
+        $this->assertSame(
+            ['MANAGER', 'ASSISTANT', 'ACCOUNTANT', 'TEAM_LEADER', 'EMPLOYEE', 'DRIVER'],
+            array_keys($menu),
+        );
 
         foreach ($menu as $role => $items) {
             $this->assertNotEmpty($items, "Menu for {$role} is empty");
@@ -37,12 +40,19 @@ class MenuConfigTest extends TestCase
             $this->assertStringNotContainsString('admin.advances', $item['route']);
         }
 
+        foreach (config('menu.DRIVER') as $item) {
+            $this->assertStringNotContainsString('payroll', $item['route']);
+            $this->assertStringNotContainsString('salary', $item['route']);
+            $this->assertStringNotContainsString('advances', $item['route']);
+        }
+
+        $this->assertSame(['employee.clock', 'employee.report', 'employee.media'], array_column(config('menu.DRIVER'), 'route'));
+
         foreach (config('menu.ASSISTANT') as $item) {
             $this->assertStringNotContainsString('payroll', $item['route']);
             $this->assertStringNotContainsString('payroll', $item['key']);
             $this->assertStringNotContainsString('admin.advances', $item['route']);
             $this->assertStringNotContainsString('admin.settings', $item['route']);
-            $this->assertStringNotContainsString('approvals', $item['route']);
         }
 
         $managerRoutes = array_column(config('menu.MANAGER'), 'route');
@@ -66,10 +76,10 @@ class MenuConfigTest extends TestCase
         $this->assertContains('team-leader.rest-days', $assistantRoutes);
         $this->assertContains('team-leader.reports', $assistantRoutes);
         $this->assertContains('team-leader.attendance', $assistantRoutes);
+        $this->assertContains('team-leader.approvals', $assistantRoutes);
         $this->assertContains('team-leader.attendance', $managerRoutes);
         $this->assertContains('team-leader.attendance', array_column(config('menu.TEAM_LEADER'), 'route'));
         $this->assertNotContains('admin.payroll.index', $assistantRoutes);
-        $this->assertNotContains('team-leader.approvals', $assistantRoutes);
         $this->assertNotContains('team-leader.evaluations', $assistantRoutes);
     }
 

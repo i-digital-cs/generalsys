@@ -38,6 +38,7 @@ return [
         ['key' => 'nav.shifts', 'route' => 'team-leader.shifts', 'icon' => 'bi-calendar3'],
         ['key' => 'nav.rest_days', 'route' => 'team-leader.rest-days', 'icon' => 'bi-calendar-week'],
         ['key' => 'nav.attendance', 'route' => 'team-leader.attendance', 'icon' => 'bi-geo-alt'],
+        ['key' => 'nav.approvals', 'route' => 'team-leader.approvals', 'icon' => 'bi-check2-square'],
         ['key' => 'nav.reports_review', 'route' => 'team-leader.reports', 'icon' => 'bi-journal-text'],
         ['key' => 'nav.salary', 'route' => 'employee.salary', 'icon' => 'bi-wallet2'],
         ['key' => 'nav.advances', 'route' => 'employee.advances', 'icon' => 'bi-cash-coin'],
@@ -79,5 +80,12 @@ return [
         ['key' => 'nav.salary', 'route' => 'employee.salary', 'icon' => 'bi-wallet2'],
         ['key' => 'nav.advances', 'route' => 'employee.advances', 'icon' => 'bi-cash-coin'],
         ['key' => 'nav.evaluation', 'route' => 'employee.evaluation', 'icon' => 'bi-star'],
+    ],
+
+    /** Clock + daily report + media history (leave/salary still closed for now). */
+    'DRIVER' => [
+        ['key' => 'nav.clock', 'route' => 'employee.clock', 'icon' => 'bi-clock'],
+        ['key' => 'nav.daily_report', 'route' => 'employee.report', 'icon' => 'bi-journal-text'],
+        ['key' => 'nav.media', 'route' => 'employee.media', 'icon' => 'bi-images'],
     ],
 ];

@@ -13,11 +13,6 @@ Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=1')
     ->everyMinute()
     ->withoutOverlapping();
 
-// Forgotten clock-out: close at expected_end + grace (default 60m).
-Schedule::command('attendance:auto-clock-out')
-    ->everyFiveMinutes()
-    ->withoutOverlapping();
-
 // Missing daily reports: same-day evening warning + next-morning overdue warning.
 Schedule::command('reports:warn-missing 0')
     ->dailyAt('21:00')

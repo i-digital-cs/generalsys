@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\User;
 use App\Notifications\AttendanceGeofenceWarningNotification;
 use App\Services\Admin\SettingService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -84,7 +85,7 @@ class ClockLocationTest extends TestCase
         $this->actingAs($this->employee)
             ->get(route('employee.clock'))
             ->assertOk()
-            ->assertSee(__('clock.location.required_hint'), false)
+            ->assertSee(__('clock.location.required_hint_full_time'), false)
             ->assertSee(__('clock.location.check_btn'), false)
             ->assertSee(__('clock.location.enable_btn'), false)
             ->assertSee('name="latitude"', false);
@@ -120,20 +121,38 @@ class ClockLocationTest extends TestCase
                 'office_latitude' => '30.0500000',
                 'office_longitude' => '31.2400000',
                 'office_radius_meters' => 1500,
-                'multipliers' => [
-                    'friday_full_time' => 1,
-                    'friday_online' => 0.5,
-                    'day_off_full_time' => 2,
-                    'day_off_online' => 1.5,
-                    'overtime' => 1.5,
-                    'official_holiday_work' => 1,
-                    'extra_pay' => 1,
-                ],
             ])
             ->assertRedirect(route('admin.settings'));
 
         $this->assertDatabaseHas('settings', ['key' => 'office_latitude', 'value' => '30.0500000']);
         $this->assertDatabaseHas('settings', ['key' => 'office_longitude', 'value' => '31.2400000']);
         $this->assertDatabaseHas('settings', ['key' => 'office_radius_meters', 'value' => '1500']);
+    }
+
+    public function test_online_clock_in_does_not_require_gps(): void
+    {
+        $this->employee->update([
+            'shift_type_default' => Attendance::SHIFT_ONLINE_HALF,
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_ONLINE_HALF, 'start' => '06:00', 'end' => '10:00'],
+            ],
+        ]);
+        Carbon::setTestNow(Carbon::parse('2026-08-03 07:00:00', config('app.timezone')));
+
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.in'), [
+                'shift_type' => Attendance::SHIFT_ONLINE_HALF,
+            ])
+            ->assertRedirect(route('employee.clock'))
+            ->assertSessionHas('success')
+            ->assertSessionDoesntHaveErrors(['latitude', 'longitude']);
+
+        $this->assertDatabaseHas('attendance', [
+            'user_id' => $this->employee->id,
+            'shift_type' => Attendance::SHIFT_ONLINE_HALF,
+        ]);
+        $this->assertNull(Attendance::where('user_id', $this->employee->id)->value('clock_in_lat'));
+
+        Carbon::setTestNow();
     }
 }

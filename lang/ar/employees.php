@@ -32,6 +32,7 @@ return [
         'qualifications' => 'المؤهلات',
         'contacts' => 'جهات اتصال الطوارئ',
     ],
+    'rates_formula_hint' => 'أجر الأونلاين والعمل الإضافي يُحسب من الراتب الأساسي (نصف يوم = أساسي÷٣٠÷٢، يوم كامل = أساسي÷٣٠، ساعة إضافي = أساسي÷٣٠÷٨). عدّل مضاعف الإضافي لكل موظف من مسودة الراتب.',
     'fields' => [
         'name_ar' => 'الاسم (بالعربية)',
         'name_en' => 'الاسم (بالإنجليزية)',
@@ -56,9 +57,6 @@ return [
         'work_end_time' => 'انصراف',
         'status' => 'الحالة',
         'base_salary' => 'الراتب الأساسي',
-        'online_half_day_rate' => 'معدل نصف اليوم أونلاين',
-        'online_full_day_rate' => 'معدل اليوم الكامل أونلاين',
-        'overtime_hourly_rate' => 'معدل ساعة العمل الإضافي',
         'employee_code' => 'كود الموظف',
         'employee_code_hint' => 'يُنشأ تلقائيًا (EMP-001، EMP-002، …).',
         'photo' => 'الصورة الشخصية',
@@ -87,6 +85,7 @@ return [
         'EMPLOYEE' => 'موظف',
         'ACCOUNTANT' => 'محاسب',
         'ASSISTANT' => 'مساعد إداري',
+        'DRIVER' => 'سائق',
     ],
     'statuses' => [
         'ACTIVE' => 'نشط',
@@ -171,5 +170,6 @@ return [
     ],
     'validation' => [
         'default_shifts_distinct' => 'لا يمكن تكرار نفس نوع الدوام في الصفين.',
+        'shift_window_mismatch' => 'نافذة :shift من :start إلى :end = :window س بينما المخطط :planned س. استخدم نهاية قريبة من :suggested (أو وردية ليلية حقيقية تطابق الساعات المخططة).',
     ],
 ];

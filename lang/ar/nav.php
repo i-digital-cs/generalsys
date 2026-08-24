@@ -5,6 +5,7 @@ return [
     'dashboard' => 'لوحة التحكم',
     'clock' => 'الحضور والانصراف',
     'daily_report' => 'التقرير اليومي',
+    'media' => 'سجل الوسائط',
     'requests' => 'طلباتي',
     'salary' => 'راتبي',
     'evaluation' => 'تقييمي',

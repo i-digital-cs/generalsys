@@ -22,21 +22,13 @@ class SettingsTest extends TestCase
         $this->actingAs($manager)
             ->get(route('admin.settings'))
             ->assertOk()
-            ->assertSee('default_language');
+            ->assertSee('default_language')
+            ->assertDontSee('name="multipliers[', false);
 
         $this->actingAs($manager)
             ->put(route('admin.settings.update'), [
                 'default_language' => 'en',
                 'default_currency' => 'AED',
-                'multipliers' => [
-                    'friday_full_time' => 1,
-                    'friday_online' => 0.5,
-                    'day_off_full_time' => 2,
-                    'day_off_online' => 1.5,
-                    'overtime' => 1.5,
-                    'official_holiday_work' => 1,
-                    'extra_pay' => 1,
-                ],
             ])
             ->assertRedirect(route('admin.settings'));
 
@@ -44,14 +36,51 @@ class SettingsTest extends TestCase
         $this->assertDatabaseHas('settings', ['key' => 'default_currency', 'value' => 'AED']);
     }
 
-    public function test_manager_can_enable_impersonation(): void
+    public function test_manager_can_enable_impersonation_with_otp(): void
     {
+        config(['impersonation.enable_otp' => 'secret-otp-99']);
         $manager = User::factory()->manager()->create();
 
         $this->actingAs($manager)
             ->get(route('admin.settings'))
             ->assertOk()
-            ->assertSee('impersonation_enabled');
+            ->assertDontSee('name="impersonation_enabled"', false)
+            ->assertDontSee('الدخول كمستخدم آخر', false)
+            ->assertSee('⋯', false);
+
+        $this->actingAs($manager)
+            ->post(route('admin.settings.impersonation.enable'), ['otp' => 'wrong'])
+            ->assertRedirect(route('admin.settings'))
+            ->assertSessionHasErrors('otp');
+
+        $this->assertDatabaseMissing('settings', [
+            'key' => 'impersonation_enabled',
+            'value' => '1',
+        ]);
+
+        $this->actingAs($manager)
+            ->post(route('admin.settings.impersonation.enable'), ['otp' => 'secret-otp-99'])
+            ->assertRedirect(route('admin.settings'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'impersonation_enabled',
+            'value' => '1',
+        ]);
+
+        $this->actingAs($manager)
+            ->post(route('admin.settings.impersonation.disable'))
+            ->assertRedirect(route('admin.settings'));
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'impersonation_enabled',
+            'value' => '0',
+        ]);
+    }
+
+    public function test_settings_update_cannot_enable_impersonation_without_otp_route(): void
+    {
+        $manager = User::factory()->manager()->create();
 
         $this->actingAs($manager)
             ->put(route('admin.settings.update'), $this->settingsPayload([
@@ -59,7 +88,7 @@ class SettingsTest extends TestCase
             ]))
             ->assertRedirect(route('admin.settings'));
 
-        $this->assertDatabaseHas('settings', [
+        $this->assertDatabaseMissing('settings', [
             'key' => 'impersonation_enabled',
             'value' => '1',
         ]);
@@ -74,42 +103,12 @@ class SettingsTest extends TestCase
         return array_merge([
             'default_language' => 'ar',
             'default_currency' => 'EGP',
-            'multipliers' => [
-                'friday_full_time' => 1,
-                'friday_online' => 0.5,
-                'day_off_full_time' => 2,
-                'day_off_online' => 1.5,
-                'overtime' => 1.5,
-                'official_holiday_work' => 1,
-                'extra_pay' => 1,
-            ],
         ], $overrides);
     }
 
-    public function test_manager_can_change_overtime_multiplier(): void
+    public function test_overtime_uses_config_default_when_draft_has_no_multiplier(): void
     {
-        $manager = User::factory()->manager()->create();
-
-        $this->actingAs($manager)
-            ->put(route('admin.settings.update'), [
-                'default_language' => 'ar',
-                'default_currency' => 'EGP',
-                'multipliers' => [
-                    'friday_full_time' => 1,
-                    'friday_online' => 0.5,
-                    'day_off_full_time' => 2,
-                    'day_off_online' => 1.5,
-                    'overtime' => 1.0,
-                    'official_holiday_work' => 1,
-                    'extra_pay' => 1,
-                ],
-            ])
-            ->assertRedirect(route('admin.settings'));
-
-        $this->assertDatabaseHas('settings', [
-            'key' => 'payroll.multiplier.overtime',
-            'value' => '1.0000',
-        ]);
+        config(['payroll.multipliers.overtime' => 1.0]);
 
         $result = app(PayrollCalculator::class)->calculate(
             new PayrollCalculationInput(
@@ -130,15 +129,6 @@ class SettingsTest extends TestCase
             ->put(route('admin.settings.update'), [
                 'default_language' => 'fr',
                 'default_currency' => 'USD',
-                'multipliers' => [
-                    'friday_full_time' => 1,
-                    'friday_online' => 0.5,
-                    'day_off_full_time' => 2,
-                    'day_off_online' => 1.5,
-                    'overtime' => 1.5,
-                    'official_holiday_work' => 1,
-                    'extra_pay' => 1,
-                ],
             ])
             ->assertSessionHasErrors(['default_language', 'default_currency']);
     }

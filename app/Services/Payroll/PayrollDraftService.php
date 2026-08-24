@@ -125,10 +125,6 @@ class PayrollDraftService
 
         $record->load('adjustments');
 
-        $half = $user->online_half_day_rate;
-        $full = $user->online_full_day_rate;
-        $ot = $user->overtime_hourly_rate;
-
         $adjustments = $record->adjustments->map(fn (PayrollAdjustment $row) => [
             'type' => $row->type,
             'amount' => (float) $row->amount,
@@ -159,9 +155,6 @@ class PayrollDraftService
                 : null,
             extraDays: (int) $record->extra_days,
             extraPay: (float) $record->extra_pay,
-            onlineHalfDayRate: ((float) $half > 0) ? (float) $half : null,
-            onlineFullDayRate: ((float) $full > 0) ? (float) $full : null,
-            overtimeHourlyRate: ((float) $ot > 0) ? (float) $ot : null,
             adjustments: $adjustments,
         ));
 

@@ -29,7 +29,7 @@ class AnnualReportController extends Controller
                 ->with(['activeContract', 'contracts'])
                 ->findOrFail($userId);
             abort_unless(
-                in_array($employee->role, [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER], true),
+                in_array($employee->role, User::operationsVisibleRoles(), true),
                 404,
             );
             $report = $this->reports->annualReport($employee, $year);

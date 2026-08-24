@@ -270,7 +270,7 @@
                 </select>
                 @error('currency') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
-            @foreach (['base_salary', 'online_half_day_rate', 'online_full_day_rate', 'overtime_hourly_rate'] as $rateField)
+            @foreach (['base_salary'] as $rateField)
                 <div class="col-6 col-md-4">
                     <label for="{{ $rateField }}" class="form-label">{{ __("employees.fields.{$rateField}") }}</label>
                     {{-- text+decimal: type=number in ar/RTL rejects 5500 (grouping) while 600 works --}}
@@ -281,6 +281,9 @@
                     @error($rateField) <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
             @endforeach
+            <div class="col-12">
+                <p class="form-text mb-0">{{ __('employees.rates_formula_hint') }}</p>
+            </div>
         </div>
     </div>
 </div>

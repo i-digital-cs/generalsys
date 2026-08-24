@@ -22,6 +22,9 @@ class AttendanceFlagsDisplayTest extends TestCase
     {
         app()->setLocale('en');
 
+        // Freeze "now" on the punch day so R5 stale force-close does not clear the open shift.
+        Carbon::setTestNow(Carbon::parse('2026-08-07 12:00:00'));
+
         $employee = User::factory()->employee()->create([
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
@@ -50,6 +53,8 @@ class AttendanceFlagsDisplayTest extends TestCase
             ->assertSee(__('clock.flags.friday'), false)
             ->assertSee(__('clock.flags.rest_day'), false)
             ->assertSee(__('clock.flags.holiday'), false);
+
+        Carbon::setTestNow();
     }
 
     public function test_dashboard_today_sessions_show_flags(): void

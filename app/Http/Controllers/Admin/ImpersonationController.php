@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exceptions\ImpersonationException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\EnableImpersonationRequest;
 use App\Http\Requests\Admin\StartImpersonationRequest;
 use App\Models\User;
 use App\Services\Auth\ImpersonationService;
@@ -16,6 +17,31 @@ class ImpersonationController extends Controller
         private readonly ImpersonationService $impersonation,
         private readonly PostLoginRedirector $redirector,
     ) {}
+
+    public function enable(EnableImpersonationRequest $request): RedirectResponse
+    {
+        try {
+            $this->impersonation->enableWithOtp((string) $request->validated('otp'));
+        } catch (ImpersonationException $e) {
+            return redirect()
+                ->route('admin.settings')
+                ->withInput($request->only('otp'))
+                ->withErrors(['otp' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->route('admin.settings')
+            ->with('success', __('impersonation.flash.enabled'));
+    }
+
+    public function disable(): RedirectResponse
+    {
+        $this->impersonation->disableFeature();
+
+        return redirect()
+            ->route('admin.settings')
+            ->with('success', __('impersonation.flash.disabled'));
+    }
 
     public function store(StartImpersonationRequest $request, User $employee): RedirectResponse
     {

@@ -52,11 +52,10 @@ class MissingDailyReportService
         }
 
         $people = User::query()
-            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
+            ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_DRIVER, User::ROLE_TEAM_LEADER])
             ->where('status', User::STATUS_ACTIVE)
             ->orderBy('name_en')
             ->get();
-
         if ($people->isEmpty()) {
             return collect();
         }
@@ -89,7 +88,7 @@ class MissingDailyReportService
 
         if ($actor->isTeamLeader()) {
             return $this->missingPeopleForDate($date)
-                ->filter(fn (User $user) => $user->isEmployee()
+                ->filter(fn (User $user) => $user->isFieldStaff()
                     && $this->membership->leads($actor, $user))
                 ->values();
         }

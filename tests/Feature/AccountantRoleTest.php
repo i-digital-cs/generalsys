@@ -225,9 +225,6 @@ class AccountantRoleTest extends TestCase
                 'work_end_time' => '18:00',
                 'status' => User::STATUS_ACTIVE,
                 'base_salary' => 5000,
-                'online_half_day_rate' => 100,
-                'online_full_day_rate' => 200,
-                'overtime_hourly_rate' => 40,
                 'profile' => [
                     'national_id' => null,
                     'birth_date' => null,

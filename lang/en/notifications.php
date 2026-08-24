@@ -27,6 +27,16 @@ return [
         'report_missing_overdue' => 'Overdue daily report',
         'attendance_auto_clock_out' => 'Auto clock-out',
         'attendance_geofence_warning' => 'Outside office area',
+        'attendance_outside_shift_window' => 'Outside shift window',
+        'attendance_gap_pending' => 'Break gap needs review',
+        'attendance_gap_tl_decided' => 'Break gap reviewed by team leader',
+        'attendance_gap_admin_decided' => 'Break gap finalized',
+        'attendance_overtime_tl_decided' => 'Overtime reviewed by team leader',
+        'attendance_overtime_admin_decided' => 'Overtime finalized',
+    ],
+    'outside_reasons' => [
+        'before_window' => 'before the planned window',
+        'after_window' => 'after the planned window',
     ],
     'bodies' => [
         'permission_submitted' => ':name submitted :type for :date.',
@@ -41,5 +51,11 @@ return [
         'report_missing_overdue' => ':name has not submitted yesterday’s report (:date) — overdue.',
         'attendance_auto_clock_out' => ':name was auto clocked out for :date (:shift) at :time after the grace period.',
         'attendance_geofence_warning' => ':name punched :punch for :date about :distance m from the office (allowed :radius m).',
+        'attendance_outside_shift_window' => ':name recorded :punch for :date (:shift) at :time :reason.',
+        'attendance_gap_pending' => ':name has a :minutes min mid-shift break on :date (:shift) awaiting review.',
+        'attendance_gap_tl_decided' => ':name’s :minutes min break on :date was :status by the team leader — awaiting admin.',
+        'attendance_gap_admin_decided' => 'Your :minutes min break on :date was :status.',
+        'attendance_overtime_tl_decided' => ':name’s :minutes min overtime on :date was :status by the team leader — awaiting admin.',
+        'attendance_overtime_admin_decided' => 'Your :minutes min overtime on :date was :status.',
     ],
 ];

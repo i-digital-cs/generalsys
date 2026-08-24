@@ -184,14 +184,14 @@ class ShiftAssignmentService
     {
         if ($actor->canManageOperations()) {
             return User::query()
-                ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
+                ->whereIn('role', User::operationsVisibleRoles())
                 ->where('status', User::STATUS_ACTIVE)
                 ->orderBy('name_en')
                 ->get();
         }
 
         return User::query()
-            ->where('role', User::ROLE_EMPLOYEE)
+            ->whereIn('role', User::fieldStaffRoles())
             ->where('status', User::STATUS_ACTIVE)
             ->ledBy($actor->id)
             ->orderBy('name_en')
@@ -205,11 +205,11 @@ class ShiftAssignmentService
         }
 
         if ($actor->canManageOperations()) {
-            return $target->isEmployee() || $target->isTeamLeader();
+            return $target->isFieldStaff() || $target->isTeamLeader();
         }
 
         return $actor->isTeamLeader()
-            && $target->isEmployee()
+            && $target->isFieldStaff()
             && $this->membership->leads($actor, $target);
     }
 }

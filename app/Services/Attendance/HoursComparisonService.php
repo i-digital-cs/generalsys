@@ -195,7 +195,7 @@ class HoursComparisonService
         $attendances = Attendance::query()
             ->whereIn('user_id', $ids)
             ->whereDate('date', $date)
-            ->with('photos')
+            ->with(['photos', 'segments', 'gaps'])
             ->orderBy('clock_in')
             ->get()
             ->groupBy('user_id');
@@ -236,6 +236,7 @@ class HoursComparisonService
                 'photos' => $photoModels,
                 'attendance' => $dayAttendances->first(fn (Attendance $row) => $row->clock_out === null)
                     ?? $dayAttendances->sortByDesc('id')->first(),
+                'attendances' => $dayAttendances->values(),
             ];
         })->values();
     }
@@ -247,11 +248,11 @@ class HoursComparisonService
         }
 
         if ($actor->canManageOperations()) {
-            return $employee->isEmployee() || $employee->isTeamLeader();
+            return $employee->isFieldStaff() || $employee->isTeamLeader();
         }
 
         if ($actor->isTeamLeader()) {
-            return $employee->isEmployee()
+            return $employee->isFieldStaff()
                 && $this->membership->leads($actor, $employee);
         }
 
@@ -637,23 +638,47 @@ class HoursComparisonService
         $hours = 0.0;
 
         foreach ($attendances as $row) {
+            $row->loadMissing(['segments', 'gaps']);
             $open = $row->clock_out === null;
-            $h = $open ? 0.0 : round((float) $row->actual_hours, 2);
-            $hours += $h;
+            $credited = $open ? 0.0 : round((float) ($row->credited_hours ?? $row->actual_hours), 2);
+            $hours += $credited;
             $photos = $row->relationLoaded('photos') ? $row->photos : collect();
-            $intervals[] = [
-                'label' => __('clock.shifts.'.$row->shift_type),
-                'start' => $row->clock_in?->format('H:i'),
-                'end' => $row->clock_out?->format('H:i'),
-                'hours' => $h,
-                'open' => $open,
+            $baseMeta = [
                 'shift_type' => $row->shift_type,
                 'is_friday_work' => (bool) $row->is_friday_work,
                 'is_day_off_work' => (bool) $row->is_day_off_work,
                 'is_official_holiday_work' => (bool) $row->is_official_holiday_work,
                 'photos' => $photos,
                 'attendance' => $row,
+                'late_minutes' => (int) $row->late_minutes,
+                'early_departure_minutes' => (int) $row->early_departure_minutes,
+                'raw_hours' => round((float) ($row->raw_actual_hours ?? $row->actual_hours), 2),
+                'credited_hours' => $credited,
             ];
+
+            if ($row->segments->isNotEmpty()) {
+                foreach ($row->segments->sortBy('sequence') as $index => $segment) {
+                    $segmentOpen = $segment->clock_out === null;
+                    $segmentHours = $segmentOpen ? 0.0 : round($segment->workedMinutes() / 60, 2);
+                    $intervals[] = array_merge($baseMeta, [
+                        'label' => __('attendance_review.segment_n', ['n' => $index + 1]).' · '.__('clock.shifts.'.$row->shift_type),
+                        'start' => $segment->clock_in?->format('H:i'),
+                        'end' => $segment->clock_out?->format('H:i'),
+                        'hours' => $segmentHours,
+                        'open' => $segmentOpen,
+                    ]);
+                }
+
+                continue;
+            }
+
+            $intervals[] = array_merge($baseMeta, [
+                'label' => __('clock.shifts.'.$row->shift_type),
+                'start' => $row->clock_in?->format('H:i'),
+                'end' => $row->clock_out?->format('H:i'),
+                'hours' => $credited,
+                'open' => $open,
+            ]);
         }
 
         return [

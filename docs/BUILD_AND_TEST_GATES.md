@@ -109,7 +109,7 @@ Never run tests against production.
 | 4.2 | Unit: excused absence 1× day; unexcused **3×** (from `penalty_rules`) |
 | 4.3 | Unit: per-minute penalties; forced = ×2 |
 | 4.4 | Unit: Friday / day-off multipliers per MASTER_CONTEXT §1.2 |
-| 4.5 | Unit: online rates use per-employee fields (fallback documented default) |
+| 4.5 | Unit: online pay uses base-salary formula (`base/30/2`, `base/30`) |
 | 4.6 | Feature: MANAGER generate draft + approve |
 | 4.7 | Feature: **TEAM_LEADER → every payroll route 403** (API + web) |
 | 4.8 | Feature: EMPLOYEE sees only own APPROVED/PAID; DRAFT hidden |

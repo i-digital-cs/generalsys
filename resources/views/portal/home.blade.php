@@ -159,15 +159,16 @@
 
         <h2 class="h5 mb-3">{{ __('portal.modules_title') }}</h2>
         @php
-            $moduleCards = [
-                ['id' => 'service', 'route' => 'portal.service', 'icon' => 'bi-headset'],
-                ['id' => 'product', 'route' => 'portal.product', 'icon' => 'bi-gear'],
+            $moduleCards = $moduleCards ?? [
                 ['id' => 'hr', 'route' => 'portal.hr', 'icon' => 'bi-people'],
             ];
-            if (auth()->user()?->isManager()) {
-                $moduleCards[] = ['id' => 'settings', 'route' => 'admin.settings', 'icon' => 'bi-sliders'];
-            }
-            $moduleCol = count($moduleCards) === 4 ? 'col-12 col-sm-6 col-lg-3' : 'col-12 col-md-4';
+            $cardCount = count($moduleCards);
+            $moduleCol = match (true) {
+                $cardCount >= 4 => 'col-12 col-sm-6 col-lg-3',
+                $cardCount === 3 => 'col-12 col-md-4',
+                $cardCount === 2 => 'col-12 col-md-6',
+                default => 'col-12 col-md-6 col-lg-4',
+            };
         @endphp
         <div class="row g-3">
             @foreach ($moduleCards as $card)

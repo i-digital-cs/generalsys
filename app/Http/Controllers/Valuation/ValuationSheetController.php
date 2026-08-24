@@ -12,6 +12,7 @@ use App\Services\Valuation\ValuationExportService;
 use App\Services\Valuation\ValuationFields;
 use App\Services\Valuation\ValuationSheetService;
 use App\Services\Valuation\ValuationStatsService;
+use App\Support\AppModule;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -30,10 +31,7 @@ class ValuationSheetController extends Controller
     {
         $this->guardModule($module);
         $user = $request->user();
-
-        if (! $user->isManager() && ! $user->valuationAssignments()->where('module', $module)->exists()) {
-            return view('valuation.unassigned', ['module' => $module]);
-        }
+        abort_unless(AppModule::mayAccessModule($user, $module), 403);
 
         $this->authorize('viewAny', ValuationSheet::class);
 

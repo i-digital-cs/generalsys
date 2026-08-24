@@ -16,7 +16,7 @@ class DashboardStatsService
      */
     public function stats(): array
     {
-        $staffRoles = [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER];
+        $staffRoles = User::operationsVisibleRoles();
 
         return [
             'total' => User::whereIn('role', $staffRoles)->count(),

@@ -33,8 +33,7 @@ class EmployeePhotoTest extends TestCase
             'password' => 'password123', 'role' => 'EMPLOYEE', 'currency' => 'EGP',
             'language_preference' => 'ar', 'shift_type_default' => 'FULL_TIME', 'status' => 'ACTIVE',
             'team_leader_ids' => [User::factory()->teamLeader()->create()->id],
-            'base_salary' => 0, 'online_half_day_rate' => 0, 'online_full_day_rate' => 0,
-            'overtime_hourly_rate' => 0,
+            'base_salary' => 0,
             'profile' => ['employee_code' => 'EMP-PH1'],
             'contract' => [
                 'hire_date' => '2024-01-01', 'contract_start' => '2024-01-01',

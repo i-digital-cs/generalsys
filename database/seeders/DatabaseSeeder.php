@@ -51,9 +51,6 @@ class DatabaseSeeder extends Seeder
             'work_end_time' => '18:00',
             'shift_type_default' => 'FULL_TIME',
             'base_salary' => 7000,
-            'online_half_day_rate' => 120,
-            'online_full_day_rate' => 240,
-            'overtime_hourly_rate' => 55,
             'team_leader_id' => null,
         ]);
 
@@ -67,9 +64,6 @@ class DatabaseSeeder extends Seeder
             'work_end_time' => '18:00',
             'shift_type_default' => 'FULL_TIME',
             'base_salary' => 5000,
-            'online_half_day_rate' => 80,
-            'online_full_day_rate' => 160,
-            'overtime_hourly_rate' => 40,
             'team_leader_id' => null,
         ]);
 
@@ -82,9 +76,6 @@ class DatabaseSeeder extends Seeder
             'currency' => 'EGP',
             'team_leader_id' => $leader->id,
             'base_salary' => 6000,
-            'online_half_day_rate' => 100,
-            'online_full_day_rate' => 200,
-            'overtime_hourly_rate' => 50,
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
         ]);
@@ -98,11 +89,22 @@ class DatabaseSeeder extends Seeder
             'currency' => 'AED',
             'team_leader_id' => $leader->id,
             'base_salary' => 8000,
-            'online_half_day_rate' => 150,
-            'online_full_day_rate' => 300,
-            'overtime_hourly_rate' => 60,
             'work_start_time' => '10:00',
             'work_end_time' => '18:00',
+        ]);
+
+        $this->seedEmployee(User::factory()->driver(), [
+            'name_ar' => 'سائق تجريبي',
+            'name_en' => 'Sample Driver',
+            'job_title_ar' => 'سائق',
+            'job_title_en' => 'Driver',
+            'email' => 'driver@hrpro.test',
+            'currency' => 'EGP',
+            'team_leader_id' => $leader->id,
+            'base_salary' => 4500,
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+            'shift_type_default' => 'FULL_TIME',
         ]);
 
         // Sample date-based rest days (Fridays in Aug 2026; Mona also Saturdays)

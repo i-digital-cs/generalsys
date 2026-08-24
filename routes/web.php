@@ -18,6 +18,7 @@ use App\Http\Controllers\Employee\AdvanceController as EmployeeAdvanceController
 use App\Http\Controllers\Employee\ClockController;
 use App\Http\Controllers\Employee\DailyReportController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
+use App\Http\Controllers\Employee\DriverMediaController;
 use App\Http\Controllers\Employee\EvaluationController as EmployeeEvaluationController;
 use App\Http\Controllers\Employee\ProfileController;
 use App\Http\Controllers\Employee\RequestController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\TeamLeader\ApprovalController;
 use App\Http\Controllers\TeamLeader\AttendanceHistoryController;
+use App\Http\Controllers\TeamLeader\AttendanceReviewController;
 use App\Http\Controllers\TeamLeader\EvaluationController;
 use App\Http\Controllers\TeamLeader\ReportReviewController;
 use App\Http\Controllers\TeamLeader\RestDayController;
@@ -128,6 +130,12 @@ Route::middleware(['auth', 'role:MANAGER,ASSISTANT'])->prefix('admin')->name('ad
 Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/settings', [SettingController::class, 'edit'])->name('settings');
     Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
+    Route::post('/settings/impersonation/enable', [ImpersonationController::class, 'enable'])
+        ->middleware('throttle:5,1')
+        ->name('settings.impersonation.enable');
+    Route::post('/settings/impersonation/disable', [ImpersonationController::class, 'disable'])
+        ->middleware('throttle:10,1')
+        ->name('settings.impersonation.disable');
     Route::post('/employees/{employee}/impersonate', [ImpersonationController::class, 'store'])
         ->name('employees.impersonate');
 
@@ -175,15 +183,25 @@ Route::middleware(['auth', 'role:EMPLOYEE,ACCOUNTANT,ASSISTANT'])->group(functio
     Route::get('/advances/my', [EmployeeAdvanceController::class, 'index'])->name('employee.advances');
 });
 
-// Self-service: clock, daily report, my requests — all staff roles
-Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT,ASSISTANT'])->group(function () {
+// Clock — all staff roles including DRIVER (T-7.8)
+Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT,ASSISTANT,DRIVER'])->group(function () {
     Route::get('/clock', [ClockController::class, 'show'])->name('employee.clock');
     Route::post('/clock/in', [ClockController::class, 'clockIn'])->name('employee.clock.in');
     Route::post('/clock/out', [ClockController::class, 'clockOut'])->name('employee.clock.out');
+    Route::post('/clock/field-photos', [ClockController::class, 'storeFieldPhotos'])
+        ->name('employee.clock.field-photos');
 
     Route::get('/report', [DailyReportController::class, 'show'])->name('employee.report');
     Route::post('/report', [DailyReportController::class, 'store'])->name('employee.report.store');
+});
 
+// Driver media history (own field + punch photos)
+Route::middleware(['auth', 'role:DRIVER'])->group(function () {
+    Route::get('/media', [DriverMediaController::class, 'index'])->name('employee.media');
+});
+
+// Self-service: my requests, evaluation — not DRIVER yet
+Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT,ASSISTANT'])->group(function () {
     Route::get('/requests', [RequestController::class, 'index'])->name('employee.requests');
     Route::post('/requests/permissions', [RequestController::class, 'storePermission'])
         ->name('employee.requests.permissions.store');
@@ -213,9 +231,16 @@ Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER,ASSISTANT'])->prefix('team-
 
     Route::get('/reports', [ReportReviewController::class, 'index'])->name('reports');
     Route::get('/reports/{attendance}', [ReportReviewController::class, 'show'])->name('reports.show');
+
+    // Assistant: view approvals + finalize mid-shift gaps and overtime (no leave/vacation decide).
+    Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals');
+    Route::post('/approvals/gaps/{gap}/decide', [ApprovalController::class, 'decideGap'])
+        ->name('approvals.gaps.decide');
+    Route::post('/attendance/{attendance}/overtime/admin', [AttendanceReviewController::class, 'adminDecideOvertime'])
+        ->name('attendance.overtime.admin');
 });
 
-// Decisions stay TL + Manager (Assistant is view-only on reports)
+// Decisions stay TL + Manager (Assistant is view-only on reports; gaps decide above)
 Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER'])->prefix('team-leader')->name('team-leader.')->group(function () {
     Route::post('/reports/{attendance}/respond', [ReportReviewController::class, 'respond'])->name('reports.respond');
     Route::put('/reports/{attendance}/scores', [ReportReviewController::class, 'scores'])->name('reports.scores');
@@ -224,7 +249,6 @@ Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER'])->prefix('team-leader')->
     Route::get('/evaluations/{employee}', [EvaluationController::class, 'show'])->name('evaluations.show');
     Route::post('/evaluations/{employee}', [EvaluationController::class, 'store'])->name('evaluations.store');
 
-    Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals');
     Route::post('/approvals/permissions/{permission}/approve', [ApprovalController::class, 'approve'])
         ->name('approvals.permissions.approve');
     Route::post('/approvals/permissions/{permission}/reject', [ApprovalController::class, 'reject'])
@@ -237,4 +261,11 @@ Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER'])->prefix('team-leader')->
         ->name('approvals.vacations.reject');
     Route::post('/approvals/vacations/{vacation}/force', [ApprovalController::class, 'forceVacation'])
         ->name('approvals.vacations.force');
+    Route::post('/approvals/gaps/{gap}/recommend', [ApprovalController::class, 'recommendGap'])
+        ->name('approvals.gaps.recommend');
+
+    Route::post('/attendance/{attendance}/time', [AttendanceReviewController::class, 'updateTime'])
+        ->name('attendance.time');
+    Route::post('/attendance/{attendance}/overtime/tl', [AttendanceReviewController::class, 'tlRecommendOvertime'])
+        ->name('attendance.overtime.tl');
 });

@@ -15,6 +15,7 @@
     $label = match ($kind) {
         AttendancePhoto::KIND_CLOCK_IN => __('clock.photos.in_label'),
         AttendancePhoto::KIND_CLOCK_OUT => __('clock.photos.out_label'),
+        AttendancePhoto::KIND_FIELD => __('clock.photos.field_label'),
         default => __('clock.photos.title'),
     };
 @endphp
@@ -43,6 +44,18 @@
                     </a>
                     @if ($caption !== '')
                         <figcaption class="small text-body-secondary mt-1 text-break">{{ $caption }}</figcaption>
+                    @endif
+                    @if ($photo->lat !== null && $photo->lng !== null)
+                        <div class="small mt-1">
+                            <a href="{{ \App\Services\Attendance\GeofenceService::googleMapsUrl((float) $photo->lat, (float) $photo->lng) }}"
+                               target="_blank"
+                               rel="noopener"
+                               class="link-primary"
+                               dir="ltr">
+                                <i class="bi bi-geo-alt-fill me-1" aria-hidden="true"></i>
+                                {{ number_format((float) $photo->lat, 5) }}, {{ number_format((float) $photo->lng, 5) }}
+                            </a>
+                        </div>
                     @endif
                 </figure>
             @endforeach

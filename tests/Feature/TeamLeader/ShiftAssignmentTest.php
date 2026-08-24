@@ -36,6 +36,28 @@ class ShiftAssignmentTest extends TestCase
         ]);
     }
 
+    public function test_team_leader_cannot_assign_mismatched_overnight_window(): void
+    {
+        app()->setLocale('en');
+
+        $this->actingAs($this->leader)
+            ->post(route('team-leader.shifts.store'), [
+                'user_id' => $this->employee->id,
+                'date' => '2026-08-04',
+                'shift_type' => ShiftAssignment::TYPE_FULL_TIME,
+                'expected_start_time' => '09:00',
+                'expected_end_time' => '01:00',
+                'expected_hours' => 8,
+                'multiplier' => 1,
+            ])
+            ->assertSessionHasErrors('expected_end_time');
+
+        $this->assertDatabaseMissing('shift_assignments', [
+            'user_id' => $this->employee->id,
+            'date' => '2026-08-04',
+        ]);
+    }
+
     public function test_team_leader_can_open_shifts_screen(): void
     {
         app()->setLocale('en');

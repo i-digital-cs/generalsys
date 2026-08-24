@@ -1,19 +1,26 @@
 @php
     $gpsId = $id ?? 'clock-gps';
+    $required = $required ?? true;
+    $locationHint = $locationHint ?? __('clock.location.required_hint_full_time');
 @endphp
 
-<div class="mb-3 clock-location border rounded p-3 bg-body-tertiary" data-clock-location
-     data-locale="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <input type="hidden" name="latitude" value="{{ old('latitude') }}" data-clock-lat>
-    <input type="hidden" name="longitude" value="{{ old('longitude') }}" data-clock-lng>
-    <input type="hidden" name="accuracy" value="{{ old('accuracy') }}" data-clock-acc>
+<div @class(['mb-3', 'clock-location', 'border', 'rounded', 'p-3', 'bg-body-tertiary', 'd-none' => ! $required])
+     data-clock-location
+     data-locale="{{ str_replace('_', '-', app()->getLocale()) }}"
+     data-location-block="1">
+    <input type="hidden" name="latitude" value="{{ old('latitude') }}" data-clock-lat @disabled(! $required)>
+    <input type="hidden" name="longitude" value="{{ old('longitude') }}" data-clock-lng @disabled(! $required)>
+    <input type="hidden" name="accuracy" value="{{ old('accuracy') }}" data-clock-acc @disabled(! $required)>
 
     <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
         <div>
             <div class="fw-semibold small mb-1">
                 <i class="bi bi-geo-alt-fill me-1" aria-hidden="true"></i>{{ __('clock.location.title') }}
+                @if ($required)
+                    <span class="text-danger">*</span>
+                @endif
             </div>
-            <div class="small text-body-secondary">{{ __('clock.location.required_hint') }}</div>
+            <div class="small text-body-secondary">{{ $locationHint }}</div>
         </div>
         <span class="badge text-bg-secondary" data-clock-loc-status>{{ __('clock.location.status_unknown') }}</span>
     </div>

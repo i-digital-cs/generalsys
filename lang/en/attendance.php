@@ -18,6 +18,12 @@ return [
         'showing' => 'Showing :from–:to of :total',
         'date' => 'Date',
         'absent_hours' => 'Absent hours',
+        'hours_column' => 'Hours',
+        'minutes_column' => 'Minutes',
+        'summary' => 'Snapshot',
+        'open_details' => 'Details',
+        'has_photos' => 'Photos',
+        'no_review' => 'No closed shift to review for this day.',
         'empty_title' => 'No days in this range',
         'empty_text' => 'Try another employee, date range, or filter.',
         'kinds' => [

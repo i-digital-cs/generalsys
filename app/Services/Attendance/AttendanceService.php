@@ -4,6 +4,7 @@ namespace App\Services\Attendance;
 
 use App\Exceptions\AttendanceException;
 use App\Models\Attendance;
+use App\Models\AttendanceSegment;
 use App\Models\OfficialHoliday;
 use App\Models\ShiftAssignment;
 use App\Models\User;
@@ -25,6 +26,8 @@ class AttendanceService
         private readonly DailyReportService $reports,
         private readonly AppNotificationService $notifications,
         private readonly GeofenceService $geofence,
+        private readonly AttendanceTimeCalculator $timeCalculator,
+        private readonly AttendanceGapService $gaps,
     ) {}
 
     /**
@@ -41,37 +44,57 @@ class AttendanceService
         $at = Carbon::parse($at ?? now());
         $date = $at->toDateString();
 
+        $this->closeStaleOpenBeforeShiftStart($user, $at, $shiftType);
+
         if ($this->openAttendance($user) !== null) {
             throw AttendanceException::openAttendanceExists();
-        }
-
-        if ($this->hasAttendanceForShift($user, $date, $shiftType)) {
-            throw AttendanceException::shiftAlreadyRecorded();
         }
 
         if (! in_array($shiftType, $this->plannedAllowedTypes($user, $date), true)) {
             throw AttendanceException::planMismatch();
         }
 
-        if ($this->shiftHasNotStarted($user, $shiftType, $at)) {
-            throw AttendanceException::shiftNotStartedYet();
-        }
+        // Early / late / after-end clock-in is allowed (alerts via notifyOutsideShiftWindow).
 
-        if ($this->shiftWindowHasEnded($user, $shiftType, $at)) {
-            throw AttendanceException::shiftWindowClosed();
-        }
-
-        // Enforcement: a previous day with a missing daily report blocks
-        // clocking in until the report is submitted (same-day extra/extra
-        // punches are unaffected — their date is not before today's).
-        $unreported = $this->reports->latestUnreportedClosedDay($user);
-        if ($unreported !== null && $unreported->date->toDateString() < $date) {
-            throw AttendanceException::dailyReportRequired();
+        if ($user->mustSubmitDailyReports()) {
+            $unreported = $this->reports->latestUnreportedClosedDay($user);
+            if ($unreported !== null && $unreported->date->toDateString() < $date) {
+                throw AttendanceException::dailyReportRequired();
+            }
         }
 
         $assignment = $this->resolveAssignment($user, $shiftType, $date);
 
-        $attendance = DB::transaction(function () use ($user, $shiftType, $at, $date, $assignment) {
+        $existing = Attendance::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->where('shift_type', $shiftType)
+            ->with('segments')
+            ->first();
+
+        $attendance = DB::transaction(function () use ($user, $shiftType, $at, $date, $assignment, $existing) {
+            if ($existing !== null) {
+                $lastSegment = $existing->segments->sortByDesc('sequence')->first();
+                if ($lastSegment !== null && $lastSegment->clock_out !== null) {
+                    $this->gaps->recordGap($existing, $lastSegment->clock_out, $at);
+                }
+
+                $sequence = ($lastSegment?->sequence ?? 0) + 1;
+                $segment = AttendanceSegment::query()->create([
+                    'attendance_id' => $existing->id,
+                    'sequence' => $sequence,
+                    'clock_in' => $at,
+                ]);
+
+                $this->timeCalculator->recalculate(
+                    $existing->fresh(['segments', 'user']),
+                    $this,
+                    $assignment,
+                );
+
+                return [$existing->fresh(['segments', 'user']), $segment];
+            }
+
             $draft = new Attendance([
                 'date' => $date,
                 'clock_in' => $at,
@@ -79,7 +102,7 @@ class AttendanceService
             ]);
             $lateMinutes = $this->computeLateMinutes($user, $draft, $assignment);
 
-            return Attendance::create([
+            $attendance = Attendance::create([
                 'user_id' => $user->id,
                 'date' => $date,
                 'shift_type' => $shiftType,
@@ -90,13 +113,34 @@ class AttendanceService
                 'clock_in' => $at,
                 'planned_hours' => $this->shifts->plannedHours($shiftType, $assignment),
                 'actual_hours' => 0,
+                'raw_actual_hours' => 0,
                 'status' => $lateMinutes > 0 ? Attendance::STATUS_LATE : Attendance::STATUS_PRESENT,
                 'late_minutes' => $lateMinutes,
                 'early_departure_minutes' => 0,
             ]);
+
+            $segment = AttendanceSegment::query()->create([
+                'attendance_id' => $attendance->id,
+                'sequence' => 1,
+                'clock_in' => $at,
+            ]);
+
+            $this->timeCalculator->recalculate(
+                $attendance->fresh(['segments', 'user']),
+                $this,
+                $assignment,
+            );
+
+            return [$attendance->fresh(['segments', 'user']), $segment];
         });
 
-        return $this->applyPunchLocation($attendance, 'CLOCK_IN', $location);
+        [$attendance, $segment] = $attendance;
+        $segment = $this->applySegmentLocation($segment, 'CLOCK_IN', $location);
+        $this->timeCalculator->recalculate($attendance->fresh(['segments', 'user']), $this, $assignment);
+        $attendance = $attendance->fresh(['segments', 'user']);
+        $this->notifyOutsideShiftWindow($attendance, 'CLOCK_IN', $at);
+
+        return $attendance;
     }
 
     /**
@@ -115,65 +159,14 @@ class AttendanceService
     }
 
     /**
-     * Force-close open punches after expected end + grace (default 60 minutes).
-     * Clock-out timestamp = expected_end + grace (counts as worked). Marked automatic.
+     * Auto clock-out disabled — employees must clock out themselves.
+     * Historical `is_auto_clock_out` rows remain for display only.
      *
      * @return int number of rows closed
      */
     public function autoClockOutOverdue(?CarbonInterface $now = null): int
     {
-        $now = Carbon::parse($now ?? now());
-        $grace = max(0, (int) config('attendance.auto_clock_out_grace_minutes', 60));
-        $closed = 0;
-
-        Attendance::query()
-            ->whereNotNull('clock_in')
-            ->whereNull('clock_out')
-            ->where('is_auto_clock_out', false)
-            ->with('user')
-            ->orderBy('id')
-            ->chunkById(50, function ($rows) use ($now, $grace, &$closed) {
-                foreach ($rows as $attendance) {
-                    if ($this->tryAutoClockOut($attendance, $now, $grace)) {
-                        $closed++;
-                    }
-                }
-            });
-
-        return $closed;
-    }
-
-    private function tryAutoClockOut(Attendance $attendance, Carbon $now, int $graceMinutes): bool
-    {
-        $user = $attendance->user;
-        if ($user === null) {
-            return false;
-        }
-
-        $assignment = ShiftAssignment::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', $attendance->date->toDateString())
-            ->where('shift_type', $attendance->shift_type)
-            ->whereIn('status', [
-                ShiftAssignment::STATUS_SCHEDULED,
-                ShiftAssignment::STATUS_COMPLETED,
-            ])
-            ->first();
-
-        $expectedEnd = $this->expectedEnd($user, $attendance, $assignment);
-        if ($expectedEnd === null) {
-            return false;
-        }
-
-        $forceAt = $expectedEnd->copy()->addMinutes($graceMinutes);
-        if ($now->lt($forceAt)) {
-            return false;
-        }
-
-        $closed = $this->finalizeClockOut($attendance, $forceAt, automatic: true);
-        $this->notifications->attendanceAutoClockOut($closed);
-
-        return true;
+        return 0;
     }
 
     /**
@@ -190,40 +183,81 @@ class AttendanceService
             throw AttendanceException::noOpenAttendance();
         }
 
-        $closed = DB::transaction(function () use ($user, $attendance, $at, $automatic) {
+        $segment = $attendance->segments()->whereNull('clock_out')->orderByDesc('sequence')->first();
+        if ($segment === null) {
+            throw AttendanceException::noOpenAttendance();
+        }
+
+        $closed = DB::transaction(function () use ($user, $attendance, $segment, $at) {
             $assignment = $this->resolveAssignment(
                 $user,
                 $attendance->shift_type,
                 $attendance->date->toDateString(),
             );
 
-            $actualHours = $this->computeWorkedHours($attendance->clock_in, $at);
-            $lateMinutes = $this->computeLateMinutes($user, $attendance, $assignment);
-            $earlyMinutes = $this->computeEarlyDepartureMinutes($user, $attendance, $assignment, $at);
-            $planned = (float) $attendance->planned_hours;
+            $segment->update(['clock_out' => $at]);
 
-            $attendance->update([
-                'clock_out' => $at,
-                'actual_hours' => $actualHours,
-                'late_minutes' => $lateMinutes,
-                'early_departure_minutes' => $earlyMinutes,
-                'is_auto_clock_out' => $automatic,
-                'status' => $this->resolveStatus($lateMinutes, $earlyMinutes),
-                'attendance_score' => $this->attendanceScore($actualHours, $planned),
-            ]);
-
-            if ($assignment !== null && $assignment->status === ShiftAssignment::STATUS_SCHEDULED) {
-                $assignment->update(['status' => ShiftAssignment::STATUS_COMPLETED]);
-            }
-
-            return $attendance->refresh();
+            return $this->timeCalculator->recalculate(
+                $attendance->fresh(['segments', 'user']),
+                $this,
+                $assignment,
+            );
         });
 
         if ($automatic) {
-            return $closed;
+            $closed->update(['is_auto_clock_out' => true]);
+            $this->notifications->attendanceAutoClockOut($closed->fresh(['user']));
+
+            return $closed->refresh();
         }
 
-        return $this->applyPunchLocation($closed, 'CLOCK_OUT', $location);
+        $segment = $segment->refresh();
+        $segment = $this->applySegmentLocation($segment, 'CLOCK_OUT', $location);
+        $closed = $this->timeCalculator->recalculate($closed->fresh(['segments', 'user']), $this);
+        $this->notifyOutsideShiftWindow($closed, 'CLOCK_OUT', $at);
+
+        return $closed;
+    }
+
+    /**
+     * @param  array{latitude: float|int|string, longitude: float|int|string, accuracy?: float|int|string|null}|null  $location
+     */
+    private function applySegmentLocation(AttendanceSegment $segment, string $kind, ?array $location): AttendanceSegment
+    {
+        if ($location === null) {
+            return $segment;
+        }
+
+        $lat = (float) $location['latitude'];
+        $lng = (float) $location['longitude'];
+        $accuracy = array_key_exists('accuracy', $location) && $location['accuracy'] !== null && $location['accuracy'] !== ''
+            ? (int) round((float) $location['accuracy'])
+            : null;
+
+        $eval = $this->geofence->evaluate($lat, $lng);
+        $prefix = $kind === 'CLOCK_OUT' ? 'clock_out' : 'clock_in';
+
+        $segment->update([
+            "{$prefix}_lat" => $lat,
+            "{$prefix}_lng" => $lng,
+            "{$prefix}_accuracy_m" => $accuracy,
+            "{$prefix}_distance_m" => $eval['distance_m'],
+            "{$prefix}_outside_geofence" => $eval['outside'],
+        ]);
+
+        $segment = $segment->refresh();
+        $attendance = $segment->attendance;
+        if ($attendance !== null && $eval['outside'] && $eval['distance_m'] !== null) {
+            $office = $this->geofence->office();
+            $this->notifications->attendanceGeofenceWarning(
+                $attendance,
+                $kind,
+                $eval['distance_m'],
+                (int) ($office['radius_m'] ?? config('attendance.location.radius_meters', 1000)),
+            );
+        }
+
+        return $segment;
     }
 
     /**
@@ -276,36 +310,76 @@ class AttendanceService
         return round(max(0, $minutes) / 60, 2);
     }
 
+    public function openSegment(User $user): ?AttendanceSegment
+    {
+        return AttendanceSegment::query()
+            ->whereNull('clock_out')
+            ->whereHas('attendance', fn ($q) => $q->where('user_id', $user->id))
+            ->with('attendance')
+            ->orderByDesc('id')
+            ->first();
+    }
+
     public function openAttendance(User $user): ?Attendance
     {
-        return Attendance::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('clock_in')
-            ->whereNull('clock_out')
-            ->latest('id')
-            ->first();
+        return $this->openSegment($user)?->attendance;
+    }
+
+    /**
+     * Close a forgotten cross-day open punch when starting today's shift (no cron).
+     * Triggered on /clock load or clock-in attempt within N minutes of shift start.
+     */
+    public function closeStaleOpenBeforeShiftStart(
+        User $user,
+        ?CarbonInterface $at = null,
+        ?string $shiftType = null,
+    ): ?Attendance {
+        $at = Carbon::parse($at ?? now());
+        $shiftType ??= $this->preferredShiftType($user, $at);
+
+        $segment = $this->openSegment($user);
+        if ($segment === null) {
+            return null;
+        }
+
+        $attendance = $segment->attendance;
+        if ($attendance === null) {
+            return null;
+        }
+
+        // Same calendar day — employee must clock out manually (multi-punch breaks).
+        if ($attendance->date->toDateString() === $at->toDateString()) {
+            return null;
+        }
+
+        $expectedStart = $this->expectedStartFor($user, $shiftType, $at);
+        $leadMinutes = max(0, (int) config('attendance.force_close_before_shift_minutes', 60));
+
+        if ($expectedStart !== null && $at->lt($expectedStart->copy()->subMinutes($leadMinutes))) {
+            return null;
+        }
+
+        $closeAt = $this->resolveStaleForceCloseTime($attendance, $segment, $at);
+
+        return $this->forceCloseStaleSegment($attendance, $closeAt);
     }
 
     /**
      * Shift types the employee may pick on the clock screen for $at's date.
-     * Phase 6: must match day’s plan (base assignment); EXTRA/OT only if assigned.
-     * No plan → profile default only. Types already recorded that day are excluded.
+     * Early / late / after-end allowed for any remaining planned type that day.
      *
      * @return list<string>
      */
     public function availableShiftTypes(User $user, ?CarbonInterface $at = null): array
     {
         $at = Carbon::parse($at ?? now());
-        $remaining = $this->remainingPlannedTypes($user, $at->toDateString());
 
-        return array_values(array_filter(
-            $remaining,
-            fn (string $type) => $this->shiftIsClockableNow($user, $type, $at),
-        ));
+        return $this->remainingPlannedTypes($user, $at->toDateString());
     }
 
     /**
-     * Planned types not punched yet whose shift has already finished.
+     * Planned types not punched yet whose shift has already finished
+     * (informational — clock-in still allowed with an outside-window alert).
      *
      * @return list<string>
      */
@@ -322,6 +396,7 @@ class AttendanceService
 
     /**
      * Planned types not punched yet that have not started (next shift still ahead).
+     * Informational — early clock-in is still allowed.
      *
      * @return list<string>
      */
@@ -349,18 +424,11 @@ class AttendanceService
      */
     private function remainingPlannedTypes(User $user, string $date): array
     {
-        $used = Attendance::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', $date)
-            ->pluck('shift_type')
-            ->all();
-
-        return array_values(array_diff($this->plannedAllowedTypes($user, $date), $used));
+        return $this->plannedAllowedTypes($user, $date);
     }
 
     /**
-     * Preferred clock selection: the shift whose window contains now, else the
-     * next upcoming start, else today’s assignment if still available.
+     * Preferred clock selection: in-window shift first, else earliest start among remaining.
      */
     public function preferredShiftType(User $user, ?CarbonInterface $at = null): string
     {
@@ -368,61 +436,39 @@ class AttendanceService
         $available = $this->availableShiftTypes($user, $at);
 
         if ($available === []) {
-            $upcoming = $this->upcomingUnrecordedShiftTypes($user, $at);
-
-            return $upcoming[0] ?? Attendance::SHIFT_FULL_TIME;
+            return Attendance::SHIFT_FULL_TIME;
         }
 
-        $picked = $this->earliestAvailableByWindow($user, $available, $at);
-
-        return $picked ?? $available[0];
-    }
-
-    /**
-     * @param  list<string>  $available
-     */
-    private function earliestAvailableByWindow(User $user, array $available, CarbonInterface $at): ?string
-    {
         $inWindow = [];
         foreach ($available as $type) {
-            $start = $this->expectedStartFor($user, $type, $at);
-            if ($start === null) {
+            if ($this->shiftHasNotStarted($user, $type, $at) || $this->shiftWindowHasEnded($user, $type, $at)) {
                 continue;
             }
+            $start = $this->expectedStartFor($user, $type, $at);
             $inWindow[] = ['type' => $type, 'start' => $start];
         }
 
-        if ($inWindow === []) {
-            return null;
+        if ($inWindow !== []) {
+            usort($inWindow, fn (array $a, array $b) => $a['start'] <=> $b['start']);
+
+            return $inWindow[0]['type'];
         }
 
-        usort($inWindow, fn (array $a, array $b) => $a['start'] <=> $b['start']);
+        $byStart = [];
+        foreach ($available as $type) {
+            $start = $this->expectedStartFor($user, $type, $at);
+            $byStart[] = ['type' => $type, 'start' => $start ?? $at->copy()->addYears(10)];
+        }
+        usort($byStart, fn (array $a, array $b) => $a['start'] <=> $b['start']);
 
-        return $inWindow[0]['type'];
+        return $byStart[0]['type'];
     }
 
     /**
-     * Late clock-in is allowed until the shift end. After it finishes, that
-     * shift cannot be started; the next shift opens at its own start.
+     * Whether $at falls inside the planned [start, end] window (inclusive edges).
      */
     public function shiftIsClockableNow(User $user, string $shiftType, ?CarbonInterface $at = null): bool
     {
-        $at = Carbon::parse($at ?? now());
-        $start = $this->expectedStartFor($user, $shiftType, $at);
-        $end = $this->expectedEndFor($user, $shiftType, $at);
-
-        if ($start === null && $end === null) {
-            return true;
-        }
-
-        if ($start !== null && $at->lt($start)) {
-            return false;
-        }
-
-        if ($end !== null && $at->gt($end)) {
-            return false;
-        }
-
         return true;
     }
 
@@ -440,6 +486,37 @@ class AttendanceService
         $end = $this->expectedEndFor($user, $shiftType, $at);
 
         return $end !== null && $at->gt($end);
+    }
+
+    /**
+     * @return 'before_window'|'after_window'|null
+     */
+    public function outsideShiftWindowReason(User $user, string $shiftType, CarbonInterface $at): ?string
+    {
+        $at = Carbon::parse($at);
+        if ($this->shiftHasNotStarted($user, $shiftType, $at)) {
+            return 'before_window';
+        }
+        if ($this->shiftWindowHasEnded($user, $shiftType, $at)) {
+            return 'after_window';
+        }
+
+        return null;
+    }
+
+    private function notifyOutsideShiftWindow(Attendance $attendance, string $kind, CarbonInterface $at): void
+    {
+        $user = $attendance->user;
+        if ($user === null) {
+            return;
+        }
+
+        $reason = $this->outsideShiftWindowReason($user, $attendance->shift_type, $at);
+        if ($reason === null) {
+            return;
+        }
+
+        $this->notifications->attendanceOutsideShiftWindow($attendance, $kind, $reason);
     }
 
     /**
@@ -563,6 +640,22 @@ class AttendanceService
         return $this->expectedEnd($user, $draft, $assignment);
     }
 
+    public function expectedEndForAttendance(Attendance $attendance, ?ShiftAssignment $assignment = null): ?Carbon
+    {
+        $user = $attendance->user;
+        if ($user === null) {
+            return null;
+        }
+
+        $assignment ??= $this->resolveAssignment(
+            $user,
+            $attendance->shift_type,
+            $attendance->date->toDateString(),
+        );
+
+        return $this->expectedEnd($user, $attendance, $assignment);
+    }
+
     /**
      * Minutes late if the employee clocked in at $at (default: now).
      */
@@ -572,6 +665,13 @@ class AttendanceService
         ?CarbonInterface $at = null,
     ): int {
         $at = Carbon::parse($at ?? now());
+        $shiftType ??= $this->preferredShiftType($user, $at);
+
+        // Resume after a break / already punched this type today — not a late first start.
+        if ($this->hasAttendanceForShift($user, $at->toDateString(), $shiftType)) {
+            return 0;
+        }
+
         $expected = $this->expectedStartFor($user, $shiftType, $at);
 
         if ($expected === null) {
@@ -658,23 +758,52 @@ class AttendanceService
         ?ShiftAssignment $assignment,
     ): ?Carbon {
         $date = $attendance->date->copy();
+        $start = null;
+        $end = null;
 
         if ($assignment !== null) {
-            $end = Carbon::parse($date->toDateString().' '.$assignment->expected_end_time);
             $start = Carbon::parse($date->toDateString().' '.$assignment->expected_start_time);
+            $end = Carbon::parse($date->toDateString().' '.$assignment->expected_end_time);
+            if ($end->lte($start)) {
+                $end->addDay();
+            }
+        } else {
+            $window = $this->windowForShift($user, $attendance->shift_type);
+            if ($window === null) {
+                return null;
+            }
 
-            return $end->lte($start) ? $end->addDay() : $end;
+            $start = Carbon::parse($date->toDateString().' '.$window[0]);
+            $end = Carbon::parse($date->toDateString().' '.$window[1]);
+            if ($end->lte($start)) {
+                $end->addDay();
+            }
         }
 
-        $window = $this->windowForShift($user, $attendance->shift_type);
-        if ($window === null) {
-            return null;
+        return $this->alignEndWithPlannedHours(
+            $start,
+            $end,
+            $this->shifts->plannedHours($attendance->shift_type, $assignment),
+        );
+    }
+
+    /**
+     * When the profile window is much longer than planned hours (e.g. FT 09:00→01:00 = 16h
+     * vs planned 8h), early-leave / display end = start + planned — not the far overnight end.
+     * True overnight shifts whose window matches planned (22:00→06:00 = 8h) keep the window end.
+     */
+    private function alignEndWithPlannedHours(Carbon $start, Carbon $windowEnd, float $plannedHours): Carbon
+    {
+        if ($plannedHours <= 0) {
+            return $windowEnd;
         }
 
-        $start = Carbon::parse($date->toDateString().' '.$window[0]);
-        $end = Carbon::parse($date->toDateString().' '.$window[1]);
+        $windowHours = round($start->floatDiffInHours($windowEnd), 2);
+        if ($windowHours <= $plannedHours + 1.0) {
+            return $windowEnd;
+        }
 
-        return $end->lte($start) ? $end->addDay() : $end;
+        return $start->copy()->addMinutes((int) round($plannedHours * 60));
     }
 
     /**
@@ -726,6 +855,32 @@ class AttendanceService
         }
 
         return round(min(100, ($actualHours / $plannedHours) * 100), 2);
+    }
+
+    private function resolveStaleForceCloseTime(
+        Attendance $attendance,
+        AttendanceSegment $segment,
+        CarbonInterface $at,
+    ): CarbonInterface {
+        $expectedEnd = $this->expectedEndForAttendance($attendance);
+        $closeAt = $expectedEnd ?? $segment->clock_in->copy()->addMinutes(
+            (int) round((float) $attendance->planned_hours * 60),
+        );
+
+        if ($closeAt->gt($at)) {
+            $closeAt = $at->copy();
+        }
+
+        if ($closeAt->lte($segment->clock_in)) {
+            $closeAt = $segment->clock_in->copy()->addMinute();
+        }
+
+        return $closeAt;
+    }
+
+    private function forceCloseStaleSegment(Attendance $attendance, CarbonInterface $closeAt): Attendance
+    {
+        return $this->finalizeClockOut($attendance, $closeAt, automatic: true);
     }
 
     private function isRestDay(User $user, string $date): bool

@@ -31,7 +31,7 @@ class AdvanceController extends Controller
         return view('admin.advances.index', [
             'advances' => $this->advances->listForAdmin(array_filter($filters))->withQueryString(),
             'employees' => User::query()
-                ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT])
+                ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_DRIVER, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT])
                 ->where('status', User::STATUS_ACTIVE)
                 ->orderBy('name_en')
                 ->get(['id', 'name_ar', 'name_en']),
@@ -45,7 +45,7 @@ class AdvanceController extends Controller
 
         return view('admin.advances.create', [
             'employees' => User::query()
-                ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT])
+                ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_DRIVER, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT])
                 ->where('status', User::STATUS_ACTIVE)
                 ->orderBy('name_en')
                 ->get(['id', 'name_ar', 'name_en']),
