@@ -37,6 +37,7 @@ return [
         'rest_day' => 'Rest-day work',
         'holiday' => 'Official holiday work',
         'auto_clock_out' => 'Auto clock-out',
+        'force_clock_out' => 'Closed by supervisor',
     ],
     'shifts' => [
         'FULL_TIME' => 'Full time',
@@ -98,6 +99,13 @@ return [
     'report_write' => 'Write it now',
     'auto_closed_notice' => 'The system auto clocked you out for :shift at :time (end of work + 1 hour grace).',
     'stale_force_closed_notice' => 'Your open punch from :date was closed at :time so you can start today. Update that day\'s report if needed.',
+    'force_closed_notice' => 'Your team leader or admin ended your :shift at :time (actual time). Write your daily report, then overtime is reviewed on Approvals.',
+    'end_shift' => [
+        'button' => 'End shift',
+        'confirm' => 'End :name’s open shift now at :time (actual time)? They can then write a report. Overtime still needs your recommendation and admin approval.',
+        'open_since' => 'Still clocked in since :time.',
+        'hint' => 'End the shift at the current actual time. After that you can recommend overtime (admin approves) on Approvals.',
+    ],
     'photos' => [
         'title' => 'Punch photos',
         'label' => 'Photos',

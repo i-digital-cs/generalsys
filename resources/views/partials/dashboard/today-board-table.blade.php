@@ -51,6 +51,20 @@
                             ])>
                                 {{ __('dashboard.hours.statuses.'.$row['status']) }}
                             </span>
+                            @if ($row['status'] === 'IN')
+                                @foreach (($row['attendances'] ?? collect()) as $openAtt)
+                                    @if ($openAtt->clock_out === null)
+                                        <div class="mt-1">
+                                            <x-attendance-end-shift :attendance="$openAtt" />
+                                        </div>
+                                    @endif
+                                @endforeach
+                                @if (empty($row['attendances']) && ! empty($row['attendance']) && $row['attendance']->clock_out === null)
+                                    <div class="mt-1">
+                                        <x-attendance-end-shift :attendance="$row['attendance']" />
+                                    </div>
+                                @endif
+                            @endif
                         </td>
                         <td>
                             @if (($row['photo_count'] ?? 0) > 0)

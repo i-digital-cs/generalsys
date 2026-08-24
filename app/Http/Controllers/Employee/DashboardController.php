@@ -40,6 +40,7 @@ class DashboardController extends Controller
             'assignedShifts' => $snapshot['assignedShifts'],
             'calendar' => $snapshot['calendar'],
             'hoursMonth' => $snapshot['hoursMonth'],
+            'teamLeaders' => $snapshot['teamLeaders'],
             'calPrevUrl' => route('employee.dashboard', ['cal' => $cursor->copy()->subMonth()->format('Y-m')]),
             'calNextUrl' => route('employee.dashboard', ['cal' => $cursor->copy()->addMonth()->format('Y-m')]),
         ]);

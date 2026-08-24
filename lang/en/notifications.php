@@ -33,6 +33,7 @@ return [
         'attendance_gap_admin_decided' => 'Break gap finalized',
         'attendance_overtime_tl_decided' => 'Overtime reviewed by team leader',
         'attendance_overtime_admin_decided' => 'Overtime finalized',
+        'attendance_force_clock_out' => 'Shift ended by supervisor',
     ],
     'outside_reasons' => [
         'before_window' => 'before the planned window',
@@ -57,5 +58,6 @@ return [
         'attendance_gap_admin_decided' => 'Your :minutes min break on :date was :status.',
         'attendance_overtime_tl_decided' => ':name’s :minutes min overtime on :date was :status by the team leader — awaiting admin.',
         'attendance_overtime_admin_decided' => 'Your :minutes min overtime on :date was :status.',
+        'attendance_force_clock_out' => ':actor ended :name’s shift for :date (:shift) at :time (actual time).',
     ],
 ];

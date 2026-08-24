@@ -34,6 +34,19 @@
         @endauth
 
         <div class="d-flex flex-nowrap flex-shrink-0 align-items-center gap-1 {{ auth()->guest() ? 'ms-auto' : '' }}">
+            <button type="button"
+                    class="nav-link text-white px-2 border-0 bg-transparent"
+                    data-theme-toggle
+                    data-label-light="{{ __('general.theme_light') }}"
+                    data-label-dark="{{ __('general.theme_dark') }}"
+                    data-aria-light="{{ __('general.theme_to_light') }}"
+                    data-aria-dark="{{ __('general.theme_to_dark') }}"
+                    title="{{ __('general.theme_to_dark') }}"
+                    aria-label="{{ __('general.theme_to_dark') }}">
+                <i class="bi bi-moon-stars" data-theme-icon aria-hidden="true"></i>
+                <span class="d-none d-sm-inline ms-1" data-theme-label>{{ __('general.theme_dark') }}</span>
+            </button>
+
             <a class="nav-link text-white px-2"
                href="{{ route('locale', $otherLocale) }}"
                title="{{ __('general.language') }}"

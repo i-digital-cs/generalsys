@@ -80,6 +80,8 @@ class Attendance extends Model
         'overtime_admin_by',
         'overtime_admin_at',
         'is_auto_clock_out',
+        'force_closed_by',
+        'force_closed_at',
         'daily_report',
         'team_leader_response',
         'attendance_score',
@@ -93,6 +95,7 @@ class Attendance extends Model
             'is_day_off_work' => 'boolean',
             'is_official_holiday_work' => 'boolean',
             'is_auto_clock_out' => 'boolean',
+            'force_closed_at' => 'datetime',
             'clock_in' => 'datetime',
             'clock_out' => 'datetime',
             'clock_in_lat' => 'decimal:7',
@@ -147,6 +150,11 @@ class Attendance extends Model
     public function overtimeAdminDecider(): BelongsTo
     {
         return $this->belongsTo(User::class, 'overtime_admin_by');
+    }
+
+    public function forceClosedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'force_closed_by');
     }
 
     public function hasOpenSegment(): bool

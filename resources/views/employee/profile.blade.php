@@ -76,7 +76,7 @@
                     </li>
                     <li class="list-group-item d-flex align-items-center gap-2">
                         <i class="bi bi-people text-primary" aria-hidden="true"></i>
-                        <span class="text-body-secondary">{{ __('employees.team_leader') }}:</span>
+                        <span class="text-body-secondary">{{ __('profile.my_team_leaders') }}:</span>
                         <span class="text-truncate">
                             {{ $employee->teamLeaderDisplayNames() !== '' ? $employee->teamLeaderDisplayNames() : __('general.not_available') }}
                         </span>
@@ -87,6 +87,10 @@
 
         {{-- Details column --}}
         <div class="col-12 col-lg-8">
+            <div class="mb-3">
+                <x-my-team-leaders :leaders="$employee->teamLeaders" />
+            </div>
+
             {{-- Personal information (no salary/rates — §1.8 privacy rule) --}}
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-transparent fw-semibold">

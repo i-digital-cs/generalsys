@@ -1,10 +1,12 @@
 import * as bootstrap from 'bootstrap';
 import { initTableFilters } from './pages/table-filter';
+import { initThemeToggle } from './theme';
 import './pages/portal-clock';
 
 window.bootstrap = bootstrap;
 
 initTableFilters();
+initThemeToggle();
 
 // Navbar user menu: Popper's bottom-end hugs the wrong edge under dir=rtl,
 // so pin placement from the document direction once at boot.

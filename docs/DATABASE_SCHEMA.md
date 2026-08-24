@@ -191,7 +191,9 @@ CREATE TABLE attendance (
     overtime_admin_decision  ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
     overtime_admin_by        BIGINT UNSIGNED NULL,
     overtime_admin_at        TIMESTAMP NULL,
-    is_auto_clock_out        TINYINT(1) NOT NULL DEFAULT 0,   -- true when closed by scheduler (end + grace)
+    is_auto_clock_out        TINYINT(1) NOT NULL DEFAULT 0,   -- historical scheduler close; no longer used for new rows
+    force_closed_by          BIGINT UNSIGNED NULL,            -- TL/Admin/Assistant closed open punch at actual time
+    force_closed_at          TIMESTAMP NULL,
     daily_report             TEXT NULL,
     team_leader_response     TEXT NULL,
     attendance_score         DECIMAL(5,2) NULL,               -- auto: min(100, actual/planned*100)

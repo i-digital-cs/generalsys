@@ -15,6 +15,10 @@
         </span>
     </div>
 
+    <div class="mb-4">
+        <x-my-team-leaders :leaders="$teamLeaders" />
+    </div>
+
     @if ($missingReportDate)
         <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2">
             <span>

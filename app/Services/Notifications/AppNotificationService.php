@@ -8,6 +8,7 @@ use App\Models\Permission;
 use App\Models\User;
 use App\Models\Vacation;
 use App\Notifications\AttendanceAutoClockOutNotification;
+use App\Notifications\AttendanceForceClockOutNotification;
 use App\Notifications\AttendanceGapNotification;
 use App\Notifications\AttendanceGeofenceWarningNotification;
 use App\Notifications\AttendanceOutsideShiftWindowNotification;
@@ -181,6 +182,22 @@ class AppNotificationService
         $this->notifyMembershipLeaders($attendance->user, $notification);
 
         $this->notifyOperationsAdmins($notification);
+    }
+
+    /**
+     * TL/Admin closed an open punch at actual time.
+     */
+    public function attendanceForceClockOut(Attendance $attendance, User $actor): void
+    {
+        $attendance->loadMissing('user');
+        $notification = new AttendanceForceClockOutNotification($attendance, $actor);
+
+        if ($attendance->user !== null && (int) $attendance->user->id !== (int) $actor->id) {
+            $attendance->user->notify($notification);
+        }
+
+        $this->notifyMembershipLeaders($attendance->user, $notification, $actor);
+        $this->notifyOperationsAdmins($notification, $actor);
     }
 
     /**

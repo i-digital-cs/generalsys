@@ -236,6 +236,8 @@ Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER,ASSISTANT'])->prefix('team-
     Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals');
     Route::post('/approvals/gaps/{gap}/decide', [ApprovalController::class, 'decideGap'])
         ->name('approvals.gaps.decide');
+    Route::post('/attendance/{attendance}/force-clock-out', [AttendanceReviewController::class, 'forceClockOut'])
+        ->name('attendance.force-clock-out');
     Route::post('/attendance/{attendance}/overtime/admin', [AttendanceReviewController::class, 'adminDecideOvertime'])
         ->name('attendance.overtime.admin');
 });

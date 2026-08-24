@@ -582,6 +582,16 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] R8: overtime workflow polish — TL recommend w/ system-suggested minutes; Admin/Assistant approve/reject; status badges + credited cap; approvals queue + notifications
   - [x] R10: full suite green; AttendanceFlagsDisplayTest frozen to punch day (R5 stale-close); T-7.10 closed
 
+### T-7.11 — Supervisor end-shift (late clock-out)
+- Depends on: T-7.10
+- Unlocks: —
+- [x] Task complete
+  - [x] TL (team) / Manager / Assistant can End shift on open punch at **actual now** (no GPS/photos)
+  - [x] After close: existing overtime TL recommend → Admin/Assistant approve (actual hours visible)
+  - [x] UI: today board, hours day list, attendance history; notify employee + other TLs/admins
+  - [x] AttendanceForceClockOutTest + LangParity; UI AR+EN
+  - [x] Role chain: TL applies overtime; Admin approves (same as R8). Assistant may end shift like Admin ops.
+
 ---
 
 ## Phase 8 — Dual team leaders (max 2) + attributed evaluations
@@ -748,6 +758,14 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] Dynamic “Add driver” rows (like employee contacts): select employee **or** type name + orders
   - [x] Orders > 25 → show over target X (orders − 25); keep score/notes
   - [x] Form + show + PDF; AR+EN; ValuationCalculatorTest + ValuationModuleTest + LangParity
+
+### T-9.13 — Light / dark theme (localStorage)
+- Depends on: T-0.2
+- Unlocks: —
+- [x] Task complete
+  - [x] Bootstrap `data-bs-theme` + `localStorage` key `hr-pro-theme` (no DB)
+  - [x] Navbar toggle next to language; login shell unchanged
+  - [x] HR-Pro SCSS themed for dark; ThemeToggleTest + LangParity; UI/UX gate
 
 ## Dependency map
 
@@ -941,3 +959,6 @@ Example:
 - [x] 2026-08-19 Fix T-9.9/T-9.10 — Valuation PDF: keep AR mixed Latin/digits/brackets (`(0–100)`, B2B, King); gold ★ stars instead of `****-`; `/service/valuations` list is a card table with badges/actions. DompdfArabicTest + ValuationModuleTest + LangParity green.
 - [x] 2026-08-19 UX T-6.5 — Valuation sheets + assign lists use the same `.table-hr` + `<x-table-toolbar>` search/filters as HR lists. TableFilterUiTest + ValuationModuleTest + LangParity green.
 - [x] 2026-08-24 Amend T-1.5 — Dropped `online_half_day_rate` / `online_full_day_rate` / `overtime_hourly_rate` from users + employee form. Payroll always uses base÷30 formulas; draft OT multiplier unchanged. PayrollCalculatorTest + RatesPrivacy + Assistant + EmployeeCrud + PayrollDraft + LangParity green.
+- [x] 2026-08-24 T-9.13 PASS — Light/dark via Bootstrap `data-bs-theme` + `localStorage` `hr-pro-theme` (no DB). Navbar toggle next to language; head boot script (no flash); login unchanged. HR-Pro SCSS body/sidebar/cards/calendar/tabs themed. ThemeToggleTest + LangParity; `npm run build`; UI/UX AR+EN RTL/LTR.
+- [x] 2026-08-24 UX — Employee sees assigned team leader(s) on dashboard + profile (name, email, phone). EmployeeDashboardTest + EmployeeProfileTest + LangParity.
+- [x] 2026-08-24 T-7.11 PASS — TL/Admin/Assistant End shift (actual time) when employee late to clock out; then OT TL recommend → Admin approve (existing R8). AttendanceForceClockOutTest + LangParity.

@@ -92,6 +92,12 @@ class ClockController extends Controller
                 : 0,
             'lateMinutes' => $open !== null ? (int) $open->late_minutes : 0,
             'todayAutoClockOut' => $todayAuto,
+            'todayForceClockOut' => Attendance::query()
+                ->where('user_id', $user->id)
+                ->whereDate('date', now()->toDateString())
+                ->whereNotNull('force_closed_by')
+                ->orderByDesc('id')
+                ->first(),
             'todayAttendances' => $todayAttendances,
             'staleClosed' => $staleClosed,
             'photoMaxMb' => (int) round(((int) config('attendance.photos.max_kilobytes', 51200)) / 1024),

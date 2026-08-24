@@ -10,6 +10,7 @@
 | Assets | **Vite build locally → upload `public/build`** | Build step never runs on server |
 | Fonts | **Cairo** UI (self-hosted `public/fonts`; preload + `font-display: block`). **Tajawal** TTF for payslip PDF only | No CDN; reduces hard-refresh font flash |
 | Direction | `dir="rtl"` default, `lang="ar"`; `dir="ltr"` when `language_preference = en` | AR/EN toggle |
+| Theme | Bootstrap 5.3 `data-bs-theme="light\|dark"` on `<html>`; default **light** | Navbar toggle; **browser `localStorage` only** (`hr-pro-theme`) — no DB / no server API |
 | Icons | Bootstrap Icons (self-hosted SVG sprite) | No CDN |
 
 > HARD RULE: no CDN links in production layouts, no npm runtime on server, no Livewire/Inertia (keep memory footprint low on shared hosting).
@@ -48,6 +49,7 @@ resources/views/
 - `@yield('content')`
 - `@stack('scripts')` — page-specific vanilla JS, **always at bottom, always deferred**
 - Sidebar menu rendered from a single `config/menu.php` array filtered by role — **menu items for payroll are never rendered for TEAM_LEADER** (privacy rule also in UI, not just backend).
+- **Theme (T-9.13):** inline boot script in `<head>` reads `localStorage['hr-pro-theme']` (`light`|`dark`) and sets `data-bs-theme` before CSS (no flash). Navbar button `[data-theme-toggle]` flips and persists locally. Login/`auth` layout has **no** theme toggle. No user column or preference API.
 
 Flash messages: `session('success'|'error')` → Bootstrap toast, auto-dismiss 4s.
 

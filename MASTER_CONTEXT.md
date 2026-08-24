@@ -109,7 +109,7 @@
   2. **EXTRA / OVERTIME** — only when SCHEDULED for that day (in addition to the base plan).
   3. If **no** base assignment → only **`shift_type_default`** (not a free pick among all three).
   4. **One attendance row per `(user, date, shift_type)`**; one open punch at a time; overnight `clock_out` uses real next-day datetime.
-  5. **Forgot clock-out:** employees must clock out themselves (auto clock-out removed). Open punches stay open until manual out.
+  5. **Forgot / late clock-out:** employee should clock out themselves. **Team Leader (team), Manager, and Assistant** may **End shift** at **actual now** (no GPS/photos). Then TL recommends overtime (sees actual hours) on Approvals; **Admin/Assistant approve**. Stale cross-day opens still auto-close only ≥1h before next shift start.
   6. **GPS:** required only for **FULL_TIME** clock-in/out. Online½ / Online full do not require location. Soft geofence for FT unchanged.
   7. **Early/late:** employees may clock any remaining planned shift anytime that day (including before start or after end). Punches outside the planned window notify the employee + TL(s) + Admin/Assistant. Late minutes / early departure still compute for payroll.
   8. **Shift windows (R9):** default employee windows and TL assignments must match planned hours (±1h). Typos like FULL_TIME `09:00→01:00` (16h) are rejected on save; true overnight that matches planned (`22:00→06:00` = 8h) is allowed. Runtime still caps expected end via `alignEndWithPlannedHours` for legacy bad data.

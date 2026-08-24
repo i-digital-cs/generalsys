@@ -5,6 +5,7 @@ namespace Tests\Feature\Employee;
 use App\Models\Attendance;
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Services\Employees\TeamMembershipService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -54,6 +55,26 @@ class EmployeeDashboardTest extends TestCase
             ->assertSee('data-table-filter-root', false)
             ->assertSee('table-hr', false)
             ->assertSee('data-table-search', false);
+    }
+
+    public function test_dashboard_shows_assigned_team_leaders(): void
+    {
+        app()->setLocale('en');
+
+        $leader = User::factory()->teamLeader()->create([
+            'name_en' => 'Dashboard Lead',
+            'email' => 'dash-lead@hrpro.test',
+        ]);
+        $leader->profile()->create(['employee_code' => 'TL-DASH', 'phone' => '01011112222']);
+        app(TeamMembershipService::class)->syncLeaders($this->employee, [$leader->id]);
+
+        $this->actingAs($this->employee)
+            ->get(route('employee.dashboard'))
+            ->assertOk()
+            ->assertSee(__('profile.my_team_leaders'), false)
+            ->assertSee('Dashboard Lead', false)
+            ->assertSee('dash-lead@hrpro.test', false)
+            ->assertSee('01011112222', false);
     }
 
     public function test_dashboard_reflects_tl_assignment(): void

@@ -35,6 +35,7 @@ class NotificationMessage
             'attendance_gap_admin_decided' => __('notifications.kinds.attendance_gap_admin_decided'),
             'attendance_overtime_tl_decided' => __('notifications.kinds.attendance_overtime_tl_decided'),
             'attendance_overtime_admin_decided' => __('notifications.kinds.attendance_overtime_admin_decided'),
+            'attendance_force_clock_out' => __('notifications.kinds.attendance_force_clock_out'),
             default => __('notifications.kinds.generic'),
         };
     }
@@ -150,6 +151,15 @@ class NotificationMessage
                 'minutes' => $data['minutes'] ?? 0,
                 'date' => $data['date'] ?? '',
                 'status' => __('attendance_review.breakdown.ot_admin.'.($data['admin_decision'] ?? 'PENDING')),
+            ]),
+            'attendance_force_clock_out' => __('notifications.bodies.attendance_force_clock_out', [
+                'actor' => $locale === 'ar'
+                    ? ($data['actor_name_ar'] ?? $data['actor_name_en'] ?? '')
+                    : ($data['actor_name_en'] ?? $data['actor_name_ar'] ?? ''),
+                'name' => $name !== '' ? $name : __('notifications.you'),
+                'date' => $data['date'] ?? '',
+                'shift' => __('clock.shifts.'.($data['shift_type'] ?? 'FULL_TIME')),
+                'time' => $data['clock_out'] ?? '',
             ]),
             default => '',
         };

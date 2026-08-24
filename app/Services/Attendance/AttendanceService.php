@@ -159,6 +159,34 @@ class AttendanceService
     }
 
     /**
+     * TL / Admin / Assistant closes an open punch at actual time (no GPS/photos).
+     */
+    public function supervisorClockOut(Attendance $attendance, User $actor, ?CarbonInterface $at = null): Attendance
+    {
+        $attendance->loadMissing(['user', 'segments']);
+        $open = $attendance->segments->first(fn (AttendanceSegment $s) => $s->isOpen());
+        if ($open === null || $attendance->clock_out !== null) {
+            throw AttendanceException::noOpenAttendance();
+        }
+
+        $at = Carbon::parse($at ?? now());
+        if ($at->lte($open->clock_in)) {
+            $at = $open->clock_in->copy()->addMinute();
+        }
+
+        $closed = $this->finalizeClockOut($attendance, $at, automatic: false);
+        $closed->update([
+            'force_closed_by' => $actor->id,
+            'force_closed_at' => now(),
+        ]);
+
+        $closed = $closed->fresh(['user', 'segments', 'forceClosedBy']);
+        $this->notifications->attendanceForceClockOut($closed, $actor);
+
+        return $closed;
+    }
+
+    /**
      * Auto clock-out disabled — employees must clock out themselves.
      * Historical `is_auto_clock_out` rows remain for display only.
      *

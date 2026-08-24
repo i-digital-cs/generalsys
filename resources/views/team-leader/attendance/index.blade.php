@@ -198,9 +198,7 @@
                     @php
                         $name = app()->getLocale() === 'ar' ? $row['user']->name_ar : $row['user']->name_en;
                         $modalId = 'att-day-'.$row['user']->id.'-'.str_replace('-', '', $row['date']).'-'.$loop->index;
-                        $reviewable = collect($row['attendances'] ?? [])
-                            ->filter(fn ($a) => $a->clock_out !== null)
-                            ->values();
+                        $reviewable = collect($row['attendances'] ?? [])->values();
                         $late = (int) ($row['late_minutes'] ?? 0);
                         $gap = (int) ($row['gap_minutes'] ?? 0);
                         $ot = (int) ($row['recommended_overtime_minutes'] ?? 0);
@@ -282,24 +280,34 @@
                                                     :attendance="$attendanceRow"
                                                     :user="$row['user']"
                                                 />
+                                                <x-attendance-end-shift :attendance="$attendanceRow" />
                                             </div>
 
-                                            <x-attendance-shift-timeline
-                                                :attendance="$attendanceRow"
-                                                class="mb-3"
-                                            />
+                                            @if ($attendanceRow->clock_out === null)
+                                                <p class="small mb-1">
+                                                    {{ __('clock.end_shift.open_since', [
+                                                        'time' => $attendanceRow->clock_in?->timezone(config('app.timezone'))->format('H:i'),
+                                                    ]) }}
+                                                </p>
+                                                <p class="small text-body-secondary mb-0">{{ __('clock.end_shift.hint') }}</p>
+                                            @else
+                                                <x-attendance-shift-timeline
+                                                    :attendance="$attendanceRow"
+                                                    class="mb-3"
+                                                />
 
-                                            <x-attendance-time-breakdown
-                                                :attendance="$attendanceRow"
-                                                review
-                                                :show-overtime-section="false"
-                                            />
+                                                <x-attendance-time-breakdown
+                                                    :attendance="$attendanceRow"
+                                                    review
+                                                    :show-overtime-section="false"
+                                                />
 
-                                            <x-attendance-overtime-review
-                                                :attendance="$attendanceRow"
-                                                embedded
-                                                class="mt-3"
-                                            />
+                                                <x-attendance-overtime-review
+                                                    :attendance="$attendanceRow"
+                                                    embedded
+                                                    class="mt-3"
+                                                />
+                                            @endif
                                         </div>
                                     @empty
                                         <div class="attendance-detail-section">

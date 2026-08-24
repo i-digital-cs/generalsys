@@ -30,13 +30,15 @@ class EmployeeDashboardService
      *     isClockedIn: bool,
      *     assignedShifts: Collection<int, ShiftAssignment>,
      *     calendar: array,
-     *     hoursMonth: array
+     *     hoursMonth: array,
+     *     teamLeaders: Collection<int, User>
      * }
      */
     public function snapshot(User $user, ?Carbon $at = null, ?string $cal = null): array
     {
         $at = $at ?? now();
         $date = $at->toDateString();
+        $user->loadMissing(['teamLeaders.profile']);
 
         $open = $this->attendance->openAttendance($user);
 
@@ -60,6 +62,7 @@ class EmployeeDashboardService
             'assignedShifts' => $calData['assignedShifts'],
             'calendar' => $calData['calendar'],
             'hoursMonth' => $calData['hoursMonth'],
+            'teamLeaders' => $user->teamLeaders,
         ];
     }
 }

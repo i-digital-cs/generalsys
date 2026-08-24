@@ -44,6 +44,18 @@
         </div>
     @endif
 
+    @if ($todayForceClockOut ?? null)
+        <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
+            <span class="badge text-bg-warning text-dark">{{ __('clock.flags.force_clock_out') }}</span>
+            <span>
+                {{ __('clock.force_closed_notice', [
+                    'time' => $todayForceClockOut->clock_out?->timezone($tz)->format('H:i'),
+                    'shift' => __('clock.shifts.'.$todayForceClockOut->shift_type),
+                ]) }}
+            </span>
+        </div>
+    @endif
+
     @if ($staleClosed ?? null)
         <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
             <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>

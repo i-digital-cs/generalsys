@@ -33,6 +33,7 @@ return [
         'attendance_gap_admin_decided' => 'قرار نهائي على فجوة استراحة',
         'attendance_overtime_tl_decided' => 'مراجعة قائد الفريق للوقت الإضافي',
         'attendance_overtime_admin_decided' => 'قرار نهائي على الوقت الإضافي',
+        'attendance_force_clock_out' => 'أنهى المشرف الدوام',
     ],
     'outside_reasons' => [
         'before_window' => 'قبل النافذة المخططة',
@@ -57,5 +58,6 @@ return [
         'attendance_gap_admin_decided' => 'فجوة استراحتك :minutes د في :date :status.',
         'attendance_overtime_tl_decided' => 'وقت إضافي :minutes د لـ :name في :date :status من قائد الفريق — بانتظار الإدارة.',
         'attendance_overtime_admin_decided' => 'وقتك الإضافي :minutes د في :date :status.',
+        'attendance_force_clock_out' => 'أنهى :actor دوام :name ليوم :date (:shift) الساعة :time (الوقت الفعلي).',
     ],
 ];

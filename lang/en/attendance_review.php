@@ -91,5 +91,6 @@ return [
         'reset' => 'Restored system-recommended time.',
         'overtime_tl' => 'Overtime recommendation saved.',
         'overtime_admin' => 'Overtime decision saved.',
+        'force_clock_out' => 'Shift ended at actual time. Recommend overtime on Approvals if they stayed late; admin will approve.',
     ],
 ];

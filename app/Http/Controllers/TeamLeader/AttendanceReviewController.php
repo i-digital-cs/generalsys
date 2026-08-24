@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\TeamLeader;
 
+use App\Exceptions\AttendanceException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\TeamLeader\ForceClockOutRequest;
 use App\Models\Attendance;
+use App\Services\Attendance\AttendanceService;
 use App\Services\Attendance\AttendanceTimeReviewService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +19,7 @@ class AttendanceReviewController extends Controller
 {
     public function __construct(
         private readonly AttendanceTimeReviewService $reviews,
+        private readonly AttendanceService $attendance,
     ) {}
 
     public function updateTime(Request $request, Attendance $attendance): RedirectResponse
@@ -95,5 +99,16 @@ class AttendanceReviewController extends Controller
         }
 
         return back()->with('success', __('attendance_review.flash.overtime_admin'));
+    }
+
+    public function forceClockOut(ForceClockOutRequest $request, Attendance $attendance): RedirectResponse
+    {
+        try {
+            $this->attendance->supervisorClockOut($attendance, $request->user());
+        } catch (AttendanceException $e) {
+            return back()->with('error', __($e->getMessage()));
+        }
+
+        return back()->with('success', __('attendance_review.flash.force_clock_out'));
     }
 }

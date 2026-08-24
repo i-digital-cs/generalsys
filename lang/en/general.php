@@ -3,6 +3,11 @@
 return [
     'language' => 'العربية',
     'switch_language' => 'Switch language',
+    'theme_toggle' => 'Theme',
+    'theme_to_dark' => 'Switch to dark mode',
+    'theme_to_light' => 'Switch to light mode',
+    'theme_dark' => 'Dark',
+    'theme_light' => 'Light',
     'dashboard_title' => 'Dashboard',
     'save' => 'Save',
     'create' => 'Create',

@@ -3,6 +3,11 @@
 return [
     'language' => 'English',
     'switch_language' => 'تبديل اللغة',
+    'theme_toggle' => 'المظهر',
+    'theme_to_dark' => 'التبديل إلى الوضع الداكن',
+    'theme_to_light' => 'التبديل إلى الوضع الفاتح',
+    'theme_dark' => 'داكن',
+    'theme_light' => 'فاتح',
     'dashboard_title' => 'لوحة التحكم',
     'save' => 'حفظ',
     'create' => 'إنشاء',

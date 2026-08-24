@@ -104,8 +104,15 @@ class EmployeeProfileTest extends TestCase
 
     public function test_profile_shows_both_team_leaders(): void
     {
-        $a = User::factory()->teamLeader()->create(['name_en' => 'Profile Lead A']);
-        $b = User::factory()->teamLeader()->create(['name_en' => 'Profile Lead B']);
+        $a = User::factory()->teamLeader()->create([
+            'name_en' => 'Profile Lead A',
+            'email' => 'lead-a@hrpro.test',
+        ]);
+        $b = User::factory()->teamLeader()->create([
+            'name_en' => 'Profile Lead B',
+            'email' => 'lead-b@hrpro.test',
+        ]);
+        $a->profile()->create(['employee_code' => 'TL-A1', 'phone' => '01000000001']);
         $employee = User::factory()->employee()->create();
         $employee->profile()->create(['employee_code' => 'EMP-TL2']);
         app(TeamMembershipService::class)->syncLeaders($employee, [$a->id, $b->id]);
@@ -113,8 +120,11 @@ class EmployeeProfileTest extends TestCase
         $this->withSession(['locale' => 'en'])->actingAs($employee)
             ->get(route('employee.profile'))
             ->assertOk()
+            ->assertSee(__('profile.my_team_leaders'))
             ->assertSee('Profile Lead A')
-            ->assertSee('Profile Lead B');
+            ->assertSee('Profile Lead B')
+            ->assertSee('lead-a@hrpro.test')
+            ->assertSee('01000000001');
     }
 
     public function test_guest_is_redirected(): void

@@ -124,6 +124,11 @@
                                                     @if (! empty($interval['attendance']))
                                                         <x-attendance-location :attendance="$interval['attendance']" class="mt-1" compact />
                                                     @endif
+                                                    @if (! empty($interval['attendance']) && ! empty($interval['open']))
+                                                        <div class="mt-1">
+                                                            <x-attendance-end-shift :attendance="$interval['attendance']" />
+                                                        </div>
+                                                    @endif
                                                     @if (! empty($interval['attendance']) && empty($interval['open']))
                                                         <x-attendance-time-breakdown
                                                             :attendance="$interval['attendance']"
