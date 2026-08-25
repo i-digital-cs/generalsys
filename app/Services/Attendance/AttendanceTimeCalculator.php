@@ -97,29 +97,38 @@ class AttendanceTimeCalculator
 
         $segments = $attendance->segments->sortBy('sequence')->values();
         $openSegment = $segments->first(fn (AttendanceSegment $s) => $s->isOpen());
+        $isOpen = $openSegment !== null
+            || ($segments->isEmpty() && $attendance->clock_in !== null && $attendance->clock_out === null);
         $rawHours = round($segments->sum(fn (AttendanceSegment $s) => $s->workedMinutes()) / 60, 2);
+        if ($segments->isEmpty() && $attendance->clock_in !== null && $attendance->clock_out !== null) {
+            $rawHours = round((float) ($attendance->raw_actual_hours ?? $attendance->actual_hours), 2);
+        }
         $planned = (float) $attendance->planned_hours;
 
         $first = $segments->first();
         $lastClosed = $segments->filter(fn (AttendanceSegment $s) => ! $s->isOpen())->last();
 
         $systemLate = 0;
-        if ($user !== null && $first !== null) {
+        $firstClockIn = $first?->clock_in ?? $attendance->clock_in;
+        if ($user !== null && $firstClockIn !== null) {
             $expected = $attendanceService->expectedStartFor(
                 $user,
                 $attendance->shift_type,
-                $first->clock_in,
+                $firstClockIn,
             );
             $systemLate = $expected !== null
-                ? max(0, (int) $expected->diffInMinutes($first->clock_in, false))
+                ? max(0, (int) $expected->diffInMinutes($firstClockIn, false))
                 : 0;
         }
 
         $systemEarly = 0;
-        if ($openSegment === null && $lastClosed !== null && $lastClosed->clock_out !== null) {
+        $lastClockOut = $openSegment === null
+            ? ($lastClosed?->clock_out ?? $attendance->clock_out)
+            : null;
+        if (! $isOpen && $lastClockOut !== null) {
             $expectedEnd = $attendanceService->expectedEndForAttendance($attendance, $assignment);
-            if ($expectedEnd !== null && $lastClosed->clock_out->lt($expectedEnd)) {
-                $systemEarly = max(0, (int) $lastClosed->clock_out->diffInMinutes($expectedEnd, false));
+            if ($expectedEnd !== null && $lastClockOut->lt($expectedEnd)) {
+                $systemEarly = max(0, (int) $lastClockOut->diffInMinutes($expectedEnd, false));
             }
         }
 
@@ -167,33 +176,33 @@ class AttendanceTimeCalculator
             if ($expectedEnd !== null) {
                 $windowEnd = $expectedEnd->format('H:i');
             }
-            if ($first?->clock_in !== null) {
-                $clockInAt = $first->clock_in->format('H:i');
+            if ($firstClockIn !== null) {
+                $clockInAt = $firstClockIn->format('H:i');
                 $clockInWindowPosition = $attendanceService->outsideShiftWindowReason(
                     $user,
                     $attendance->shift_type,
-                    $first->clock_in,
+                    $firstClockIn,
                 ) ?? 'inside_window';
             }
-            if ($openSegment === null && $lastClosed?->clock_out !== null) {
-                $clockOutAt = $lastClosed->clock_out->format('H:i');
+            if (! $isOpen && $lastClockOut !== null) {
+                $clockOutAt = $lastClockOut->format('H:i');
                 $clockOutWindowPosition = $attendanceService->outsideShiftWindowReason(
                     $user,
                     $attendance->shift_type,
-                    $lastClosed->clock_out,
+                    $lastClockOut,
                 ) ?? 'inside_window';
             }
         }
 
         return new AttendanceTimeSummary(
-            open: $openSegment !== null,
+            open: $isOpen,
             plannedHours: $planned,
             systemRawHours: $rawHours,
             systemCreditedHours: $systemCredited,
             systemLateMinutes: $systemLate,
             systemEarlyMinutes: $systemEarly,
             appliedRawHours: $rawHours,
-            appliedCreditedHours: $openSegment !== null ? 0.0 : round((float) $attendance->actual_hours, 2),
+            appliedCreditedHours: $isOpen ? 0.0 : round((float) $attendance->actual_hours, 2),
             appliedLateMinutes: (int) $attendance->late_minutes,
             appliedEarlyMinutes: (int) $attendance->early_departure_minutes,
             creditedOverridden: $creditedOverride,

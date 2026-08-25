@@ -50,6 +50,7 @@ return [
         'planned' => 'Planned shift window',
         'clock_in' => 'Clock-in',
         'clock_out' => 'Clock-out',
+        'still_open' => 'Still open — no clock-out yet',
         'inside_window' => 'Inside shift window',
         'before_window' => 'Before shift window',
         'after_window' => 'After shift window',

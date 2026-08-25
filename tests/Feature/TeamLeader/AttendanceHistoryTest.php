@@ -263,6 +263,53 @@ class AttendanceHistoryTest extends TestCase
             });
     }
 
+    public function test_open_punch_shows_clock_in_on_list_and_in_details(): void
+    {
+        Attendance::factory()->create([
+            'user_id' => $this->member->id,
+            'date' => '2026-08-10',
+            'shift_type' => Attendance::SHIFT_FULL_TIME,
+            'clock_in' => '2026-08-10 10:12:00',
+            'clock_out' => null,
+            'actual_hours' => 0,
+            'planned_hours' => 8,
+        ]);
+
+        $this->actingAs($this->manager)
+            ->get(route('team-leader.attendance', $this->query([
+                'employee_id' => $this->member->id,
+            ])))
+            ->assertOk()
+            ->assertSee('10:12', false)
+            ->assertSee('→', false)
+            ->assertSee(__('attendance_review.window.clock_in'), false)
+            ->assertSee(__('attendance_review.window.still_open'), false)
+            ->assertDontSee(__('clock.end_shift.open_since', ['time' => '10:12']), false);
+    }
+
+    public function test_closed_punch_shows_both_clock_in_and_clock_out(): void
+    {
+        Attendance::factory()->create([
+            'user_id' => $this->member->id,
+            'date' => '2026-08-10',
+            'shift_type' => Attendance::SHIFT_FULL_TIME,
+            'clock_in' => '2026-08-10 10:05:00',
+            'clock_out' => '2026-08-10 18:02:00',
+            'actual_hours' => 8,
+            'planned_hours' => 8,
+        ]);
+
+        $this->actingAs($this->manager)
+            ->get(route('team-leader.attendance', $this->query([
+                'employee_id' => $this->member->id,
+            ])))
+            ->assertOk()
+            ->assertSee('10:05', false)
+            ->assertSee('18:02', false)
+            ->assertSee(__('attendance_review.window.clock_in'), false)
+            ->assertSee(__('attendance_review.window.clock_out'), false);
+    }
+
     public function test_page_two_keeps_filters_and_does_not_go_empty(): void
     {
         User::factory()->employee()->count(30)->create([

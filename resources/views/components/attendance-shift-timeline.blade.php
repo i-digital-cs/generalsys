@@ -72,7 +72,10 @@
                 @endif
             </li>
         @elseif ($summary->open)
-            <li class="text-body-secondary mb-0">{{ __('clock.status_open') }}</li>
+            <li class="d-flex flex-wrap align-items-center gap-2 mb-0">
+                <span class="text-body-secondary">{{ __('attendance_review.window.clock_out') }}</span>
+                <span class="badge text-bg-warning text-dark">{{ __('attendance_review.window.still_open') }}</span>
+            </li>
         @endif
     </ul>
 

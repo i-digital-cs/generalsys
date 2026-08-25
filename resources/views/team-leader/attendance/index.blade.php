@@ -145,6 +145,17 @@
                                     </td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-1 align-items-center">
+                                            @foreach ($row['attendances'] ?? [] as $attPunch)
+                                                @if ($attPunch->clock_in !== null)
+                                                    <span class="badge text-bg-light border text-dark num-ltr" dir="ltr">
+                                                        {{ $attPunch->clock_in->timezone(config('app.timezone'))->format('H:i') }}
+                                                        →
+                                                        {{ $attPunch->clock_out
+                                                            ? $attPunch->clock_out->timezone(config('app.timezone'))->format('H:i')
+                                                            : '…' }}
+                                                    </span>
+                                                @endif
+                                            @endforeach
                                             <span class="badge text-bg-light border text-dark">
                                                 {{ __('dashboard.hours.should_spend') }}:
                                                 <span class="num-ltr">{{ number_format($row['planned_hours'], 2) }}h</span>
@@ -293,19 +304,14 @@
                                                 <x-attendance-end-shift :attendance="$attendanceRow" />
                                             </div>
 
+                                            <x-attendance-shift-timeline
+                                                :attendance="$attendanceRow"
+                                                class="mb-3"
+                                            />
+
                                             @if ($attendanceRow->clock_out === null)
-                                                <p class="small mb-1">
-                                                    {{ __('clock.end_shift.open_since', [
-                                                        'time' => $attendanceRow->clock_in?->timezone(config('app.timezone'))->format('H:i'),
-                                                    ]) }}
-                                                </p>
                                                 <p class="small text-body-secondary mb-0">{{ __('clock.end_shift.hint') }}</p>
                                             @else
-                                                <x-attendance-shift-timeline
-                                                    :attendance="$attendanceRow"
-                                                    class="mb-3"
-                                                />
-
                                                 <x-attendance-time-breakdown
                                                     :attendance="$attendanceRow"
                                                     review
