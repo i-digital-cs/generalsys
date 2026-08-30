@@ -6,12 +6,12 @@ use Tests\TestCase;
 
 class MenuConfigTest extends TestCase
 {
-    public function test_menu_is_keyed_by_the_six_roles(): void
+    public function test_menu_is_keyed_by_the_staff_roles(): void
     {
         $menu = config('menu');
 
         $this->assertSame(
-            ['MANAGER', 'ASSISTANT', 'ACCOUNTANT', 'TEAM_LEADER', 'EMPLOYEE', 'DRIVER'],
+            ['MANAGER', 'ASSISTANT', 'ACCOUNTANT', 'TEAM_LEADER', 'EMPLOYEE', 'DRIVER', 'SALES'],
             array_keys($menu),
         );
 
@@ -112,5 +112,11 @@ class MenuConfigTest extends TestCase
         $this->assertContains('valuation.sheets.index', $serviceRoutes);
         $this->assertContains('portal.product', $productRoutes);
         $this->assertContains('valuation.sheets.index', $productRoutes);
+        $this->assertContains('gross.items.index', $productRoutes);
+        $this->assertContains('gross.categories.index', $productRoutes);
+        $this->assertContains('gross.stock.index', $productRoutes);
+        $this->assertContains('gross.customers.index', $productRoutes);
+        $this->assertContains('gross.shipping.index', $productRoutes);
+        $this->assertContains('gross.sales.index', $productRoutes);
     }
 }

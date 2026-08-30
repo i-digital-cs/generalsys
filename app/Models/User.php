@@ -30,6 +30,8 @@ class User extends Authenticatable
 
     public const ROLE_DRIVER = 'DRIVER';
 
+    public const ROLE_SALES = 'SALES';
+
     public const STATUS_ACTIVE = 'ACTIVE';
 
     public const STATUS_INACTIVE = 'INACTIVE';
@@ -51,6 +53,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'can_confirm_gross_loss',
         'currency',
         'language_preference',
         'team_leader_id',
@@ -83,6 +86,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'base_salary' => 'decimal:2',
             'shift_types_default' => 'array',
+            'can_confirm_gross_loss' => 'boolean',
         ];
     }
 
@@ -248,6 +252,7 @@ class User extends Authenticatable
             self::ROLE_ACCOUNTANT => ['ar' => 'محاسب', 'en' => 'Accountant'],
             self::ROLE_ASSISTANT => ['ar' => 'مساعد إداري', 'en' => 'Admin Assistant'],
             self::ROLE_DRIVER => ['ar' => 'سائق', 'en' => 'Driver'],
+            self::ROLE_SALES => ['ar' => 'مبيعات', 'en' => 'Sales'],
             default => ['ar' => 'موظف', 'en' => 'Employee'],
         };
     }
@@ -306,6 +311,26 @@ class User extends Authenticatable
         return $this->role === self::ROLE_DRIVER;
     }
 
+    public function isSales(): bool
+    {
+        return $this->role === self::ROLE_SALES;
+    }
+
+    public function canConfirmGrossLoss(): bool
+    {
+        return (bool) $this->can_confirm_gross_loss;
+    }
+
+    /** Manager/Accountant always; Sales only with can_confirm_gross_loss flag. */
+    public function mayConfirmGrossLoss(): bool
+    {
+        if ($this->isManager() || $this->isAccountant()) {
+            return true;
+        }
+
+        return $this->isSales() && $this->canConfirmGrossLoss();
+    }
+
     /** EMPLOYEE or DRIVER — TL-led field staff. */
     public function isFieldStaff(): bool
     {
@@ -350,6 +375,7 @@ class User extends Authenticatable
     {
         return $this->isEmployee()
             || $this->isDriver()
+            || $this->isSales()
             || $this->isTeamLeader()
             || $this->isManager()
             || $this->isAccountant()
@@ -382,6 +408,7 @@ class User extends Authenticatable
             return [
                 self::ROLE_EMPLOYEE,
                 self::ROLE_DRIVER,
+                self::ROLE_SALES,
                 self::ROLE_TEAM_LEADER,
                 self::ROLE_ACCOUNTANT,
                 self::ROLE_ASSISTANT,

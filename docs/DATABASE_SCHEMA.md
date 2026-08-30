@@ -19,7 +19,8 @@ CREATE TABLE users (
     job_title_en            VARCHAR(150) NULL,
     email                   VARCHAR(190) NOT NULL UNIQUE,
     password                VARCHAR(255) NOT NULL,
-    role                    ENUM('MANAGER','TEAM_LEADER','EMPLOYEE','ACCOUNTANT','ASSISTANT','DRIVER') NOT NULL DEFAULT 'EMPLOYEE',
+    role                    ENUM('MANAGER','TEAM_LEADER','EMPLOYEE','ACCOUNTANT','ASSISTANT','DRIVER','SALES') NOT NULL DEFAULT 'EMPLOYEE',
+    can_confirm_gross_loss  TINYINT(1) NOT NULL DEFAULT 0, -- capability gross.loss.confirm for SALES (Manager/Accountant always)
     currency                ENUM('EGP','AED') NOT NULL,
     language_preference     ENUM('ar','en') NOT NULL DEFAULT 'ar',
     base_salary             DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin; online/OT derived (base÷30÷2, base÷30, base÷30÷8)
@@ -675,6 +676,7 @@ official_holidays (standalone, referenced by attendance logic)
 penalty_rules (standalone config, referenced by payroll engine)
 settings (standalone key/value, backs Admin global settings)
 valuation_assignments / valuation_sheets (Service + Product daily valuation; T-9.4)
+gross_* (Mohra Gross MVP — T-10.x; see §22)
 ```
 
 ## 21. Valuation (Service / Product)
@@ -709,6 +711,289 @@ CREATE TABLE valuation_sheets (
 ```
 
 Result formulas match `docs/Valuation 07-2026.xlsx`: sales `AVERAGE` of six channels; count/amount totals and ratios; KPI `IF` bands خسائر/مقبول/مكسب/فوق المتوقع; cash-flow سالب/موجب/نقطة أمان; earnings high/low vs cash-flow base.
+
+## 22. Mohra Gross (Product only — Phase 10)
+
+Rules: `docs/GROSS_MODULE.md`. Base stock unit = **PIECE**. Money = `DECIMAL(12,2)`.
+
+```sql
+CREATE TABLE gross_categories (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    parent_id BIGINT UNSIGNED NULL,
+    name_ar VARCHAR(120) NOT NULL,
+    name_en VARCHAR(120) NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gross_cat_parent (parent_id),
+    CONSTRAINT fk_gross_cat_parent FOREIGN KEY (parent_id) REFERENCES gross_categories(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gross_item_attributes (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    kind ENUM('COLOR','SIZE','MODEL') NOT NULL,
+    name_ar VARCHAR(120) NOT NULL,
+    name_en VARCHAR(120) NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_attr_kind_en (kind, name_en),
+    INDEX idx_gross_attr_kind (kind)
+);
+
+CREATE TABLE gross_items (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(64) NOT NULL,
+    name VARCHAR(191) NOT NULL,
+    color_id BIGINT UNSIGNED NULL,
+    size_id BIGINT UNSIGNED NULL,
+    model_id BIGINT UNSIGNED NULL,
+    color VARCHAR(64) NULL, -- denormalized label from attribute (invoice snapshots)
+    size VARCHAR(64) NULL,
+    model VARCHAR(64) NULL,
+    description TEXT NULL,
+    category_id BIGINT UNSIGNED NULL,
+    subcategory_id BIGINT UNSIGNED NULL,
+    pieces_per_carton INT UNSIGNED NOT NULL DEFAULT 1,
+    reorder_level INT UNSIGNED NOT NULL DEFAULT 5, -- pieces
+    default_sale_price DECIMAL(12,2) NULL,
+    status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_item_code (code),
+    INDEX idx_gross_item_status (status),
+    INDEX idx_gross_item_color (color_id),
+    INDEX idx_gross_item_size (size_id),
+    INDEX idx_gross_item_model (model_id),
+    CONSTRAINT fk_gross_item_cat FOREIGN KEY (category_id) REFERENCES gross_categories(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_item_sub FOREIGN KEY (subcategory_id) REFERENCES gross_categories(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_item_color FOREIGN KEY (color_id) REFERENCES gross_item_attributes(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_item_size FOREIGN KEY (size_id) REFERENCES gross_item_attributes(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_item_model FOREIGN KEY (model_id) REFERENCES gross_item_attributes(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gross_item_images (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    item_id BIGINT UNSIGNED NOT NULL,
+    file_path VARCHAR(255) NOT NULL, -- local disk, outside public/
+    original_name VARCHAR(255) NULL,
+    mime_type VARCHAR(64) NULL,
+    size_bytes INT UNSIGNED NULL,
+    sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gross_item_images_item_sort (item_id, sort_order),
+    CONSTRAINT fk_gross_item_img_item FOREIGN KEY (item_id) REFERENCES gross_items(id) ON DELETE CASCADE
+);
+
+CREATE TABLE gross_stock_balances (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    item_id BIGINT UNSIGNED NOT NULL,
+    qty_on_hand_pieces INT NOT NULL DEFAULT 0,
+    qty_with_courier_pieces INT NOT NULL DEFAULT 0,
+    qty_lost_pieces INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_bal_item (item_id),
+    CONSTRAINT fk_gross_bal_item FOREIGN KEY (item_id) REFERENCES gross_items(id) ON DELETE CASCADE
+);
+
+CREATE TABLE gross_stock_movements (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    item_id BIGINT UNSIGNED NOT NULL,
+    type VARCHAR(32) NOT NULL, -- ADJUSTMENT_IN|ADJUSTMENT_OUT|SALE_OUT|SALE_RETURN|REFUSE_RETURN|LOSS_CONFIRM|CANCEL_RESTORE
+    qty INT UNSIGNED NOT NULL,
+    unit ENUM('PIECE','CARTON') NOT NULL,
+    conversion_factor INT UNSIGNED NOT NULL,
+    qty_pieces INT UNSIGNED NOT NULL,
+    ref_type VARCHAR(64) NULL,
+    ref_id BIGINT UNSIGNED NULL,
+    notes TEXT NULL,
+    created_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gross_mov_item (item_id, created_at),
+    INDEX idx_gross_mov_ref (ref_type, ref_id),
+    CONSTRAINT fk_gross_mov_item FOREIGN KEY (item_id) REFERENCES gross_items(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gross_mov_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gross_shipping_companies (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(191) NOT NULL,
+    phone VARCHAR(40) NULL,
+    address TEXT NULL,
+    notes TEXT NULL,
+    status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
+
+CREATE TABLE gross_customers (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(191) NOT NULL,
+    phone VARCHAR(40) NOT NULL,
+    address TEXT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gross_cust_phone (phone),
+    INDEX idx_gross_cust_name (name)
+);
+
+-- Phase 11 start (T-11.1). Purchases/treasury tables added with later T-11.x migrations.
+CREATE TABLE gross_suppliers (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(191) NOT NULL,
+    phone VARCHAR(40) NOT NULL,
+    address TEXT NULL,
+    notes TEXT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gross_supp_phone (phone),
+    INDEX idx_gross_supp_name (name)
+);
+
+CREATE TABLE gross_purchase_invoice_sequences (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    year_month CHAR(6) NOT NULL, -- YYYYMM
+    last_number INT UNSIGNED NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_gross_pur_inv_seq (year_month)
+);
+
+CREATE TABLE gross_purchase_invoices (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    invoice_number VARCHAR(32) NOT NULL,
+    supplier_id BIGINT UNSIGNED NULL,
+    supplier_name VARCHAR(191) NOT NULL,
+    supplier_phone VARCHAR(40) NOT NULL,
+    supplier_address TEXT NULL,
+    currency ENUM('EGP','AED') NOT NULL,
+    discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
+    total DECIMAL(12,2) NOT NULL DEFAULT 0,
+    status ENUM('DRAFT','CONFIRMED','CANCELLED') NOT NULL DEFAULT 'DRAFT',
+    notes TEXT NULL,
+    confirmed_at TIMESTAMP NULL,
+    cancelled_at TIMESTAMP NULL,
+    created_by BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_pur_inv_number (invoice_number),
+    INDEX idx_gross_pur_inv_status (status),
+    INDEX idx_gross_pur_inv_supplier (supplier_id),
+    CONSTRAINT fk_gross_pur_inv_supp FOREIGN KEY (supplier_id) REFERENCES gross_suppliers(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_pur_inv_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE gross_purchase_invoice_lines (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    purchase_invoice_id BIGINT UNSIGNED NOT NULL,
+    item_id BIGINT UNSIGNED NULL,
+    item_code_snapshot VARCHAR(64) NOT NULL,
+    item_name_snapshot VARCHAR(191) NOT NULL,
+    color_snapshot VARCHAR(120) NULL,
+    size_snapshot VARCHAR(120) NULL,
+    model_snapshot VARCHAR(120) NULL,
+    qty INT UNSIGNED NOT NULL,
+    unit ENUM('PIECE','CARTON') NOT NULL DEFAULT 'PIECE',
+    conversion_factor_snapshot INT UNSIGNED NOT NULL,
+    qty_pieces INT UNSIGNED NOT NULL,
+    buy_price DECIMAL(12,2) NOT NULL,
+    sale_price DECIMAL(12,2) NOT NULL DEFAULT 0,
+    discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    line_total DECIMAL(12,2) NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gross_pur_line_inv (purchase_invoice_id),
+    CONSTRAINT fk_gross_pur_line_inv FOREIGN KEY (purchase_invoice_id) REFERENCES gross_purchase_invoices(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gross_pur_line_item FOREIGN KEY (item_id) REFERENCES gross_items(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gross_invoice_sequences (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    year_month CHAR(6) NOT NULL, -- YYYYMM
+    last_number INT UNSIGNED NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_gross_inv_seq (year_month)
+);
+
+CREATE TABLE gross_sales_invoices (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    invoice_number VARCHAR(32) NOT NULL,
+    customer_id BIGINT UNSIGNED NULL,
+    customer_name VARCHAR(191) NOT NULL,
+    customer_phone VARCHAR(40) NOT NULL,
+    customer_address TEXT NULL,
+    sales_user_id BIGINT UNSIGNED NULL,
+    shipping_company_id BIGINT UNSIGNED NULL,
+    shipping_company_name VARCHAR(191) NULL,
+    currency ENUM('EGP','AED') NOT NULL,
+    shipping_fee DECIMAL(12,2) NOT NULL DEFAULT 0,
+    shipping_fee_status ENUM('NONE','PENDING','LOST','SETTLED') NOT NULL DEFAULT 'NONE',
+    discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
+    total DECIMAL(12,2) NOT NULL DEFAULT 0,
+    status ENUM('DRAFT','CONFIRMED','DELIVERED','REFUSED','CANCELLED') NOT NULL DEFAULT 'DRAFT',
+    notes TEXT NULL,
+    refused_at TIMESTAMP NULL,
+    refused_by BIGINT UNSIGNED NULL,
+    refuse_reason TEXT NULL,
+    confirmed_at TIMESTAMP NULL,
+    cancelled_at TIMESTAMP NULL,
+    created_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_inv_number (invoice_number),
+    INDEX idx_gross_inv_status (status),
+    INDEX idx_gross_inv_created (created_at),
+    CONSTRAINT fk_gross_inv_cust FOREIGN KEY (customer_id) REFERENCES gross_customers(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_inv_sales FOREIGN KEY (sales_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_inv_ship FOREIGN KEY (shipping_company_id) REFERENCES gross_shipping_companies(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_inv_refused_by FOREIGN KEY (refused_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_inv_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gross_sales_invoice_lines (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    sales_invoice_id BIGINT UNSIGNED NOT NULL,
+    item_id BIGINT UNSIGNED NULL,
+    item_code_snapshot VARCHAR(64) NOT NULL,
+    item_name_snapshot VARCHAR(191) NOT NULL,
+    color_snapshot VARCHAR(64) NULL,
+    size_snapshot VARCHAR(64) NULL,
+    model_snapshot VARCHAR(64) NULL,
+    qty INT UNSIGNED NOT NULL,
+    unit ENUM('PIECE','CARTON') NOT NULL,
+    conversion_factor_snapshot INT UNSIGNED NOT NULL,
+    qty_pieces INT UNSIGNED NOT NULL,
+    unit_price DECIMAL(12,2) NOT NULL,
+    discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    line_total DECIMAL(12,2) NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gross_line_inv (sales_invoice_id),
+    CONSTRAINT fk_gross_line_inv FOREIGN KEY (sales_invoice_id) REFERENCES gross_sales_invoices(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gross_line_item FOREIGN KEY (item_id) REFERENCES gross_items(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gross_shipment_allocations (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    sales_invoice_line_id BIGINT UNSIGNED NOT NULL,
+    shipping_company_id BIGINT UNSIGNED NULL,
+    conversion_factor_snapshot INT UNSIGNED NOT NULL,
+    qty_shipped_pieces INT UNSIGNED NOT NULL,
+    qty_delivered_pieces INT UNSIGNED NOT NULL DEFAULT 0,
+    qty_returned_pieces INT UNSIGNED NOT NULL DEFAULT 0,
+    qty_with_courier_pieces INT UNSIGNED NOT NULL,
+    qty_lost_pieces INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gross_alloc_line (sales_invoice_line_id),
+    CONSTRAINT fk_gross_alloc_line FOREIGN KEY (sales_invoice_line_id) REFERENCES gross_sales_invoice_lines(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gross_alloc_ship FOREIGN KEY (shipping_company_id) REFERENCES gross_shipping_companies(id) ON DELETE SET NULL
+);
+```
 
 ## Indexing & Performance Rules (Hostinger shared hosting)
 

@@ -767,6 +767,120 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
   - [x] Navbar toggle next to language; login shell unchanged
   - [x] HR-Pro SCSS themed for dark; ThemeToggleTest + LangParity; UI/UX gate
 
+## Phase 10 — Mohra Gross MVP
+
+Source: `docs/GROSS_MODULE.md` + schema §22. Mohra (`product`) only. Base stock = PIECE; per-item `pieces_per_carton`.
+
+### T-10.1 — Schema + SALES role + Gross shell
+- Depends on: T-9.5
+- Unlocks: T-10.2
+- [x] Task complete
+  - [x] Migrations: Gross tables + `users.role` SALES + `can_confirm_gross_loss`
+  - [x] Mohra sidebar Gross menu shell + access gate + policy stubs
+  - [x] Foundation tests green → STOP before T-10.2
+
+### T-10.2 — Categories + Items
+- Depends on: T-10.1
+- Unlocks: T-10.3
+- [x] Task complete
+  - [x] Category/subcategory + item CRUD (code, name, color, size, model, description, pieces_per_carton, reorder_level pieces)
+  - [x] Block `pieces_per_carton` change when movements exist; tests + UI/UX AR+EN
+
+### T-10.3 — Stock ledger + adjustments + low stock
+- Depends on: T-10.2
+- Unlocks: T-10.4
+- [x] Task complete
+  - [x] StockService only writer; lockForUpdate; movements with qty/unit/factor/qty_pieces
+  - [x] Adjustments Manager/Accountant; low-stock when on_hand ≤ reorder_level
+
+### T-10.4 — Shipping companies
+- Depends on: T-10.1
+- Unlocks: T-10.6
+- [x] Task complete
+  - [x] Minimal CRUD ACTIVE/INACTIVE; Mohra access; tests + UI/UX
+
+### T-10.5 — Customers + autocomplete
+- Depends on: T-10.1
+- Unlocks: T-10.6
+- [x] Task complete
+  - [x] CRUD + name/phone typeahead JSON; tests + UI/UX
+
+### T-10.6 — Sales invoices create/confirm
+- Depends on: T-10.3, T-10.4, T-10.5
+- Unlocks: T-10.7
+- [x] Task complete
+  - [x] Auto `MH-YYYYMM-####`; snapshots; unit pricing independent of conversion
+  - [x] Confirm idempotent → SALE_OUT + WITH_COURIER allocations; currency immutable after confirm
+
+### T-10.7 — Return + loss + where-is-it
+- Depends on: T-10.6
+- Unlocks: T-10.8
+- [x] Task complete
+  - [x] Partial return; loss via `gross.loss.confirm`; stock drill-down by allocation
+
+### T-10.8 — Client refuse + CANCELLED
+- Depends on: T-10.7
+- Unlocks: T-10.9
+- [x] Task complete
+  - [x] Refuse from allocation state; shipping_fee LOST; CANCELLED rules per GROSS_MODULE
+
+### T-10.9 — Hardening & edge cases
+- Depends on: T-10.8
+- Unlocks: T-10.10
+- [x] Task complete
+  - [x] Concurrent stock, duplicates, invalid qty, refuse edge cases, conversion snapshot, auth, ledger consistency
+
+### T-10.10 — Sales invoice document + stock movements ledger
+- Depends on: T-10.9
+- Unlocks: T-11.1
+- [x] Task complete
+  - [x] Sales form: sales person, size column, live line/invoice totals
+  - [x] Printable show page; PDF + Excel export (`SalesInvoiceExportService`)
+  - [x] Stock movements ledger UI (`gross.stock.movements`) + menu; tests + UI/UX
+
+## Phase 11 — Gross purchases / treasury / collections
+
+See `docs/GROSS_MODULE.md` §11. Implement **in order**; lock collection/treasury money rules before T-11.5 / T-11.6.
+
+### T-11.1 — Suppliers CRUD
+- Depends on: T-10.10
+- Unlocks: T-11.2
+- Status: `done`
+  - [x] CRUD + search + Excel like customers; `gross_suppliers`; tests + UI/UX
+
+### T-11.2 — Purchase invoices
+- Depends on: T-11.1
+- Unlocks: T-11.3
+- Status: `done`
+  - [x] Purchase invoice create/confirm → stock IN; lines: item, qty, buy/sale price, discount
+  - [x] Manager/Accountant only (TL deferred); `MP-YYYYMM-####`; cancel draft only; tests + UI/UX
+
+### T-11.3 — Purchase returns
+- Depends on: T-11.2
+- Unlocks: T-11.4
+- Status: `pending`
+  - [ ] Purchase returns reverse stock; link to purchase invoice
+
+### T-11.4 — Supplier account statement
+- Depends on: T-11.3
+- Unlocks: T-11.5
+- Status: `pending`
+  - [ ] Supplier statement UI (no invented aging rules)
+
+### T-11.5 — Courier collection PENDING→COLLECTED
+- Depends on: T-11.4
+- Unlocks: T-11.6
+- Status: `pending`
+  - [ ] Lock collection status rules in GROSS_MODULE §11 before coding
+  - [ ] Invoice stays open until collected
+
+### T-11.6 — Cash/bank treasury + vouchers
+- Depends on: T-11.5
+- Unlocks: —
+- Status: `pending`
+  - [ ] Lock treasury posting rules in GROSS_MODULE §11 before coding
+  - [ ] Cash/bank + payment/receipt vouchers
+
 ## Dependency map
 
 ```text
@@ -793,6 +907,9 @@ T-0.1 → T-0.2 → T-0.3
                                       ↘ T-8.5 ↗
               T-1.2 → T-9.1 → T-9.2
                        T-9.1 → T-9.3
+              T-9.5 → T-10.1 → T-10.2 → T-10.3 → T-10.6 → T-10.7 → T-10.8 → T-10.9 → T-10.10 → T-11.1 → T-11.2 → T-11.3 → T-11.4 → T-11.5 → T-11.6
+                       T-10.1 → T-10.4 ↗
+                       T-10.1 → T-10.5 ↗
 ```
 
 ---
@@ -962,3 +1079,6 @@ Example:
 - [x] 2026-08-24 T-9.13 PASS — Light/dark via Bootstrap `data-bs-theme` + `localStorage` `hr-pro-theme` (no DB). Navbar toggle next to language; head boot script (no flash); login unchanged. HR-Pro SCSS body/sidebar/cards/calendar/tabs themed. ThemeToggleTest + LangParity; `npm run build`; UI/UX AR+EN RTL/LTR.
 - [x] 2026-08-24 UX — Employee sees assigned team leader(s) on dashboard + profile (name, email, phone). EmployeeDashboardTest + EmployeeProfileTest + LangParity.
 - [x] 2026-08-25 UX — Attendance history Details always shows clock-in (and clock-out when closed); list shows `HH:MM → …` / `HH:MM → HH:MM`. AttendanceHistoryTest green.
+- [x] 2026-08-27 Phase 10 Mohra Gross MVP PASS — Docs GROSS_MODULE + schema §22; SALES role + can_confirm_gross_loss; items/stock (PIECE + pieces_per_carton)/shipping/customers/sales; confirm/return/loss/refuse/cancel; Gross* tests 24 + MenuConfig + LangParity green; Phase 11 documented only.
+- [x] 2026-08-27 T-10.10 + T-11.1 PASS — Sales invoice document (sales person, size, live totals, printable show, PDF/Excel); stock movements ledger; Phase 11 tasks T-11.1–T-11.6 in TASKS + GROSS_MODULE §11; suppliers CRUD+Excel. Commands: `php artisan test --filter=Gross` (76 PASS); LangParity; Pint; `route:list --name=gross`. UI/UX AR+EN (lang keys). Next: T-11.2.
+- [x] 2026-08-30 T-11.2 PASS — Purchase invoices: draft/confirm/cancel-draft; lines item/qty/buy/sale/discount; confirm → PURCHASE_IN + optional default_sale_price; Manager/Accountant only (TL deferred). Commands: `php artisan test --filter=Gross` (80 PASS); LangParity; Pint. Next: T-11.3.

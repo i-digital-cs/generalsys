@@ -170,6 +170,7 @@ abstract class EmployeeRequest extends FormRequest
             ],
             'password' => $this->passwordRules(),
             'role' => ['required', Rule::in($this->user()?->staffRolesTheyMayAssign() ?? [])],
+            'can_confirm_gross_loss' => ['nullable', 'boolean'],
             'job_title_ar' => ['nullable', 'string', 'max:150'],
             'job_title_en' => ['nullable', 'string', 'max:150'],
             'currency' => ['required', Rule::in(['EGP', 'AED'])],

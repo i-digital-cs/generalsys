@@ -24,6 +24,16 @@ use App\Http\Controllers\Employee\ProfileController;
 use App\Http\Controllers\Employee\RequestController;
 use App\Http\Controllers\Employee\SalaryController;
 use App\Http\Controllers\EmployeePhotoController;
+use App\Http\Controllers\Gross\CategoryController as GrossCategoryController;
+use App\Http\Controllers\Gross\CustomerController as GrossCustomerController;
+use App\Http\Controllers\Gross\ItemAttributeController as GrossItemAttributeController;
+use App\Http\Controllers\Gross\ItemController as GrossItemController;
+use App\Http\Controllers\Gross\ItemImageController as GrossItemImageController;
+use App\Http\Controllers\Gross\PurchaseInvoiceController as GrossPurchaseInvoiceController;
+use App\Http\Controllers\Gross\SalesInvoiceController as GrossSalesInvoiceController;
+use App\Http\Controllers\Gross\ShippingCompanyController as GrossShippingCompanyController;
+use App\Http\Controllers\Gross\StockController as GrossStockController;
+use App\Http\Controllers\Gross\SupplierController as GrossSupplierController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\TeamLeader\ApprovalController;
@@ -76,6 +86,90 @@ Route::middleware('auth')->group(function () {
     Route::get('/{module}/valuations/{sheet}', [ValuationSheetController::class, 'show'])
         ->whereIn('module', ['service', 'product'])
         ->name('valuation.sheets.show');
+
+    Route::prefix('product/gross')->name('gross.')->group(function () {
+        Route::get('/items', [GrossItemController::class, 'index'])->name('items.index');
+        Route::get('/items/create', [GrossItemController::class, 'create'])->name('items.create');
+        Route::post('/items', [GrossItemController::class, 'store'])->name('items.store');
+        Route::get('/items/template', [GrossItemController::class, 'template'])->name('items.template');
+        Route::post('/items/import', [GrossItemController::class, 'import'])->name('items.import');
+        Route::get('/items/{item}', [GrossItemController::class, 'show'])->name('items.show');
+        Route::get('/items/{item}/edit', [GrossItemController::class, 'edit'])->name('items.edit');
+        Route::put('/items/{item}', [GrossItemController::class, 'update'])->name('items.update');
+        Route::get('/items/{item}/images/{image}', [GrossItemImageController::class, 'show'])->name('items.images.show');
+
+        Route::get('/categories', [GrossCategoryController::class, 'index'])->name('categories.index');
+        Route::post('/categories', [GrossCategoryController::class, 'store'])->name('categories.store');
+        Route::get('/categories/template', [GrossCategoryController::class, 'template'])->name('categories.template');
+        Route::post('/categories/import', [GrossCategoryController::class, 'import'])->name('categories.import');
+        Route::put('/categories/{category}', [GrossCategoryController::class, 'update'])->name('categories.update');
+        Route::delete('/categories/{category}', [GrossCategoryController::class, 'destroy'])->name('categories.destroy');
+
+        Route::get('/attributes', [GrossItemAttributeController::class, 'index'])->name('attributes.index');
+        Route::post('/attributes', [GrossItemAttributeController::class, 'store'])->name('attributes.store');
+        Route::get('/attributes/template', [GrossItemAttributeController::class, 'template'])->name('attributes.template');
+        Route::post('/attributes/import', [GrossItemAttributeController::class, 'import'])->name('attributes.import');
+        Route::put('/attributes/{attribute}', [GrossItemAttributeController::class, 'update'])->name('attributes.update');
+        Route::delete('/attributes/{attribute}', [GrossItemAttributeController::class, 'destroy'])->name('attributes.destroy');
+
+        Route::get('/stock', [GrossStockController::class, 'index'])->name('stock.index');
+        Route::get('/stock/movements', [GrossStockController::class, 'movements'])->name('stock.movements');
+        Route::post('/stock/adjust', [GrossStockController::class, 'adjust'])->name('stock.adjust');
+
+        Route::get('/shipping', [GrossShippingCompanyController::class, 'index'])->name('shipping.index');
+        Route::get('/shipping/template', [GrossShippingCompanyController::class, 'template'])->name('shipping.template');
+        Route::post('/shipping/import', [GrossShippingCompanyController::class, 'import'])->name('shipping.import');
+        Route::get('/shipping/create', [GrossShippingCompanyController::class, 'create'])->name('shipping.create');
+        Route::post('/shipping', [GrossShippingCompanyController::class, 'store'])->name('shipping.store');
+        Route::get('/shipping/{shipping}', [GrossShippingCompanyController::class, 'show'])->name('shipping.show');
+        Route::get('/shipping/{shipping}/edit', [GrossShippingCompanyController::class, 'edit'])->name('shipping.edit');
+        Route::put('/shipping/{shipping}', [GrossShippingCompanyController::class, 'update'])->name('shipping.update');
+        Route::delete('/shipping/{shipping}', [GrossShippingCompanyController::class, 'destroy'])->name('shipping.destroy');
+
+        Route::get('/customers', [GrossCustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/search', [GrossCustomerController::class, 'search'])->name('customers.search');
+        Route::get('/customers/template', [GrossCustomerController::class, 'template'])->name('customers.template');
+        Route::post('/customers/import', [GrossCustomerController::class, 'import'])->name('customers.import');
+        Route::get('/customers/create', [GrossCustomerController::class, 'create'])->name('customers.create');
+        Route::post('/customers', [GrossCustomerController::class, 'store'])->name('customers.store');
+        Route::get('/customers/{customer}', [GrossCustomerController::class, 'show'])->name('customers.show');
+        Route::get('/customers/{customer}/edit', [GrossCustomerController::class, 'edit'])->name('customers.edit');
+        Route::put('/customers/{customer}', [GrossCustomerController::class, 'update'])->name('customers.update');
+        Route::delete('/customers/{customer}', [GrossCustomerController::class, 'destroy'])->name('customers.destroy');
+
+        Route::get('/suppliers', [GrossSupplierController::class, 'index'])->name('suppliers.index');
+        Route::get('/suppliers/template', [GrossSupplierController::class, 'template'])->name('suppliers.template');
+        Route::post('/suppliers/import', [GrossSupplierController::class, 'import'])->name('suppliers.import');
+        Route::get('/suppliers/create', [GrossSupplierController::class, 'create'])->name('suppliers.create');
+        Route::post('/suppliers', [GrossSupplierController::class, 'store'])->name('suppliers.store');
+        Route::get('/suppliers/{supplier}', [GrossSupplierController::class, 'show'])->name('suppliers.show');
+        Route::get('/suppliers/{supplier}/edit', [GrossSupplierController::class, 'edit'])->name('suppliers.edit');
+        Route::put('/suppliers/{supplier}', [GrossSupplierController::class, 'update'])->name('suppliers.update');
+        Route::delete('/suppliers/{supplier}', [GrossSupplierController::class, 'destroy'])->name('suppliers.destroy');
+
+        Route::get('/sales', [GrossSalesInvoiceController::class, 'index'])->name('sales.index');
+        Route::get('/sales/create', [GrossSalesInvoiceController::class, 'create'])->name('sales.create');
+        Route::post('/sales', [GrossSalesInvoiceController::class, 'store'])->name('sales.store');
+        Route::get('/sales/{invoice}', [GrossSalesInvoiceController::class, 'show'])->name('sales.show');
+        Route::get('/sales/{invoice}/pdf', [GrossSalesInvoiceController::class, 'pdf'])->name('sales.pdf');
+        Route::get('/sales/{invoice}/excel', [GrossSalesInvoiceController::class, 'excel'])->name('sales.excel');
+        Route::get('/sales/{invoice}/edit', [GrossSalesInvoiceController::class, 'edit'])->name('sales.edit');
+        Route::put('/sales/{invoice}', [GrossSalesInvoiceController::class, 'update'])->name('sales.update');
+        Route::post('/sales/{invoice}/confirm', [GrossSalesInvoiceController::class, 'confirm'])->name('sales.confirm');
+        Route::post('/sales/{invoice}/cancel', [GrossSalesInvoiceController::class, 'cancel'])->name('sales.cancel');
+        Route::post('/sales/{invoice}/refuse', [GrossSalesInvoiceController::class, 'refuse'])->name('sales.refuse');
+        Route::post('/sales/{invoice}/return', [GrossSalesInvoiceController::class, 'returnLine'])->name('sales.return');
+        Route::post('/sales/{invoice}/loss', [GrossSalesInvoiceController::class, 'lossLine'])->name('sales.loss');
+
+        Route::get('/purchases', [GrossPurchaseInvoiceController::class, 'index'])->name('purchases.index');
+        Route::get('/purchases/create', [GrossPurchaseInvoiceController::class, 'create'])->name('purchases.create');
+        Route::post('/purchases', [GrossPurchaseInvoiceController::class, 'store'])->name('purchases.store');
+        Route::get('/purchases/{purchase}', [GrossPurchaseInvoiceController::class, 'show'])->name('purchases.show');
+        Route::get('/purchases/{purchase}/edit', [GrossPurchaseInvoiceController::class, 'edit'])->name('purchases.edit');
+        Route::put('/purchases/{purchase}', [GrossPurchaseInvoiceController::class, 'update'])->name('purchases.update');
+        Route::post('/purchases/{purchase}/confirm', [GrossPurchaseInvoiceController::class, 'confirm'])->name('purchases.confirm');
+        Route::post('/purchases/{purchase}/cancel', [GrossPurchaseInvoiceController::class, 'cancel'])->name('purchases.cancel');
+    });
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');

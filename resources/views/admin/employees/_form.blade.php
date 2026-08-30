@@ -70,6 +70,17 @@
                 </select>
                 @error('role') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
+            <div class="col-md-4" data-sales-loss-flag>
+                <label class="form-label d-block">{{ __('employees.fields.can_confirm_gross_loss') }}</label>
+                <div class="form-check mt-2">
+                    <input type="hidden" name="can_confirm_gross_loss" value="0">
+                    <input type="checkbox" class="form-check-input" id="can_confirm_gross_loss"
+                           name="can_confirm_gross_loss" value="1"
+                           @checked((string) $val('can_confirm_gross_loss', $editing ? ($employee->can_confirm_gross_loss ? '1' : '0') : '0') === '1')>
+                    <label class="form-check-label" for="can_confirm_gross_loss">{{ __('employees.fields.can_confirm_gross_loss_hint') }}</label>
+                </div>
+                @error('can_confirm_gross_loss') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+            </div>
             <div class="col-md-4">
                 <label for="job_title_ar" class="form-label">{{ __('employees.fields.job_title_ar') }}</label>
                 <input type="text" id="job_title_ar" name="job_title_ar" value="{{ $val('job_title_ar') }}"

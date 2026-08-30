@@ -96,7 +96,7 @@ class EmployeeService
     {
         $roles = $actor?->isAssistant()
             ? [User::ROLE_EMPLOYEE, User::ROLE_DRIVER, User::ROLE_TEAM_LEADER]
-            : [User::ROLE_EMPLOYEE, User::ROLE_DRIVER, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT];
+            : [User::ROLE_EMPLOYEE, User::ROLE_DRIVER, User::ROLE_TEAM_LEADER, User::ROLE_ACCOUNTANT, User::ROLE_ASSISTANT, User::ROLE_SALES];
 
         return User::query()
             ->with(['profile', 'teamLeaders'])
@@ -137,7 +137,12 @@ class EmployeeService
                 'status',
                 'base_salary',
             ]),
-            ['password' => $data['password'] ?? null],
+            [
+                'password' => $data['password'] ?? null,
+                'can_confirm_gross_loss' => ($data['role'] ?? null) === User::ROLE_SALES
+                    ? (bool) ($data['can_confirm_gross_loss'] ?? false)
+                    : false,
+            ],
         );
 
         $rows = [];

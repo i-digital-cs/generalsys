@@ -40,6 +40,8 @@ return [
         'password' => 'Password',
         'password_hint' => 'Leave blank to keep the current password.',
         'role' => 'Role',
+        'can_confirm_gross_loss' => 'Confirm Gross item loss',
+        'can_confirm_gross_loss_hint' => 'Allow this Sales user to confirm lost pieces (Mohra Gross).',
         'job_title' => 'Job Title',
         'job_title_ar' => 'Job Title (Arabic)',
         'job_title_en' => 'Job Title (English)',
@@ -86,6 +88,7 @@ return [
         'ACCOUNTANT' => 'Accountant',
         'ASSISTANT' => 'Admin Assistant',
         'DRIVER' => 'Driver',
+        'SALES' => 'Sales',
     ],
     'statuses' => [
         'ACTIVE' => 'Active',

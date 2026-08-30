@@ -39,6 +39,7 @@ class UserFactory extends Factory
             'work_start_time' => null,
             'work_end_time' => null,
             'status' => User::STATUS_ACTIVE,
+            'can_confirm_gross_loss' => false,
             'remember_token' => Str::random(10),
         ];
     }
@@ -94,6 +95,16 @@ class UserFactory extends Factory
             'role' => User::ROLE_DRIVER,
             'job_title_ar' => 'سائق',
             'job_title_en' => 'Driver',
+        ]);
+    }
+
+    public function sales(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => User::ROLE_SALES,
+            'job_title_ar' => 'مبيعات',
+            'job_title_en' => 'Sales',
+            'can_confirm_gross_loss' => false,
         ]);
     }
 

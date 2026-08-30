@@ -88,4 +88,15 @@ return [
         ['key' => 'nav.daily_report', 'route' => 'employee.report', 'icon' => 'bi-journal-text'],
         ['key' => 'nav.media', 'route' => 'employee.media', 'icon' => 'bi-images'],
     ],
+
+    /** Mohra sales staff — HR self-service; Gross lives under Product module menu. */
+    'SALES' => [
+        ['key' => 'nav.dashboard', 'route' => 'employee.dashboard', 'icon' => 'bi-speedometer2'],
+        ['key' => 'nav.clock', 'route' => 'employee.clock', 'icon' => 'bi-clock'],
+        ['key' => 'nav.profile', 'route' => 'employee.profile', 'icon' => 'bi-person'],
+        ['key' => 'nav.daily_report', 'route' => 'employee.report', 'icon' => 'bi-journal-text'],
+        ['key' => 'nav.requests', 'route' => 'employee.requests', 'icon' => 'bi-inbox'],
+        ['key' => 'nav.salary', 'route' => 'employee.salary', 'icon' => 'bi-wallet2'],
+        ['key' => 'nav.evaluation', 'route' => 'employee.evaluation', 'icon' => 'bi-star'],
+    ],
 ];

@@ -67,6 +67,8 @@
 
 **Web portal (T-9.1 / T-9.5, session):** `GET /home` (all roles after login), `GET /hr` → existing role HR dashboard, `GET /service` and `GET /product` (sidebar + Valuation), `GET /service/valuations`, `GET /product/valuations`. `GET /production` redirects to `/product`. `GET /{module}/valuations/{id}/export.pdf` (filler + Manager).
 
+**Mohra Gross (T-10.x, session, Product assignment required):** prefix `/product/gross/` — items, stock, customers, shipping companies, sales invoices (confirm/return/loss/refuse/cancel). See `docs/GROSS_MODULE.md`. Invoice number `MH-YYYYMM-####`. Currencies EGP|AED. Loss confirm needs Manager/Accountant or `can_confirm_gross_loss`.
+
 ## 3. Attendance
 
 | Method | Endpoint | Role | Description |

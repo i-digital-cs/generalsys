@@ -221,6 +221,7 @@ class PortalStatsService
             User::ROLE_ASSISTANT => '#6f42c1',
             User::ROLE_ACCOUNTANT => '#fd7e14',
             User::ROLE_MANAGER => '#6c757d',
+            User::ROLE_SALES => '#e83e8c',
         ];
 
         $out = [];

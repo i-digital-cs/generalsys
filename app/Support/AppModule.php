@@ -84,7 +84,8 @@ final class AppModule
             return self::SERVICE;
         }
 
-        if ($name === 'portal.product' || str_starts_with($name, 'product.')) {
+        if ($name === 'portal.product' || str_starts_with($name, 'product.')
+            || str_starts_with($name, 'gross.')) {
             return self::PRODUCT;
         }
 

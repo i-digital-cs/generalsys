@@ -166,6 +166,12 @@
 - `/home` shows operational statistics (headcount, today attendance, 14-day clock-in chart, month hours) plus **current Egypt time** (`APP_TIMEZONE=Africa/Cairo`). Team Leader sees **team only**. **No payroll money** on this page.
 - Impersonation still opens the target user’s **HR** home (not the portal picker).
 
+### 1.7h Mohra Gross (Phase 10 — Product / مهرة)
+- Under Mohra only: purchases deferred to Phase 11; MVP = items, stock (PIECE base + per-item carton conversion), customers, shipping companies, sales invoices, allocations (WITH_COURIER / returned / lost), client refuse (shipping fee LOST), cancel rules.
+- Spec: `docs/GROSS_MODULE.md`. Schema: `docs/DATABASE_SCHEMA.md` §22.
+- Role `SALES` selectable as invoice salesperson; capability `users.can_confirm_gross_loss` for Sales loss confirm (Manager/Accountant always).
+- Product display name: Mohra / مهرة (portal lang). Valuation month tiles remain separate from Gross inventory.
+
 | Role | Can View Payroll? |
 |------|-------------------|
 | Admin / Manager | ✅ All employees |

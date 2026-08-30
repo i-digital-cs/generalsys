@@ -2,13 +2,13 @@
 
 return [
     'title' => 'Choose a module',
-    'subtitle' => 'Open HR for the current system. Assigned Service and Product modules include daily valuation.',
+    'subtitle' => 'Open HR for the current system. Assigned General house and Mohra modules include daily valuation.',
     'stats_title' => 'System overview',
     'stats_scope_company' => 'Live counts across HR. Module assignment is managed under Valuation assignments.',
     'stats_scope_team' => 'Live counts for your team. Payroll amounts are never shown here.',
     'modules_title' => 'Modules',
-    'service' => 'Service',
-    'product' => 'Product',
+    'service' => 'General house',
+    'product' => 'Mohra',
     'hr' => 'HR',
     'settings' => 'Settings',
     'open' => 'Open',
