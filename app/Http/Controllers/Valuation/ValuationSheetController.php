@@ -66,7 +66,7 @@ class ValuationSheetController extends Controller
             'sheet' => $sheet,
             'date' => $date,
             'input' => $input,
-            'result' => $this->sheets->preview($input),
+            'result' => $this->sheets->preview($module, $input),
             'employees' => $this->activeEmployees(),
             'driverUsers' => $this->driverUsersFromInput($input),
         ]);

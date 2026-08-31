@@ -1,7 +1,13 @@
 @php
+    use App\Services\Valuation\ValuationCopy;
+
+    $module = $module ?? 'service';
     $score = fn (string $key) => old('input.'.$key, $input[$key] ?? 0);
+    $line = fn (string $key, array $replace = []) => ValuationCopy::line($module, $key, $replace);
     $out = $result ?? [];
     $editable = $editable ?? false;
+    $b2bExecution = $line('fields.b2b');
+    $b2cExecution = $line('fields.b2c');
 @endphp
 <div class="valuation-excel" data-valuation-targets
      data-labels="{{ e(json_encode([
@@ -47,7 +53,7 @@
                             <span class="num-ltr">{{ $score('target_b2b_count') }}</span>
                         @endif
                     </td>
-                    <td>{{ __('valuation.fields.b2b') }}</td>
+                    <td>{{ $b2bExecution }}</td>
                     <td>
                         @if ($editable)
                             <label class="visually-hidden" for="actual_b2b_count">{{ __('valuation.fields.actual_b2b_count') }}</label>
@@ -69,7 +75,7 @@
                             <span class="num-ltr">{{ $score('target_b2c_count') }}</span>
                         @endif
                     </td>
-                    <td>{{ __('valuation.fields.b2c') }}</td>
+                    <td>{{ $b2cExecution }}</td>
                     <td>
                         @if ($editable)
                             <label class="visually-hidden" for="actual_b2c_count">{{ __('valuation.fields.actual_b2c_count') }}</label>
@@ -118,7 +124,7 @@
                             <span class="num-ltr">{{ $score('target_b2b_amount') }}</span>
                         @endif
                     </td>
-                    <td>{{ __('valuation.fields.b2b') }}</td>
+                    <td>{{ $b2bExecution }}</td>
                     <td>
                         @if ($editable)
                             <label class="visually-hidden" for="actual_b2b_amount">{{ __('valuation.fields.actual_b2b_amount') }}</label>
@@ -140,7 +146,7 @@
                             <span class="num-ltr">{{ $score('target_b2c_amount') }}</span>
                         @endif
                     </td>
-                    <td>{{ __('valuation.fields.b2c') }}</td>
+                    <td>{{ $b2cExecution }}</td>
                     <td>
                         @if ($editable)
                             <label class="visually-hidden" for="actual_b2c_amount">{{ __('valuation.fields.actual_b2c_amount') }}</label>

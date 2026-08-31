@@ -167,7 +167,7 @@
 - Impersonation still opens the target user’s **HR** home (not the portal picker).
 
 ### 1.7h Mohra Gross (Phase 10 — Product / مهرة)
-- Under Mohra only: purchases deferred to Phase 11; MVP = items, stock (PIECE base + per-item carton conversion), customers, shipping companies, sales invoices, allocations (WITH_COURIER / returned / lost), client refuse (shipping fee LOST), cancel rules.
+- Under Mohra: Phase 10 sales/stock plus Phase 11 suppliers, purchases/returns, supplier statement, courier shipping-fee collection, cash/bank treasury (Manager/Accountant). Spec: `docs/GROSS_MODULE.md`.
 - Spec: `docs/GROSS_MODULE.md`. Schema: `docs/DATABASE_SCHEMA.md` §22.
 - Role `SALES` selectable as invoice salesperson; capability `users.can_confirm_gross_loss` for Sales loss confirm (Manager/Accountant always).
 - Product display name: Mohra / مهرة (portal lang). Valuation month tiles remain separate from Gross inventory.

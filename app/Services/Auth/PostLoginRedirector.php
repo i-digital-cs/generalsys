@@ -12,6 +12,10 @@ class PostLoginRedirector
 {
     public function routeNameFor(User $user): string
     {
+        if (! $user->isActive()) {
+            return 'account.inactive';
+        }
+
         return 'portal.home';
     }
 

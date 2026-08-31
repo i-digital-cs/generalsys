@@ -17,6 +17,7 @@
                     <button type="submit" class="btn btn-outline-danger btn-sm">{{ __('general.delete') }}</button>
                 </form>
             @endcan
+            <a href="{{ route('gross.customers.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('general.back') }}</a>
         </div>
     </div>
     <div class="card border-0 shadow-sm">

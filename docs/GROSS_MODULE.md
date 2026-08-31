@@ -82,7 +82,7 @@ DRAFT
   → CANCELLED          (no stock impact)
 
 CONFIRMED
-  → DELIVERED          (optional; Phase 10 may mark when fully delivered)
+  → DELIVERED          (remaining with_courier → delivered on allocation; WITH_COURIER − on balance)
   → REFUSED            (client refused — see §6)
   → CANCELLED          (only if every allocation has qty_with_courier_pieces = 0
                         AND no further silent restock of courier qty;
@@ -133,6 +133,7 @@ One DB transaction.
 | Purchase invoices create/confirm | Manager, Accountant (Mohra) — **not** Team Leader (deferred) |
 | Stock adjustment | Manager, Accountant |
 | Create/confirm sales invoice | Manager, Accountant, Sales |
+| Collect shipping fee / mark delivered | Manager, Accountant, Sales |
 | Client refuse | Manager, Accountant, Sales |
 | Confirm item loss | Capability `gross.loss.confirm`: default **Manager + Accountant**; Sales only if `users.can_confirm_gross_loss = 1` |
 
@@ -155,17 +156,47 @@ Format `MH-YYYYMM-####`, `UNIQUE(invoice_number)`, generated inside a transactio
 
 ## 11. Phase 11 — Purchases / treasury / collections
 
-Build order (see `docs/TASKS.md` T-11.1–T-11.6). Do **not** invent money rules beyond what is locked here.
+Build order (see `docs/TASKS.md` T-11.1–T-11.7). Do **not** invent money rules beyond what is locked here.
 
 | Task | Scope |
 |------|--------|
 | T-11.1 | **Suppliers CRUD** — mirror customers: search, edit modal, delete, name suggestions, Excel template/import (`name`, `phone`, `address`, `notes`; duplicate phones skipped). Table `gross_suppliers`. |
 | T-11.2 | **Purchase invoices** — Manager/Accountant only (no TL in this task). Draft create/edit; confirm → stock `PURCHASE_IN` (ON_HAND + qty_pieces). Lines: item, qty, buy price, sale price, line discount (amount or %). Invoice discount amount or %. Numbers `MP-YYYYMM-####`. Confirmed invoices are not cancelled here (returns = T-11.3). Sale price on confirm updates item `default_sale_price` when > 0. |
-| T-11.3 | **Purchase returns** — reverse stock; link to purchase invoice. |
-| T-11.4 | **Supplier account statement** — movements / balances for a supplier (no inventing aging rules without product sign-off). |
-| T-11.5 | **Courier collection** — shipping fee / COD: `PENDING` → `COLLECTED`. **Invoice stays open until collected** (status rules to be locked in this section before coding). |
-| T-11.6 | **Cash/bank treasury** + payment/receipt vouchers. Posting rules must be locked here before coding. |
+| T-11.3 | **Purchase returns** — Manager/Accountant. Partial return against **CONFIRMED** purchase: qty per line ≤ remaining (`qty_pieces − qty_returned_pieces`). Creates `gross_purchase_returns` (`MR-YYYYMM-####`) + lines; stock `PURCHASE_RETURN` (ON_HAND −). Cannot over-return. Invoice stays CONFIRMED. |
+| T-11.4 | **Supplier account statement** — chronological money lines: confirmed purchase `total` debit (+), purchase return totals credit (−), treasury **PAYMENT** vouchers credit (−). Running balance = purchases − returns − payments per currency. Filters: currency, from, to. No aging / due dates. |
+| T-11.5 | **Courier collection (locked)** — **Shipping fee only** (not full COD). `shipping_fee_status`: `PENDING` → `COLLECTED` (idempotent). `LOST` stays refuse-path. Who: Manager, Accountant, Sales (Mohra). Invoice stays `CONFIRMED` until fee is clear (`NONE` if no fee, or `COLLECTED`); then **Mark delivered** → `DELIVERED`. Cannot mark `DELIVERED` while fee is `PENDING`. **Does not** post treasury. |
+| T-11.6 | **Cash/bank treasury (locked)** — two accounts only: Cash + one Bank, both EGP. **PAYMENT** / **RECEIPT** vouchers. Who: Manager + Accountant. Numbers `PV-` / `RV-YYYYMM-####`. Posted vouchers not edited/deleted. Collecting T-11.5 fee does **not** auto-post. |
+| T-11.7 | **Expense types + purpose (locked)** — Admin list `gross_expense_types` (name AR+EN, active). Voucher **purpose** `SUPPLIER` \| `EXPENSE`. SUPPLIER requires `supplier_id` (payment credits supplier statement). EXPENSE requires `expense_type_id` (electricity, rent, …; does **not** hit supplier statement). Same cash/bank balance rules. |
 
 **Locked for MVP Phase 10 (still applies):** Lost shipping fees from `REFUSED` feed future courier statements (T-11.5).
 
-**Before coding T-11.5 / T-11.6:** stop and confirm collection status machine and treasury posting with the product owner — do not invent.
+### 11.6 Treasury (locked)
+
+```text
+Accounts: CASH + BANK, currency EGP only (seeded; unique kind+currency).
+Balance (computed): opening_balance + RECEIPT − PAYMENT. Never stored as a column.
+Voucher type: PAYMENT (اذن صرف) | RECEIPT (اذن تحصيل)
+Purpose: SUPPLIER | EXPENSE
+  SUPPLIER → requires supplier_id; PAYMENT credits supplier statement
+  EXPENSE  → requires expense_type_id from admin list; never on supplier statement
+Who: Manager, Accountant. Not Sales.
+Vouchers: PV-YYYYMM-#### / RV-YYYYMM-####. No edit/delete/reverse in this task.
+Overpaying a supplier is allowed (negative supplier balance).
+Expense types: seed Electricity / Rent / Other; Manager/Accountant CRUD.
+```
+
+UI: `/product/gross/treasury` · `/product/gross/expense-types`
+
+### 11.5 Courier collection (locked)
+
+```text
+Confirm sale with shipping_fee > 0  →  shipping_fee_status = PENDING
+Refuse                              →  shipping_fee_status = LOST
+Collect shipping fee                →  PENDING → COLLECTED  (invoice status stays CONFIRMED)
+Mark delivered                      →  CONFIRMED → DELIVERED
+  moves remaining qty_with_courier_pieces → qty_delivered_pieces per allocation;
+  stock balance WITH_COURIER − (movement SALE_DELIVERED)
+  only if shipping_fee_status ∈ {NONE, COLLECTED}
+```
+
+UI: pending list + actions on sales invoice show.

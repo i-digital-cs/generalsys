@@ -52,4 +52,16 @@ class GrossSalesInvoicePolicy
     {
         return GrossAccess::mayConfirmLoss($user);
     }
+
+    public function collectShippingFee(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return GrossAccess::mayCollectCourier($user)
+            && $invoice->isConfirmed()
+            && $invoice->shippingFeeIsPending();
+    }
+
+    public function markDelivered(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return GrossAccess::mayCollectCourier($user) && $invoice->canMarkDelivered();
+    }
 }

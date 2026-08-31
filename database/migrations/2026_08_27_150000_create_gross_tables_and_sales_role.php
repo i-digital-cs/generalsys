@@ -45,6 +45,11 @@ return new class extends Migration
 
     private function createGrossTables(): void
     {
+        // Idempotent: old DB dumps may already have Gross tables without migration rows.
+        if (Schema::hasTable('gross_categories')) {
+            return;
+        }
+
         Schema::create('gross_categories', function (Blueprint $table) {
             $table->id();
             $table->foreignId('parent_id')->nullable()->index('idx_gross_cat_parent')
@@ -143,7 +148,7 @@ return new class extends Migration
             $table->string('shipping_company_name', 191)->nullable();
             $table->enum('currency', ['EGP', 'AED']);
             $table->decimal('shipping_fee', 12, 2)->default(0);
-            $table->enum('shipping_fee_status', ['NONE', 'PENDING', 'LOST', 'SETTLED'])->default('NONE');
+            $table->enum('shipping_fee_status', ['NONE', 'PENDING', 'LOST', 'SETTLED', 'COLLECTED'])->default('NONE');
             $table->decimal('discount_amount', 12, 2)->default(0);
             $table->decimal('discount_percent', 5, 2)->default(0);
             $table->decimal('subtotal', 12, 2)->default(0);

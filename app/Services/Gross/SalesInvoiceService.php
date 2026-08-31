@@ -17,7 +17,10 @@ use Illuminate\Support\Facades\DB;
 
 class SalesInvoiceService
 {
-    public function __construct(private readonly StockService $stock) {}
+    public function __construct(
+        private readonly StockService $stock,
+        private readonly AllocationService $allocations,
+    ) {}
 
     public function paginate(int $perPage = 25): LengthAwarePaginator
     {
@@ -25,6 +28,25 @@ class SalesInvoiceService
             ->with(['customer', 'shippingCompany', 'salesUser'])
             ->orderByDesc('id')
             ->paginate(min($perPage, 50));
+    }
+
+    /**
+     * Confirmed invoices with shipping fee still PENDING (courier collection queue).
+     */
+    public function paginatePendingCollections(array $filters = [], int $perPage = 25): LengthAwarePaginator
+    {
+        $q = GrossSalesInvoice::query()
+            ->with(['shippingCompany', 'salesUser', 'customer'])
+            ->where('status', GrossSalesInvoice::STATUS_CONFIRMED)
+            ->where('shipping_fee_status', GrossSalesInvoice::SHIPPING_FEE_PENDING)
+            ->orderByDesc('confirmed_at')
+            ->orderByDesc('id');
+
+        if (! empty($filters['shipping_company_id'])) {
+            $q->where('shipping_company_id', (int) $filters['shipping_company_id']);
+        }
+
+        return $q->paginate(min($perPage, 50))->withQueryString();
     }
 
     /**
@@ -303,6 +325,79 @@ class SalesInvoiceService
             ]);
 
             return $locked->fresh(['lines.allocation', 'lines.item']);
+        });
+    }
+
+    public function collectShippingFee(GrossSalesInvoice $invoice, User $actor): GrossSalesInvoice
+    {
+        return DB::transaction(function () use ($invoice, $actor) {
+            /** @var GrossSalesInvoice $locked */
+            $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->shipping_fee_status === GrossSalesInvoice::SHIPPING_FEE_COLLECTED
+                || $locked->shipping_fee_status === GrossSalesInvoice::SHIPPING_FEE_SETTLED) {
+                return $locked->fresh(['lines', 'shippingCompany']);
+            }
+
+            if ($locked->status !== GrossSalesInvoice::STATUS_CONFIRMED) {
+                throw GrossException::notConfirmed();
+            }
+
+            if ($locked->shipping_fee_status !== GrossSalesInvoice::SHIPPING_FEE_PENDING) {
+                throw GrossException::feeNotPending();
+            }
+
+            $locked->update([
+                'shipping_fee_status' => GrossSalesInvoice::SHIPPING_FEE_COLLECTED,
+                'shipping_fee_collected_at' => now(),
+                'shipping_fee_collected_by' => $actor->id,
+            ]);
+
+            return $locked->fresh(['lines', 'shippingCompany', 'shippingFeeCollectedByUser']);
+        });
+    }
+
+    public function markDelivered(GrossSalesInvoice $invoice, ?User $actor = null): GrossSalesInvoice
+    {
+        return DB::transaction(function () use ($invoice, $actor) {
+            /** @var GrossSalesInvoice $locked */
+            $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->status === GrossSalesInvoice::STATUS_DELIVERED) {
+                $locked->load(['lines.allocation', 'lines.item']);
+                foreach ($locked->lines as $line) {
+                    $allocation = $line->allocation;
+                    if ($allocation !== null && (int) $allocation->qty_with_courier_pieces > 0) {
+                        $this->allocations->confirmDelivered($allocation, $actor);
+                    }
+                }
+
+                return $locked->fresh(['lines.allocation', 'lines.item', 'shippingCompany']);
+            }
+
+            if ($locked->status !== GrossSalesInvoice::STATUS_CONFIRMED) {
+                throw GrossException::invalidTransition();
+            }
+
+            if (! $locked->canMarkDelivered()) {
+                throw GrossException::feeStillPending();
+            }
+
+            $locked->load(['lines.allocation', 'lines.item']);
+
+            foreach ($locked->lines as $line) {
+                $allocation = $line->allocation;
+                if ($allocation !== null) {
+                    $this->allocations->confirmDelivered($allocation, $actor);
+                }
+            }
+
+            $locked->update([
+                'status' => GrossSalesInvoice::STATUS_DELIVERED,
+                'delivered_at' => now(),
+            ]);
+
+            return $locked->fresh(['lines.allocation', 'lines.item', 'shippingCompany']);
         });
     }
 

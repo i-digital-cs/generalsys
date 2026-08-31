@@ -72,6 +72,12 @@
                                     <td><span class="num-ltr">{{ $customer->phone }}</span></td>
                                     <td class="text-body-secondary small">{{ $customer->address }}</td>
                                     <td class="text-end text-nowrap">
+                                        <a href="{{ route('gross.customers.show', $customer) }}"
+                                           class="btn btn-link btn-sm text-body-secondary p-0 me-2"
+                                           title="{{ __('general.view') }}">
+                                            <i class="bi bi-eye" aria-hidden="true"></i>
+                                            <span class="visually-hidden">{{ __('general.view') }}</span>
+                                        </a>
                                         @can('update', $customer)
                                             <button type="button"
                                                     class="btn btn-link btn-sm text-body-secondary p-0 me-2"

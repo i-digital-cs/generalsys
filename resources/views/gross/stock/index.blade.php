@@ -142,8 +142,14 @@
                                     <td class="col-num"><span class="num-ltr">{{ $item->balance?->qty_with_courier_pieces ?? 0 }}</span></td>
                                     <td class="col-num"><span class="num-ltr">{{ $item->balance?->qty_lost_pieces ?? 0 }}</span></td>
                                     <td class="col-num"><span class="num-ltr">{{ $item->reorder_level }}</span></td>
-                                    <td class="text-end">
+                                    <td class="text-end text-nowrap">
                                         <a href="{{ route('gross.items.show', $item) }}" class="btn btn-sm btn-outline-primary">{{ __('general.view') }}</a>
+                                        <a href="{{ route('gross.stock.movements', ['item_id' => $item->id]) }}"
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="{{ __('gross.stock.movements_title') }}">
+                                            <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                                            <span class="visually-hidden">{{ __('gross.stock.movements_title') }}</span>
+                                        </a>
                                     </td>
                                 </tr>
                             @endforeach

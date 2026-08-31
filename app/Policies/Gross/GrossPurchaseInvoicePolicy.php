@@ -37,4 +37,9 @@ class GrossPurchaseInvoicePolicy
     {
         return GrossAccess::mayManageMasterData($user);
     }
+
+    public function returnLines(User $user, GrossPurchaseInvoice $invoice): bool
+    {
+        return GrossAccess::mayManageMasterData($user) && $invoice->isConfirmed();
+    }
 }

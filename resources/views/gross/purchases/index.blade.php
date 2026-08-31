@@ -31,8 +31,20 @@
                         <tbody>
                             @foreach ($invoices as $invoice)
                                 <tr>
-                                    <td class="fw-semibold"><span class="num-ltr">{{ $invoice->invoice_number }}</span></td>
-                                    <td>{{ $invoice->supplier_name }}</td>
+                                    <td class="fw-semibold">
+                                        <a href="{{ route('gross.purchases.show', $invoice) }}" class="num-ltr link-body-emphasis text-decoration-none">
+                                            {{ $invoice->invoice_number }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        @if ($invoice->supplier_id)
+                                            <a href="{{ route('gross.suppliers.show', $invoice->supplier_id) }}" class="link-body-emphasis text-decoration-none">
+                                                {{ $invoice->supplier_name }}
+                                            </a>
+                                        @else
+                                            {{ $invoice->supplier_name }}
+                                        @endif
+                                    </td>
                                     <td>{{ __('gross.statuses.'.$invoice->status) }}</td>
                                     <td class="col-num">
                                         <span class="num-ltr"><x-money :amount="$invoice->total" :currency="$invoice->currency" /></span>

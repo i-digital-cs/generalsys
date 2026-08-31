@@ -35,4 +35,7 @@ return [
     'gross_purchases' => 'مشتريات الجروس',
     'gross_shipping' => 'شركات الشحن',
     'gross_sales' => 'مبيعات الجروس',
+    'gross_collections' => 'تحصيل المندوب',
+    'gross_treasury' => 'الخزينة',
+    'gross_expense_types' => 'أنواع المصروفات',
 ];

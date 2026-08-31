@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Gross\GrossExpenseType;
+use App\Models\Gross\GrossTreasuryVoucher;
+
 /**
  * Sidebars for Service and Product (same shell as HR, different items).
  */
@@ -21,5 +24,18 @@ return [
         ['key' => 'nav.gross_purchases', 'route' => 'gross.purchases.index', 'icon' => 'bi-cart-plus'],
         ['key' => 'nav.gross_shipping', 'route' => 'gross.shipping.index', 'icon' => 'bi-truck'],
         ['key' => 'nav.gross_sales', 'route' => 'gross.sales.index', 'icon' => 'bi-receipt'],
+        ['key' => 'nav.gross_collections', 'route' => 'gross.sales.collections', 'icon' => 'bi-cash-coin'],
+        [
+            'key' => 'nav.gross_treasury',
+            'route' => 'gross.treasury.index',
+            'icon' => 'bi-wallet2',
+            'can' => ['viewAny', GrossTreasuryVoucher::class],
+        ],
+        [
+            'key' => 'nav.gross_expense_types',
+            'route' => 'gross.expense-types.index',
+            'icon' => 'bi-tags',
+            'can' => ['viewAny', GrossExpenseType::class],
+        ],
     ],
 ];

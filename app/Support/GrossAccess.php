@@ -50,4 +50,9 @@ final class GrossAccess
 
         return $user->mayConfirmGrossLoss();
     }
+
+    public static function mayCollectCourier(?User $user): bool
+    {
+        return self::maySell($user);
+    }
 }

@@ -58,6 +58,6 @@
     </div>
 
     <div class="row g-3">
-        @include('valuation.sheets._body', ['editable' => false, 'input' => $in, 'result' => $out])
+        @include('valuation.sheets._body', ['editable' => false, 'module' => $module, 'input' => $in, 'result' => $out])
     </div>
 @endsection

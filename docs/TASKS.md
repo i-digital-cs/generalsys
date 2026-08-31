@@ -858,28 +858,38 @@ See `docs/GROSS_MODULE.md` §11. Implement **in order**; lock collection/treasur
 ### T-11.3 — Purchase returns
 - Depends on: T-11.2
 - Unlocks: T-11.4
-- Status: `pending`
-  - [ ] Purchase returns reverse stock; link to purchase invoice
+- Status: `done`
+  - [x] Purchase returns reverse stock; link to purchase invoice
+  - [x] Partial qty ≤ remaining; `MR-YYYYMM-####`; PURCHASE_RETURN; tests + UI/UX
 
 ### T-11.4 — Supplier account statement
 - Depends on: T-11.3
 - Unlocks: T-11.5
-- Status: `pending`
-  - [ ] Supplier statement UI (no invented aging rules)
+- Status: `done`
+  - [x] Supplier statement UI (no invented aging rules)
+  - [x] Purchases debit / returns credit / running balance by currency; date filters; tests + UI/UX
 
 ### T-11.5 — Courier collection PENDING→COLLECTED
 - Depends on: T-11.4
 - Unlocks: T-11.6
-- Status: `pending`
-  - [ ] Lock collection status rules in GROSS_MODULE §11 before coding
-  - [ ] Invoice stays open until collected
+- Status: `done`
+  - [x] Lock collection status rules in GROSS_MODULE §11 before coding
+  - [x] Invoice stays CONFIRMED until fee collected; then Mark delivered
+  - [x] Shipping fee PENDING→COLLECTED; Manager/Accountant/Sales; tests + UI/UX
 
 ### T-11.6 — Cash/bank treasury + vouchers
 - Depends on: T-11.5
+- Unlocks: T-11.7
+- Status: `done`
+  - [x] Lock treasury posting rules in GROSS_MODULE §11 before coding
+  - [x] Cash/bank + payment/receipt vouchers
+
+### T-11.7 — Expense types + voucher purpose (supplier | expense)
+- Depends on: T-11.6
 - Unlocks: —
-- Status: `pending`
-  - [ ] Lock treasury posting rules in GROSS_MODULE §11 before coding
-  - [ ] Cash/bank + payment/receipt vouchers
+- Status: `done`
+  - [x] Lock: admin expense list AR+EN; PAYMENT/RECEIPT purpose SUPPLIER|EXPENSE; Manager/Accountant
+  - [x] Expense types CRUD + purpose on vouchers; supplier statement only SUPPLIER payments
 
 ## Dependency map
 
@@ -907,7 +917,7 @@ T-0.1 → T-0.2 → T-0.3
                                       ↘ T-8.5 ↗
               T-1.2 → T-9.1 → T-9.2
                        T-9.1 → T-9.3
-              T-9.5 → T-10.1 → T-10.2 → T-10.3 → T-10.6 → T-10.7 → T-10.8 → T-10.9 → T-10.10 → T-11.1 → T-11.2 → T-11.3 → T-11.4 → T-11.5 → T-11.6
+              T-9.5 → T-10.1 → T-10.2 → T-10.3 → T-10.6 → T-10.7 → T-10.8 → T-10.9 → T-10.10 → T-11.1 → T-11.2 → T-11.3 → T-11.4 → T-11.5 → T-11.6 → T-11.7
                        T-10.1 → T-10.4 ↗
                        T-10.1 → T-10.5 ↗
 ```
@@ -1082,3 +1092,10 @@ Example:
 - [x] 2026-08-27 Phase 10 Mohra Gross MVP PASS — Docs GROSS_MODULE + schema §22; SALES role + can_confirm_gross_loss; items/stock (PIECE + pieces_per_carton)/shipping/customers/sales; confirm/return/loss/refuse/cancel; Gross* tests 24 + MenuConfig + LangParity green; Phase 11 documented only.
 - [x] 2026-08-27 T-10.10 + T-11.1 PASS — Sales invoice document (sales person, size, live totals, printable show, PDF/Excel); stock movements ledger; Phase 11 tasks T-11.1–T-11.6 in TASKS + GROSS_MODULE §11; suppliers CRUD+Excel. Commands: `php artisan test --filter=Gross` (76 PASS); LangParity; Pint; `route:list --name=gross`. UI/UX AR+EN (lang keys). Next: T-11.2.
 - [x] 2026-08-30 T-11.2 PASS — Purchase invoices: draft/confirm/cancel-draft; lines item/qty/buy/sale/discount; confirm → PURCHASE_IN + optional default_sale_price; Manager/Accountant only (TL deferred). Commands: `php artisan test --filter=Gross` (80 PASS); LangParity; Pint. Next: T-11.3.
+- [x] 2026-08-30 T-11.3 PASS — Partial purchase returns on CONFIRMED invoices; remaining qty; MR- numbers; PURCHASE_RETURN stock out. Commands: `php artisan test --filter=Gross` (83 PASS); LangParity; Pint. Next: T-11.4.
+- [x] 2026-08-30 T-11.4 PASS — Supplier account statement: confirmed purchases (+) / returns (−) running balance by currency; date filters; no aging. Commands: `php artisan test --filter=Gross`; LangParity; Pint. Next: T-11.5 (lock rules first).
+- [x] 2026-08-30 T-11.5 PASS — Shipping fee PENDING→COLLECTED; CONFIRMED until collected then Mark delivered; queue UI; Sales/Manager/Accountant. Commands: `php artisan test --filter=Gross`; LangParity; Pint. Next: T-11.6 (lock treasury rules first).
+- [x] 2026-08-30 T-11.6 PASS — Cash+Bank EGP treasury; PAYMENT (supplier, no negative cash) / RECEIPT (no invoice link); Manager/Accountant; statement includes payments. Commands: `php artisan test --filter=Gross` (92 PASS); LangParity; Pint; `route:list --name=gross.treasury`. UI/UX AR+EN keys. Phase 11 complete.
+- [x] 2026-08-30 T-11.7 PASS — Expense types CRUD (AR+EN); voucher purpose SUPPLIER|EXPENSE; اذن صرف/تحصيل; expense payments skip supplier statement. Commands: `php artisan test --filter=Gross`; LangParity; Pint.
+- [x] 2026-08-30 Gross UI visibility polish PASS — Cross-links (supplier/customer/shipping/items), pay-from-supplier, stock movements + document refs, expense-types outside create-only. Commands: `php artisan test --filter=Gross` (99 PASS); LangParity; Pint. UI/UX AR+EN (`gross.suppliers.pay`).
+- [x] 2026-08-31 Gross deliver stock fix PASS — Mark delivered clears `qty_with_courier` → `qty_delivered` (movement `SALE_DELIVERED`). Commands: `php artisan test --filter=Gross` (101 PASS); LangParity; Pint.

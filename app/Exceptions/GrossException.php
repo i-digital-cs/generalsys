@@ -55,4 +55,59 @@ class GrossException extends RuntimeException
     {
         return new self('gross.errors.not_draft');
     }
+
+    public static function purchaseReturnQty(): self
+    {
+        return new self('gross.errors.purchase_return_qty');
+    }
+
+    public static function notConfirmed(): self
+    {
+        return new self('gross.errors.not_confirmed');
+    }
+
+    public static function feeNotPending(): self
+    {
+        return new self('gross.errors.fee_not_pending');
+    }
+
+    public static function feeStillPending(): self
+    {
+        return new self('gross.errors.fee_still_pending');
+    }
+
+    public static function insufficientTreasury(): self
+    {
+        return new self('gross.errors.insufficient_treasury');
+    }
+
+    public static function inactiveTreasuryAccount(): self
+    {
+        return new self('gross.errors.inactive_treasury_account');
+    }
+
+    public static function invalidAmount(): self
+    {
+        return new self('gross.errors.invalid_amount');
+    }
+
+    public static function treasurySupplierRequired(): self
+    {
+        return new self('gross.errors.treasury_supplier_required');
+    }
+
+    public static function treasuryExpenseTypeRequired(): self
+    {
+        return new self('gross.errors.treasury_expense_type_required');
+    }
+
+    public static function inactiveExpenseType(): self
+    {
+        return new self('gross.errors.inactive_expense_type');
+    }
+
+    public static function expenseTypeInUse(): self
+    {
+        return new self('gross.errors.expense_type_in_use');
+    }
 }

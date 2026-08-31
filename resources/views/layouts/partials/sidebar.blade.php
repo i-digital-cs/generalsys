@@ -16,6 +16,9 @@
     <div class="offcanvas-body p-0">
         <ul class="nav flex-column py-2">
             @foreach ($items as $item)
+                @if (! empty($item['can']) && ! auth()->user()->can($item['can'][0], $item['can'][1] ?? null))
+                    @continue
+                @endif
                 @php
                     // Group matching only for CRUD resources: "admin.employees.index"
                     // also highlights on .create/.edit — but "admin.dashboard" or
@@ -27,6 +30,22 @@
                         ? implode('.', array_slice($segments, 0, -1)) . '.*'
                         : $item['route'];
                     $isActive = request()->routeIs($pattern);
+
+                    // Wildcard CRUD groups (e.g. gross.sales.*) must not steal highlight
+                    // from a sibling menu item with its own route (e.g. gross.sales.collections).
+                    if ($isActive && $isCrud) {
+                        foreach ($items as $other) {
+                            if (($other['route'] ?? '') === $item['route']) {
+                                continue;
+                            }
+                            $otherRoute = $other['route'] ?? '';
+                            if ($otherRoute !== '' && request()->routeIs($otherRoute)) {
+                                $isActive = false;
+                                break;
+                            }
+                        }
+                    }
+
                     $params = $item['params'] ?? [];
                     if ($isActive && isset($params['module'])) {
                         $isActive = request()->route('module') === $params['module'];

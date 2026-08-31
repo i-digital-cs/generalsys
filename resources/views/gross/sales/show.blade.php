@@ -3,46 +3,95 @@
 @section('title', $invoice->invoice_number)
 
 @section('content')
-    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3 d-print-none">
-        <div>
-            <a href="{{ route('gross.sales.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('general.back') }}</a>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-            <a href="{{ route('gross.sales.pdf', $invoice) }}" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-filetype-pdf me-1" aria-hidden="true"></i>{{ __('gross.sales.export_pdf') }}
-            </a>
-            <a href="{{ route('gross.sales.excel', $invoice) }}" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>{{ __('gross.sales.export_excel') }}
-            </a>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 d-print-none">
+        <a href="{{ route('gross.sales.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('general.back') }}</a>
+
+        <div class="ms-auto overflow-x-auto">
+            <div class="d-flex flex-nowrap align-items-center gap-2 pb-1">
             @if ($invoice->isDraft())
+                <a href="{{ route('gross.sales.excel', $invoice) }}"
+                   class="btn btn-outline-secondary btn-sm flex-shrink-0"
+                   title="{{ __('gross.sales.export_excel') }}">
+                    <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ __('gross.sales.export_excel') }}</span>
+                </a>
+                <a href="{{ route('gross.sales.pdf', $invoice) }}"
+                   class="btn btn-outline-secondary btn-sm flex-shrink-0"
+                   title="{{ __('gross.sales.export_pdf') }}">
+                    <i class="bi bi-filetype-pdf" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ __('gross.sales.export_pdf') }}</span>
+                </a>
                 @can('update', $invoice)
-                    <a href="{{ route('gross.sales.edit', $invoice) }}" class="btn btn-outline-primary btn-sm">{{ __('general.edit') }}</a>
+                    <a href="{{ route('gross.sales.edit', $invoice) }}" class="btn btn-outline-primary btn-sm flex-shrink-0">{{ __('general.edit') }}</a>
+                @endcan
+                @can('cancel', $invoice)
+                    <form method="post" action="{{ route('gross.sales.cancel', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
+                        <button type="submit" class="btn btn-outline-danger btn-sm">{{ __('gross.sales.cancel') }}</button>
+                    </form>
                 @endcan
                 @can('confirm', $invoice)
-                    <form method="post" action="{{ route('gross.sales.confirm', $invoice) }}">@csrf
-                        <button class="btn btn-primary btn-sm">{{ __('gross.sales.confirm') }}</button>
-                    </form>
-                @endcan
-                @can('cancel', $invoice)
-                    <form method="post" action="{{ route('gross.sales.cancel', $invoice) }}">@csrf
-                        <button class="btn btn-outline-danger btn-sm">{{ __('gross.sales.cancel') }}</button>
+                    <form method="post" action="{{ route('gross.sales.confirm', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
+                        <button type="submit" class="btn btn-primary btn-sm">{{ __('gross.sales.confirm') }}</button>
                     </form>
                 @endcan
             @endif
+
             @if ($invoice->isConfirmed())
+                <a href="{{ route('gross.sales.excel', $invoice) }}"
+                   class="btn btn-outline-secondary btn-sm flex-shrink-0"
+                   title="{{ __('gross.sales.export_excel') }}">
+                    <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ __('gross.sales.export_excel') }}</span>
+                </a>
+                <a href="{{ route('gross.sales.pdf', $invoice) }}"
+                   class="btn btn-outline-secondary btn-sm flex-shrink-0"
+                   title="{{ __('gross.sales.export_pdf') }}">
+                    <i class="bi bi-filetype-pdf" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ __('gross.sales.export_pdf') }}</span>
+                </a>
+                @can('markDelivered', $invoice)
+                    <form method="post" action="{{ route('gross.sales.deliver', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
+                        <button type="submit" class="btn btn-primary btn-sm">{{ __('gross.sales.mark_delivered') }}</button>
+                    </form>
+                @endcan
+                @can('collectShippingFee', $invoice)
+                    <form method="post" action="{{ route('gross.sales.collect-fee', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
+                        <button type="submit" class="btn btn-success btn-sm">{{ __('gross.sales.collect_fee') }}</button>
+                    </form>
+                @endcan
                 @can('refuse', $invoice)
-                    <form method="post" action="{{ route('gross.sales.refuse', $invoice) }}" class="d-flex gap-2">
+                    <form method="post" action="{{ route('gross.sales.refuse', $invoice) }}"
+                          class="d-inline-flex flex-nowrap align-items-center mb-0 flex-shrink-0">
                         @csrf
-                        <input type="text" name="refuse_reason" class="form-control form-control-sm" placeholder="{{ __('gross.fields.refuse_reason') }}">
-                        <button class="btn btn-warning btn-sm">{{ __('gross.sales.refuse') }}</button>
+                        <input type="text" name="refuse_reason"
+                               class="form-control form-control-sm"
+                               style="width: 9.5rem"
+                               placeholder="{{ __('gross.fields.refuse_reason') }}">
+                        <button type="submit" class="btn btn-warning btn-sm">{{ __('gross.sales.refuse') }}</button>
                     </form>
                 @endcan
                 @can('cancel', $invoice)
-                    <form method="post" action="{{ route('gross.sales.cancel', $invoice) }}">@csrf
-                        <button class="btn btn-outline-danger btn-sm">{{ __('gross.sales.cancel') }}</button>
+                    <form method="post" action="{{ route('gross.sales.cancel', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
+                        <button type="submit" class="btn btn-outline-danger btn-sm">{{ __('gross.sales.cancel') }}</button>
                     </form>
                 @endcan
             @endif
+
+            @if (! $invoice->isDraft() && ! $invoice->isConfirmed())
+                <a href="{{ route('gross.sales.excel', $invoice) }}"
+                   class="btn btn-outline-secondary btn-sm flex-shrink-0"
+                   title="{{ __('gross.sales.export_excel') }}">
+                    <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ __('gross.sales.export_excel') }}</span>
+                </a>
+                <a href="{{ route('gross.sales.pdf', $invoice) }}"
+                   class="btn btn-outline-secondary btn-sm flex-shrink-0"
+                   title="{{ __('gross.sales.export_pdf') }}">
+                    <i class="bi bi-filetype-pdf" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ __('gross.sales.export_pdf') }}</span>
+                </a>
+            @endif
+            </div>
         </div>
     </div>
 
@@ -71,7 +120,15 @@
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <h2 class="h6 text-body-secondary">{{ __('gross.fields.customer') }}</h2>
-                    <div class="fw-semibold">{{ $invoice->customer_name }}</div>
+                    <div class="fw-semibold">
+                        @if ($invoice->customer_id)
+                            <a href="{{ route('gross.customers.show', $invoice->customer_id) }}" class="link-body-emphasis text-decoration-none">
+                                {{ $invoice->customer_name }}
+                            </a>
+                        @else
+                            {{ $invoice->customer_name }}
+                        @endif
+                    </div>
                     <div class="num-ltr">{{ $invoice->customer_phone }}</div>
                     @if ($invoice->customer_address)
                         <div class="small text-body-secondary">{{ $invoice->customer_address }}</div>
@@ -83,7 +140,15 @@
                         <dt class="col-5">{{ __('gross.fields.sales_person') }}</dt>
                         <dd class="col-7">{{ $invoice->salesUser?->localizedName() ?: '—' }}</dd>
                         <dt class="col-5">{{ __('gross.fields.shipping_company') }}</dt>
-                        <dd class="col-7">{{ $invoice->shipping_company_name ?: '—' }}</dd>
+                        <dd class="col-7">
+                            @if ($invoice->shipping_company_id)
+                                <a href="{{ route('gross.shipping.show', $invoice->shipping_company_id) }}" class="link-body-emphasis text-decoration-none">
+                                    {{ $invoice->shipping_company_name ?: '—' }}
+                                </a>
+                            @else
+                                {{ $invoice->shipping_company_name ?: '—' }}
+                            @endif
+                        </dd>
                         <dt class="col-5">{{ __('gross.fields.notes') }}</dt>
                         <dd class="col-7">{{ $invoice->notes ?: '—' }}</dd>
                     </dl>
@@ -109,8 +174,24 @@
                                 $gross = round((float) $line->qty * (float) $line->unit_price, 2);
                             @endphp
                             <tr>
-                                <td><span class="num-ltr">{{ $line->item_code_snapshot }}</span></td>
-                                <td>{{ $line->item_name_snapshot }}</td>
+                                <td>
+                                    @if ($line->item_id)
+                                        <a href="{{ route('gross.items.show', $line->item_id) }}" class="num-ltr link-body-emphasis text-decoration-none">
+                                            {{ $line->item_code_snapshot }}
+                                        </a>
+                                    @else
+                                        <span class="num-ltr">{{ $line->item_code_snapshot }}</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($line->item_id)
+                                        <a href="{{ route('gross.items.show', $line->item_id) }}" class="link-body-emphasis text-decoration-none">
+                                            {{ $line->item_name_snapshot }}
+                                        </a>
+                                    @else
+                                        {{ $line->item_name_snapshot }}
+                                    @endif
+                                </td>
                                 <td>{{ $line->size_snapshot ?: '—' }}</td>
                                 <td class="col-num"><span class="num-ltr">{{ $line->qty }}</span></td>
                                 <td class="col-num">
@@ -166,9 +247,19 @@
                     @php($alloc = $line->allocation)
                     @if ($alloc)
                         <div class="border rounded p-3 mb-3">
-                            <div class="fw-semibold mb-2">{{ $line->item_code_snapshot }} — {{ $line->item_name_snapshot }}</div>
+                            <div class="fw-semibold mb-2">
+                                @if ($line->item_id)
+                                    <a href="{{ route('gross.items.show', $line->item_id) }}" class="link-body-emphasis text-decoration-none">
+                                        {{ $line->item_code_snapshot }} — {{ $line->item_name_snapshot }}
+                                    </a>
+                                @else
+                                    {{ $line->item_code_snapshot }} — {{ $line->item_name_snapshot }}
+                                @endif
+                            </div>
                             <div class="small text-body-secondary mb-2">
-                                {{ __('gross.fields.with_courier') }}:
+                                {{ __('gross.fields.delivered') }}:
+                                <span class="num-ltr">{{ $alloc->qty_delivered_pieces }}</span>
+                                · {{ __('gross.fields.with_courier') }}:
                                 <span class="num-ltr">{{ $alloc->qty_with_courier_pieces }}</span>
                                 · {{ __('gross.fields.lost') }}:
                                 <span class="num-ltr">{{ $alloc->qty_lost_pieces }}</span>

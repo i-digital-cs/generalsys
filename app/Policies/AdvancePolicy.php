@@ -15,7 +15,7 @@ class AdvancePolicy
 
     public function viewOwn(User $user): bool
     {
-        return $user->isEmployee() || $user->isAccountant();
+        return $user->isEmployee() || $user->isSales() || $user->isAccountant();
     }
 
     public function view(User $user, Advance $advance): bool
@@ -24,7 +24,7 @@ class AdvancePolicy
             return true;
         }
 
-        return ($user->isEmployee() || $user->isAccountant())
+        return ($user->isEmployee() || $user->isSales() || $user->isAccountant())
             && $user->id === $advance->user_id;
     }
 

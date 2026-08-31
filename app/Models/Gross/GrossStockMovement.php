@@ -16,6 +16,8 @@ class GrossStockMovement extends Model
 
     public const TYPE_SALE_RETURN = 'SALE_RETURN';
 
+    public const TYPE_SALE_DELIVERED = 'SALE_DELIVERED';
+
     public const TYPE_REFUSE_RETURN = 'REFUSE_RETURN';
 
     public const TYPE_LOSS_CONFIRM = 'LOSS_CONFIRM';

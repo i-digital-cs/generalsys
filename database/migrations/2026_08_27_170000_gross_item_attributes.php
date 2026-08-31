@@ -12,35 +12,43 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('gross_item_attributes', function (Blueprint $table) {
-            $table->id();
-            $table->enum('kind', ['COLOR', 'SIZE', 'MODEL']);
-            $table->string('name_ar', 120);
-            $table->string('name_en', 120);
-            $table->timestamps();
-            $table->unique(['kind', 'name_en'], 'uq_gross_attr_kind_en');
-            $table->index('kind', 'idx_gross_attr_kind');
-        });
+        if (! Schema::hasTable('gross_item_attributes')) {
+            Schema::create('gross_item_attributes', function (Blueprint $table) {
+                $table->id();
+                $table->enum('kind', ['COLOR', 'SIZE', 'MODEL']);
+                $table->string('name_ar', 120);
+                $table->string('name_en', 120);
+                $table->timestamps();
+                $table->unique(['kind', 'name_en'], 'uq_gross_attr_kind_en');
+                $table->index('kind', 'idx_gross_attr_kind');
+            });
+        }
 
-        Schema::table('gross_items', function (Blueprint $table) {
-            $table->foreignId('color_id')->nullable()->after('name')
-                ->constrained('gross_item_attributes')->nullOnDelete();
-            $table->foreignId('size_id')->nullable()->after('color_id')
-                ->constrained('gross_item_attributes')->nullOnDelete();
-            $table->foreignId('model_id')->nullable()->after('size_id')
-                ->constrained('gross_item_attributes')->nullOnDelete();
-        });
+        if (Schema::hasTable('gross_items') && ! Schema::hasColumn('gross_items', 'color_id')) {
+            Schema::table('gross_items', function (Blueprint $table) {
+                $table->foreignId('color_id')->nullable()->after('name')
+                    ->constrained('gross_item_attributes')->nullOnDelete();
+                $table->foreignId('size_id')->nullable()->after('color_id')
+                    ->constrained('gross_item_attributes')->nullOnDelete();
+                $table->foreignId('model_id')->nullable()->after('size_id')
+                    ->constrained('gross_item_attributes')->nullOnDelete();
+            });
+        }
 
-        $this->backfillFromLegacyStrings();
+        if (Schema::hasColumn('gross_items', 'color')) {
+            $this->backfillFromLegacyStrings();
+        }
     }
 
     public function down(): void
     {
-        Schema::table('gross_items', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('color_id');
-            $table->dropConstrainedForeignId('size_id');
-            $table->dropConstrainedForeignId('model_id');
-        });
+        if (Schema::hasColumn('gross_items', 'color_id')) {
+            Schema::table('gross_items', function (Blueprint $table) {
+                $table->dropConstrainedForeignId('color_id');
+                $table->dropConstrainedForeignId('size_id');
+                $table->dropConstrainedForeignId('model_id');
+            });
+        }
         Schema::dropIfExists('gross_item_attributes');
     }
 
@@ -53,6 +61,11 @@ return new class extends Migration
         ];
 
         foreach ($map as $column => $kind) {
+            $fk = $column.'_id';
+            if (! Schema::hasColumn('gross_items', $fk)) {
+                continue;
+            }
+
             $values = DB::table('gross_items')
                 ->whereNotNull($column)
                 ->where($column, '!=', '')
@@ -80,7 +93,6 @@ return new class extends Migration
                     ]);
                 }
 
-                $fk = $column.'_id';
                 DB::table('gross_items')->where($column, $value)->update([$fk => $existingId]);
             }
         }

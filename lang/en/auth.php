@@ -8,4 +8,7 @@ return [
     'sign_in' => 'Sign in to your account',
     'failed' => 'These credentials do not match our records.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
+    'inactive_title' => 'Account inactive',
+    'inactive_message' => 'Your account is inactive. Please contact the administrator to restore access.',
+    'logout' => 'Sign out',
 ];

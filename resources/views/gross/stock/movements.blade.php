@@ -78,22 +78,37 @@
                                 <th class="col-num">{{ __('gross.fields.qty') }}</th>
                                 <th>{{ __('gross.fields.unit') }}</th>
                                 <th class="col-num">{{ __('gross.fields.qty_pieces') }}</th>
+                                <th>{{ __('gross.fields.reference') }}</th>
                                 <th>{{ __('gross.fields.actor') }}</th>
                                 <th>{{ __('gross.fields.notes') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($movements as $row)
+                                @php($doc = $documentLinks[$row->id] ?? null)
                                 <tr>
                                     <td class="small"><span class="num-ltr">{{ $row->created_at?->translatedFormat('d M Y H:i') }}</span></td>
                                     <td>
-                                        <span class="num-ltr">{{ $row->item?->code }}</span>
-                                        <div class="small text-body-secondary">{{ $row->item?->name }}</div>
+                                        @if ($row->item)
+                                            <a href="{{ route('gross.items.show', $row->item) }}" class="num-ltr link-body-emphasis text-decoration-none">
+                                                {{ $row->item->code }}
+                                            </a>
+                                            <div class="small text-body-secondary">{{ $row->item->name }}</div>
+                                        @else
+                                            —
+                                        @endif
                                     </td>
                                     <td>{{ __('gross.movement_types.'.$row->type) }}</td>
                                     <td class="col-num"><span class="num-ltr">{{ $row->qty }}</span></td>
                                     <td>{{ __('gross.units.'.$row->unit) }}</td>
                                     <td class="col-num"><span class="num-ltr">{{ $row->qty_pieces }}</span></td>
+                                    <td class="small">
+                                        @if ($doc)
+                                            <a href="{{ $doc['url'] }}" class="num-ltr link-body-emphasis text-decoration-none">{{ $doc['label'] }}</a>
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
                                     <td class="small">{{ $row->creator?->localizedName() ?: '—' }}</td>
                                     <td class="small text-body-secondary">{{ $row->notes ?: '—' }}</td>
                                 </tr>

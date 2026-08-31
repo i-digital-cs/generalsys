@@ -62,6 +62,11 @@ class GrossPurchaseInvoice extends Model
         return $this->hasMany(GrossPurchaseInvoiceLine::class, 'purchase_invoice_id');
     }
 
+    public function returns(): HasMany
+    {
+        return $this->hasMany(GrossPurchaseReturn::class, 'purchase_invoice_id');
+    }
+
     public function isDraft(): bool
     {
         return $this->status === self::STATUS_DRAFT;

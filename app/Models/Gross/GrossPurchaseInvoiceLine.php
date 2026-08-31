@@ -25,6 +25,7 @@ class GrossPurchaseInvoiceLine extends Model
         'unit',
         'conversion_factor_snapshot',
         'qty_pieces',
+        'qty_returned_pieces',
         'buy_price',
         'sale_price',
         'discount_amount',
@@ -38,6 +39,7 @@ class GrossPurchaseInvoiceLine extends Model
             'qty' => 'integer',
             'conversion_factor_snapshot' => 'integer',
             'qty_pieces' => 'integer',
+            'qty_returned_pieces' => 'integer',
             'buy_price' => 'decimal:2',
             'sale_price' => 'decimal:2',
             'discount_amount' => 'decimal:2',
@@ -54,5 +56,10 @@ class GrossPurchaseInvoiceLine extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(GrossItem::class, 'item_id');
+    }
+
+    public function remainingPieces(): int
+    {
+        return max(0, (int) $this->qty_pieces - (int) $this->qty_returned_pieces);
     }
 }

@@ -89,6 +89,8 @@ class SupplierCrudTest extends TestCase
             ->assertOk()
             ->assertSee('bi-pencil', false)
             ->assertSee('bi-trash', false)
+            ->assertSee('Account statement', false)
+            ->assertSee('Balance (EGP)', false)
             ->assertSee('Search name, phone, or address', false);
     }
 

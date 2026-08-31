@@ -4,7 +4,9 @@ namespace App\Http\Requests\Valuation;
 
 use App\Models\User;
 use App\Models\ValuationSheet;
+use App\Services\Valuation\ValuationCopy;
 use App\Services\Valuation\ValuationFields;
+use App\Support\AppModule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -12,11 +14,16 @@ class StoreValuationSheetRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
+        $module = (string) $this->route('module');
         $input = is_array($this->input('input')) ? $this->input('input') : [];
-        $input['drivers'] = ValuationFields::normalizeDrivers($input['drivers'] ?? []);
+        if ($module === AppModule::PRODUCT) {
+            $input['drivers'] = [];
+        } else {
+            $input['drivers'] = ValuationFields::normalizeDrivers($input['drivers'] ?? []);
+        }
 
         $this->merge([
-            'input' => array_merge(ValuationFields::defaults(), $input),
+            'input' => array_merge(ValuationCopy::defaults($module), $input),
         ]);
     }
 

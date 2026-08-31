@@ -35,4 +35,7 @@ return [
     'gross_purchases' => 'Gross purchases',
     'gross_shipping' => 'Shipping companies',
     'gross_sales' => 'Gross sales',
+    'gross_collections' => 'Courier collections',
+    'gross_treasury' => 'Treasury',
+    'gross_expense_types' => 'Expense types',
 ];

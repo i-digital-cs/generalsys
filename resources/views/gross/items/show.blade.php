@@ -16,6 +16,9 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{{ route('gross.items.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('gross.items.title') }}</a>
+            <a href="{{ route('gross.stock.movements', ['item_id' => $item->id]) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>{{ __('gross.stock.movements_title') }}
+            </a>
             @can('update', $item)
                 <a href="{{ route('gross.items.edit', $item) }}" class="btn btn-outline-primary btn-sm">{{ __('general.edit') }}</a>
             @endcan

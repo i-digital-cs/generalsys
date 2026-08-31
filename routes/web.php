@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\PenaltyRuleController;
 use App\Http\Controllers\Admin\RestDayController as AdminRestDayController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\AttendancePhotoController;
+use App\Http\Controllers\Auth\AccountInactiveController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentDownloadController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Employee\SalaryController;
 use App\Http\Controllers\EmployeePhotoController;
 use App\Http\Controllers\Gross\CategoryController as GrossCategoryController;
 use App\Http\Controllers\Gross\CustomerController as GrossCustomerController;
+use App\Http\Controllers\Gross\ExpenseTypeController as GrossExpenseTypeController;
 use App\Http\Controllers\Gross\ItemAttributeController as GrossItemAttributeController;
 use App\Http\Controllers\Gross\ItemController as GrossItemController;
 use App\Http\Controllers\Gross\ItemImageController as GrossItemImageController;
@@ -34,6 +36,7 @@ use App\Http\Controllers\Gross\SalesInvoiceController as GrossSalesInvoiceContro
 use App\Http\Controllers\Gross\ShippingCompanyController as GrossShippingCompanyController;
 use App\Http\Controllers\Gross\StockController as GrossStockController;
 use App\Http\Controllers\Gross\SupplierController as GrossSupplierController;
+use App\Http\Controllers\Gross\TreasuryController as GrossTreasuryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\TeamLeader\ApprovalController;
@@ -62,6 +65,8 @@ Route::post('/impersonation/leave', [ImpersonationController::class, 'destroy'])
     ->middleware('auth')->name('impersonation.leave');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/account/inactive', AccountInactiveController::class)->name('account.inactive');
+
     Route::get('/home', [PortalController::class, 'home'])->name('portal.home');
     Route::get('/hr', [PortalController::class, 'enterHr'])->name('portal.hr');
     Route::get('/service', [PortalController::class, 'service'])->name('portal.service');
@@ -143,11 +148,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/suppliers/create', [GrossSupplierController::class, 'create'])->name('suppliers.create');
         Route::post('/suppliers', [GrossSupplierController::class, 'store'])->name('suppliers.store');
         Route::get('/suppliers/{supplier}', [GrossSupplierController::class, 'show'])->name('suppliers.show');
+        Route::get('/suppliers/{supplier}/statement', [GrossSupplierController::class, 'statement'])->name('suppliers.statement');
         Route::get('/suppliers/{supplier}/edit', [GrossSupplierController::class, 'edit'])->name('suppliers.edit');
         Route::put('/suppliers/{supplier}', [GrossSupplierController::class, 'update'])->name('suppliers.update');
         Route::delete('/suppliers/{supplier}', [GrossSupplierController::class, 'destroy'])->name('suppliers.destroy');
 
         Route::get('/sales', [GrossSalesInvoiceController::class, 'index'])->name('sales.index');
+        Route::get('/sales/collections', [GrossSalesInvoiceController::class, 'collections'])->name('sales.collections');
         Route::get('/sales/create', [GrossSalesInvoiceController::class, 'create'])->name('sales.create');
         Route::post('/sales', [GrossSalesInvoiceController::class, 'store'])->name('sales.store');
         Route::get('/sales/{invoice}', [GrossSalesInvoiceController::class, 'show'])->name('sales.show');
@@ -160,6 +167,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/sales/{invoice}/refuse', [GrossSalesInvoiceController::class, 'refuse'])->name('sales.refuse');
         Route::post('/sales/{invoice}/return', [GrossSalesInvoiceController::class, 'returnLine'])->name('sales.return');
         Route::post('/sales/{invoice}/loss', [GrossSalesInvoiceController::class, 'lossLine'])->name('sales.loss');
+        Route::post('/sales/{invoice}/collect-fee', [GrossSalesInvoiceController::class, 'collectShippingFee'])->name('sales.collect-fee');
+        Route::post('/sales/{invoice}/deliver', [GrossSalesInvoiceController::class, 'markDelivered'])->name('sales.deliver');
 
         Route::get('/purchases', [GrossPurchaseInvoiceController::class, 'index'])->name('purchases.index');
         Route::get('/purchases/create', [GrossPurchaseInvoiceController::class, 'create'])->name('purchases.create');
@@ -169,6 +178,17 @@ Route::middleware('auth')->group(function () {
         Route::put('/purchases/{purchase}', [GrossPurchaseInvoiceController::class, 'update'])->name('purchases.update');
         Route::post('/purchases/{purchase}/confirm', [GrossPurchaseInvoiceController::class, 'confirm'])->name('purchases.confirm');
         Route::post('/purchases/{purchase}/cancel', [GrossPurchaseInvoiceController::class, 'cancel'])->name('purchases.cancel');
+        Route::post('/purchases/{purchase}/return', [GrossPurchaseInvoiceController::class, 'returnLines'])->name('purchases.return');
+
+        Route::get('/treasury', [GrossTreasuryController::class, 'index'])->name('treasury.index');
+        Route::get('/treasury/create', [GrossTreasuryController::class, 'create'])->name('treasury.create');
+        Route::post('/treasury', [GrossTreasuryController::class, 'store'])->name('treasury.store');
+        Route::get('/treasury/{voucher}', [GrossTreasuryController::class, 'show'])->name('treasury.show');
+
+        Route::get('/expense-types', [GrossExpenseTypeController::class, 'index'])->name('expense-types.index');
+        Route::post('/expense-types', [GrossExpenseTypeController::class, 'store'])->name('expense-types.store');
+        Route::put('/expense-types/{expenseType}', [GrossExpenseTypeController::class, 'update'])->name('expense-types.update');
+        Route::delete('/expense-types/{expenseType}', [GrossExpenseTypeController::class, 'destroy'])->name('expense-types.destroy');
     });
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -266,8 +286,8 @@ Route::middleware(['auth', 'role:MANAGER,ACCOUNTANT'])->prefix('admin')->name('a
     Route::put('/advances/{advance}', [AdminAdvanceController::class, 'update'])->name('advances.update');
 });
 
-// Employee + Accountant self home (profile / salary / my advances)
-Route::middleware(['auth', 'role:EMPLOYEE,ACCOUNTANT,ASSISTANT'])->group(function () {
+// Employee + Accountant + Sales self home (profile / salary / my advances)
+Route::middleware(['auth', 'role:EMPLOYEE,ACCOUNTANT,ASSISTANT,SALES'])->group(function () {
     Route::get('/employee/dashboard', EmployeeDashboardController::class)->name('employee.dashboard');
     Route::get('/profile', [ProfileController::class, 'showSelf'])->name('employee.profile');
     Route::get('/employees/{user}/profile', [ProfileController::class, 'show'])->name('employee.profile.show');
@@ -277,8 +297,8 @@ Route::middleware(['auth', 'role:EMPLOYEE,ACCOUNTANT,ASSISTANT'])->group(functio
     Route::get('/advances/my', [EmployeeAdvanceController::class, 'index'])->name('employee.advances');
 });
 
-// Clock — all staff roles including DRIVER (T-7.8)
-Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT,ASSISTANT,DRIVER'])->group(function () {
+// Clock — all staff roles including DRIVER + SALES (T-7.8)
+Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT,ASSISTANT,DRIVER,SALES'])->group(function () {
     Route::get('/clock', [ClockController::class, 'show'])->name('employee.clock');
     Route::post('/clock/in', [ClockController::class, 'clockIn'])->name('employee.clock.in');
     Route::post('/clock/out', [ClockController::class, 'clockOut'])->name('employee.clock.out');
@@ -295,7 +315,7 @@ Route::middleware(['auth', 'role:DRIVER'])->group(function () {
 });
 
 // Self-service: my requests, evaluation — not DRIVER yet
-Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT,ASSISTANT'])->group(function () {
+Route::middleware(['auth', 'role:EMPLOYEE,TEAM_LEADER,MANAGER,ACCOUNTANT,ASSISTANT,SALES'])->group(function () {
     Route::get('/requests', [RequestController::class, 'index'])->name('employee.requests');
     Route::post('/requests/permissions', [RequestController::class, 'storePermission'])
         ->name('employee.requests.permissions.store');

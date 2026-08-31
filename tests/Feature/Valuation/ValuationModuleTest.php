@@ -238,6 +238,62 @@ class ValuationModuleTest extends TestCase
         $this->assertSame(1, substr_count($html, 'id="laundry_king_negatives"'));
     }
 
+    public function test_product_form_uses_mohra_valuation_labels(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create();
+        ValuationAssignment::query()->create([
+            'user_id' => $employee->id,
+            'assigned_by' => $manager->id,
+            'module' => 'product',
+        ]);
+
+        $this->withSession(['locale' => 'en'])->actingAs($employee)
+            ->get(route('valuation.sheets.form', 'product'))
+            ->assertOk()
+            ->assertSee(__('valuation.mohra.sections.laundry_king'), false)
+            ->assertSee(__('valuation.mohra.sections.drivers'), false)
+            ->assertSee(__('valuation.mohra.fields.sales_outdoor'), false)
+            ->assertSee(__('valuation.mohra.fields.haroon_news'), false)
+            ->assertSee('name="input[target_count_total]"', false)
+            ->assertSee('value="35"', false)
+            ->assertDontSee(__('valuation.sections.laundry_king'), false)
+            ->assertDontSee(__('valuation.drivers.add'), false)
+            ->assertDontSee(__('valuation.sections.providers'), false);
+
+        $this->actingAs($employee)
+            ->post(route('valuation.sheets.store', 'product'), [
+                'date' => '2026-08-26',
+                'status' => ValuationSheet::STATUS_SUBMITTED,
+                'input' => [
+                    'actual_b2b_count' => 0,
+                    'actual_b2c_count' => 12,
+                    'target_b2b_count' => 15,
+                    'target_b2c_count' => 20,
+                    'target_count_total' => 35,
+                    'drivers_score' => 100,
+                    'sales_online' => 70,
+                    'sales_social' => 50,
+                    'sales_customer_care' => 80,
+                    'sales_outdoor' => 70,
+                ],
+            ])
+            ->assertRedirect();
+
+        $sheet = ValuationSheet::query()->where('module', 'product')->firstOrFail();
+        $this->assertEquals(35, $sheet->input['target_count_total']);
+        $this->assertSame([], $sheet->input['drivers']);
+        $this->assertEqualsWithDelta(12 / 35, $sheet->result['count_ratio'], 0.000001);
+        $this->assertEqualsWithDelta(45.0, $sheet->result['sales_average'], 0.01);
+
+        $this->withSession(['locale' => 'en'])->actingAs($employee)
+            ->get(route('valuation.sheets.show', ['module' => 'product', 'sheet' => $sheet]))
+            ->assertOk()
+            ->assertSee('34.29%', false)
+            ->assertSee('60.00%', false)
+            ->assertSee(__('valuation.mohra.sections.marketing'), false);
+    }
+
     public function test_manager_sees_every_employees_sheets_on_service_home_and_index(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-19 12:00:00', config('app.timezone')));

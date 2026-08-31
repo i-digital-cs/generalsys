@@ -8,9 +8,12 @@
             <h1 class="h4 mb-1">{{ __('gross.sales.title') }}</h1>
             <p class="text-body-secondary small mb-0">{{ __('gross.sales.subtitle') }}</p>
         </div>
-        @can('create', App\Models\Gross\GrossSalesInvoice::class)
-            <a href="{{ route('gross.sales.create') }}" class="btn btn-primary">{{ __('gross.sales.create') }}</a>
-        @endcan
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('gross.sales.collections') }}" class="btn btn-outline-secondary btn-sm">{{ __('gross.sales.collections_title') }}</a>
+            @can('create', App\Models\Gross\GrossSalesInvoice::class)
+                <a href="{{ route('gross.sales.create') }}" class="btn btn-primary">{{ __('gross.sales.create') }}</a>
+            @endcan
+        </div>
     </div>
     <div class="card border-0 shadow-sm">
         <div class="card-body">
@@ -31,8 +34,20 @@
                         <tbody>
                             @foreach ($invoices as $invoice)
                                 <tr>
-                                    <td class="fw-semibold"><span class="num-ltr">{{ $invoice->invoice_number }}</span></td>
-                                    <td>{{ $invoice->customer_name }}</td>
+                                    <td class="fw-semibold">
+                                        <a href="{{ route('gross.sales.show', $invoice) }}" class="num-ltr link-body-emphasis text-decoration-none">
+                                            {{ $invoice->invoice_number }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        @if ($invoice->customer_id)
+                                            <a href="{{ route('gross.customers.show', $invoice->customer_id) }}" class="link-body-emphasis text-decoration-none">
+                                                {{ $invoice->customer_name }}
+                                            </a>
+                                        @else
+                                            {{ $invoice->customer_name }}
+                                        @endif
+                                    </td>
                                     <td>{{ __('gross.statuses.'.$invoice->status) }}</td>
                                     <td class="col-num">
                                         <span class="num-ltr"><x-money :amount="$invoice->total" :currency="$invoice->currency" /></span>

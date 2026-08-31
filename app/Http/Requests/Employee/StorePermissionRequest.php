@@ -13,7 +13,7 @@ class StorePermissionRequest extends FormRequest
         $user = $this->user();
 
         return $user !== null && (
-            $user->isEmployee() || $user->isTeamLeader() || $user->isManager() || $user->isAccountant() || $user->isAssistant()
+            $user->isEmployee() || $user->isSales() || $user->isTeamLeader() || $user->isManager() || $user->isAccountant() || $user->isAssistant()
         );
     }
 

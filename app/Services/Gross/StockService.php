@@ -4,10 +4,15 @@ namespace App\Services\Gross;
 
 use App\Exceptions\GrossException;
 use App\Models\Gross\GrossItem;
+use App\Models\Gross\GrossPurchaseInvoiceLine;
+use App\Models\Gross\GrossPurchaseReturnLine;
+use App\Models\Gross\GrossSalesInvoiceLine;
+use App\Models\Gross\GrossShipmentAllocation;
 use App\Models\Gross\GrossStockBalance;
 use App\Models\Gross\GrossStockMovement;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -55,6 +60,121 @@ class StockService
         }
 
         return $q->paginate(min($perPage, 50))->withQueryString();
+    }
+
+    /**
+     * Document links for a page of movements (batch-resolved; no N+1).
+     *
+     * @param  Collection<int, GrossStockMovement>  $movements
+     * @return array<int, array{label: string, url: string}>
+     */
+    public function documentLinksFor(Collection $movements): array
+    {
+        $purchaseLineIds = [];
+        $returnLineIds = [];
+        $salesLineIds = [];
+        $allocationIds = [];
+
+        foreach ($movements as $movement) {
+            if ($movement->ref_type === null || $movement->ref_id === null) {
+                continue;
+            }
+
+            match ($movement->ref_type) {
+                GrossPurchaseInvoiceLine::class => $purchaseLineIds[] = (int) $movement->ref_id,
+                GrossPurchaseReturnLine::class => $returnLineIds[] = (int) $movement->ref_id,
+                GrossSalesInvoiceLine::class => $salesLineIds[] = (int) $movement->ref_id,
+                GrossShipmentAllocation::class => $allocationIds[] = (int) $movement->ref_id,
+                default => null,
+            };
+        }
+
+        $purchaseByLine = GrossPurchaseInvoiceLine::query()
+            ->whereIn('id', array_unique($purchaseLineIds))
+            ->with('invoice:id,invoice_number')
+            ->get()
+            ->keyBy('id');
+
+        $returnByLine = GrossPurchaseReturnLine::query()
+            ->whereIn('id', array_unique($returnLineIds))
+            ->with(['purchaseReturn:id,return_number,purchase_invoice_id', 'purchaseReturn.invoice:id,invoice_number'])
+            ->get()
+            ->keyBy('id');
+
+        $salesByLine = GrossSalesInvoiceLine::query()
+            ->whereIn('id', array_unique($salesLineIds))
+            ->with('invoice:id,invoice_number')
+            ->get()
+            ->keyBy('id');
+
+        $allocById = GrossShipmentAllocation::query()
+            ->whereIn('id', array_unique($allocationIds))
+            ->with('line.invoice:id,invoice_number')
+            ->get()
+            ->keyBy('id');
+
+        $links = [];
+
+        foreach ($movements as $movement) {
+            if ($movement->ref_type === null || $movement->ref_id === null) {
+                continue;
+            }
+
+            $refId = (int) $movement->ref_id;
+
+            if ($movement->ref_type === GrossPurchaseInvoiceLine::class) {
+                $line = $purchaseByLine->get($refId);
+                $invoice = $line?->invoice;
+                if ($invoice !== null) {
+                    $links[$movement->id] = [
+                        'label' => $invoice->invoice_number,
+                        'url' => route('gross.purchases.show', $invoice),
+                    ];
+                }
+
+                continue;
+            }
+
+            if ($movement->ref_type === GrossPurchaseReturnLine::class) {
+                $line = $returnByLine->get($refId);
+                $invoice = $line?->purchaseReturn?->invoice;
+                $label = $line?->purchaseReturn?->return_number ?? $invoice?->invoice_number;
+                if ($invoice !== null && $label !== null) {
+                    $links[$movement->id] = [
+                        'label' => $label,
+                        'url' => route('gross.purchases.show', $invoice),
+                    ];
+                }
+
+                continue;
+            }
+
+            if ($movement->ref_type === GrossSalesInvoiceLine::class) {
+                $line = $salesByLine->get($refId);
+                $invoice = $line?->invoice;
+                if ($invoice !== null) {
+                    $links[$movement->id] = [
+                        'label' => $invoice->invoice_number,
+                        'url' => route('gross.sales.show', $invoice),
+                    ];
+                }
+
+                continue;
+            }
+
+            if ($movement->ref_type === GrossShipmentAllocation::class) {
+                $alloc = $allocById->get($refId);
+                $invoice = $alloc?->line?->invoice;
+                if ($invoice !== null) {
+                    $links[$movement->id] = [
+                        'label' => $invoice->invoice_number,
+                        'url' => route('gross.sales.show', $invoice),
+                    ];
+                }
+            }
+        }
+
+        return $links;
     }
 
     public function ensureBalanceRow(GrossItem $item): GrossStockBalance
@@ -140,6 +260,47 @@ class StockService
             return $this->createMovement(
                 $item,
                 GrossStockMovement::TYPE_PURCHASE_IN,
+                $qty,
+                $unit,
+                $conversionFactor,
+                $qtyPieces,
+                $refType,
+                $refId,
+                $actor,
+            );
+        });
+    }
+
+    /**
+     * Purchase return: ON_HAND − pieces.
+     */
+    public function applyPurchaseReturn(
+        GrossItem $item,
+        int $qtyPieces,
+        int $conversionFactor,
+        string $unit,
+        int $qty,
+        string $refType,
+        int $refId,
+        ?User $actor = null,
+    ): GrossStockMovement {
+        if ($qtyPieces < 1) {
+            throw GrossException::invalidQty();
+        }
+
+        return DB::transaction(function () use ($item, $qtyPieces, $conversionFactor, $unit, $qty, $refType, $refId, $actor) {
+            $balance = $this->lockBalance($item);
+
+            if ($balance->qty_on_hand_pieces < $qtyPieces) {
+                throw GrossException::insufficientStock();
+            }
+
+            $balance->qty_on_hand_pieces -= $qtyPieces;
+            $balance->save();
+
+            return $this->createMovement(
+                $item,
+                GrossStockMovement::TYPE_PURCHASE_RETURN,
                 $qty,
                 $unit,
                 $conversionFactor,
@@ -248,6 +409,45 @@ class StockService
             $actor,
             GrossStockMovement::TYPE_REFUSE_RETURN,
         );
+    }
+
+    /**
+     * Delivered to customer: WITH_COURIER − pieces (exits inventory; not ON_HAND or LOST).
+     */
+    public function applyDelivery(
+        GrossItem $item,
+        int $qtyPieces,
+        int $conversionFactor,
+        string $refType,
+        int $refId,
+        ?User $actor = null,
+    ): GrossStockMovement {
+        if ($qtyPieces < 1) {
+            throw GrossException::invalidQty();
+        }
+
+        return DB::transaction(function () use ($item, $qtyPieces, $conversionFactor, $refType, $refId, $actor) {
+            $balance = $this->lockBalance($item);
+
+            if ($balance->qty_with_courier_pieces < $qtyPieces) {
+                throw GrossException::insufficientStock();
+            }
+
+            $balance->qty_with_courier_pieces -= $qtyPieces;
+            $balance->save();
+
+            return $this->createMovement(
+                $item,
+                GrossStockMovement::TYPE_SALE_DELIVERED,
+                $qtyPieces,
+                GrossStockMovement::UNIT_PIECE,
+                $conversionFactor,
+                $qtyPieces,
+                $refType,
+                $refId,
+                $actor,
+            );
+        });
     }
 
     /**

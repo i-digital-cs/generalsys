@@ -20,7 +20,7 @@
             </select>
         </div>
 
-        @include('valuation.sheets._body', ['editable' => true, 'input' => $input, 'result' => $result])
+        @include('valuation.sheets._body', ['editable' => true, 'module' => $module, 'input' => $input, 'result' => $result])
 
         <div class="col-12">
             <button type="submit" class="btn btn-primary">{{ __('valuation.save') }}</button>

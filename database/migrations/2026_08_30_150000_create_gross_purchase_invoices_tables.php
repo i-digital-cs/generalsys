@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('gross_purchase_invoices')) {
+            return;
+        }
+
         Schema::create('gross_purchase_invoice_sequences', function (Blueprint $table) {
             $table->id();
             $table->char('year_month', 6);

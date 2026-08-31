@@ -10,9 +10,7 @@ class StoreDailyReportRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user !== null && (
-            $user->isEmployee() || $user->isDriver() || $user->isTeamLeader() || $user->isManager() || $user->isAccountant() || $user->isAssistant()
-        );
+        return $user !== null && $user->mayUseClock();
     }
 
     /**

@@ -18,10 +18,10 @@ class PayrollPolicy
         return $user->canAccessPayroll();
     }
 
-    /** Employee list of own published payslips (T-4.7). */
+    /** Employee / Sales list of own published payslips (T-4.7). */
     public function viewAnyOwn(User $user): bool
     {
-        return $user->isEmployee() || $user->isAccountant();
+        return $user->isEmployee() || $user->isSales() || $user->isAccountant();
     }
 
     public function view(User $user, PayrollRecord $payroll): bool

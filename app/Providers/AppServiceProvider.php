@@ -5,11 +5,13 @@ namespace App\Providers;
 use App\Models\Advance;
 use App\Models\AttendancePhoto;
 use App\Models\Gross\GrossCustomer;
+use App\Models\Gross\GrossExpenseType;
 use App\Models\Gross\GrossItem;
 use App\Models\Gross\GrossPurchaseInvoice;
 use App\Models\Gross\GrossSalesInvoice;
 use App\Models\Gross\GrossShippingCompany;
 use App\Models\Gross\GrossSupplier;
+use App\Models\Gross\GrossTreasuryVoucher;
 use App\Models\PayrollRecord;
 use App\Models\PenaltyRule;
 use App\Models\ShiftAssignment;
@@ -20,11 +22,13 @@ use App\Policies\AdvancePolicy;
 use App\Policies\AttendancePhotoPolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\Gross\GrossCustomerPolicy;
+use App\Policies\Gross\GrossExpenseTypePolicy;
 use App\Policies\Gross\GrossItemPolicy;
 use App\Policies\Gross\GrossPurchaseInvoicePolicy;
 use App\Policies\Gross\GrossSalesInvoicePolicy;
 use App\Policies\Gross\GrossShippingCompanyPolicy;
 use App\Policies\Gross\GrossSupplierPolicy;
+use App\Policies\Gross\GrossTreasuryVoucherPolicy;
 use App\Policies\PayrollPolicy;
 use App\Policies\PenaltyRulePolicy;
 use App\Policies\ShiftAssignmentPolicy;
@@ -68,6 +72,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GrossSupplier::class, GrossSupplierPolicy::class);
         Gate::policy(GrossSalesInvoice::class, GrossSalesInvoicePolicy::class);
         Gate::policy(GrossPurchaseInvoice::class, GrossPurchaseInvoicePolicy::class);
+        Gate::policy(GrossTreasuryVoucher::class, GrossTreasuryVoucherPolicy::class);
+        Gate::policy(GrossExpenseType::class, GrossExpenseTypePolicy::class);
 
         View::composer('layouts.app', function (IlluminateView $view): void {
             $service = app(ImpersonationService::class);

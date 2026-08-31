@@ -1,6 +1,9 @@
 @php
+    use App\Services\Valuation\ValuationCopy;
     use App\Services\Valuation\ValuationFields;
 
+    $module = $module ?? 'service';
+    $line = fn (string $key, array $replace = []) => ValuationCopy::line($module, $key, $replace);
     $editable = $editable ?? true;
     $employees = $employees ?? collect();
     $driverUsers = $driverUsers ?? collect();
@@ -32,7 +35,7 @@
          data-orders-target="{{ $target }}"
          data-over-template="{{ __('valuation.drivers.over_target', ['x' => ':x']) }}">
         <div class="card-header bg-transparent fw-semibold d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <span>{{ __('valuation.sections.drivers') }}</span>
+            <span>{{ $line('sections.drivers') }}</span>
             @if (! $editable && $avgScore !== null && ($result['drivers'] ?? []) !== [])
                 <span class="small fw-normal d-inline-flex align-items-center gap-2">
                     <span class="text-body-secondary">{{ __('valuation.drivers.avg_score') }}:</span>

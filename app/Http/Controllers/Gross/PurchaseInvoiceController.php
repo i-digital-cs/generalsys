@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Gross;
 use App\Exceptions\GrossException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Gross\StoreGrossPurchaseInvoiceRequest;
+use App\Http\Requests\Gross\StoreGrossPurchaseReturnRequest;
 use App\Http\Requests\Gross\UpdateGrossPurchaseInvoiceRequest;
 use App\Models\Gross\GrossPurchaseInvoice;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\PurchaseInvoiceService;
+use App\Services\Gross\PurchaseReturnService;
 use App\Services\Gross\SupplierService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -17,6 +19,7 @@ class PurchaseInvoiceController extends Controller
 {
     public function __construct(
         private readonly PurchaseInvoiceService $invoices,
+        private readonly PurchaseReturnService $returns,
         private readonly SupplierService $suppliers,
         private readonly ItemService $items,
     ) {}
@@ -63,7 +66,7 @@ class PurchaseInvoiceController extends Controller
     public function show(GrossPurchaseInvoice $purchase): View
     {
         $this->authorize('view', $purchase);
-        $purchase->load(['lines.item', 'supplier', 'creator']);
+        $purchase->load(['lines.item', 'supplier', 'creator', 'returns.lines', 'returns.creator']);
 
         return view('gross.purchases.show', [
             'invoice' => $purchase,
@@ -130,5 +133,25 @@ class PurchaseInvoiceController extends Controller
         return redirect()
             ->route('gross.purchases.show', $purchase)
             ->with('success', __('gross.flash.purchase_cancelled'));
+    }
+
+    public function returnLines(StoreGrossPurchaseReturnRequest $request, GrossPurchaseInvoice $purchase): RedirectResponse
+    {
+        $data = $request->validated();
+
+        try {
+            $this->returns->create(
+                $request->user(),
+                $purchase,
+                $data['lines'],
+                $data['notes'] ?? null,
+            );
+        } catch (GrossException $e) {
+            return back()->withInput()->withErrors(['return' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->route('gross.purchases.show', $purchase)
+            ->with('success', __('gross.flash.purchase_return_applied'));
     }
 }

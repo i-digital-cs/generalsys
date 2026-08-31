@@ -65,7 +65,7 @@ class ValuationSheetService
     {
         $this->assertMayWrite($actor, $owner, $module);
 
-        $merged = array_merge(ValuationFields::defaults(), $input);
+        $merged = array_merge(ValuationCopy::defaults($module), $input);
         $merged['drivers'] = ValuationFields::normalizeDrivers($merged['drivers'] ?? []);
         $result = $this->calculator->compute($merged);
         if ($merged['drivers'] !== []) {
@@ -106,8 +106,8 @@ class ValuationSheetService
             'module' => $module,
             'date' => $date,
             'status' => ValuationSheet::STATUS_DRAFT,
-            'input' => ValuationFields::defaults(),
-            'result' => $this->calculator->compute(ValuationFields::defaults()),
+            'input' => ValuationCopy::defaults($module),
+            'result' => $this->calculator->compute(ValuationCopy::defaults($module)),
         ]);
         $draft->setRelation('user', $actor);
 
@@ -118,9 +118,9 @@ class ValuationSheetService
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
-    public function preview(array $input): array
+    public function preview(string $module, array $input): array
     {
-        return $this->calculator->compute(array_merge(ValuationFields::defaults(), $input));
+        return $this->calculator->compute(array_merge(ValuationCopy::defaults($module), $input));
     }
 
     private function assertMayWrite(User $actor, User $owner, string $module): void

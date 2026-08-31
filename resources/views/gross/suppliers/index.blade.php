@@ -56,11 +56,13 @@
                                 <th>{{ __('gross.fields.name') }}</th>
                                 <th>{{ __('gross.fields.phone') }}</th>
                                 <th>{{ __('gross.fields.address') }}</th>
-                                <th class="text-end" style="width: 6rem">{{ __('general.actions') }}</th>
+                                <th class="col-num">{{ __('gross.suppliers.list_balance') }}</th>
+                                <th class="text-end" style="min-width: 9rem">{{ __('general.actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($suppliers as $supplier)
+                                @php($balance = $balances[$supplier->id] ?? '0.00')
                                 <tr>
                                     <td class="fw-semibold">
                                         <a href="{{ route('gross.suppliers.show', $supplier) }}" class="link-body-emphasis text-decoration-none">
@@ -69,7 +71,17 @@
                                     </td>
                                     <td><span class="num-ltr">{{ $supplier->phone }}</span></td>
                                     <td class="small text-body-secondary">{{ $supplier->address }}</td>
+                                    <td class="col-num">
+                                        <span class="num-ltr"><x-money :amount="$balance" currency="EGP" /></span>
+                                    </td>
                                     <td class="text-end text-nowrap">
+                                        @can('view', $supplier)
+                                            <a href="{{ route('gross.suppliers.statement', $supplier) }}"
+                                               class="btn btn-outline-primary btn-sm me-1"
+                                               title="{{ __('gross.suppliers.statement') }}">
+                                                <i class="bi bi-journal-text me-1" aria-hidden="true"></i>{{ __('gross.suppliers.statement') }}
+                                            </a>
+                                        @endcan
                                         @can('update', $supplier)
                                             <button type="button"
                                                     class="btn btn-link btn-sm text-body-secondary p-0 me-2"

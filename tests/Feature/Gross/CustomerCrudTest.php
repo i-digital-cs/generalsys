@@ -107,9 +107,23 @@ class CustomerCrudTest extends TestCase
         $this->withSession(['locale' => 'en'])->actingAs($manager)
             ->get(route('gross.customers.index'))
             ->assertOk()
+            ->assertSee('bi-eye', false)
             ->assertSee('bi-pencil', false)
             ->assertSee('bi-trash', false)
             ->assertSee('Search name, phone, or address', false);
+    }
+
+    public function test_search_json_returns_matching_customers(): void
+    {
+        $manager = User::factory()->manager()->create();
+        GrossCustomer::query()->create(['name' => 'Sara Hassan', 'phone' => '01112223333', 'address' => 'Giza']);
+        GrossCustomer::query()->create(['name' => 'Other', 'phone' => '01000000099', 'address' => 'Cairo']);
+
+        $this->actingAs($manager)
+            ->getJson(route('gross.customers.search', ['q' => 'Sara']))
+            ->assertOk()
+            ->assertJsonFragment(['name' => 'Sara Hassan', 'phone' => '01112223333'])
+            ->assertJsonMissing(['name' => 'Other']);
     }
 
     public function test_create_form_suggests_existing_names(): void

@@ -49,14 +49,18 @@ class StockController extends Controller
             'to' => trim((string) $request->query('to', '')),
         ];
 
+        $movements = $this->stock->paginateMovements($filters);
+
         return view('gross.stock.movements', [
-            'movements' => $this->stock->paginateMovements($filters),
+            'movements' => $movements,
+            'documentLinks' => $this->stock->documentLinksFor(collect($movements->items())),
             'filters' => $filters,
             'types' => [
                 GrossStockMovement::TYPE_ADJUSTMENT_IN,
                 GrossStockMovement::TYPE_ADJUSTMENT_OUT,
                 GrossStockMovement::TYPE_SALE_OUT,
                 GrossStockMovement::TYPE_SALE_RETURN,
+                GrossStockMovement::TYPE_SALE_DELIVERED,
                 GrossStockMovement::TYPE_REFUSE_RETURN,
                 GrossStockMovement::TYPE_LOSS_CONFIRM,
                 GrossStockMovement::TYPE_CANCEL_RESTORE,

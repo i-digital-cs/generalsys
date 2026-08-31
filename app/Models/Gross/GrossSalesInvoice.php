@@ -28,6 +28,8 @@ class GrossSalesInvoice extends Model
 
     public const SHIPPING_FEE_SETTLED = 'SETTLED';
 
+    public const SHIPPING_FEE_COLLECTED = 'COLLECTED';
+
     protected $table = 'gross_sales_invoices';
 
     protected $fillable = [
@@ -53,6 +55,9 @@ class GrossSalesInvoice extends Model
         'refuse_reason',
         'confirmed_at',
         'cancelled_at',
+        'shipping_fee_collected_at',
+        'shipping_fee_collected_by',
+        'delivered_at',
         'created_by',
     ];
 
@@ -67,6 +72,8 @@ class GrossSalesInvoice extends Model
             'refused_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'shipping_fee_collected_at' => 'datetime',
+            'delivered_at' => 'datetime',
         ];
     }
 
@@ -95,6 +102,11 @@ class GrossSalesInvoice extends Model
         return $this->belongsTo(User::class, 'refused_by');
     }
 
+    public function shippingFeeCollectedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'shipping_fee_collected_by');
+    }
+
     public function lines(): HasMany
     {
         return $this->hasMany(GrossSalesInvoiceLine::class, 'sales_invoice_id');
@@ -118,5 +130,28 @@ class GrossSalesInvoice extends Model
     public function isConfirmed(): bool
     {
         return $this->status === self::STATUS_CONFIRMED;
+    }
+
+    public function isDelivered(): bool
+    {
+        return $this->status === self::STATUS_DELIVERED;
+    }
+
+    public function shippingFeeIsPending(): bool
+    {
+        return $this->shipping_fee_status === self::SHIPPING_FEE_PENDING;
+    }
+
+    public function canMarkDelivered(): bool
+    {
+        if (! $this->isConfirmed()) {
+            return false;
+        }
+
+        return in_array($this->shipping_fee_status, [
+            self::SHIPPING_FEE_NONE,
+            self::SHIPPING_FEE_COLLECTED,
+            self::SHIPPING_FEE_SETTLED,
+        ], true);
     }
 }

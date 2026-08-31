@@ -799,7 +799,7 @@ CREATE TABLE gross_stock_balances (
 CREATE TABLE gross_stock_movements (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     item_id BIGINT UNSIGNED NOT NULL,
-    type VARCHAR(32) NOT NULL, -- ADJUSTMENT_IN|ADJUSTMENT_OUT|SALE_OUT|SALE_RETURN|REFUSE_RETURN|LOSS_CONFIRM|CANCEL_RESTORE
+    type VARCHAR(32) NOT NULL, -- ADJUSTMENT_IN|ADJUSTMENT_OUT|SALE_OUT|SALE_RETURN|SALE_DELIVERED|REFUSE_RETURN|LOSS_CONFIRM|CANCEL_RESTORE|PURCHASE_IN|PURCHASE_RETURN
     qty INT UNSIGNED NOT NULL,
     unit ENUM('PIECE','CARTON') NOT NULL,
     conversion_factor INT UNSIGNED NOT NULL,
@@ -897,6 +897,7 @@ CREATE TABLE gross_purchase_invoice_lines (
     unit ENUM('PIECE','CARTON') NOT NULL DEFAULT 'PIECE',
     conversion_factor_snapshot INT UNSIGNED NOT NULL,
     qty_pieces INT UNSIGNED NOT NULL,
+    qty_returned_pieces INT UNSIGNED NOT NULL DEFAULT 0,
     buy_price DECIMAL(12,2) NOT NULL,
     sale_price DECIMAL(12,2) NOT NULL DEFAULT 0,
     discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -907,6 +908,102 @@ CREATE TABLE gross_purchase_invoice_lines (
     INDEX idx_gross_pur_line_inv (purchase_invoice_id),
     CONSTRAINT fk_gross_pur_line_inv FOREIGN KEY (purchase_invoice_id) REFERENCES gross_purchase_invoices(id) ON DELETE CASCADE,
     CONSTRAINT fk_gross_pur_line_item FOREIGN KEY (item_id) REFERENCES gross_items(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gross_purchase_return_sequences (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    year_month CHAR(6) NOT NULL,
+    last_number INT UNSIGNED NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_gross_pur_ret_seq (year_month)
+);
+
+CREATE TABLE gross_purchase_returns (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    return_number VARCHAR(32) NOT NULL,
+    purchase_invoice_id BIGINT UNSIGNED NOT NULL,
+    notes TEXT NULL,
+    created_by BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_pur_ret_number (return_number),
+    INDEX idx_gross_pur_ret_inv (purchase_invoice_id),
+    CONSTRAINT fk_gross_pur_ret_inv FOREIGN KEY (purchase_invoice_id) REFERENCES gross_purchase_invoices(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gross_pur_ret_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE gross_purchase_return_lines (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    purchase_return_id BIGINT UNSIGNED NOT NULL,
+    purchase_invoice_line_id BIGINT UNSIGNED NOT NULL,
+    item_id BIGINT UNSIGNED NULL,
+    qty INT UNSIGNED NOT NULL,
+    unit ENUM('PIECE','CARTON') NOT NULL DEFAULT 'PIECE',
+    conversion_factor INT UNSIGNED NOT NULL,
+    qty_pieces INT UNSIGNED NOT NULL,
+    buy_price DECIMAL(12,2) NOT NULL,
+    line_total DECIMAL(12,2) NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gross_pur_ret_line_ret (purchase_return_id),
+    INDEX idx_gross_pur_ret_line_src (purchase_invoice_line_id),
+    CONSTRAINT fk_gross_pur_ret_line_ret FOREIGN KEY (purchase_return_id) REFERENCES gross_purchase_returns(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gross_pur_ret_line_src FOREIGN KEY (purchase_invoice_line_id) REFERENCES gross_purchase_invoice_lines(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gross_pur_ret_line_item FOREIGN KEY (item_id) REFERENCES gross_items(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gross_treasury_accounts (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    kind ENUM('CASH','BANK') NOT NULL,
+    name VARCHAR(191) NOT NULL,
+    currency ENUM('EGP','AED') NOT NULL DEFAULT 'EGP',
+    opening_balance DECIMAL(12,2) NOT NULL DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_treas_kind_cur (kind, currency)
+);
+
+CREATE TABLE gross_treasury_voucher_sequences (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    year_month CHAR(6) NOT NULL,
+    kind ENUM('PAYMENT','RECEIPT') NOT NULL,
+    last_number INT UNSIGNED NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_gross_treas_voucher_seq (year_month, kind)
+);
+
+CREATE TABLE gross_expense_types (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name_ar VARCHAR(120) NOT NULL,
+    name_en VARCHAR(120) NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_expense_type_en (name_en)
+);
+
+CREATE TABLE gross_treasury_vouchers (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    voucher_number VARCHAR(32) NOT NULL,
+    type ENUM('PAYMENT','RECEIPT') NOT NULL,
+    purpose ENUM('SUPPLIER','EXPENSE') NOT NULL DEFAULT 'SUPPLIER',
+    account_id BIGINT UNSIGNED NOT NULL,
+    supplier_id BIGINT UNSIGNED NULL,
+    expense_type_id BIGINT UNSIGNED NULL,
+    currency ENUM('EGP','AED') NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    voucher_date DATE NOT NULL,
+    notes TEXT NULL,
+    created_by BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_treas_voucher_number (voucher_number),
+    INDEX idx_gross_treas_voucher_type_date (type, voucher_date),
+    INDEX idx_gross_treas_voucher_supplier (supplier_id),
+    INDEX idx_gross_treas_voucher_purpose (purpose),
+    CONSTRAINT fk_gross_treas_voucher_account FOREIGN KEY (account_id) REFERENCES gross_treasury_accounts(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gross_treas_voucher_supplier FOREIGN KEY (supplier_id) REFERENCES gross_suppliers(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_treas_voucher_expense FOREIGN KEY (expense_type_id) REFERENCES gross_expense_types(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_treas_voucher_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE gross_invoice_sequences (
@@ -928,7 +1025,7 @@ CREATE TABLE gross_sales_invoices (
     shipping_company_name VARCHAR(191) NULL,
     currency ENUM('EGP','AED') NOT NULL,
     shipping_fee DECIMAL(12,2) NOT NULL DEFAULT 0,
-    shipping_fee_status ENUM('NONE','PENDING','LOST','SETTLED') NOT NULL DEFAULT 'NONE',
+    shipping_fee_status ENUM('NONE','PENDING','LOST','SETTLED','COLLECTED') NOT NULL DEFAULT 'NONE',
     discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
     discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
     subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -940,6 +1037,9 @@ CREATE TABLE gross_sales_invoices (
     refuse_reason TEXT NULL,
     confirmed_at TIMESTAMP NULL,
     cancelled_at TIMESTAMP NULL,
+    shipping_fee_collected_at TIMESTAMP NULL,
+    shipping_fee_collected_by BIGINT UNSIGNED NULL,
+    delivered_at TIMESTAMP NULL,
     created_by BIGINT UNSIGNED NULL,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL,

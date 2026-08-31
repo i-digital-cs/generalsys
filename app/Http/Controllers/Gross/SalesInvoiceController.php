@@ -17,6 +17,7 @@ use App\Services\Gross\SalesInvoiceExportService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -205,6 +206,51 @@ class SalesInvoiceController extends Controller
         return redirect()
             ->route('gross.sales.show', $invoice)
             ->with('success', __('gross.flash.loss_confirmed'));
+    }
+
+    public function collections(Request $request): View
+    {
+        $this->authorize('viewAny', GrossSalesInvoice::class);
+
+        $filters = [
+            'shipping_company_id' => $request->query('shipping_company_id'),
+        ];
+
+        return view('gross.sales.collections', [
+            'invoices' => $this->invoices->paginatePendingCollections($filters),
+            'shippingCompanies' => $this->shipping->activeList(),
+            'filters' => $filters,
+        ]);
+    }
+
+    public function collectShippingFee(GrossSalesInvoice $invoice): RedirectResponse
+    {
+        $this->authorize('collectShippingFee', $invoice);
+
+        try {
+            $this->invoices->collectShippingFee($invoice, request()->user());
+        } catch (GrossException $e) {
+            return back()->withErrors(['status' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', __('gross.flash.shipping_fee_collected'));
+    }
+
+    public function markDelivered(GrossSalesInvoice $invoice): RedirectResponse
+    {
+        $this->authorize('markDelivered', $invoice);
+
+        try {
+            $this->invoices->markDelivered($invoice, auth()->user());
+        } catch (GrossException $e) {
+            return back()->withErrors(['status' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->route('gross.sales.show', $invoice)
+            ->with('success', __('gross.flash.invoice_delivered'));
     }
 
     private function allocationForInvoice(GrossSalesInvoice $invoice, int $allocationId): GrossShipmentAllocation

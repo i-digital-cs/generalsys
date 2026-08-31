@@ -51,17 +51,22 @@ class SalesInvoiceDocumentTest extends TestCase
             'discount_percent' => 0,
         ]]);
 
+        app(SalesInvoiceService::class)->confirm($invoice, $manager);
+        $invoice = $invoice->fresh();
+
         $this->withSession(['locale' => 'en'])->actingAs($manager)
             ->get(route('gross.sales.show', $invoice))
             ->assertOk()
             ->assertSee($invoice->invoice_number, false)
-            ->assertSee('Draft', false)
+            ->assertSee('Confirmed', false)
             ->assertSee('Sales Manager', false)
             ->assertSee('L', false)
             ->assertSee('Grand total', false)
             ->assertSee('Handle with care', false)
             ->assertSee(route('gross.sales.pdf', $invoice), false)
-            ->assertSee(route('gross.sales.excel', $invoice), false);
+            ->assertSee(route('gross.sales.excel', $invoice), false)
+            ->assertSee('bi-filetype-pdf', false)
+            ->assertSee('Collect fee', false);
 
         $this->actingAs($manager)
             ->get(route('gross.sales.pdf', $invoice))

@@ -8,6 +8,7 @@ use App\Http\Requests\Gross\StoreGrossSupplierRequest;
 use App\Http\Requests\Gross\UpdateGrossSupplierRequest;
 use App\Models\Gross\GrossSupplier;
 use App\Services\Gross\SupplierService;
+use App\Services\Gross\SupplierStatementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,16 +17,25 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SupplierController extends Controller
 {
-    public function __construct(private readonly SupplierService $suppliers) {}
+    public function __construct(
+        private readonly SupplierService $suppliers,
+        private readonly SupplierStatementService $statements,
+    ) {}
 
     public function index(Request $request): View
     {
         $this->authorize('viewAny', GrossSupplier::class);
 
         $q = trim((string) $request->query('q', ''));
+        $suppliers = $this->suppliers->paginate(['q' => $q]);
+        $balances = $this->statements->balancesForSuppliers(
+            $suppliers->getCollection()->pluck('id'),
+            'EGP'
+        );
 
         return view('gross.suppliers.index', [
-            'suppliers' => $this->suppliers->paginate(['q' => $q]),
+            'suppliers' => $suppliers,
+            'balances' => $balances,
             'filters' => ['q' => $q],
             'nameSuggestions' => $this->suppliers->nameSuggestions(),
         ]);
@@ -54,6 +64,23 @@ class SupplierController extends Controller
         $this->authorize('view', $supplier);
 
         return view('gross.suppliers.show', compact('supplier'));
+    }
+
+    public function statement(Request $request, GrossSupplier $supplier): View
+    {
+        $this->authorize('view', $supplier);
+
+        $filters = [
+            'currency' => strtoupper(trim((string) $request->query('currency', 'EGP'))),
+            'from' => trim((string) $request->query('from', '')),
+            'to' => trim((string) $request->query('to', '')),
+        ];
+
+        return view('gross.suppliers.statement', [
+            'supplier' => $supplier,
+            'filters' => $filters,
+            'statement' => $this->statements->build($supplier, $filters),
+        ]);
     }
 
     public function edit(GrossSupplier $supplier): View
