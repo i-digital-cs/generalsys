@@ -8,6 +8,10 @@
 
     @include('valuation.sheets._month-stats', ['stats' => $stats])
 
+    @if (($module ?? '') === 'product' && ! empty($lowStockAlert))
+        @include('gross.partials.low-stock-alert-card', $lowStockAlert)
+    @endif
+
     @if (auth()->user()->isManager())
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-header bg-transparent fw-semibold">{{ __('valuation.month_sheets') }}</div>

@@ -886,10 +886,116 @@ See `docs/GROSS_MODULE.md` §11. Implement **in order**; lock collection/treasur
 
 ### T-11.7 — Expense types + voucher purpose (supplier | expense)
 - Depends on: T-11.6
-- Unlocks: —
+- Unlocks: T-12.1
 - Status: `done`
   - [x] Lock: admin expense list AR+EN; PAYMENT/RECEIPT purpose SUPPLIER|EXPENSE; Manager/Accountant
   - [x] Expense types CRUD + purpose on vouchers; supplier statement only SUPPLIER payments
+
+## Phase 12 — Mohra gap closure (COD · shipping reports · low stock)
+
+See `docs/GROSS_MODULE.md` §12. Implement **in order**; lock §12 rules before T-12.4 / T-12.5.
+
+**Cycle rule:** ship one task → automated tests green → paste end-of-step report → **user runs Manual UI test below** → mark `done` → next task.
+
+### T-12.1 — Low stock dashboard alert
+- Depends on: T-11.7
+- Unlocks: T-12.2
+- Status: `done`
+- Scope:
+  - [x] `LowStockAlertService`: items where `qty_on_hand_pieces ≤ reorder_level` (active only)
+  - [x] Mohra portal dashboard card (`portal.product`) + link to `gross.stock.index?low_stock=1`
+  - [x] Optional badge count on sidebar Stock menu when count > 0
+  - [x] No email/push in this task (in-app only)
+  - [x] PHPUnit + UI/UX gate
+
+**Manual UI test (after ship — Cycle 1)**
+1. Login as **Manager** with Mohra access → open **Product** module dashboard.
+2. Create/edit an item with `reorder_level = 5` and confirm stock **on hand ≤ 5** (use purchase invoice or stock adjustment).
+3. Refresh dashboard → card shows low-stock count and lists the item; click through → stock list filtered to low stock.
+4. Increase stock above reorder level → card count decreases / item disappears.
+5. Toggle **AR** and **EN**; check layout at ~375px / ~768px / ~1280px.
+
+### T-12.2 — Shipping company returns report
+- Depends on: T-12.1
+- Unlocks: T-12.3
+- Status: `pending`
+- Scope:
+  - [ ] On shipping company show (or tab): **Returns report** — chronological partial returns (`SALE_RETURN`) + full refuses linked to company
+  - [ ] Columns: date, invoice #, customer, item, qty returned, actor; filters from/to
+  - [ ] Totals: return count + returned pieces (by period)
+  - [ ] PHPUnit + UI/UX gate
+
+**Manual UI test (after ship — Cycle 2)**
+1. Login as **Manager** → **Shipping companies** → open a company with confirmed sales.
+2. On a **CONFIRMED** invoice, post a **partial return** (qty ≤ with courier).
+3. On another invoice, use **Client refuse** (full return).
+4. Open shipping company show → **Returns report** lists both events with correct qty and dates.
+5. Set date filter → list narrows; totals update.
+6. AR + EN + responsive check.
+
+### T-12.3 — Shipping company collection statement
+- Depends on: T-12.2
+- Unlocks: T-12.4
+- Status: `pending`
+- Scope:
+  - [ ] New route e.g. `gross.shipping.statement` — mirror supplier statement UX
+  - [ ] Chronological money lines per currency: confirmed invoice `total` debit (+), partial-return/refuse adjustments credit (−), COD collections credit (−) [uses T-12.4 fields once shipped; stub OK until then]
+  - [ ] Running balance = owed by courier; filters currency / from / to
+  - [ ] Link from shipping show + menu action
+  - [ ] PHPUnit + UI/UX gate
+
+**Manual UI test (after ship — Cycle 3)**
+1. Login as **Manager** → shipping company with several **CONFIRMED** invoices (mixed currencies if used).
+2. Open **Collection statement** → each confirmed invoice appears as amount owed (+).
+3. Apply **from/to** filters → lines filter correctly.
+4. Switch currency filter → only that currency lines + balance.
+5. After T-12.4: collect one invoice → statement shows collection line (−) and lower balance.
+6. AR + EN + responsive check.
+
+### T-12.4 — Full COD collection (invoice total from courier)
+- Depends on: T-12.3
+- Unlocks: T-12.5
+- Status: `pending`
+- Scope (locked in GROSS_MODULE §12 — confirm with user before coding):
+  - [ ] Add `cod_collection_status` + `cod_collected_at/by` on `gross_sales_invoices`; migrate existing `shipping_fee_status` PENDING→COD PENDING
+  - [ ] On confirm with `shipping_company_id` and `total > 0` → `cod_collection_status = PENDING`
+  - [ ] **Collect COD** records full invoice `total` (not shipping fee alone); idempotent PENDING→COLLECTED
+  - [ ] Refuse → `cod_collection_status = LOST`; partial returns reduce collectible amount (service calc)
+  - [ ] **Mark delivered** only when `cod_collection_status ∈ {NONE, COLLECTED}` (same gate as today for fee)
+  - [ ] Replace collections queue UI: show invoice **total**, status pending/collected; AR+EN labels
+  - [ ] Deprecate separate “collect shipping fee” action in UI (fee remains a line item inside total)
+  - [ ] PHPUnit + UI/UX gate + schema doc §22
+
+**Manual UI test (after ship — Cycle 4)**
+1. Login as **Sales** or **Manager** → create sales invoice: lines + **shipping company** + shipping fee → confirm.
+2. Invoice show → **COD status = Pending**; total matches collectible amount.
+3. Open **Collections** queue → invoice listed with **full total** (not fee only).
+4. Click **Collect COD** → status **Collected**; second click is no-op / 422.
+5. **Mark delivered** succeeds only after collect; before collect button disabled or errors.
+6. Create invoice **without** shipping company → COD **None**; deliver without collect step.
+7. Partial return on confirmed invoice → collectible amount reduced; statement (T-12.3) reflects credit.
+8. AR + EN + responsive check.
+
+### T-12.5 — Treasury RECEIPT linked to COD collection
+- Depends on: T-12.4
+- Unlocks: —
+- Status: `pending`
+- Scope (locked in GROSS_MODULE §12):
+  - [ ] Voucher purpose **COURIER_COD** (+ migration); requires `sales_invoice_id` + `shipping_company_id`
+  - [ ] On **Collect COD**: optional checkbox **Post to treasury** (default on for Manager/Accountant) → auto **RECEIPT** to Cash or Bank (user picks account on collect modal)
+  - [ ] Manual treasury create: purpose COURIER_COD links invoice; cannot double-post same invoice
+  - [ ] Shipping company collection statement includes treasury RECEIPT lines
+  - [ ] Who: collect COD = Manager, Accountant, Sales; treasury post = Manager, Accountant only
+  - [ ] PHPUnit + UI/UX gate + schema doc §22
+
+**Manual UI test (after ship — Cycle 5)**
+1. Login as **Accountant** → confirm invoice with courier (from Cycle 4).
+2. **Collect COD** with **Post to treasury** checked, account **Cash** → receipt voucher `RV-…` created.
+3. **Treasury** index → balance increased by invoice total; voucher show links to invoice + shipping company.
+4. Collect another invoice **without** treasury post → no voucher; manual **RECEIPT** purpose COURIER_COD blocked if already collected/posted.
+5. Shipping **Collection statement** → COD collection + treasury receipt lines; running balance zero after full settlement.
+6. Login as **Sales** → can collect COD but treasury checkbox hidden/disabled (Manager/Accountant only).
+7. AR + EN + responsive check.
 
 ## Dependency map
 
@@ -917,7 +1023,7 @@ T-0.1 → T-0.2 → T-0.3
                                       ↘ T-8.5 ↗
               T-1.2 → T-9.1 → T-9.2
                        T-9.1 → T-9.3
-              T-9.5 → T-10.1 → T-10.2 → T-10.3 → T-10.6 → T-10.7 → T-10.8 → T-10.9 → T-10.10 → T-11.1 → T-11.2 → T-11.3 → T-11.4 → T-11.5 → T-11.6 → T-11.7
+              T-9.5 → T-10.1 → T-10.2 → T-10.3 → T-10.6 → T-10.7 → T-10.8 → T-10.9 → T-10.10 → T-11.1 → T-11.2 → T-11.3 → T-11.4 → T-11.5 → T-11.6 → T-11.7 → T-12.1 → T-12.2 → T-12.3 → T-12.4 → T-12.5
                        T-10.1 → T-10.4 ↗
                        T-10.1 → T-10.5 ↗
 ```
@@ -1099,3 +1205,4 @@ Example:
 - [x] 2026-08-30 T-11.7 PASS — Expense types CRUD (AR+EN); voucher purpose SUPPLIER|EXPENSE; اذن صرف/تحصيل; expense payments skip supplier statement. Commands: `php artisan test --filter=Gross`; LangParity; Pint.
 - [x] 2026-08-30 Gross UI visibility polish PASS — Cross-links (supplier/customer/shipping/items), pay-from-supplier, stock movements + document refs, expense-types outside create-only. Commands: `php artisan test --filter=Gross` (99 PASS); LangParity; Pint. UI/UX AR+EN (`gross.suppliers.pay`).
 - [x] 2026-08-31 Gross deliver stock fix PASS — Mark delivered clears `qty_with_courier` → `qty_delivered` (movement `SALE_DELIVERED`). Commands: `php artisan test --filter=Gross` (101 PASS); LangParity; Pint.
+- [x] 2026-09-01 T-12.1 PASS — Low stock alert: `LowStockAlertService`; portal product dashboard card + stock sidebar badge; AR+EN keys. Commands: `php artisan test --filter=LowStock` (4 PASS); `php artisan test --filter=Gross` (110 PASS); LangParity; Pint. UI/UX: manual Cycle 1 pending user. Next: T-12.2.

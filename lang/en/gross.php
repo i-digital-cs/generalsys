@@ -72,6 +72,12 @@ return [
         'movements_search' => 'Search item or notes…',
         'movements_empty' => 'No stock movements yet.',
     ],
+    'low_stock_alert' => [
+        'title' => 'Low stock alert',
+        'subtitle' => 'Active items at or below reorder level',
+        'cta' => 'View stock',
+        'more' => '+ :count more item(s)',
+    ],
     'shipping' => [
         'title' => 'Shipping companies',
         'subtitle' => 'Couriers used on sales invoices',

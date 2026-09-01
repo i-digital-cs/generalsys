@@ -35,6 +35,8 @@ use App\Policies\ShiftAssignmentPolicy;
 use App\Policies\ValuationAssignmentPolicy;
 use App\Policies\ValuationSheetPolicy;
 use App\Services\Auth\ImpersonationService;
+use App\Services\Gross\LowStockAlertService;
+use App\Support\GrossAccess;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
@@ -78,6 +80,17 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.app', function (IlluminateView $view): void {
             $service = app(ImpersonationService::class);
             $view->with('impersonationBanner', $service->bannerState(auth()->user()));
+        });
+
+        View::composer('layouts.partials.sidebar', function (IlluminateView $view): void {
+            $user = auth()->user();
+            $count = 0;
+
+            if (GrossAccess::mayAccessGross($user)) {
+                $count = app(LowStockAlertService::class)->count();
+            }
+
+            $view->with('grossLowStockCount', $count);
         });
     }
 }

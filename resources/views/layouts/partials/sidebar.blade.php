@@ -55,6 +55,9 @@
                     <a class="nav-link px-3 {{ $isActive ? 'active fw-semibold' : 'text-body' }}"
                        href="{{ Route::has($item['route']) ? route($item['route'], $params) : '#' }}">
                         <i class="bi {{ $item['icon'] }} me-2" aria-hidden="true"></i>{{ __($item['key']) }}
+                        @if (($item['route'] ?? '') === 'gross.stock.index' && ($grossLowStockCount ?? 0) > 0)
+                            <span class="badge rounded-pill text-bg-warning ms-1 num-ltr">{{ $grossLowStockCount }}</span>
+                        @endif
                     </a>
                 </li>
             @endforeach

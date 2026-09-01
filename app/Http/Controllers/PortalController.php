@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Auth\PostLoginRedirector;
+use App\Services\Gross\LowStockAlertService;
 use App\Services\Portal\PortalStatsService;
 use App\Services\Valuation\ValuationSheetService;
 use App\Services\Valuation\ValuationStatsService;
@@ -34,20 +35,37 @@ class PortalController extends Controller
         return $this->moduleHome(AppModule::SERVICE, $stats, $sheets);
     }
 
-    public function product(ValuationStatsService $stats, ValuationSheetService $sheets): View
-    {
-        return $this->moduleHome(AppModule::PRODUCT, $stats, $sheets);
+    public function product(
+        ValuationStatsService $stats,
+        ValuationSheetService $sheets,
+        LowStockAlertService $lowStock,
+    ): View {
+        return $this->moduleHome(AppModule::PRODUCT, $stats, $sheets, $lowStock);
     }
 
-    private function moduleHome(string $module, ValuationStatsService $stats, ValuationSheetService $sheets): View
-    {
+    private function moduleHome(
+        string $module,
+        ValuationStatsService $stats,
+        ValuationSheetService $sheets,
+        ?LowStockAlertService $lowStock = null,
+    ): View {
         $user = auth()->user();
         abort_unless(AppModule::mayAccessModule($user, $module), 403);
+
+        $lowStockAlert = null;
+        if ($module === AppModule::PRODUCT && $lowStock !== null) {
+            $lowStockAlert = [
+                'count' => $lowStock->count(),
+                'items' => $lowStock->items(),
+                'stockUrl' => route('gross.stock.index', ['low_stock' => 1]),
+            ];
+        }
 
         return view('portal.module-home', [
             'module' => $module,
             'stats' => $stats->monthSnapshot($user, $module),
             'monthSheets' => $user->isManager() ? $sheets->monthSheetsFor($user, $module) : collect(),
+            'lowStockAlert' => $lowStockAlert,
         ]);
     }
 

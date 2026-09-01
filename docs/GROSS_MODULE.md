@@ -200,3 +200,53 @@ Mark delivered                      →  CONFIRMED → DELIVERED
 ```
 
 UI: pending list + actions on sales invoice show.
+
+---
+
+## 12. Phase 12 — Gap closure (locked before T-12.4 / T-12.5)
+
+Build order: `docs/TASKS.md` T-12.1 → T-12.5. **Confirm §12.4 COD rules with user before coding T-12.4.**
+
+| Task | Scope |
+|------|--------|
+| T-12.1 | **Low stock alert** — in-app only: portal product dashboard card + optional sidebar badge when any active item has `qty_on_hand_pieces ≤ reorder_level`. Link to stock list `?low_stock=1`. No email/SMS. |
+| T-12.2 | **Shipping returns report** — per company: chronological partial returns + refuses; filters; piece totals. |
+| T-12.3 | **Shipping collection statement** — chronological money ledger per currency (mirror supplier statement UX): invoice totals owed (+), return/refuse adjustments (−), COD collections (−), treasury RECEIPT (−) after T-12.5. Running balance = net owed by courier. |
+| T-12.4 | **Full COD collection** — courier remits **full invoice `total`** (products + discounts + shipping fee), not shipping fee alone. See §12.4 below. |
+| T-12.5 | **Treasury on COD** — voucher purpose `COURIER_COD`; optional auto RECEIPT on collect; no double-post per invoice. |
+
+### 12.4 COD collection (locked — user approved plan 2026-09-01)
+
+```text
+cod_collection_status: NONE | PENDING | COLLECTED | LOST
+
+Confirm sale + shipping_company_id + total > 0  →  PENDING
+Confirm sale without shipping company OR total = 0  →  NONE
+Refuse (client)                                   →  LOST (same as shipping_fee LOST path)
+Collect COD                                       →  PENDING → COLLECTED (idempotent)
+  Amount = invoice total at time of collection minus prior partial-return value adjustments
+Mark delivered                                    →  only if cod ∈ {NONE, COLLECTED}
+  (and existing stock/allocation rules unchanged)
+
+UI: collections queue shows invoice total + COD status (replaces shipping-fee-only queue labels).
+shipping_fee column stays on invoice (part of total math); separate “collect shipping fee” action removed.
+Who: Collect COD — Manager, Accountant, Sales (Mohra). Same as today’s collect fee.
+```
+
+**Migration note:** map existing `shipping_fee_status = PENDING` on CONFIRMED invoices → `cod_collection_status = PENDING`; `COLLECTED` → `COLLECTED`; `LOST` → `LOST`; `NONE` → `NONE`. Keep `shipping_fee_status` column for audit but UI/services use `cod_collection_status` after T-12.4.
+
+### 12.5 Treasury on COD (locked)
+
+```text
+Voucher purpose: COURIER_COD (in addition to SUPPLIER | EXPENSE)
+  REQUIRES sales_invoice_id + shipping_company_id
+  Amount = COD collected amount (invoice total net of returns at collect time)
+  One RECEIPT per invoice (unique sales_invoice_id on posted COURIER_COD receipts)
+
+Collect COD modal:
+  Manager/Accountant: checkbox “Post to treasury” (default checked), pick CASH|BANK account
+  Sales: collect only — no treasury post
+
+Auto-post creates RV-YYYYMM-#### linked to invoice; appears on shipping collection statement (−).
+Collect without post: allowed; manual RECEIPT COURIER_COD later if not already posted.
+```
