@@ -48,18 +48,18 @@
                     @if ($employee->localizedJobTitle())
                         <p class="small mb-3">{{ $employee->localizedJobTitle() }}</p>
                     @endif
-                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <div class="d-flex flex-wrap justify-content-center align-items-center gap-2">
                         @if ($profile?->employee_code)
-                            <span class="badge text-bg-primary">
+                            <span class="badge text-bg-primary d-inline-flex align-items-center">
                                 <i class="bi bi-upc-scan me-1" aria-hidden="true"></i><span dir="ltr">{{ $profile->employee_code }}</span>
                             </span>
                         @endif
-                        <span class="badge text-bg-secondary">
+                        <span class="badge text-bg-secondary d-inline-flex align-items-center">
                             <i class="bi bi-person-badge me-1" aria-hidden="true"></i>{{ __("employees.roles.{$employee->role}") }}
                         </span>
-                        <x-shift-badges :user="$employee" :stacked="false" class="justify-content-center" />
+                        <x-shift-badges :user="$employee" :stacked="false" class="justify-content-center align-items-center" />
                         @if ($workHours)
-                            <span class="badge text-bg-light text-body-secondary border">
+                            <span class="badge text-bg-light text-body-secondary border d-inline-flex align-items-center">
                                 <i class="bi bi-clock me-1" aria-hidden="true"></i><span dir="ltr">{{ $workHours }}</span>
                             </span>
                         @endif

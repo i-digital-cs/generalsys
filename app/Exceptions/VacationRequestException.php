@@ -66,4 +66,19 @@ class VacationRequestException extends RuntimeException
     {
         return new self('vacations.errors.cannot_force');
     }
+
+    public static function insufficientBalance(): self
+    {
+        return new self('vacations.errors.insufficient_balance');
+    }
+
+    public static function cannotManageCredit(): self
+    {
+        return new self('vacations.credit.errors.not_manageable');
+    }
+
+    public static function invalidCreditAmount(): self
+    {
+        return new self('vacations.credit.errors.invalid_amount');
+    }
 }

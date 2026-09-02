@@ -11,11 +11,11 @@
 <div {{ $attributes->class([
     'd-flex gap-1',
     'flex-column align-items-start' => $stacked,
-    'flex-wrap' => ! $stacked,
+    'flex-wrap align-items-center' => ! $stacked,
 ]) }}>
     @forelse ($profiles as $profile)
-        <span class="badge text-bg-light border text-start">
-            <span class="d-block">{{ __('employees.shifts.'.$profile['type']) }}</span>
+        <span class="badge text-bg-light border d-inline-flex flex-column justify-content-center lh-sm text-start gap-0 py-2">
+            <span>{{ __('employees.shifts.'.$profile['type']) }}</span>
             <span class="num-ltr fw-normal">{{ $profile['start'] }}–{{ $profile['end'] }}</span>
         </span>
     @empty

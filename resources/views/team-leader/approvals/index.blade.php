@@ -390,7 +390,13 @@
                                     </td>
                                     <td>{{ __('vacations.types.'.$row->type) }}</td>
                                     <td class="col-num text-nowrap">
-                                        <span class="num-ltr">{{ $row->start_date->toDateString() }}</span>
+                                        <span class="num-ltr" dir="ltr">
+                                            @if ($row->start_date->equalTo($row->end_date))
+                                                {{ $row->start_date->toDateString() }}
+                                            @else
+                                                {{ $row->start_date->toDateString() }} – {{ $row->end_date->toDateString() }}
+                                            @endif
+                                        </span>
                                     </td>
                                     <td class="col-num"><span class="num-ltr">{{ number_format((float) $row->days_requested, 1) }}</span></td>
                                     <td class="col-num text-nowrap">

@@ -386,7 +386,7 @@ CREATE TABLE vacations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-> Product lock (2026-08-03): one day off per request; employee picks a `rest_days` row to **swap**. On approve the rest row is deleted; off date shows as vacation on the calendar.
+> Product (2026-09): **ANNUAL** and **SICK** = multi-day From→To; balance reserved on submit (`pending_days`), confirmed on approve (`used_days`), released on reject. **EMERGENCY** = one day + rest-day swap (no balance). On approve swap types delete rest row; annual/sick have no rest link. TL adds credit via `vacation_credit_logs`.
 
 ## 10. vacation_balances
 

@@ -11,6 +11,7 @@ use App\Models\Permission;
 use App\Models\Vacation;
 use App\Services\Employees\RestDayService;
 use App\Services\Permissions\PermissionRequestService;
+use App\Services\Vacations\VacationBalanceService;
 use App\Services\Vacations\VacationRequestService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class RequestController extends Controller
         private readonly PermissionRequestService $permissions,
         private readonly VacationRequestService $vacations,
         private readonly RestDayService $restDays,
+        private readonly VacationBalanceService $vacationBalances,
     ) {}
 
     public function index(Request $request): View
@@ -49,6 +51,10 @@ class RequestController extends Controller
             'availableRestDays' => $tab === 'vacations'
                 ? $this->restDays->availableForSwap($user)
                 : collect(),
+            'vacationBalance' => $tab === 'vacations'
+                ? $this->vacationBalances->balanceFor($user)
+                : null,
+            'vacationBalanceYear' => (int) now()->format('Y'),
         ]);
     }
 

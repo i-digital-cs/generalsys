@@ -177,6 +177,14 @@ h6, .h6 { font-size: .9rem; }
 .breadcrumb { margin-bottom: .75rem; font-size: .85rem; }
 .alert { padding: .65rem 1rem; font-size: .875rem; }
 
+// Badges: inline-flex avoids extra space under text when flex rows stretch items.
+.badge {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+    vertical-align: middle;
+}
+
 .pagination {
     --bs-pagination-padding-y: .3rem;
     --bs-pagination-padding-x: .65rem;

@@ -5,6 +5,7 @@ namespace Tests\Feature\TeamLeader;
 use App\Models\RestDay;
 use App\Models\User;
 use App\Models\Vacation;
+use App\Models\VacationBalance;
 use App\Services\Employees\TeamMembershipService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -146,6 +147,67 @@ class VacationApprovalTest extends TestCase
         $this->actingAs($this->employee)
             ->post(route('team-leader.approvals.vacations.approve', $row))
             ->assertForbidden();
+    }
+
+    public function test_approve_annual_confirms_balance(): void
+    {
+        VacationBalance::factory()->create([
+            'user_id' => $this->employee->id,
+            'year' => 2026,
+            'accrued_days' => 10,
+            'used_days' => 0,
+            'pending_days' => 5,
+            'remaining_days' => 5,
+        ]);
+
+        $vacation = Vacation::factory()->create([
+            'user_id' => $this->employee->id,
+            'team_leader_id' => $this->leader->id,
+            'type' => Vacation::TYPE_ANNUAL,
+            'start_date' => '2026-08-05',
+            'end_date' => '2026-08-09',
+            'days_requested' => 5,
+            'status' => Vacation::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($this->leader)
+            ->post(route('team-leader.approvals.vacations.approve', $vacation))
+            ->assertRedirect();
+
+        $balance = VacationBalance::query()->where('user_id', $this->employee->id)->where('year', 2026)->first();
+        $this->assertSame('0.0', $balance->pending_days);
+        $this->assertSame('5.0', $balance->used_days);
+        $this->assertSame('5.0', $balance->remaining_days);
+    }
+
+    public function test_reject_sick_releases_pending_balance(): void
+    {
+        VacationBalance::factory()->create([
+            'user_id' => $this->employee->id,
+            'year' => 2026,
+            'accrued_days' => 10,
+            'used_days' => 0,
+            'pending_days' => 3,
+            'remaining_days' => 7,
+        ]);
+
+        $vacation = Vacation::factory()->create([
+            'user_id' => $this->employee->id,
+            'team_leader_id' => $this->leader->id,
+            'type' => Vacation::TYPE_SICK,
+            'start_date' => '2026-08-05',
+            'end_date' => '2026-08-07',
+            'days_requested' => 3,
+            'status' => Vacation::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($this->leader)
+            ->post(route('team-leader.approvals.vacations.reject', $vacation))
+            ->assertRedirect();
+
+        $balance = VacationBalance::query()->where('user_id', $this->employee->id)->where('year', 2026)->first();
+        $this->assertSame('0.0', $balance->pending_days);
+        $this->assertSame('10.0', $balance->remaining_days);
     }
 
     public function test_either_team_leader_sees_and_can_decide_the_same_member_vacation(): void

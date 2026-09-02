@@ -46,6 +46,7 @@ use App\Http\Controllers\TeamLeader\EvaluationController;
 use App\Http\Controllers\TeamLeader\ReportReviewController;
 use App\Http\Controllers\TeamLeader\RestDayController;
 use App\Http\Controllers\TeamLeader\ShiftAssignmentController;
+use App\Http\Controllers\TeamLeader\VacationCreditController;
 use App\Http\Controllers\Valuation\ValuationAssignmentController;
 use App\Http\Controllers\Valuation\ValuationSheetController;
 use Illuminate\Support\Facades\Route;
@@ -347,6 +348,10 @@ Route::middleware(['auth', 'role:TEAM_LEADER,MANAGER,ASSISTANT'])->prefix('team-
     Route::get('/rest-days', [RestDayController::class, 'index'])->name('rest-days');
     Route::post('/rest-days/{employee}', [RestDayController::class, 'store'])->name('rest-days.store');
     Route::delete('/rest-days/{employee}/{restDay}', [RestDayController::class, 'destroy'])->name('rest-days.destroy');
+
+    Route::get('/vacation-credit', [VacationCreditController::class, 'index'])->name('vacation-credit');
+    Route::post('/vacation-credit/{employee}', [VacationCreditController::class, 'store'])->name('vacation-credit.store');
+    Route::get('/vacation-credit/{employee}/history', [VacationCreditController::class, 'history'])->name('vacation-credit.history');
 
     Route::get('/attendance', [AttendanceHistoryController::class, 'index'])->name('attendance');
 

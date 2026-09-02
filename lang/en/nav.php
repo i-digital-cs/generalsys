@@ -14,6 +14,7 @@ return [
     'evaluations' => 'Monthly Evaluations',
     'shifts' => 'Work schedule',
     'rest_days' => 'Rest Days',
+    'vacation_credit' => 'Vacation Credit',
     'attendance' => 'Attendance history',
     'employees' => 'Employee Management',
     'penalties' => 'Penalty Rules',

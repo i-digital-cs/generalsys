@@ -274,7 +274,8 @@ vacations
 ├── team_leader_id (FK)
 ├── created_at / updated_at
 ```
-> Force (product A): REJECTED → FORCED keeps the day off as vacation; rest day is **not** consumed.
+> **ANNUAL / SICK** (2026-09): multi-day From→To; balance reserved on submit (`pending_days`), confirmed on approve (`used_days`), released on reject. **EMERGENCY**: one day + rest-day swap (no balance).
+> Force (product A): REJECTED → FORCED keeps the day off; for emergency rest day is **not** consumed; for annual/sick balance is charged.
 ### 2.5 Vacation Balance Table (Dynamic)
 ```sql
 vacation_balances
@@ -469,9 +470,7 @@ vacation_credit_logs
 rest_days (user_id, date, created_by)  -- unique(user_id, date)
 vacations.replace_rest_date / replace_rest_day_id  -- swap on submit
 ```
-> Admin/TL mark specific rest dates. Vacation/emergency request picks **one rest day to replace**
-> for **one day off**. On approve: rest row deleted; off date shows as vacation on the calendar.
-> On reject: rest day stays. On Force (A): REJECTED → FORCED; day off kept; rest day **not** consumed.
+> Admin/TL mark specific rest dates. **Emergency only** picks **one rest day to replace** for **one day off**. On approve: rest row deleted. On reject: rest day stays. On Force (A): REJECTED → FORCED; day off kept; rest day **not** consumed. **Annual/sick** use date range + `vacation_balances` (TL adds credit via `/team-leader/vacation-credit`).
 > `attendance.is_day_off_work` when a `rest_days` row exists. Working a rest day earns §1.2 multipliers.
 > Weekly `users.rest_weekdays` removed (2026-08-03).
 

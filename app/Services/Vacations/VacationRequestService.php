@@ -14,12 +14,11 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Vacation requests — swap a rest day for the day off (product lock 2026-08-03).
+ * Vacation requests.
  *
- * - Submit requires replace_rest_day_id (employee's unused rest date).
- * - Cost = that rest day (removed on approve). No separate vacation-credit UI.
- * - Reject: rest day stays available.
- * - Force (A): REJECTED → FORCED; keep rest day; off day still counts as vacation.
+ * - ANNUAL / SICK: multi-day From → To; balance reserved on submit, confirmed on approve.
+ * - EMERGENCY: swap one rest day for one day off (product lock 2026-08-03).
+ *
  * - Employee → either membership TL decides; TL/Manager → Manager decides.
  * - Force: self, TL (team), or Manager (same as leave/late).
  */
@@ -29,6 +28,7 @@ class VacationRequestService
         private readonly AppNotificationService $notifications,
         private readonly RestDayService $restDays,
         private readonly TeamMembershipService $membership,
+        private readonly VacationBalanceService $balances,
     ) {}
 
     /** Inclusive calendar days between two Y-m-d dates. */
@@ -45,9 +45,73 @@ class VacationRequestService
     }
 
     /**
-     * @param  array{type: string, start_date: string, end_date?: string, days_requested?: float|int|string, replace_rest_day_id: int|string}  $data
+     * @param  array{type: string, start_date: string, end_date?: string, days_requested?: float|int|string, replace_rest_day_id?: int|string|null}  $data
      */
     public function submit(User $user, array $data): Vacation
+    {
+        $type = (string) ($data['type'] ?? '');
+
+        if (VacationBalanceService::usesBalance($type)) {
+            return $this->submitBalanceRange($user, $data, $type);
+        }
+
+        return $this->submitRestDaySwap($user, $data);
+    }
+
+    /**
+     * @param  array{type: string, start_date: string, end_date?: string}  $data
+     */
+    private function submitBalanceRange(User $user, array $data, string $type): Vacation
+    {
+        $start = Carbon::parse($data['start_date'])->startOfDay();
+        $end = Carbon::parse($data['end_date'] ?? $data['start_date'])->startOfDay();
+
+        if ($end->lt($start)) {
+            throw VacationRequestException::invalidDateRange();
+        }
+
+        $days = round($this->suggestedDays($start->toDateString(), $end->toDateString()), 1);
+        if ($days < 1) {
+            throw VacationRequestException::invalidDays();
+        }
+
+        if ($this->hasOverlap($user, $start->toDateString(), $end->toDateString())) {
+            throw VacationRequestException::overlapsExisting();
+        }
+
+        if ($user->isEmployee() && $this->membership->leaderIds($user) === []) {
+            throw VacationRequestException::noTeamLeader();
+        }
+
+        $teamLeaderId = $user->isEmployee()
+            ? ($this->membership->leaderIds($user)[0] ?? null)
+            : null;
+
+        return DB::transaction(function () use ($user, $start, $end, $days, $teamLeaderId, $type) {
+            $vacation = Vacation::query()->create([
+                'user_id' => $user->id,
+                'type' => $type,
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'days_requested' => $days,
+                'replace_rest_date' => null,
+                'replace_rest_day_id' => null,
+                'status' => Vacation::STATUS_PENDING,
+                'team_leader_id' => $teamLeaderId,
+            ]);
+
+            $vacation->setRelation('user', $user);
+            $this->balances->reserveForVacation($vacation);
+            $this->notifications->vacationSubmitted($vacation);
+
+            return $vacation;
+        });
+    }
+
+    /**
+     * @param  array{type: string, start_date: string, end_date?: string, days_requested?: float|int|string, replace_rest_day_id: int|string}  $data
+     */
+    private function submitRestDaySwap(User $user, array $data): Vacation
     {
         $start = Carbon::parse($data['start_date'])->startOfDay();
         $end = Carbon::parse($data['end_date'] ?? $data['start_date'])->startOfDay();
@@ -65,7 +129,7 @@ class VacationRequestService
             throw VacationRequestException::overlapsExisting();
         }
 
-        $restDay = $this->restDays->findOwned($user, (int) $data['replace_rest_day_id']);
+        $restDay = $this->restDays->findOwned($user, (int) ($data['replace_rest_day_id'] ?? 0));
         if ($restDay === null) {
             throw VacationRequestException::invalidRestDay();
         }
@@ -177,6 +241,10 @@ class VacationRequestService
             ]);
             $vacation = $vacation->refresh();
 
+            if (VacationBalanceService::usesBalance($vacation->type)) {
+                $this->balances->confirmForVacation($vacation);
+            }
+
             $this->notifications->vacationDecided($vacation, $actor);
 
             return $vacation;
@@ -196,6 +264,10 @@ class VacationRequestService
                 'decided_by' => $actor->id,
             ]);
             $vacation = $vacation->refresh();
+
+            if (VacationBalanceService::usesBalance($vacation->type)) {
+                $this->balances->releaseForVacation($vacation);
+            }
 
             $this->notifications->vacationDecided($vacation, $actor);
 
@@ -217,12 +289,18 @@ class VacationRequestService
         }
 
         return DB::transaction(function () use ($vacation, $actor) {
+            $vacation->loadMissing('user');
+
             $vacation->update([
                 'status' => Vacation::STATUS_FORCED,
                 'replace_rest_day_id' => null,
                 'decided_by' => $actor->id,
             ]);
             $vacation = $vacation->refresh();
+
+            if (VacationBalanceService::usesBalance($vacation->type)) {
+                $this->balances->chargeForcedVacation($vacation);
+            }
 
             $this->notifications->vacationForced($vacation, $actor);
 
