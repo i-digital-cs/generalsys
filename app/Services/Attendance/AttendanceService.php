@@ -111,7 +111,7 @@ class AttendanceService
                 'is_official_holiday_work' => $this->isOfficialHoliday($date),
                 'assigned_by_tl_id' => $assignment?->assigned_by_tl_id,
                 'clock_in' => $at,
-                'planned_hours' => $this->shifts->plannedHours($shiftType, $assignment),
+                'planned_hours' => $this->shifts->resolvePlannedHours($user, $shiftType, $assignment),
                 'actual_hours' => 0,
                 'raw_actual_hours' => 0,
                 'status' => $lateMinutes > 0 ? Attendance::STATUS_LATE : Attendance::STATUS_PRESENT,
@@ -686,27 +686,15 @@ class AttendanceService
 
     /**
      * Minutes late if the employee clocked in at $at (default: now).
+     * Flexible start — employees may clock in anytime; auto late is always 0
+     * (TL/Admin may set adjusted_late_minutes manually).
      */
     public function previewLateMinutes(
         User $user,
         ?string $shiftType = null,
         ?CarbonInterface $at = null,
     ): int {
-        $at = Carbon::parse($at ?? now());
-        $shiftType ??= $this->preferredShiftType($user, $at);
-
-        // Resume after a break / already punched this type today — not a late first start.
-        if ($this->hasAttendanceForShift($user, $at->toDateString(), $shiftType)) {
-            return 0;
-        }
-
-        $expected = $this->expectedStartFor($user, $shiftType, $at);
-
-        if ($expected === null) {
-            return 0;
-        }
-
-        return (int) max(0, $expected->diffInMinutes($at, false));
+        return 0;
     }
 
     private function resolveAssignment(User $user, string $shiftType, string $date): ?ShiftAssignment
@@ -732,15 +720,7 @@ class AttendanceService
         Attendance $attendance,
         ?ShiftAssignment $assignment,
     ): int {
-        $expectedStart = $this->expectedStart($user, $attendance, $assignment);
-
-        if ($expectedStart === null || $attendance->clock_in === null) {
-            return 0;
-        }
-
-        $late = $expectedStart->diffInMinutes($attendance->clock_in, false);
-
-        return (int) max(0, $late);
+        return 0;
     }
 
     private function computeEarlyDepartureMinutes(
@@ -811,7 +791,7 @@ class AttendanceService
         return $this->alignEndWithPlannedHours(
             $start,
             $end,
-            $this->shifts->plannedHours($attendance->shift_type, $assignment),
+            $this->shifts->resolvePlannedHours($user, $attendance->shift_type, $assignment),
         );
     }
 

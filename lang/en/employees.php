@@ -174,5 +174,6 @@ return [
     'validation' => [
         'default_shifts_distinct' => 'Each default shift type can be chosen only once.',
         'shift_window_mismatch' => ':shift window :start–:end is :window h but planned is :planned h. Use an end near :suggested (or a true overnight window that matches planned hours).',
+        'shift_window_out_of_range' => 'Shift window :start–:end is :window h. Allowed span is :min–:max hours.',
     ],
 ];

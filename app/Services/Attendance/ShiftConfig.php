@@ -4,6 +4,7 @@ namespace App\Services\Attendance;
 
 use App\Models\Attendance;
 use App\Models\ShiftAssignment;
+use App\Models\User;
 
 /**
  * Planned-hours profiles as data (PAYROLL_CALCULATION.md §1 / §7).
@@ -41,6 +42,18 @@ class ShiftConfig
         }
 
         return self::BASE_PLANNED_HOURS[$shiftType];
+    }
+
+    /**
+     * Planned hours for clock-in / late / early: TL assignment → employee profile window → type default.
+     */
+    public function resolvePlannedHours(User $user, string $shiftType, ?ShiftAssignment $assignment = null): float
+    {
+        if ($assignment !== null && $assignment->shift_type === $shiftType) {
+            return (float) $assignment->expected_hours;
+        }
+
+        return $user->plannedHoursFor($shiftType);
     }
 
     /**

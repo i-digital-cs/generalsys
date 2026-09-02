@@ -174,5 +174,6 @@ return [
     'validation' => [
         'default_shifts_distinct' => 'لا يمكن تكرار نفس نوع الدوام في الصفين.',
         'shift_window_mismatch' => 'نافذة :shift من :start إلى :end = :window س بينما المخطط :planned س. استخدم نهاية قريبة من :suggested (أو وردية ليلية حقيقية تطابق الساعات المخططة).',
+        'shift_window_out_of_range' => 'نافذة الدوام :start–:end = :window س. المسموح من :min إلى :max ساعة.',
     ],
 ];

@@ -277,10 +277,20 @@ abstract class EmployeeRequest extends FormRequest
                     continue;
                 }
 
-                if (! $windows->isCompatible($type, $start, $end)) {
+                $windowHours = $windows->windowHours($start, $end);
+                if (! $windows->isEmployeeWindowAllowed($start, $end)) {
                     $validator->errors()->add(
                         "default_shifts.{$index}.end",
-                        $windows->errorMessage($type, $start, $end),
+                        $windows->employeeWindowRangeMessage($start, $end),
+                    );
+
+                    continue;
+                }
+
+                if (! $windows->isCompatible($type, $start, $end, $windowHours)) {
+                    $validator->errors()->add(
+                        "default_shifts.{$index}.end",
+                        $windows->errorMessage($type, $start, $end, $windowHours),
                     );
                 }
             }

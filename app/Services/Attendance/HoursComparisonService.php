@@ -597,10 +597,14 @@ class HoursComparisonService
     }
 
     /**
-     * @param  array{type: string, start: string, end: string}  $profile
+     * @param  array{type: string, start: string, end: string, expected_hours?: float}  $profile
      */
     private function plannedHoursForProfile(array $profile): float
     {
+        if (isset($profile['expected_hours'])) {
+            return round((float) $profile['expected_hours'], 2);
+        }
+
         $fromWindow = $this->hoursBetween($profile['start'] ?? null, $profile['end'] ?? null);
         if ($fromWindow > 0) {
             return $fromWindow;

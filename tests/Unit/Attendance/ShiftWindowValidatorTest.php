@@ -27,6 +27,15 @@ class ShiftWindowValidatorTest extends TestCase
         $this->assertSame(8.0, $v->windowHours('22:00', '06:00'));
     }
 
+    public function test_evening_overnight_twelve_hour_window_is_compatible_for_employee_profile(): void
+    {
+        $v = app(ShiftWindowValidator::class);
+
+        $this->assertTrue($v->isCompatible(Attendance::SHIFT_FULL_TIME, '22:00', '10:00', 12.0));
+        $this->assertSame(12.0, $v->windowHours('22:00', '10:00'));
+        $this->assertTrue($v->isEmployeeWindowAllowed('22:00', '10:00'));
+    }
+
     public function test_mismatched_overnight_sixteen_hour_window_is_rejected(): void
     {
         $v = app(ShiftWindowValidator::class);

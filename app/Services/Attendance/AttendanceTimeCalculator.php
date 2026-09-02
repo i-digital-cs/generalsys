@@ -33,15 +33,8 @@ class AttendanceTimeCalculator
         $lastClosed = $segments->filter(fn (AttendanceSegment $s) => ! $s->isOpen())->last();
 
         $lateMinutes = $attendance->adjusted_late_minutes;
-        if ($lateMinutes === null && $first !== null) {
-            $expected = $attendanceService->expectedStartFor(
-                $user,
-                $attendance->shift_type,
-                $first->clock_in,
-            );
-            $lateMinutes = $expected !== null
-                ? max(0, (int) $expected->diffInMinutes($first->clock_in, false))
-                : 0;
+        if ($lateMinutes === null) {
+            $lateMinutes = 0;
         }
 
         $earlyMinutes = 0;

@@ -25,7 +25,7 @@ CREATE TABLE users (
     language_preference     ENUM('ar','en') NOT NULL DEFAULT 'ar',
     base_salary             DECIMAL(12,2) NOT NULL DEFAULT 0,   -- Admin; online/OT derived (base÷30÷2, base÷30, base÷30÷8)
     shift_type_default      ENUM('FULL_TIME','ONLINE_HALF','ONLINE_FULL') NOT NULL DEFAULT 'FULL_TIME',
-    shift_types_default     JSON NULL,                               -- list of profiles: FULL_TIME / ONLINE_HALF / ONLINE_FULL (up to 3; T-7.3 / T-7.7)
+    shift_types_default     JSON NULL,                               -- profiles: {type,start,end,expected_hours} up to 3 (T-7.3 / T-7.7); expected_hours derived from start/end span
     work_start_time         TIME NULL,                          -- مواعيد العمل: حضور
     work_end_time           TIME NULL,                          -- مواعيد العمل: انصراف
     status                  ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',

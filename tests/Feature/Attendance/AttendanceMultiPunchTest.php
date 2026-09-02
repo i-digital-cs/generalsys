@@ -154,7 +154,7 @@ class AttendanceMultiPunchTest extends TestCase
         $fresh = $attendance->fresh();
         $this->assertNull($fresh->credited_hours);
         $this->assertNull($fresh->adjusted_late_minutes);
-        $this->assertSame(15, $fresh->late_minutes);
+        $this->assertSame(0, $fresh->late_minutes);
         $this->assertSame('8.00', $fresh->actual_hours);
     }
 

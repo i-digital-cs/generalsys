@@ -102,7 +102,7 @@ class ClockCtaColorService
         }
 
         return [
-            'color' => $this->color($expected, $at),
+            'color' => self::GREEN,
             'expectedAt' => $expected,
             'clockInStarts' => $starts,
         ];

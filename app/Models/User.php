@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\Attendance\ShiftConfig;
 use App\Services\Employees\TeamMembershipService;
+use Carbon\Carbon;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -100,7 +101,7 @@ class User extends Authenticatable
     /**
      * Default shifts with windows (like TL assign rows, but every workday).
      *
-     * @return list<array{type: string, start: string, end: string}>
+     * @return list<array{type: string, start: string, end: string, expected_hours: float}>
      */
     public function defaultShiftProfiles(): array
     {
@@ -141,10 +142,34 @@ class User extends Authenticatable
     }
 
     /**
+     * @return array{type: string, start: string, end: string, expected_hours: float}|null
+     */
+    public function defaultProfileFor(string $shiftType): ?array
+    {
+        foreach ($this->defaultShiftProfiles() as $profile) {
+            if ($profile['type'] === $shiftType) {
+                return $profile;
+            }
+        }
+
+        return null;
+    }
+
+    public function plannedHoursFor(string $shiftType): float
+    {
+        $profile = $this->defaultProfileFor($shiftType);
+        if ($profile !== null) {
+            return (float) $profile['expected_hours'];
+        }
+
+        return app(ShiftConfig::class)->plannedHours($shiftType);
+    }
+
+    /**
      * Accepts form rows, stored profiles, or legacy type string lists.
      *
      * @param  list<mixed>|array<int, mixed>  $rows
-     * @return list<array{type: string, start: string, end: string}>
+     * @return list<array{type: string, start: string, end: string, expected_hours: float}>
      */
     public static function normalizeDefaultShiftProfiles(array $rows, mixed $legacy = null): array
     {
@@ -186,10 +211,15 @@ class User extends Authenticatable
             }
 
             $seen[$type] = true;
+            $expectedHours = self::hoursBetweenTimes($start, $end);
+            if ($expectedHours <= 0) {
+                $expectedHours = ShiftConfig::BASE_PLANNED_HOURS[$type] ?? 8.0;
+            }
             $out[] = [
                 'type' => $type,
                 'start' => $start,
                 'end' => $end,
+                'expected_hours' => $expectedHours,
             ];
         }
 
@@ -206,14 +236,28 @@ class User extends Authenticatable
 
         foreach ($types as $type) {
             $fallback = ShiftConfig::DEFAULT_TIME_WINDOWS[$type] ?? ['10:00', '18:00'];
+            $start = $fallback[0];
+            $end = $fallback[1];
             $out[] = [
                 'type' => $type,
-                'start' => $fallback[0],
-                'end' => $fallback[1],
+                'start' => $start,
+                'end' => $end,
+                'expected_hours' => self::hoursBetweenTimes($start, $end),
             ];
         }
 
         return $out;
+    }
+
+    private static function hoursBetweenTimes(string $start, string $end): float
+    {
+        $from = Carbon::parse('2000-01-01 '.substr($start, 0, 5));
+        $to = Carbon::parse('2000-01-01 '.substr($end, 0, 5));
+        if ($to->lte($from)) {
+            $to->addDay();
+        }
+
+        return round($from->floatDiffInHours($to), 2);
     }
 
     /**

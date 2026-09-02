@@ -7,12 +7,16 @@ use Carbon\Carbon;
 /**
  * Ensure start/end windows match planned hours (R9).
  * Blocks typos like FULL_TIME 09:00→01:00 (16h) when planned is 8h.
- * True overnight windows that match planned (22:00→06:00 = 8h) stay valid.
+ * Employee default shifts derive planned hours from the window span (8/10/12h FULL_TIME).
  */
 class ShiftWindowValidator
 {
     /** Same slack as AttendanceService::alignEndWithPlannedHours. */
     public const TOLERANCE_HOURS = 1.0;
+
+    public const MIN_EMPLOYEE_WINDOW_HOURS = 1.0;
+
+    public const MAX_EMPLOYEE_WINDOW_HOURS = 16.0;
 
     public function __construct(
         private readonly ShiftConfig $shifts,
@@ -52,6 +56,14 @@ class ShiftWindowValidator
         return $this->windowHours($start, $end) <= $planned + self::TOLERANCE_HOURS;
     }
 
+    public function isEmployeeWindowAllowed(string $start, string $end): bool
+    {
+        $window = $this->windowHours($start, $end);
+
+        return $window >= self::MIN_EMPLOYEE_WINDOW_HOURS
+            && $window <= self::MAX_EMPLOYEE_WINDOW_HOURS;
+    }
+
     public function suggestedEnd(string $start, float $plannedHours): string
     {
         $from = Carbon::parse('2000-01-01 '.$this->normalizeTime($start));
@@ -78,6 +90,19 @@ class ShiftWindowValidator
             'window' => number_format($window, 2),
             'planned' => number_format($planned, 2),
             'suggested' => $suggested,
+        ]);
+    }
+
+    public function employeeWindowRangeMessage(string $start, string $end): string
+    {
+        $window = $this->windowHours($start, $end);
+
+        return __('employees.validation.shift_window_out_of_range', [
+            'start' => $this->normalizeTime($start),
+            'end' => $this->normalizeTime($end),
+            'window' => number_format($window, 2),
+            'min' => number_format(self::MIN_EMPLOYEE_WINDOW_HOURS, 0),
+            'max' => number_format(self::MAX_EMPLOYEE_WINDOW_HOURS, 0),
         ]);
     }
 

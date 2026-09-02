@@ -60,17 +60,16 @@ class ClockTest extends TestCase
             ->assertOk()
             ->assertSee(__('clock.clock_in'), false)
             ->assertSee(__('clock.shifts.FULL_TIME'), false)
-            ->assertSee(__('clock.should_start_at', [
+            ->assertSee(__('clock.shift_window', [
                 'shift' => __('clock.shifts.FULL_TIME'),
-                'time' => '10:00',
             ]), false)
+            ->assertSee(__('clock.flexible_start_hint'), false)
             ->assertDontSee('value="ONLINE_HALF"', false)
             ->assertDontSee('value="ONLINE_FULL"', false)
             ->assertDontSee('value="OVERTIME"', false)
             ->assertDontSee('value="EXTRA_SHIFT"', false)
             ->assertSee(__('clock.rotation_hint'), false)
-            ->assertSee('clock-cta--yellow', false)
-            ->assertSee(__('clock.cta.green'), false);
+            ->assertSee('clock-cta--green', false);
     }
 
     public function test_clock_in_and_clock_out_happy_path(): void
@@ -121,7 +120,7 @@ class ClockTest extends TestCase
             ->assertSessionHas('success');
     }
 
-    public function test_clock_screen_shows_lateness_after_late_clock_in(): void
+    public function test_clock_screen_shows_flexible_window_without_auto_lateness(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-05 10:25:00', config('app.timezone')));
 
@@ -132,11 +131,11 @@ class ClockTest extends TestCase
         $this->actingAs($this->employee)
             ->get(route('employee.clock'))
             ->assertOk()
-            ->assertSee(__('clock.should_start_at', [
+            ->assertSee(__('clock.shift_window', [
                 'shift' => __('clock.shifts.FULL_TIME'),
-                'time' => '10:00',
             ]), false)
-            ->assertSee(__('clock.late_by', [
+            ->assertSee(__('clock.flexible_start_hint'), false)
+            ->assertDontSee(__('clock.late_by', [
                 'minutes' => 25,
                 'shift' => __('clock.shifts.FULL_TIME'),
             ]), false);
@@ -144,7 +143,7 @@ class ClockTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_clock_out_report_reminder_mentions_lateness(): void
+    public function test_clock_out_report_reminder_shows_when_report_missing(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-05 10:25:00', config('app.timezone')));
 
@@ -152,12 +151,14 @@ class ClockTest extends TestCase
             ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
             ->assertRedirect();
 
+        Carbon::setTestNow(Carbon::parse('2026-08-05 18:00:00', config('app.timezone')));
+
         $this->actingAs($this->employee)
             ->followingRedirects()
             ->post(route('employee.clock.out'), $this->withClockGps())
             ->assertOk()
             ->assertSee('report-reminder-banner', false)
-            ->assertSee('25', false);
+            ->assertSee(__('report.reminder.on_time'), false);
 
         Carbon::setTestNow();
     }

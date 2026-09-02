@@ -79,15 +79,19 @@
                     <div @class([
                         'alert mb-4',
                         'alert-warning' => $lateMinutes > 0,
-                        'alert-success' => $lateMinutes === 0,
+                        'alert-info' => $lateMinutes === 0,
                     ])>
-                        @if ($startLabel)
-                            <div class="fw-semibold">{{ __('clock.should_start_at', ['shift' => $shiftLabel, 'time' => $startLabel]) }}</div>
+                        @if ($startLabel && $endLabel)
+                            <div class="fw-semibold">{{ __('clock.shift_window', ['shift' => $shiftLabel]) }}</div>
+                            <div class="small mt-1 num-ltr" dir="ltr">{{ $startLabel }} – {{ $endLabel }}</div>
+                        @elseif ($startLabel)
+                            <div class="fw-semibold">{{ __('clock.expected_start') }}</div>
+                            <div class="num-ltr" dir="ltr">{{ $startLabel }}</div>
                         @endif
                         @if ($lateMinutes > 0)
                             <div class="mt-1">{{ __('clock.late_by', ['minutes' => $lateMinutes, 'shift' => $shiftLabel]) }}</div>
                         @else
-                            <div class="mt-1">{{ __('clock.on_time') }}</div>
+                            <div class="mt-1 small">{{ __('clock.flexible_start_hint') }}</div>
                         @endif
                     </div>
                 @endif
@@ -209,19 +213,16 @@
 
                 @if ($shiftTypes !== [] && ($startLabel || $endLabel))
                     <div class="alert alert-info mb-4">
-                        @if ($startLabel)
+                        @if ($startLabel && $endLabel)
+                            <div class="fw-semibold">{{ __('clock.shift_window', ['shift' => $shiftLabel]) }}</div>
+                            <div class="small mt-1 num-ltr" dir="ltr">{{ $startLabel }} – {{ $endLabel }}</div>
+                        @elseif ($startLabel)
                             <div class="fw-semibold">{{ __('clock.should_start_at', ['shift' => $shiftLabel, 'time' => $startLabel]) }}</div>
                         @endif
-                        @if ($endLabel)
+                        @if ($endLabel && ! $startLabel)
                             <div class="small mt-1">{{ __('clock.should_end_at', ['shift' => $shiftLabel, 'time' => $endLabel]) }}</div>
                         @endif
-                        @if ($previewLateMinutes > 0)
-                            <div class="mt-2 text-warning-emphasis">
-                                {{ __('clock.preview_late', ['minutes' => $previewLateMinutes, 'shift' => $shiftLabel]) }}
-                            </div>
-                        @elseif ($startLabel)
-                            <div class="mt-2 small text-success">{{ __('clock.preview_on_time') }}</div>
-                        @endif
+                        <div class="small mt-2">{{ __('clock.flexible_start_hint') }}</div>
                     </div>
                 @endif
 

@@ -144,9 +144,9 @@ class AttendanceServiceTest extends TestCase
             Carbon::parse('2026-08-03 17:40:00'),
         );
 
-        $this->assertSame(15, $row->late_minutes);
+        $this->assertSame(0, $row->late_minutes);
         $this->assertSame(20, $row->early_departure_minutes);
-        $this->assertSame(Attendance::STATUS_LATE, $row->status);
+        $this->assertSame(Attendance::STATUS_EARLY_LEAVE, $row->status);
         $this->assertSame('7.42', $row->actual_hours); // 7h25m
         $this->assertFalse((bool) $row->is_auto_clock_out);
     }
@@ -198,7 +198,7 @@ class AttendanceServiceTest extends TestCase
         $this->assertNull(Attendance::where('user_id', $employee->id)->value('clock_out'));
     }
 
-    public function test_late_minutes_are_set_on_clock_in(): void
+    public function test_flexible_start_never_auto_marks_late_on_clock_in(): void
     {
         $employee = User::factory()->employee()->create([
             'work_start_time' => '10:00',
@@ -206,7 +206,7 @@ class AttendanceServiceTest extends TestCase
         ]);
 
         $at = Carbon::parse('2026-08-03 10:20:00');
-        $this->assertSame(20, $this->service->previewLateMinutes($employee, Attendance::SHIFT_FULL_TIME, $at));
+        $this->assertSame(0, $this->service->previewLateMinutes($employee, Attendance::SHIFT_FULL_TIME, $at));
 
         $row = $this->service->clockIn(
             $employee,
@@ -214,14 +214,12 @@ class AttendanceServiceTest extends TestCase
             $at,
         );
 
-        $this->assertSame(20, $row->late_minutes);
-        $this->assertSame(Attendance::STATUS_LATE, $row->status);
+        $this->assertSame(0, $row->late_minutes);
+        $this->assertSame(Attendance::STATUS_PRESENT, $row->status);
         $this->assertSame(
             '10:00',
             $this->service->expectedStartFor($employee, Attendance::SHIFT_FULL_TIME, $at)?->format('H:i'),
         );
-        // Already punched this shift today — resume preview is not a late first start.
-        $this->assertSame(0, $this->service->previewLateMinutes($employee, Attendance::SHIFT_FULL_TIME, $at));
     }
 
     public function test_attendance_score_caps_at_planned_ratio(): void
@@ -453,13 +451,13 @@ class AttendanceServiceTest extends TestCase
         $this->assertContains(Attendance::SHIFT_FULL_TIME, $available);
     }
 
-    public function test_mismatched_overnight_window_uses_planned_end_for_early_leave(): void
+    public function test_employee_profile_window_defines_planned_hours_for_early_leave(): void
     {
         $employee = User::factory()->employee()->create([
             'work_start_time' => '09:00',
-            'work_end_time' => '01:00',
+            'work_end_time' => '17:00',
             'shift_types_default' => [
-                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '09:00', 'end' => '01:00'],
+                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '09:00', 'end' => '17:00'],
             ],
         ]);
 
@@ -473,8 +471,9 @@ class AttendanceServiceTest extends TestCase
         $this->service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 09:01:00'));
         $row = $this->service->clockOut($employee, Carbon::parse('2026-08-03 16:18:00'));
 
-        $this->assertSame(1, $row->late_minutes);
-        $this->assertSame(42, $row->early_departure_minutes); // 16:18 → 17:00
+        $this->assertSame('8.00', $row->planned_hours);
+        $this->assertSame(0, $row->late_minutes);
+        $this->assertSame(42, $row->early_departure_minutes);
         $this->assertSame('7.28', $row->actual_hours);
         $this->assertNull($row->credited_hours);
     }
@@ -495,6 +494,30 @@ class AttendanceServiceTest extends TestCase
             Carbon::parse('2026-08-02 22:00:00'),
         );
         $this->assertSame('2026-08-03 06:00:00', $end?->format('Y-m-d H:i:s'));
+    }
+
+    public function test_wide_overnight_profile_uses_full_window_as_planned_hours(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'work_start_time' => '22:00',
+            'work_end_time' => '10:00',
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '22:00', 'end' => '10:00'],
+            ],
+        ]);
+
+        $this->assertSame(12.0, $employee->plannedHoursFor(Attendance::SHIFT_FULL_TIME));
+
+        $end = $this->service->expectedEndFor(
+            $employee,
+            Attendance::SHIFT_FULL_TIME,
+            Carbon::parse('2026-08-02 22:00:00'),
+        );
+        $this->assertSame('2026-08-03 10:00:00', $end?->format('Y-m-d H:i:s'));
+
+        $this->service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-02 22:00:00'));
+        $row = Attendance::query()->where('user_id', $employee->id)->latest('id')->first();
+        $this->assertSame('12.00', $row->planned_hours);
     }
 
     public function test_preview_late_is_zero_when_resuming_same_shift(): void

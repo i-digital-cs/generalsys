@@ -103,7 +103,7 @@ class EmployeeCrudTest extends TestCase
         $this->assertDatabaseHas('emergency_contacts', ['user_id' => $employee->id, 'name' => 'Ahmed']);
     }
 
-    public function test_store_rejects_mismatched_overnight_shift_window(): void
+    public function test_store_rejects_shift_window_over_sixteen_hours(): void
     {
         app()->setLocale('en');
 
@@ -112,7 +112,7 @@ class EmployeeCrudTest extends TestCase
                 'default_shifts' => [
                     [
                         'shift_type' => 'FULL_TIME',
-                        'start' => '09:00',
+                        'start' => '08:00',
                         'end' => '01:00',
                     ],
                 ],
@@ -139,6 +139,26 @@ class EmployeeCrudTest extends TestCase
         $employee = User::where('email', 'new.employee@hrpro.test')->firstOrFail();
         $this->assertSame('22:00', $employee->work_start_time);
         $this->assertSame('06:00', $employee->work_end_time);
+    }
+
+    public function test_store_allows_evening_overnight_grace_window_22_to_10(): void
+    {
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'default_shifts' => [
+                    [
+                        'shift_type' => 'FULL_TIME',
+                        'start' => '22:00',
+                        'end' => '10:00',
+                    ],
+                ],
+            ]))
+            ->assertRedirect();
+
+        $employee = User::where('email', 'new.employee@hrpro.test')->firstOrFail();
+        $this->assertSame('22:00', $employee->work_start_time);
+        $this->assertSame('10:00', $employee->work_end_time);
+        $this->assertSame(12.0, $employee->plannedHoursFor(Attendance::SHIFT_FULL_TIME));
     }
 
     public function test_employee_code_is_auto_generated_sequentially(): void

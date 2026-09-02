@@ -93,7 +93,8 @@ class AttendanceTimeSummaryTest extends TestCase
         $summary = app(AttendanceTimeCalculator::class)->summarize($reset, $service);
 
         $this->assertFalse($summary->hasOverrides());
-        $this->assertSame(15, $summary->appliedLateMinutes);
+        $this->assertSame(0, $summary->appliedLateMinutes);
+        $this->assertSame(15, $summary->systemLateMinutes);
         $this->assertSame(8.0, $summary->appliedCreditedHours);
     }
 }
