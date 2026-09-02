@@ -96,11 +96,12 @@ class SalesInvoiceFlowTest extends TestCase
         $this->allocations->partialReturn($alloc, 3, $this->manager);
         $alloc->refresh();
         $this->assertSame(3, $alloc->qty_returned_pieces);
-        $this->assertSame(7, $alloc->qty_with_courier_pieces);
+        $this->assertSame(10, $alloc->qty_with_courier_pieces);
+        $this->assertSame(0, $alloc->qty_returned_received_pieces);
 
         $balance = GrossStockBalance::query()->where('item_id', $this->item->id)->firstOrFail();
-        $this->assertSame(13, $balance->qty_on_hand_pieces);
-        $this->assertSame(7, $balance->qty_with_courier_pieces);
+        $this->assertSame(10, $balance->qty_on_hand_pieces);
+        $this->assertSame(10, $balance->qty_with_courier_pieces);
 
         $sales = User::factory()->sales()->create(['can_confirm_gross_loss' => false]);
         ValuationAssignment::query()->create([
@@ -123,35 +124,47 @@ class SalesInvoiceFlowTest extends TestCase
         $this->allocations->confirmLoss($alloc->fresh(), 2, $this->manager);
         $alloc->refresh();
         $this->assertSame(2, $alloc->qty_lost_pieces);
-        $this->assertSame(5, $alloc->qty_with_courier_pieces);
+        $this->assertSame(8, $alloc->qty_with_courier_pieces);
 
         $balance->refresh();
-        $this->assertSame(13, $balance->qty_on_hand_pieces);
-        $this->assertSame(5, $balance->qty_with_courier_pieces);
+        $this->assertSame(10, $balance->qty_on_hand_pieces);
+        $this->assertSame(8, $balance->qty_with_courier_pieces);
         $this->assertSame(2, $balance->qty_lost_pieces);
     }
 
-    public function test_refuse_restores_with_courier_only_and_sets_shipping_lost(): void
+    public function test_refuse_keeps_pieces_with_courier_and_marks_delivery_fee_due(): void
     {
         $invoice = $this->confirmedInvoice(8);
         $alloc = $invoice->lines->first()->allocation;
         $this->allocations->partialReturn($alloc, 3, $this->manager);
 
+        $balanceBefore = GrossStockBalance::query()->where('item_id', $this->item->id)->firstOrFail();
+
         $refused = $this->invoices->refuse($invoice->fresh(), $this->manager, 'client refused');
         $this->assertSame(GrossSalesInvoice::STATUS_REFUSED, $refused->status);
-        $this->assertSame(GrossSalesInvoice::SHIPPING_FEE_LOST, $refused->shipping_fee_status);
+        $this->assertSame(GrossSalesInvoice::COD_LOST, $refused->cod_collection_status);
+        $this->assertSame(GrossSalesInvoice::SHIPPING_FEE_PENDING, $refused->shipping_fee_status);
 
         $alloc->refresh();
-        $this->assertSame(0, $alloc->qty_with_courier_pieces);
         $this->assertSame(8, $alloc->qty_returned_pieces);
+        $this->assertSame(8, $alloc->qty_with_courier_pieces);
+        $this->assertSame(8, $alloc->returnedPendingHandover());
+        $this->assertSame(0, $alloc->qty_returned_received_pieces);
 
         $balance = GrossStockBalance::query()->where('item_id', $this->item->id)->firstOrFail();
-        $this->assertSame(20, $balance->qty_on_hand_pieces);
-        $this->assertSame(0, $balance->qty_with_courier_pieces);
+        $this->assertSame((int) $balanceBefore->qty_on_hand_pieces, (int) $balance->qty_on_hand_pieces);
+        $this->assertSame((int) $balanceBefore->qty_with_courier_pieces, (int) $balance->qty_with_courier_pieces);
+        $this->assertSame(0, GrossStockMovement::query()->where('type', GrossStockMovement::TYPE_REFUSE_RETURN)->count());
 
-        $again = $this->invoices->refuse($refused, $this->manager);
-        $this->assertSame(GrossSalesInvoice::STATUS_REFUSED, $again->status);
+        $this->invoices->receiveRefusedFromCourier($refused->fresh(), $this->manager);
+        $alloc->refresh();
+        $this->assertSame(0, $alloc->returnedPendingHandover());
+        $this->assertSame(8, $alloc->qty_returned_received_pieces);
+        $this->assertSame(0, $alloc->qty_with_courier_pieces);
         $this->assertSame(1, GrossStockMovement::query()->where('type', GrossStockMovement::TYPE_REFUSE_RETURN)->count());
+
+        $again = $this->invoices->refuse($refused->fresh(), $this->manager);
+        $this->assertSame(GrossSalesInvoice::STATUS_REFUSED, $again->status);
     }
 
     public function test_cancel_rules(): void
@@ -180,6 +193,7 @@ class SalesInvoiceFlowTest extends TestCase
 
         $alloc = $invoice->fresh(['lines.allocation'])->lines->first()->allocation;
         $this->allocations->partialReturn($alloc, 4, $this->manager);
+        $this->allocations->receiveReturnedFromCourier($alloc->fresh(), $this->manager);
         $done = $this->invoices->cancel($invoice->fresh());
         $this->assertSame(GrossSalesInvoice::STATUS_CANCELLED, $done->status);
     }

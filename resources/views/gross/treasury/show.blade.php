@@ -23,13 +23,29 @@
                 <dd class="col-sm-9">{{ __('gross.treasury.kinds.'.$voucher->account->kind) }} — {{ $voucher->account->name }} ({{ $voucher->currency }})</dd>
                 <dt class="col-sm-3">{{ __('gross.fields.amount') }}</dt>
                 <dd class="col-sm-9"><span class="num-ltr"><x-money :amount="$voucher->amount" :currency="$voucher->currency" /></span></dd>
+                @if ($voucher->isCourierCodPurpose() && $voucher->salesInvoice)
+                    <dt class="col-sm-3">{{ __('gross.fields.invoice_number') }}</dt>
+                    <dd class="col-sm-9">
+                        <a href="{{ route('gross.sales.show', $voucher->salesInvoice) }}" class="num-ltr text-decoration-none">
+                            {{ $voucher->salesInvoice->invoice_number }}
+                        </a>
+                    </dd>
+                    <dt class="col-sm-3">{{ __('gross.treasury.cod_merchandise_only') }}</dt>
+                    <dd class="col-sm-9 small text-body-secondary">{{ __('gross.treasury.cod_merchandise_only_hint') }}</dd>
+                @endif
+                @if ($voucher->isCourierCodPurpose() && $voucher->shippingCompany)
+                    <dt class="col-sm-3">{{ __('gross.fields.shipping_company') }}</dt>
+                    <dd class="col-sm-9">
+                        <a href="{{ route('gross.shipping.show', $voucher->shippingCompany) }}">{{ $voucher->shippingCompany->name }}</a>
+                    </dd>
+                @endif
                 @if ($voucher->isSupplierPurpose() && $voucher->supplier)
                     <dt class="col-sm-3">{{ __('gross.fields.supplier') }}</dt>
                     <dd class="col-sm-9">
                         <a href="{{ route('gross.suppliers.statement', $voucher->supplier) }}">{{ $voucher->supplier->name }}</a>
                     </dd>
                 @endif
-                @if (! $voucher->isSupplierPurpose() && $voucher->expenseType)
+                @if (! $voucher->isSupplierPurpose() && ! $voucher->isCourierCodPurpose() && ! $voucher->isOtherPurpose() && $voucher->expenseType)
                     <dt class="col-sm-3">{{ __('gross.treasury.expense_type') }}</dt>
                     <dd class="col-sm-9">{{ $voucher->expenseType->localizedName() }}</dd>
                 @endif
@@ -42,4 +58,27 @@
             </dl>
         </div>
     </div>
+
+    @if ($voucher->attachments->isNotEmpty())
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body">
+                <h2 class="h6 mb-3">{{ __('gross.treasury.attachments') }}</h2>
+                <ul class="list-group list-group-flush">
+                    @foreach ($voucher->attachments as $attachment)
+                        <li class="list-group-item px-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div class="d-flex align-items-center gap-2 min-w-0">
+                                <i class="bi {{ str_contains($attachment->mime_type, 'pdf') ? 'bi-file-earmark-pdf' : 'bi-file-earmark-image' }} text-body-secondary" aria-hidden="true"></i>
+                                <span class="text-truncate">{{ $attachment->original_name }}</span>
+                                <span class="small text-body-secondary num-ltr">({{ number_format($attachment->size_bytes / 1024, 1) }} KB)</span>
+                            </div>
+                            <a href="{{ route('gross.treasury.attachments.download', [$voucher, $attachment]) }}"
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-download me-1" aria-hidden="true"></i>{{ __('documents.download') }}
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    @endif
 @endsection

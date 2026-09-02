@@ -72,6 +72,12 @@
                                     <td><span class="num-ltr">{{ $company->phone }}</span></td>
                                     <td>{{ __('gross.statuses.'.$company->status) }}</td>
                                     <td class="text-end text-nowrap">
+                                        <a href="{{ route('gross.shipping.statement', $company) }}"
+                                           class="btn btn-link btn-sm text-body-secondary p-0 me-2"
+                                           title="{{ __('gross.shipping.statement_link') }}">
+                                            <i class="bi bi-journal-text" aria-hidden="true"></i>
+                                            <span class="visually-hidden">{{ __('gross.shipping.statement_link') }}</span>
+                                        </a>
                                         <a href="{{ route('gross.shipping.show', $company) }}"
                                            class="btn btn-link btn-sm text-body-secondary p-0 me-2"
                                            title="{{ __('general.view') }}">

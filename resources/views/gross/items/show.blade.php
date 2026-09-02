@@ -88,6 +88,17 @@
                     @endif
                 </div>
             </div>
+            <div class="row g-2 mb-3">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body py-3 text-center">
+                            <div class="small text-body-secondary">{{ __('gross.fields.total_pieces') }}</div>
+                            <div class="fs-4 fw-semibold num-ltr">{{ $totalTrackedPieces }}</div>
+                            <div class="small text-body-secondary">{{ __('gross.fields.total_pieces_hint') }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="row g-2">
                 <div class="col-4">
                     <div class="card border-0 shadow-sm h-100">
@@ -102,6 +113,18 @@
                         <div class="card-body py-3 text-center">
                             <div class="small text-body-secondary">{{ __('gross.fields.with_courier') }}</div>
                             <div class="fs-5 fw-semibold num-ltr">{{ $item->balance?->qty_with_courier_pieces ?? 0 }}</div>
+                            @if (($item->balance?->qty_with_courier_pieces ?? 0) > 0)
+                                @if (($courierSummary['awaiting_delivery'] ?? 0) > 0)
+                                    <div class="small text-primary">
+                                        <span class="num-ltr">{{ $courierSummary['awaiting_delivery'] }}</span> {{ __('gross.stock.waiting_client') }}
+                                    </div>
+                                @endif
+                                @if (($courierSummary['refused_with_courier'] ?? 0) > 0)
+                                    <div class="small text-warning">
+                                        <span class="num-ltr">{{ $courierSummary['refused_with_courier'] }}</span> {{ __('gross.stock.refused_with_courier') }}
+                                    </div>
+                                @endif
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -114,6 +137,15 @@
                     </div>
                 </div>
             </div>
+            @if (($courierBreakdown ?? []) !== [])
+                <div class="card border-0 shadow-sm mt-3">
+                    <div class="card-body">
+                        <h2 class="h6 mb-2">{{ __('gross.fields.courier_breakdown') }}</h2>
+                        <p class="text-body-secondary small mb-2">{{ __('gross.stock.location_hint') }}</p>
+                        @include('gross.partials.courier-breakdown-list', ['breakdown' => $courierBreakdown])
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 @endsection

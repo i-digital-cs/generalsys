@@ -45,7 +45,8 @@
                                 <th>{{ __('gross.fields.invoice_number') }}</th>
                                 <th>{{ __('gross.fields.customer') }}</th>
                                 <th>{{ __('gross.fields.shipping_company') }}</th>
-                                <th class="col-num">{{ __('gross.fields.shipping_fee') }}</th>
+                                <th class="col-num">{{ __('gross.sales.collectible_amount') }}</th>
+                                <th>{{ __('gross.fields.cod_status') }}</th>
                                 <th class="text-end">{{ __('general.actions') }}</th>
                             </tr>
                         </thead>
@@ -75,15 +76,17 @@
                                             {{ $invoice->shipping_company_name ?: '—' }}
                                         @endif
                                     </td>
-                                    <td class="col-num">
-                                        <span class="num-ltr"><x-money :amount="$invoice->shipping_fee" :currency="$invoice->currency" /></span>
+                                    <td class="col-num fw-semibold">
+                                        <span class="num-ltr"><x-money :amount="$invoice->collectibleAmount()" :currency="$invoice->currency" /></span>
                                     </td>
+                                    <td>{{ __('gross.cod_collection_status.'.$invoice->cod_collection_status) }}</td>
                                     <td class="text-end text-nowrap">
-                                        @can('collectShippingFee', $invoice)
-                                            <form method="post" action="{{ route('gross.sales.collect-fee', $invoice) }}" class="d-inline">
-                                                @csrf
-                                                <button class="btn btn-sm btn-primary">{{ __('gross.sales.collect_fee') }}</button>
-                                            </form>
+                                        @can('collectCod', $invoice)
+                                            @include('gross.partials.collect-cod-modal', [
+                                                'invoice' => $invoice,
+                                                'treasuryAccounts' => $treasuryAccounts ?? collect(),
+                                                'canPostTreasury' => $canPostTreasury ?? false,
+                                            ])
                                         @endcan
                                     </td>
                                 </tr>

@@ -53,15 +53,28 @@ class GrossSalesInvoicePolicy
         return GrossAccess::mayConfirmLoss($user);
     }
 
-    public function collectShippingFee(User $user, GrossSalesInvoice $invoice): bool
+    public function collectCod(User $user, GrossSalesInvoice $invoice): bool
     {
         return GrossAccess::mayCollectCourier($user)
             && $invoice->isConfirmed()
-            && $invoice->shippingFeeIsPending();
+            && $invoice->codIsPending();
+    }
+
+    /** @deprecated Use collectCod() */
+    public function collectShippingFee(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return $this->collectCod($user, $invoice);
     }
 
     public function markDelivered(User $user, GrossSalesInvoice $invoice): bool
     {
         return GrossAccess::mayCollectCourier($user) && $invoice->canMarkDelivered();
+    }
+
+    public function receiveRefused(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return GrossAccess::mayCollectCourier($user)
+            && $invoice->isRefused()
+            && $invoice->refusedPiecesPendingHandover() > 0;
     }
 }

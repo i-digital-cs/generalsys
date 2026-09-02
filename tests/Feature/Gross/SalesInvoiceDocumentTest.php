@@ -6,10 +6,12 @@ use App\Models\Gross\GrossItem;
 use App\Models\Gross\GrossShippingCompany;
 use App\Models\Gross\GrossStockMovement;
 use App\Models\User;
+use App\Services\Gross\AllocationService;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
 class SalesInvoiceDocumentTest extends TestCase
@@ -66,7 +68,7 @@ class SalesInvoiceDocumentTest extends TestCase
             ->assertSee(route('gross.sales.pdf', $invoice), false)
             ->assertSee(route('gross.sales.excel', $invoice), false)
             ->assertSee('bi-filetype-pdf', false)
-            ->assertSee('Collect fee', false);
+            ->assertSee('Collect COD', false);
 
         $this->actingAs($manager)
             ->get(route('gross.sales.pdf', $invoice))
@@ -75,6 +77,52 @@ class SalesInvoiceDocumentTest extends TestCase
 
         $this->actingAs($manager)
             ->get(route('gross.sales.excel', $invoice))
+            ->assertOk()
+            ->assertHeader('content-disposition');
+    }
+
+    public function test_exports_include_net_pieces_and_amounts_after_partial_return(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $item = app(ItemService::class)->create([
+            'name' => 'Export Dress',
+            'status' => GrossItem::STATUS_ACTIVE,
+        ]);
+        app(StockService::class)->adjustIn($item, 20, GrossStockMovement::UNIT_PIECE, $manager);
+
+        $invoice = app(SalesInvoiceService::class)->createDraft($manager, [
+            'customer_name' => 'Ali',
+            'customer_phone' => '0100',
+            'currency' => 'EGP',
+            'shipping_fee' => 50,
+        ], [[
+            'item_id' => $item->id,
+            'qty' => 10,
+            'unit' => 'PIECE',
+            'unit_price' => 100,
+        ]]);
+
+        $confirmed = app(SalesInvoiceService::class)->confirm($invoice, $manager)->load(['lines.allocation']);
+        app(AllocationService::class)->partialReturn($confirmed->lines->first()->allocation, 3, $manager);
+
+        $excelResponse = $this->actingAs($manager)
+            ->get(route('gross.sales.excel', $confirmed))
+            ->assertOk();
+
+        $tmp = tempnam(sys_get_temp_dir(), 'gross-xlsx-').'.xlsx';
+        file_put_contents($tmp, $excelResponse->streamedContent());
+        $sheet = IOFactory::load($tmp)->getActiveSheet();
+        @unlink($tmp);
+
+        $this->assertEqualsWithDelta(300.0, (float) $sheet->getCell('B13')->getValue(), 0.001);
+        $this->assertEqualsWithDelta(700.0, (float) $sheet->getCell('B14')->getValue(), 0.001);
+        $this->assertEqualsWithDelta(750.0, (float) $sheet->getCell('B16')->getValue(), 0.001);
+        $this->assertSame(10, (int) $sheet->getCell('D20')->getValue());
+        $this->assertSame(3, (int) $sheet->getCell('E20')->getValue());
+        $this->assertEqualsWithDelta(700.0, (float) $sheet->getCell('N20')->getValue(), 0.001);
+
+        $this->actingAs($manager)
+            ->get(route('gross.sales.pdf', $confirmed))
             ->assertOk()
             ->assertHeader('content-disposition');
     }

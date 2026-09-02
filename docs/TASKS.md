@@ -918,12 +918,12 @@ See `docs/GROSS_MODULE.md` §12. Implement **in order**; lock §12 rules before 
 ### T-12.2 — Shipping company returns report
 - Depends on: T-12.1
 - Unlocks: T-12.3
-- Status: `pending`
+- Status: `done`
 - Scope:
-  - [ ] On shipping company show (or tab): **Returns report** — chronological partial returns (`SALE_RETURN`) + full refuses linked to company
-  - [ ] Columns: date, invoice #, customer, item, qty returned, actor; filters from/to
-  - [ ] Totals: return count + returned pieces (by period)
-  - [ ] PHPUnit + UI/UX gate
+  - [x] On shipping company show (or tab): **Returns report** — chronological partial returns (`SALE_RETURN`) + full refuses linked to company
+  - [x] Columns: date, invoice #, customer, item, qty returned, actor; filters from/to
+  - [x] Totals: return count + returned pieces (by period)
+  - [x] PHPUnit + UI/UX gate
 
 **Manual UI test (after ship — Cycle 2)**
 1. Login as **Manager** → **Shipping companies** → open a company with confirmed sales.
@@ -936,13 +936,13 @@ See `docs/GROSS_MODULE.md` §12. Implement **in order**; lock §12 rules before 
 ### T-12.3 — Shipping company collection statement
 - Depends on: T-12.2
 - Unlocks: T-12.4
-- Status: `pending`
+- Status: `done`
 - Scope:
-  - [ ] New route e.g. `gross.shipping.statement` — mirror supplier statement UX
-  - [ ] Chronological money lines per currency: confirmed invoice `total` debit (+), partial-return/refuse adjustments credit (−), COD collections credit (−) [uses T-12.4 fields once shipped; stub OK until then]
-  - [ ] Running balance = owed by courier; filters currency / from / to
-  - [ ] Link from shipping show + menu action
-  - [ ] PHPUnit + UI/UX gate
+  - [x] New route e.g. `gross.shipping.statement` — mirror supplier statement UX
+  - [x] Chronological money lines per currency: confirmed invoice `total` debit (+), partial-return/refuse adjustments credit (−), COD collections credit (−) [uses T-12.4 fields once shipped; stub OK until then]
+  - [x] Running balance = owed by courier; filters currency / from / to
+  - [x] Link from shipping show + menu action
+  - [x] PHPUnit + UI/UX gate
 
 **Manual UI test (after ship — Cycle 3)**
 1. Login as **Manager** → shipping company with several **CONFIRMED** invoices (mixed currencies if used).
@@ -955,16 +955,16 @@ See `docs/GROSS_MODULE.md` §12. Implement **in order**; lock §12 rules before 
 ### T-12.4 — Full COD collection (invoice total from courier)
 - Depends on: T-12.3
 - Unlocks: T-12.5
-- Status: `pending`
+- Status: `done`
 - Scope (locked in GROSS_MODULE §12 — confirm with user before coding):
-  - [ ] Add `cod_collection_status` + `cod_collected_at/by` on `gross_sales_invoices`; migrate existing `shipping_fee_status` PENDING→COD PENDING
-  - [ ] On confirm with `shipping_company_id` and `total > 0` → `cod_collection_status = PENDING`
-  - [ ] **Collect COD** records full invoice `total` (not shipping fee alone); idempotent PENDING→COLLECTED
-  - [ ] Refuse → `cod_collection_status = LOST`; partial returns reduce collectible amount (service calc)
-  - [ ] **Mark delivered** only when `cod_collection_status ∈ {NONE, COLLECTED}` (same gate as today for fee)
-  - [ ] Replace collections queue UI: show invoice **total**, status pending/collected; AR+EN labels
-  - [ ] Deprecate separate “collect shipping fee” action in UI (fee remains a line item inside total)
-  - [ ] PHPUnit + UI/UX gate + schema doc §22
+  - [x] Add `cod_collection_status` + `cod_collected_at/by` on `gross_sales_invoices`; migrate existing `shipping_fee_status` PENDING→COD PENDING
+  - [x] On confirm with `shipping_company_id` and `total > 0` → `cod_collection_status = PENDING`
+  - [x] **Collect COD** records full invoice `total` (not shipping fee alone); idempotent PENDING→COLLECTED
+  - [x] Refuse → `cod_collection_status = LOST`; partial returns reduce collectible amount (service calc)
+  - [x] **Mark delivered** only when `cod_collection_status ∈ {NONE, COLLECTED}` (same gate as today for fee)
+  - [x] Replace collections queue UI: show invoice **total**, status pending/collected; AR+EN labels
+  - [x] Deprecate separate “collect shipping fee” action in UI (fee remains a line item inside total)
+  - [x] PHPUnit + UI/UX gate + schema doc §22
 
 **Manual UI test (after ship — Cycle 4)**
 1. Login as **Sales** or **Manager** → create sales invoice: lines + **shipping company** + shipping fee → confirm.
@@ -979,14 +979,14 @@ See `docs/GROSS_MODULE.md` §12. Implement **in order**; lock §12 rules before 
 ### T-12.5 — Treasury RECEIPT linked to COD collection
 - Depends on: T-12.4
 - Unlocks: —
-- Status: `pending`
+- Status: `done`
 - Scope (locked in GROSS_MODULE §12):
-  - [ ] Voucher purpose **COURIER_COD** (+ migration); requires `sales_invoice_id` + `shipping_company_id`
-  - [ ] On **Collect COD**: optional checkbox **Post to treasury** (default on for Manager/Accountant) → auto **RECEIPT** to Cash or Bank (user picks account on collect modal)
-  - [ ] Manual treasury create: purpose COURIER_COD links invoice; cannot double-post same invoice
-  - [ ] Shipping company collection statement includes treasury RECEIPT lines
-  - [ ] Who: collect COD = Manager, Accountant, Sales; treasury post = Manager, Accountant only
-  - [ ] PHPUnit + UI/UX gate + schema doc §22
+  - [x] Voucher purpose **COURIER_COD** (+ migration); requires `sales_invoice_id` + `shipping_company_id`
+  - [x] On **Collect COD**: optional checkbox **Post to treasury** (default on for Manager/Accountant) → auto **RECEIPT** to Cash or Bank (user picks account on collect modal)
+  - [x] Manual treasury create: purpose COURIER_COD links invoice; cannot double-post same invoice
+  - [x] Shipping company collection statement includes treasury RECEIPT lines
+  - [x] Who: collect COD = Manager, Accountant, Sales; treasury post = Manager, Accountant only
+  - [x] PHPUnit + UI/UX gate + schema doc §22
 
 **Manual UI test (after ship — Cycle 5)**
 1. Login as **Accountant** → confirm invoice with courier (from Cycle 4).
@@ -1206,3 +1206,8 @@ Example:
 - [x] 2026-08-30 Gross UI visibility polish PASS — Cross-links (supplier/customer/shipping/items), pay-from-supplier, stock movements + document refs, expense-types outside create-only. Commands: `php artisan test --filter=Gross` (99 PASS); LangParity; Pint. UI/UX AR+EN (`gross.suppliers.pay`).
 - [x] 2026-08-31 Gross deliver stock fix PASS — Mark delivered clears `qty_with_courier` → `qty_delivered` (movement `SALE_DELIVERED`). Commands: `php artisan test --filter=Gross` (101 PASS); LangParity; Pint.
 - [x] 2026-09-01 T-12.1 PASS — Low stock alert: `LowStockAlertService`; portal product dashboard card + stock sidebar badge; AR+EN keys. Commands: `php artisan test --filter=LowStock` (4 PASS); `php artisan test --filter=Gross` (110 PASS); LangParity; Pint. UI/UX: manual Cycle 1 pending user. Next: T-12.2.
+- [x] 2026-09-01 T-12.2 PASS — Shipping returns report + piece location visibility (`PieceLocationService`: stock total/breakdown by courier; shipping show modals for returned & with-courier). Commands: `php artisan test --filter=Gross` (119 PASS); LangParity; Pint. UI/UX: Cycle 2 user feedback addressed. Next: T-12.3.
+- [x] 2026-09-01 T-12.2 ext — **DB single source of truth** for invoice net amounts: migration `2026_09_01_140000_gross_sales_invoice_net_columns`; `SalesInvoiceNetService` persists `returned_merchandise` / `net_*` on invoice and `returned_amount` / `lost_amount` / `net_line_total` on lines; recalc on confirm, return, loss, refuse; UI reads DB only. Commands: `php artisan migrate`; `php artisan test --filter=Gross` (124 PASS); Pint. UI/UX: re-test invoice show + stock/shipping.
+- [x] 2026-09-01 T-12.3 PASS — Shipping collection statement: `ShippingCollectionStatementService`; route `gross.shipping.statement`; SALE/RETURN/REFUSE/COLLECTION ledger per currency; links from shipping show + index. Commands: `php artisan test --filter=ShippingCollection`; `php artisan test --filter=Gross` (129 PASS); LangParity; Pint. UI/UX: Cycle 3 manual pending user. Next: T-12.4.
+- [x] 2026-09-01 T-12.4 PASS — Full COD collection: `cod_collection_status` + `cod_collected_amount/at/by`; `collectCod()` records `net_total`; queue + invoice show use Collect COD; statement uses full COD amount. Commands: `php artisan migrate`; `php artisan test --filter=Gross` (132 PASS); LangParity; Pint. UI/UX: Cycle 4 manual pending user. Next: T-12.5.
+- [x] 2026-09-01 T-12.5 PASS — Treasury on COD: purpose `COURIER_COD`; Collect COD modal with optional post to treasury (Manager/Accountant); manual RECEIPT; unique per invoice; statement shows `TREASURY_RECEIPT` when posted. Commands: `php artisan migrate`; `php artisan test --filter=Gross` (137 PASS); LangParity; Pint. UI/UX: Cycle 5 manual pending user. Phase 12 complete.

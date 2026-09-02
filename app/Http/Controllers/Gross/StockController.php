@@ -8,6 +8,7 @@ use App\Http\Requests\Gross\AdjustGrossStockRequest;
 use App\Models\Gross\GrossItem;
 use App\Models\Gross\GrossStockMovement;
 use App\Services\Gross\ItemService;
+use App\Services\Gross\PieceLocationService;
 use App\Services\Gross\StockService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class StockController extends Controller
     public function __construct(
         private readonly ItemService $items,
         private readonly StockService $stock,
+        private readonly PieceLocationService $locations,
     ) {}
 
     public function index(Request $request): View
@@ -29,8 +31,13 @@ class StockController extends Controller
             'low_stock' => $request->boolean('low_stock'),
         ];
 
+        $items = $this->items->paginate($filters);
+        $itemIds = $items->getCollection()->pluck('id');
+
         return view('gross.stock.index', [
-            'items' => $this->items->paginate($filters),
+            'items' => $items,
+            'courierBreakdown' => $this->locations->courierBreakdownByItemIds($itemIds),
+            'courierSummary' => $this->locations->courierSummaryByItemIds($itemIds),
             'adjustItems' => $this->items->activeForSelect(),
             'filters' => $filters,
             'canAdjust' => auth()->user()?->can('adjustStock', GrossItem::class) ?? false,
@@ -60,6 +67,7 @@ class StockController extends Controller
                 GrossStockMovement::TYPE_ADJUSTMENT_OUT,
                 GrossStockMovement::TYPE_SALE_OUT,
                 GrossStockMovement::TYPE_SALE_RETURN,
+                GrossStockMovement::TYPE_SALE_RETURN_CLIENT,
                 GrossStockMovement::TYPE_SALE_DELIVERED,
                 GrossStockMovement::TYPE_REFUSE_RETURN,
                 GrossStockMovement::TYPE_LOSS_CONFIRM,

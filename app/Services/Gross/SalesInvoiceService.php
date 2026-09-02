@@ -20,6 +20,8 @@ class SalesInvoiceService
     public function __construct(
         private readonly StockService $stock,
         private readonly AllocationService $allocations,
+        private readonly SalesInvoiceNetService $net,
+        private readonly TreasuryService $treasury,
     ) {}
 
     public function paginate(int $perPage = 25): LengthAwarePaginator
@@ -31,14 +33,14 @@ class SalesInvoiceService
     }
 
     /**
-     * Confirmed invoices with shipping fee still PENDING (courier collection queue).
+     * Confirmed invoices with COD still PENDING (courier collection queue).
      */
     public function paginatePendingCollections(array $filters = [], int $perPage = 25): LengthAwarePaginator
     {
         $q = GrossSalesInvoice::query()
             ->with(['shippingCompany', 'salesUser', 'customer'])
             ->where('status', GrossSalesInvoice::STATUS_CONFIRMED)
-            ->where('shipping_fee_status', GrossSalesInvoice::SHIPPING_FEE_PENDING)
+            ->where('cod_collection_status', GrossSalesInvoice::COD_PENDING)
             ->orderByDesc('confirmed_at')
             ->orderByDesc('id');
 
@@ -47,6 +49,22 @@ class SalesInvoiceService
         }
 
         return $q->paginate(min($perPage, 50))->withQueryString();
+    }
+
+    /**
+     * @return Collection<int, GrossSalesInvoice>
+     */
+    public function listCollectedWithoutTreasury(int $limit = 100): Collection
+    {
+        return GrossSalesInvoice::query()
+            ->where('cod_collection_status', GrossSalesInvoice::COD_COLLECTED)
+            ->whereNotNull('shipping_company_id')
+            ->whereDoesntHave('courierCodTreasuryVoucher')
+            ->with('shippingCompany')
+            ->orderByDesc('cod_collected_at')
+            ->orderByDesc('id')
+            ->limit(min($limit, 100))
+            ->get();
     }
 
     /**
@@ -94,9 +112,8 @@ class SalesInvoiceService
                 'shipping_company_name' => $shipping?->name,
                 'currency' => $data['currency'],
                 'shipping_fee' => $data['shipping_fee'] ?? 0,
-                'shipping_fee_status' => ((float) ($data['shipping_fee'] ?? 0)) > 0
-                    ? GrossSalesInvoice::SHIPPING_FEE_PENDING
-                    : GrossSalesInvoice::SHIPPING_FEE_NONE,
+                'shipping_fee_status' => GrossSalesInvoice::SHIPPING_FEE_NONE,
+                'cod_collection_status' => GrossSalesInvoice::COD_NONE,
                 'discount_amount' => $data['discount_amount'] ?? 0,
                 'discount_percent' => $data['discount_percent'] ?? 0,
                 'status' => GrossSalesInvoice::STATUS_DRAFT,
@@ -147,9 +164,8 @@ class SalesInvoiceService
                 'shipping_company_name' => $shipping?->name,
                 'currency' => $data['currency'] ?? $invoice->currency,
                 'shipping_fee' => $shippingFee,
-                'shipping_fee_status' => ((float) $shippingFee) > 0
-                    ? GrossSalesInvoice::SHIPPING_FEE_PENDING
-                    : GrossSalesInvoice::SHIPPING_FEE_NONE,
+                'shipping_fee_status' => GrossSalesInvoice::SHIPPING_FEE_NONE,
+                'cod_collection_status' => GrossSalesInvoice::COD_NONE,
                 'discount_amount' => $data['discount_amount'] ?? $invoice->discount_amount,
                 'discount_percent' => $data['discount_percent'] ?? $invoice->discount_percent,
                 'notes' => array_key_exists('notes', $data) ? $data['notes'] : $invoice->notes,
@@ -217,6 +233,10 @@ class SalesInvoiceService
                 'status' => GrossSalesInvoice::STATUS_CONFIRMED,
                 'confirmed_at' => now(),
             ]);
+
+            $this->net->recalculateInvoice($locked->fresh(['lines.allocation']));
+            $locked = $locked->fresh(['lines.allocation']);
+            $locked->update($this->codFieldsOnConfirm($locked));
 
             return $locked->fresh(['lines.allocation', 'lines.item']);
         });
@@ -291,70 +311,142 @@ class SalesInvoiceService
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                $returnPieces = (int) $allocLocked->qty_with_courier_pieces;
-                if ($returnPieces < 1) {
-                    continue;
+                $targetReturned = (int) $allocLocked->qty_shipped_pieces
+                    - (int) $allocLocked->qty_delivered_pieces
+                    - (int) $allocLocked->qty_lost_pieces;
+
+                $deltaReturned = $targetReturned - (int) $allocLocked->qty_returned_pieces;
+                if ($deltaReturned > 0) {
+                    $item = $line->item;
+                    if ($item === null) {
+                        throw GrossException::invalidTransition();
+                    }
+
+                    $this->stock->recordClientReturn(
+                        $item,
+                        $deltaReturned,
+                        (int) $allocLocked->conversion_factor_snapshot,
+                        GrossShipmentAllocation::class,
+                        (int) $allocLocked->id,
+                        $actor,
+                    );
                 }
 
-                $item = $line->item;
-                if ($item === null) {
-                    throw GrossException::invalidTransition();
-                }
-
-                $this->stock->applyRefuseReturn(
-                    $item,
-                    $returnPieces,
-                    (int) $allocLocked->conversion_factor_snapshot,
-                    GrossShipmentAllocation::class,
-                    (int) $allocLocked->id,
-                    $actor,
-                );
-
-                $allocLocked->qty_returned_pieces += $returnPieces;
-                $allocLocked->qty_with_courier_pieces = 0;
+                $allocLocked->qty_returned_pieces = $targetReturned;
                 $allocLocked->save();
                 $allocLocked->assertInvariant();
             }
 
+            $feeStatus = (float) $locked->shipping_fee > 0
+                ? GrossSalesInvoice::SHIPPING_FEE_PENDING
+                : GrossSalesInvoice::SHIPPING_FEE_NONE;
+
             $locked->update([
                 'status' => GrossSalesInvoice::STATUS_REFUSED,
-                'shipping_fee_status' => GrossSalesInvoice::SHIPPING_FEE_LOST,
+                'shipping_fee_status' => $feeStatus,
+                'cod_collection_status' => GrossSalesInvoice::COD_LOST,
                 'refused_at' => now(),
                 'refused_by' => $actor->id,
                 'refuse_reason' => $reason,
             ]);
 
+            $this->net->recalculateInvoice($locked->fresh(['lines.allocation']));
+
             return $locked->fresh(['lines.allocation', 'lines.item']);
         });
     }
 
-    public function collectShippingFee(GrossSalesInvoice $invoice, User $actor): GrossSalesInvoice
+    public function receiveRefusedFromCourier(GrossSalesInvoice $invoice, User $actor): GrossSalesInvoice
     {
         return DB::transaction(function () use ($invoice, $actor) {
             /** @var GrossSalesInvoice $locked */
             $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
 
-            if ($locked->shipping_fee_status === GrossSalesInvoice::SHIPPING_FEE_COLLECTED
-                || $locked->shipping_fee_status === GrossSalesInvoice::SHIPPING_FEE_SETTLED) {
-                return $locked->fresh(['lines', 'shippingCompany']);
+            if ($locked->status !== GrossSalesInvoice::STATUS_REFUSED) {
+                throw GrossException::invalidTransition();
+            }
+
+            $locked->load(['lines.allocation']);
+
+            foreach ($locked->lines as $line) {
+                $allocation = $line->allocation;
+                if ($allocation !== null && $allocation->returnedPendingHandover() > 0) {
+                    $this->allocations->receiveReturnedFromCourier($allocation, $actor);
+                }
+            }
+
+            return $locked->fresh(['lines.allocation', 'lines.item']);
+        });
+    }
+
+    /**
+     * @param  array{post_to_treasury?: bool, treasury_account_id?: int|null}  $options
+     */
+    public function collectCod(GrossSalesInvoice $invoice, User $actor, array $options = []): GrossSalesInvoice
+    {
+        return DB::transaction(function () use ($invoice, $actor, $options) {
+            /** @var GrossSalesInvoice $locked */
+            $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->cod_collection_status === GrossSalesInvoice::COD_COLLECTED) {
+                return $locked->fresh(['lines', 'shippingCompany', 'codCollectedByUser', 'courierCodTreasuryVoucher']);
             }
 
             if ($locked->status !== GrossSalesInvoice::STATUS_CONFIRMED) {
                 throw GrossException::notConfirmed();
             }
 
-            if ($locked->shipping_fee_status !== GrossSalesInvoice::SHIPPING_FEE_PENDING) {
-                throw GrossException::feeNotPending();
+            if ($locked->cod_collection_status !== GrossSalesInvoice::COD_PENDING) {
+                throw GrossException::codNotPending();
             }
 
-            $locked->update([
-                'shipping_fee_status' => GrossSalesInvoice::SHIPPING_FEE_COLLECTED,
-                'shipping_fee_collected_at' => now(),
-                'shipping_fee_collected_by' => $actor->id,
-            ]);
+            $locked->load(['lines.allocation']);
+            $this->net->recalculateInvoice($locked);
+            $locked = $locked->fresh(['lines.allocation', 'lines.item']);
 
-            return $locked->fresh(['lines', 'shippingCompany', 'shippingFeeCollectedByUser']);
+            foreach ($locked->lines as $line) {
+                $allocation = $line->allocation;
+                if ($allocation !== null) {
+                    $this->allocations->receiveReturnedFromCourier($allocation, $actor);
+                }
+            }
+
+            $amount = round($locked->collectibleAmount(), 2);
+
+            $feeUpdate = [];
+            if ($locked->shipping_fee_status === GrossSalesInvoice::SHIPPING_FEE_PENDING) {
+                $feeUpdate = [
+                    'shipping_fee_status' => GrossSalesInvoice::SHIPPING_FEE_COLLECTED,
+                    'shipping_fee_collected_at' => now(),
+                    'shipping_fee_collected_by' => $actor->id,
+                ];
+            }
+
+            $locked->update(array_merge([
+                'cod_collection_status' => GrossSalesInvoice::COD_COLLECTED,
+                'cod_collected_amount' => $amount,
+                'cod_collected_at' => now(),
+                'cod_collected_by' => $actor->id,
+            ], $feeUpdate));
+
+            $locked = $locked->fresh(['lines', 'shippingCompany', 'codCollectedByUser']);
+
+            if (! empty($options['post_to_treasury']) && ! empty($options['treasury_account_id'])) {
+                $this->treasury->createCourierCodReceipt($actor, [
+                    'sales_invoice_id' => $locked->id,
+                    'account_id' => (int) $options['treasury_account_id'],
+                    'voucher_date' => now()->toDateString(),
+                ]);
+            }
+
+            return $locked->fresh(['lines', 'shippingCompany', 'codCollectedByUser', 'courierCodTreasuryVoucher']);
         });
+    }
+
+    /** @deprecated Use collectCod() — kept for tests migrating from fee-only collection. */
+    public function collectShippingFee(GrossSalesInvoice $invoice, User $actor): GrossSalesInvoice
+    {
+        return $this->collectCod($invoice, $actor);
     }
 
     public function markDelivered(GrossSalesInvoice $invoice, ?User $actor = null): GrossSalesInvoice
@@ -380,7 +472,7 @@ class SalesInvoiceService
             }
 
             if (! $locked->canMarkDelivered()) {
-                throw GrossException::feeStillPending();
+                throw GrossException::codStillPending();
             }
 
             $locked->load(['lines.allocation', 'lines.item']);
@@ -431,6 +523,8 @@ class SalesInvoiceService
             'total' => $total,
         ]);
 
+        $this->net->recalculateInvoice($invoice->fresh(['lines.allocation']));
+
         return $invoice->refresh();
     }
 
@@ -480,6 +574,9 @@ class SalesInvoiceService
                 'discount_amount' => $discountAmount,
                 'discount_percent' => $discountPercent,
                 'line_total' => $lineTotal,
+                'returned_amount' => 0,
+                'lost_amount' => 0,
+                'net_line_total' => $lineTotal,
             ]);
         }
     }
@@ -508,5 +605,24 @@ class SalesInvoiceService
         $seq->save();
 
         return sprintf('MH-%s-%04d', $yearMonth, $seq->last_number);
+    }
+
+    /**
+     * @return array{cod_collection_status: string, shipping_fee_status: string}
+     */
+    private function codFieldsOnConfirm(GrossSalesInvoice $invoice): array
+    {
+        $hasCourier = $invoice->shipping_company_id !== null;
+        $total = (float) $invoice->total;
+        $fee = (float) $invoice->shipping_fee;
+
+        return [
+            'cod_collection_status' => ($hasCourier && $total > 0)
+                ? GrossSalesInvoice::COD_PENDING
+                : GrossSalesInvoice::COD_NONE,
+            'shipping_fee_status' => $fee > 0
+                ? GrossSalesInvoice::SHIPPING_FEE_PENDING
+                : GrossSalesInvoice::SHIPPING_FEE_NONE,
+        ];
     }
 }

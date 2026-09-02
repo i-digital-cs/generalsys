@@ -119,8 +119,12 @@ One DB transaction.
 
 ## 7. Partial return & item loss
 
-- **Return:** qty ≤ current `qty_with_courier_pieces` → ON_HAND up, allocation returned up / with_courier down. Movement `SALE_RETURN`.
-- **Loss confirm:** requires capability `gross.loss.confirm` (see §8). Same qty cap. Movement `LOSS_CONFIRM`. Never restores stock.
+- **Client partial return:** qty ≤ deliverable with courier (`with_courier − returned_pending`). Money adjusts immediately (`qty_returned_pieces` up). **Pieces stay with courier** until handover at COD collection (or refuse handover). Audit movement `SALE_RETURN_CLIENT` (no stock move).
+- **Full client refuse:** same as partial but for all remaining pieces — money zeroed, **pieces stay with courier** until **Receive pieces from courier**. Delivery fee (`shipping_fee`) becomes **owed to shipping company** (shown on invoice + collection statement as `DELIVERY_FEE`).
+- **Handover from courier:** `receiveReturnedFromCourier` / **Receive refused pieces** moves refused pieces: WITH_COURIER −, ON_HAND +. Movement `SALE_RETURN` (partial/COD) or `REFUSE_RETURN` (full refuse).
+- **Deliver:** only deliverable qty (`with_courier − returned_pending`) → `SALE_DELIVERED`.
+- **Loss confirm:** requires capability `gross.loss.confirm` (see §8). Qty cap = deliverable with courier. Movement `LOSS_CONFIRM`. Never restores stock.
+- **Allocation invariant:** `shipped = delivered + with_courier + lost + returned_received`.
 
 ---
 
@@ -201,6 +205,27 @@ Mark delivered                      →  CONFIRMED → DELIVERED
 
 UI: pending list + actions on sales invoice show.
 
+### 12.3 Sales invoice net totals (locked — persisted DB, T-12.2+)
+
+Piece counts: **`gross_shipment_allocations`** (source of truth for shipped / returned / with_courier / delivered / lost).
+
+Money after confirm (updated by `SalesInvoiceNetService` on confirm, partial return, loss, refuse):
+
+```text
+Line returned_amount = line_total × qty_returned_pieces / qty_pieces
+Line lost_amount     = line_total × qty_lost_pieces / qty_pieces
+Line net_line_total  = line_total − returned_amount − lost_amount
+
+Invoice returned_merchandise = Σ returned_amount
+Invoice net_subtotal         = Σ net_line_total
+Invoice net_discount         = scaled from original discount (same rules as draft)
+Invoice net_total            = net_subtotal − net_discount + shipping_fee
+  (shipping_fee = 0 when status REFUSED)
+
+Invoice total (original) stays immutable after confirm — net_* columns are collectible truth.
+UI reads net_* + allocation columns only (SalesInvoiceDisplayService is a thin reader).
+```
+
 ---
 
 ## 12. Phase 12 — Gap closure (locked before T-12.4 / T-12.5)
@@ -211,8 +236,8 @@ Build order: `docs/TASKS.md` T-12.1 → T-12.5. **Confirm §12.4 COD rules with 
 |------|--------|
 | T-12.1 | **Low stock alert** — in-app only: portal product dashboard card + optional sidebar badge when any active item has `qty_on_hand_pieces ≤ reorder_level`. Link to stock list `?low_stock=1`. No email/SMS. |
 | T-12.2 | **Shipping returns report** — per company: chronological partial returns + refuses; filters; piece totals. |
-| T-12.3 | **Shipping collection statement** — chronological money ledger per currency (mirror supplier statement UX): invoice totals owed (+), return/refuse adjustments (−), COD collections (−), treasury RECEIPT (−) after T-12.5. Running balance = net owed by courier. |
-| T-12.4 | **Full COD collection** — courier remits **full invoice `total`** (products + discounts + shipping fee), not shipping fee alone. See §12.4 below. |
+| T-12.3 | **Shipping collection statement** ✅ — route `gross.shipping.statement`; `ShippingCollectionStatementService`: merchandise owed (+), partial return netted in SALE when applicable, refuse adjustment (− merchandise only; shipping stays with courier), treasury/COD collections (−); running balance owed by courier; filters currency/from/to. Links from shipping show + index. |
+| T-12.4 | **Full COD collection** ✅ — `cod_collection_status`; **Collect COD** = net merchandise from courier (shipping fee excluded); refuse → LOST; deliver gate; collections queue + invoice show; shipping fee action removed. |
 | T-12.5 | **Treasury on COD** — voucher purpose `COURIER_COD`; optional auto RECEIPT on collect; no double-post per invoice. |
 
 ### 12.4 COD collection (locked — user approved plan 2026-09-01)

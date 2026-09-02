@@ -11,6 +11,7 @@ use App\Models\Gross\GrossItemAttribute;
 use App\Services\Gross\CategoryService;
 use App\Services\Gross\ItemAttributeService;
 use App\Services\Gross\ItemService;
+use App\Services\Gross\PieceLocationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -23,6 +24,7 @@ class ItemController extends Controller
         private readonly ItemService $items,
         private readonly CategoryService $categories,
         private readonly ItemAttributeService $attributes,
+        private readonly PieceLocationService $locations,
     ) {}
 
     public function index(Request $request): View
@@ -83,7 +85,16 @@ class ItemController extends Controller
             'images',
         ]);
 
-        return view('gross.items.show', compact('item'));
+        return view('gross.items.show', [
+            'item' => $item,
+            'courierBreakdown' => $this->locations->courierBreakdownByItemIds([$item->id])[$item->id] ?? [],
+            'courierSummary' => $this->locations->courierSummaryByItemIds([$item->id])[$item->id] ?? [
+                'awaiting_delivery' => 0,
+                'refused_with_courier' => 0,
+                'total_with_courier' => 0,
+            ],
+            'totalTrackedPieces' => $this->locations->totalTrackedPieces($item->balance),
+        ]);
     }
 
     public function edit(GrossItem $item): View

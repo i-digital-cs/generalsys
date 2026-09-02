@@ -66,6 +66,16 @@ class GrossException extends RuntimeException
         return new self('gross.errors.not_confirmed');
     }
 
+    public static function codNotPending(): self
+    {
+        return new self('gross.errors.cod_not_pending');
+    }
+
+    public static function codStillPending(): self
+    {
+        return new self('gross.errors.cod_still_pending');
+    }
+
     public static function feeNotPending(): self
     {
         return new self('gross.errors.fee_not_pending');
@@ -109,5 +119,30 @@ class GrossException extends RuntimeException
     public static function expenseTypeInUse(): self
     {
         return new self('gross.errors.expense_type_in_use');
+    }
+
+    public static function courierCodAlreadyPosted(): self
+    {
+        return new self('gross.errors.courier_cod_already_posted');
+    }
+
+    public static function courierCodInvoiceRequired(): self
+    {
+        return new self('gross.errors.courier_cod_invoice_required');
+    }
+
+    public static function courierCodNotCollected(): self
+    {
+        return new self('gross.errors.courier_cod_not_collected');
+    }
+
+    public static function courierCodAmountMismatch(): self
+    {
+        return new self('gross.errors.courier_cod_amount_mismatch');
+    }
+
+    public static function tooManyTreasuryAttachments(): self
+    {
+        return new self('gross.errors.too_many_treasury_attachments');
     }
 }

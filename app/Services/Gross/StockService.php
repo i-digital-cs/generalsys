@@ -392,6 +392,34 @@ class StockService
         });
     }
 
+    /**
+     * Client refused merchandise — audit only; pieces remain with courier until handover.
+     */
+    public function recordClientReturn(
+        GrossItem $item,
+        int $qtyPieces,
+        int $conversionFactor,
+        string $refType,
+        int $refId,
+        ?User $actor = null,
+    ): GrossStockMovement {
+        if ($qtyPieces < 1) {
+            throw GrossException::invalidQty();
+        }
+
+        return $this->createMovement(
+            $item,
+            GrossStockMovement::TYPE_SALE_RETURN_CLIENT,
+            $qtyPieces,
+            GrossStockMovement::UNIT_PIECE,
+            $conversionFactor,
+            $qtyPieces,
+            $refType,
+            $refId,
+            $actor,
+        );
+    }
+
     public function applyRefuseReturn(
         GrossItem $item,
         int $qtyPieces,

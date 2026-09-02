@@ -20,7 +20,7 @@ class CourierCollectionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_collect_fee_then_deliver_and_block_deliver_while_pending(): void
+    public function test_collect_cod_then_deliver_and_block_deliver_while_pending(): void
     {
         $manager = User::factory()->manager()->create();
         $item = app(ItemService::class)->create([
@@ -49,7 +49,8 @@ class CourierCollectionTest extends TestCase
         $service->confirm($invoice, $manager);
         $invoice = $invoice->fresh();
 
-        $this->assertSame(GrossSalesInvoice::SHIPPING_FEE_PENDING, $invoice->shipping_fee_status);
+        $this->assertSame(GrossSalesInvoice::COD_PENDING, $invoice->cod_collection_status);
+        $this->assertSame('100.00', number_format($invoice->collectibleAmount(), 2, '.', ''));
 
         $this->actingAs($manager)
             ->post(route('gross.sales.deliver', $invoice))
@@ -59,19 +60,21 @@ class CourierCollectionTest extends TestCase
             ->get(route('gross.sales.collections'))
             ->assertOk()
             ->assertSee($invoice->invoice_number, false)
-            ->assertSee('Collect fee', false);
+            ->assertSee('Collect COD', false);
 
         $this->actingAs($manager)
-            ->post(route('gross.sales.collect-fee', $invoice))
+            ->post(route('gross.sales.collect-cod', $invoice))
             ->assertRedirect()
             ->assertSessionHas('success');
 
         $invoice->refresh();
+        $this->assertSame(GrossSalesInvoice::COD_COLLECTED, $invoice->cod_collection_status);
+        $this->assertSame('100.00', $invoice->cod_collected_amount);
         $this->assertSame(GrossSalesInvoice::SHIPPING_FEE_COLLECTED, $invoice->shipping_fee_status);
         $this->assertSame(GrossSalesInvoice::STATUS_CONFIRMED, $invoice->status);
 
-        $again = $service->collectShippingFee($invoice, $manager);
-        $this->assertSame(GrossSalesInvoice::SHIPPING_FEE_COLLECTED, $again->shipping_fee_status);
+        $again = $service->collectCod($invoice, $manager);
+        $this->assertSame(GrossSalesInvoice::COD_COLLECTED, $again->cod_collection_status);
 
         $this->actingAs($manager)
             ->post(route('gross.sales.deliver', $invoice))
@@ -88,7 +91,7 @@ class CourierCollectionTest extends TestCase
         $this->assertSame(0, $alloc->qty_with_courier_pieces);
     }
 
-    public function test_zero_fee_can_deliver_without_collect(): void
+    public function test_no_courier_invoice_has_cod_none_and_delivers_without_collect(): void
     {
         $manager = User::factory()->manager()->create();
         $item = app(ItemService::class)->create([
@@ -111,10 +114,12 @@ class CourierCollectionTest extends TestCase
         ]]);
         $service->confirm($invoice, $manager);
 
-        $this->assertSame(GrossSalesInvoice::SHIPPING_FEE_NONE, $invoice->fresh()->shipping_fee_status);
+        $invoice = $invoice->fresh();
+        $this->assertSame(GrossSalesInvoice::COD_NONE, $invoice->cod_collection_status);
+        $this->assertSame(GrossSalesInvoice::SHIPPING_FEE_NONE, $invoice->shipping_fee_status);
 
         $this->actingAs($manager)
-            ->post(route('gross.sales.deliver', $invoice->fresh()))
+            ->post(route('gross.sales.deliver', $invoice))
             ->assertRedirect();
 
         $this->assertSame(GrossSalesInvoice::STATUS_DELIVERED, $invoice->fresh()->status);
@@ -124,7 +129,7 @@ class CourierCollectionTest extends TestCase
         $this->assertSame(0, $balance->qty_with_courier_pieces);
     }
 
-    public function test_deliver_after_partial_return_clears_remaining_with_courier(): void
+    public function test_deliver_after_partial_return_keeps_refused_pieces_with_courier(): void
     {
         $manager = User::factory()->manager()->create();
         $item = app(ItemService::class)->create([
@@ -153,13 +158,13 @@ class CourierCollectionTest extends TestCase
         $service->markDelivered($invoice->fresh(), $manager);
 
         $balance = GrossStockBalance::query()->where('item_id', $item->id)->firstOrFail();
-        $this->assertSame(3, $balance->qty_on_hand_pieces);
-        $this->assertSame(0, $balance->qty_with_courier_pieces);
+        $this->assertSame(0, $balance->qty_on_hand_pieces);
+        $this->assertSame(3, $balance->qty_with_courier_pieces);
 
         $alloc = $alloc->fresh();
         $this->assertSame(7, $alloc->qty_delivered_pieces);
         $this->assertSame(3, $alloc->qty_returned_pieces);
-        $this->assertSame(0, $alloc->qty_with_courier_pieces);
+        $this->assertSame(3, $alloc->qty_with_courier_pieces);
     }
 
     public function test_mark_delivered_is_idempotent_for_stock(): void
@@ -231,6 +236,7 @@ class CourierCollectionTest extends TestCase
     public function test_sales_can_collect_unassigned_employee_cannot(): void
     {
         $manager = User::factory()->manager()->create();
+        $shipping = GrossShippingCompany::query()->create(['name' => 'Courier', 'status' => 'ACTIVE']);
         $item = app(ItemService::class)->create([
             'name' => 'Bag',
             'status' => GrossItem::STATUS_ACTIVE,
@@ -241,6 +247,7 @@ class CourierCollectionTest extends TestCase
         $invoice = $service->createDraft($manager, [
             'customer_name' => 'Omar',
             'customer_phone' => '0122',
+            'shipping_company_id' => $shipping->id,
             'currency' => 'EGP',
             'shipping_fee' => 10,
         ], [[
@@ -259,15 +266,16 @@ class CourierCollectionTest extends TestCase
         ]);
 
         $this->actingAs($sales->fresh())
-            ->post(route('gross.sales.collect-fee', $invoice))
+            ->post(route('gross.sales.collect-cod', $invoice))
             ->assertRedirect();
 
-        $this->assertSame(GrossSalesInvoice::SHIPPING_FEE_COLLECTED, $invoice->fresh()->shipping_fee_status);
+        $this->assertSame(GrossSalesInvoice::COD_COLLECTED, $invoice->fresh()->cod_collection_status);
 
         $employee = User::factory()->employee()->create();
         $pending = $service->createDraft($manager, [
             'customer_name' => 'Lina',
             'customer_phone' => '0133',
+            'shipping_company_id' => $shipping->id,
             'currency' => 'EGP',
             'shipping_fee' => 8,
         ], [[
@@ -279,7 +287,7 @@ class CourierCollectionTest extends TestCase
         $service->confirm($pending, $manager);
 
         $this->actingAs($employee)
-            ->post(route('gross.sales.collect-fee', $pending))
+            ->post(route('gross.sales.collect-cod', $pending))
             ->assertForbidden();
     }
 }

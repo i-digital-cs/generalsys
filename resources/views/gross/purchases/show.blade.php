@@ -8,6 +8,20 @@
             <a href="{{ route('gross.purchases.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('general.back') }}</a>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            @if (! $invoice->isDraft())
+                <a href="{{ route('gross.purchases.excel', $invoice) }}"
+                   class="btn btn-outline-secondary btn-sm"
+                   title="{{ __('gross.purchases.export_excel') }}">
+                    <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ __('gross.purchases.export_excel') }}</span>
+                </a>
+                <a href="{{ route('gross.purchases.pdf', $invoice) }}"
+                   class="btn btn-outline-secondary btn-sm"
+                   title="{{ __('gross.purchases.export_pdf') }}">
+                    <i class="bi bi-filetype-pdf" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ __('gross.purchases.export_pdf') }}</span>
+                </a>
+            @endif
             @if ($invoice->isDraft())
                 @can('update', $invoice)
                     <a href="{{ route('gross.purchases.edit', $invoice) }}" class="btn btn-outline-primary btn-sm">{{ __('general.edit') }}</a>
@@ -95,10 +109,15 @@
                             <th class="col-num">{{ __('gross.fields.buy_price') }}</th>
                             <th class="col-num">{{ __('gross.fields.sale_price') }}</th>
                             <th class="col-num">{{ __('gross.fields.line_total') }}</th>
+                            @if ($display['has_returns'] ?? false)
+                                <th class="col-num">{{ __('gross.purchases.returned_amount') }}</th>
+                                <th class="col-num">{{ __('gross.purchases.net_line_total') }}</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($invoice->lines as $line)
+                        @foreach (($display['has_returns'] ?? false) ? $display['lines'] : $invoice->lines->map(fn ($line) => ['line' => $line]) as $row)
+                            @php $line = $row['line']; @endphp
                             <tr>
                                 <td>
                                     @if ($line->item_id)
@@ -119,27 +138,85 @@
                                     @endif
                                 </td>
                                 <td>{{ $line->size_snapshot ?: '—' }}</td>
-                                <td class="col-num"><span class="num-ltr">{{ $line->qty_pieces }}</span></td>
-                                <td class="col-num"><span class="num-ltr">{{ $line->qty_returned_pieces }}</span></td>
-                                <td class="col-num"><span class="num-ltr">{{ $line->remainingPieces() }}</span></td>
+                                <td class="col-num"><span class="num-ltr">{{ ($display['has_returns'] ?? false) ? $row['qty_purchased'] : $line->qty_pieces }}</span></td>
+                                <td class="col-num">
+                                    @if (($display['has_returns'] ?? false) && $row['qty_returned'] > 0)
+                                        <span class="num-ltr text-warning fw-semibold">{{ $row['qty_returned'] }}</span>
+                                    @else
+                                        <span class="num-ltr">{{ ($display['has_returns'] ?? false) ? $row['qty_returned'] : $line->qty_returned_pieces }}</span>
+                                    @endif
+                                </td>
+                                <td class="col-num"><span class="num-ltr">{{ ($display['has_returns'] ?? false) ? $row['qty_remaining'] : $line->remainingPieces() }}</span></td>
                                 <td class="col-num"><span class="num-ltr"><x-money :amount="$line->buy_price" :currency="$invoice->currency" /></span></td>
                                 <td class="col-num"><span class="num-ltr"><x-money :amount="$line->sale_price" :currency="$invoice->currency" /></span></td>
                                 <td class="col-num fw-semibold"><span class="num-ltr"><x-money :amount="$line->line_total" :currency="$invoice->currency" /></span></td>
+                                @if ($display['has_returns'] ?? false)
+                                    <td class="col-num">
+                                        @if ($row['returned_amount'] > 0)
+                                            <span class="num-ltr text-warning">−<x-money :amount="$row['returned_amount']" :currency="$invoice->currency" /></span>
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td class="col-num fw-semibold">
+                                        <span class="num-ltr"><x-money :amount="$row['net_line_total']" :currency="$invoice->currency" /></span>
+                                    </td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
 
+            @if (! empty($display['has_returns']) && ($display['returned_merchandise'] ?? 0) > 0)
+                <div class="alert alert-warning py-2 small mb-3 d-print-none">
+                    <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                    {{ __('gross.purchases.return_totals_hint') }}
+                </div>
+            @endif
+
             <div class="row justify-content-end">
-                <div class="col-md-5">
+                <div class="col-md-6">
                     <dl class="row mb-0 small">
                         <dt class="col-6">{{ __('gross.fields.subtotal') }}</dt>
                         <dd class="col-6 text-end num-ltr"><x-money :amount="$invoice->subtotal" :currency="$invoice->currency" /></dd>
+                        @if (! empty($display['has_returns']) && ($display['returned_merchandise'] ?? 0) > 0)
+                            <dt class="col-6 text-warning">{{ __('gross.purchases.returned_merchandise') }}</dt>
+                            <dd class="col-6 text-end text-warning num-ltr">
+                                −<x-money :amount="$display['returned_merchandise']" :currency="$invoice->currency" />
+                            </dd>
+                            <dt class="col-6">{{ __('gross.purchases.net_subtotal') }}</dt>
+                            <dd class="col-6 text-end fw-semibold num-ltr">
+                                <x-money :amount="$display['net_subtotal']" :currency="$invoice->currency" />
+                            </dd>
+                        @endif
                         <dt class="col-6">{{ __('gross.fields.invoice_discount') }}</dt>
-                        <dd class="col-6 text-end num-ltr"><x-money :amount="$invoice->discount_amount" :currency="$invoice->currency" /></dd>
-                        <dt class="col-6 fw-semibold">{{ __('gross.fields.grand_total') }}</dt>
-                        <dd class="col-6 text-end fw-semibold num-ltr"><x-money :amount="$invoice->total" :currency="$invoice->currency" /></dd>
+                        <dd class="col-6 text-end num-ltr">
+                            <x-money :amount="$invoice->discount_amount" :currency="$invoice->currency" />
+                            @if ((float) $invoice->discount_percent > 0)
+                                <span class="text-body-secondary">({{ number_format((float) $invoice->discount_percent, 2) }}%)</span>
+                            @endif
+                            @if (! empty($display['has_returns']) && ($display['returned_merchandise'] ?? 0) > 0 && ($display['net_discount'] ?? 0) != (float) $invoice->discount_amount)
+                                <div class="text-body-secondary">
+                                    {{ __('gross.purchases.net_discount') }}:
+                                    <x-money :amount="$display['net_discount']" :currency="$invoice->currency" />
+                                </div>
+                            @endif
+                        </dd>
+                        <dt class="col-6 border-top pt-2 fw-semibold">{{ __('gross.fields.grand_total') }}</dt>
+                        <dd class="col-6 text-end border-top pt-2 fw-bold fs-5 num-ltr">
+                            <x-money :amount="$invoice->total" :currency="$invoice->currency" />
+                            @if (! empty($display['has_returns']) && ($display['returned_merchandise'] ?? 0) > 0)
+                                <div class="small fw-normal text-body-secondary">{{ __('gross.purchases.original_total') }}</div>
+                            @endif
+                        </dd>
+                        @if (! empty($display['has_returns']) && ($display['returned_merchandise'] ?? 0) > 0)
+                            <dt class="col-6 border-top pt-2 text-primary">{{ __('gross.purchases.net_payable') }}</dt>
+                            <dd class="col-6 text-end border-top pt-2 fw-bold fs-5 text-primary num-ltr">
+                                <x-money :amount="$display['net_grand_total']" :currency="$invoice->currency" />
+                                <div class="small fw-normal text-body-secondary">{{ __('gross.purchases.net_payable_hint') }}</div>
+                            </dd>
+                        @endif
                     </dl>
                 </div>
             </div>

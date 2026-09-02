@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Gross;
 
 use App\Exceptions\GrossException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Gross\CollectCodRequest;
 use App\Http\Requests\Gross\GrossAllocationQtyRequest;
 use App\Http\Requests\Gross\RefuseGrossSalesInvoiceRequest;
 use App\Http\Requests\Gross\StoreGrossSalesInvoiceRequest;
@@ -13,9 +14,12 @@ use App\Models\Gross\GrossShipmentAllocation;
 use App\Services\Gross\AllocationService;
 use App\Services\Gross\CustomerService;
 use App\Services\Gross\ItemService;
+use App\Services\Gross\SalesInvoiceDisplayService;
 use App\Services\Gross\SalesInvoiceExportService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
+use App\Services\Gross\TreasuryService;
+use App\Support\GrossAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -31,6 +35,8 @@ class SalesInvoiceController extends Controller
         private readonly ShippingCompanyService $shipping,
         private readonly ItemService $items,
         private readonly SalesInvoiceExportService $exports,
+        private readonly SalesInvoiceDisplayService $display,
+        private readonly TreasuryService $treasury,
     ) {}
 
     public function index(): View
@@ -77,10 +83,15 @@ class SalesInvoiceController extends Controller
     public function show(GrossSalesInvoice $invoice): View
     {
         $this->authorize('view', $invoice);
-        $invoice->load(['lines.item', 'lines.allocation', 'customer', 'shippingCompany', 'salesUser']);
+        $invoice->load(['lines.item', 'lines.allocation', 'customer', 'shippingCompany', 'salesUser', 'courierCodTreasuryVoucher']);
 
         return view('gross.sales.show', [
             'invoice' => $invoice,
+            'display' => $this->display->build($invoice),
+            'treasuryAccounts' => GrossAccess::mayPostTreasury(auth()->user())
+                ? $this->treasury->activeAccounts()
+                : collect(),
+            'canPostTreasury' => GrossAccess::mayPostTreasury(auth()->user()),
         ]);
     }
 
@@ -220,22 +231,32 @@ class SalesInvoiceController extends Controller
             'invoices' => $this->invoices->paginatePendingCollections($filters),
             'shippingCompanies' => $this->shipping->activeList(),
             'filters' => $filters,
+            'treasuryAccounts' => GrossAccess::mayPostTreasury($request->user())
+                ? $this->treasury->activeAccounts()
+                : collect(),
+            'canPostTreasury' => GrossAccess::mayPostTreasury($request->user()),
         ]);
     }
 
-    public function collectShippingFee(GrossSalesInvoice $invoice): RedirectResponse
+    public function collectCod(CollectCodRequest $request, GrossSalesInvoice $invoice): RedirectResponse
     {
-        $this->authorize('collectShippingFee', $invoice);
+        $this->authorize('collectCod', $invoice);
+
+        $options = $request->treasuryOptions();
 
         try {
-            $this->invoices->collectShippingFee($invoice, request()->user());
+            $collected = $this->invoices->collectCod($invoice, $request->user(), $options);
         } catch (GrossException $e) {
             return back()->withErrors(['status' => __($e->getMessage())]);
         }
 
+        $flash = $options['post_to_treasury'] && $collected->courierCodTreasuryVoucher
+            ? 'gross.flash.cod_collected_treasury'
+            : 'gross.flash.cod_collected';
+
         return redirect()
             ->back()
-            ->with('success', __('gross.flash.shipping_fee_collected'));
+            ->with('success', __($flash));
     }
 
     public function markDelivered(GrossSalesInvoice $invoice): RedirectResponse
@@ -251,6 +272,21 @@ class SalesInvoiceController extends Controller
         return redirect()
             ->route('gross.sales.show', $invoice)
             ->with('success', __('gross.flash.invoice_delivered'));
+    }
+
+    public function receiveRefused(GrossSalesInvoice $invoice): RedirectResponse
+    {
+        $this->authorize('receiveRefused', $invoice);
+
+        try {
+            $this->invoices->receiveRefusedFromCourier($invoice, auth()->user());
+        } catch (GrossException $e) {
+            return back()->withErrors(['status' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->route('gross.sales.show', $invoice)
+            ->with('success', __('gross.flash.refused_pieces_received'));
     }
 
     private function allocationForInvoice(GrossSalesInvoice $invoice, int $allocationId): GrossShipmentAllocation

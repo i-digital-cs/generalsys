@@ -16,6 +16,18 @@
     <div class="offcanvas-body p-0">
         <ul class="nav flex-column py-2">
             @foreach ($items as $item)
+                @if (($item['type'] ?? '') === 'heading')
+                    @if (! empty($item['can']) && ! auth()->user()->can($item['can'][0], $item['can'][1] ?? null))
+                        @continue
+                    @endif
+                    <li class="nav-item mt-2 px-3">
+                        <span class="d-block small text-uppercase text-body-secondary fw-semibold"
+                              style="font-size: .68rem; letter-spacing: .04em;">
+                            {{ __($item['key']) }}
+                        </span>
+                    </li>
+                    @continue
+                @endif
                 @if (! empty($item['can']) && ! auth()->user()->can($item['can'][0], $item['can'][1] ?? null))
                     @continue
                 @endif

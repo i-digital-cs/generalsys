@@ -55,4 +55,9 @@ final class GrossAccess
     {
         return self::maySell($user);
     }
+
+    public static function mayPostTreasury(?User $user): bool
+    {
+        return self::mayManageMasterData($user);
+    }
 }

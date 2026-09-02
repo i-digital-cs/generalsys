@@ -17,6 +17,7 @@ class GrossShipmentAllocation extends Model
         'qty_shipped_pieces',
         'qty_delivered_pieces',
         'qty_returned_pieces',
+        'qty_returned_received_pieces',
         'qty_with_courier_pieces',
         'qty_lost_pieces',
     ];
@@ -28,6 +29,7 @@ class GrossShipmentAllocation extends Model
             'qty_shipped_pieces' => 'integer',
             'qty_delivered_pieces' => 'integer',
             'qty_returned_pieces' => 'integer',
+            'qty_returned_received_pieces' => 'integer',
             'qty_with_courier_pieces' => 'integer',
             'qty_lost_pieces' => 'integer',
         ];
@@ -46,12 +48,38 @@ class GrossShipmentAllocation extends Model
     public function assertInvariant(): void
     {
         $sum = $this->qty_delivered_pieces
-            + $this->qty_returned_pieces
             + $this->qty_with_courier_pieces
-            + $this->qty_lost_pieces;
+            + $this->qty_lost_pieces
+            + $this->qty_returned_received_pieces;
 
         if ($sum !== $this->qty_shipped_pieces) {
             throw new GrossException('gross.errors.allocation_invariant');
         }
+
+        $maxReturned = $this->qty_shipped_pieces
+            - $this->qty_delivered_pieces
+            - $this->qty_lost_pieces;
+
+        if ($this->qty_returned_pieces > $maxReturned) {
+            throw new GrossException('gross.errors.allocation_invariant');
+        }
+
+        if ($this->qty_returned_received_pieces > $this->qty_returned_pieces) {
+            throw new GrossException('gross.errors.allocation_invariant');
+        }
+
+        if ($this->returnedPendingHandover() > $this->qty_with_courier_pieces) {
+            throw new GrossException('gross.errors.allocation_invariant');
+        }
+    }
+
+    public function returnedPendingHandover(): int
+    {
+        return max(0, (int) $this->qty_returned_pieces - (int) $this->qty_returned_received_pieces);
+    }
+
+    public function deliverableWithCourier(): int
+    {
+        return max(0, (int) $this->qty_with_courier_pieces - $this->returnedPendingHandover());
     }
 }

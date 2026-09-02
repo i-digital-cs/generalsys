@@ -100,7 +100,7 @@ class GrossHardeningTest extends TestCase
         $this->assertSame(5, $alloc->qty_with_courier_pieces);
     }
 
-    public function test_refuse_keeps_lost_pieces_and_returns_only_with_courier(): void
+    public function test_refuse_keeps_lost_pieces_and_pieces_with_courier(): void
     {
         $invoice = $this->confirmedInvoice(10);
         $alloc = $invoice->lines->first()->allocation;
@@ -108,19 +108,22 @@ class GrossHardeningTest extends TestCase
         $this->allocations->partialReturn($alloc, 2, $this->manager);
         $this->allocations->confirmLoss($alloc->fresh(), 1, $this->manager);
 
+        $balanceBefore = GrossStockBalance::query()->where('item_id', $this->item->id)->firstOrFail();
+
         $refused = $this->invoices->refuse($invoice->fresh(), $this->manager, 'refused');
         $this->assertSame(GrossSalesInvoice::STATUS_REFUSED, $refused->status);
-        $this->assertSame(GrossSalesInvoice::SHIPPING_FEE_LOST, $refused->shipping_fee_status);
+        $this->assertSame(GrossSalesInvoice::SHIPPING_FEE_PENDING, $refused->shipping_fee_status);
 
         $alloc->refresh();
         $this->assertSame(10, $alloc->qty_shipped_pieces);
         $this->assertSame(9, $alloc->qty_returned_pieces);
         $this->assertSame(1, $alloc->qty_lost_pieces);
-        $this->assertSame(0, $alloc->qty_with_courier_pieces);
+        $this->assertSame(9, $alloc->qty_with_courier_pieces);
+        $this->assertSame(9, $alloc->returnedPendingHandover());
 
         $balance = GrossStockBalance::query()->where('item_id', $this->item->id)->firstOrFail();
-        $this->assertSame(99, $balance->qty_on_hand_pieces);
-        $this->assertSame(0, $balance->qty_with_courier_pieces);
+        $this->assertSame((int) $balanceBefore->qty_on_hand_pieces, (int) $balance->qty_on_hand_pieces);
+        $this->assertSame((int) $balanceBefore->qty_with_courier_pieces, (int) $balance->qty_with_courier_pieces);
         $this->assertSame(1, $balance->qty_lost_pieces);
     }
 
@@ -185,7 +188,7 @@ class GrossHardeningTest extends TestCase
 
         $alloc->refresh();
         $this->assertSame(4, $alloc->qty_returned_pieces);
-        $this->assertSame(0, $alloc->qty_with_courier_pieces);
+        $this->assertSame(4, $alloc->qty_with_courier_pieces);
     }
 
     public function test_ledger_matches_balance_after_flow(): void
@@ -216,7 +219,7 @@ class GrossHardeningTest extends TestCase
 
         $this->assertSame($adjustedIn - $saleOut + $returns, $balance->qty_on_hand_pieces);
         $this->assertSame($lost, $balance->qty_lost_pieces);
-        $this->assertSame(0, $balance->qty_with_courier_pieces);
+        $this->assertSame(8, $balance->qty_with_courier_pieces);
     }
 
     private function draftInvoice(int $pieces): GrossSalesInvoice

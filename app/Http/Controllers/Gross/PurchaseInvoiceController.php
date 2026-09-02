@@ -9,11 +9,15 @@ use App\Http\Requests\Gross\StoreGrossPurchaseReturnRequest;
 use App\Http\Requests\Gross\UpdateGrossPurchaseInvoiceRequest;
 use App\Models\Gross\GrossPurchaseInvoice;
 use App\Services\Gross\ItemService;
+use App\Services\Gross\PurchaseInvoiceDisplayService;
+use App\Services\Gross\PurchaseInvoiceExportService;
 use App\Services\Gross\PurchaseInvoiceService;
 use App\Services\Gross\PurchaseReturnService;
 use App\Services\Gross\SupplierService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PurchaseInvoiceController extends Controller
 {
@@ -22,6 +26,8 @@ class PurchaseInvoiceController extends Controller
         private readonly PurchaseReturnService $returns,
         private readonly SupplierService $suppliers,
         private readonly ItemService $items,
+        private readonly PurchaseInvoiceDisplayService $display,
+        private readonly PurchaseInvoiceExportService $exports,
     ) {}
 
     public function index(): View
@@ -70,7 +76,23 @@ class PurchaseInvoiceController extends Controller
 
         return view('gross.purchases.show', [
             'invoice' => $purchase,
+            'display' => $this->display->build($purchase),
         ]);
+    }
+
+    public function pdf(GrossPurchaseInvoice $purchase): Response
+    {
+        $this->authorize('view', $purchase);
+
+        return $this->exports->downloadPdf($purchase)
+            ->download('gross-purchase-'.$purchase->invoice_number.'.pdf');
+    }
+
+    public function excel(GrossPurchaseInvoice $purchase): StreamedResponse
+    {
+        $this->authorize('view', $purchase);
+
+        return $this->exports->downloadExcel($purchase);
     }
 
     public function edit(GrossPurchaseInvoice $purchase): View

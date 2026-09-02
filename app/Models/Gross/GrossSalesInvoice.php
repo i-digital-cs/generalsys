@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class GrossSalesInvoice extends Model
 {
@@ -30,6 +31,14 @@ class GrossSalesInvoice extends Model
 
     public const SHIPPING_FEE_COLLECTED = 'COLLECTED';
 
+    public const COD_NONE = 'NONE';
+
+    public const COD_PENDING = 'PENDING';
+
+    public const COD_COLLECTED = 'COLLECTED';
+
+    public const COD_LOST = 'LOST';
+
     protected $table = 'gross_sales_invoices';
 
     protected $fillable = [
@@ -48,6 +57,10 @@ class GrossSalesInvoice extends Model
         'discount_percent',
         'subtotal',
         'total',
+        'returned_merchandise',
+        'net_subtotal',
+        'net_discount',
+        'net_total',
         'status',
         'notes',
         'refused_at',
@@ -57,6 +70,10 @@ class GrossSalesInvoice extends Model
         'cancelled_at',
         'shipping_fee_collected_at',
         'shipping_fee_collected_by',
+        'cod_collection_status',
+        'cod_collected_amount',
+        'cod_collected_at',
+        'cod_collected_by',
         'delivered_at',
         'created_by',
     ];
@@ -69,10 +86,16 @@ class GrossSalesInvoice extends Model
             'discount_percent' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'total' => 'decimal:2',
+            'returned_merchandise' => 'decimal:2',
+            'net_subtotal' => 'decimal:2',
+            'net_discount' => 'decimal:2',
+            'net_total' => 'decimal:2',
+            'cod_collected_amount' => 'decimal:2',
             'refused_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'shipping_fee_collected_at' => 'datetime',
+            'cod_collected_at' => 'datetime',
             'delivered_at' => 'datetime',
         ];
     }
@@ -102,6 +125,11 @@ class GrossSalesInvoice extends Model
         return $this->belongsTo(User::class, 'refused_by');
     }
 
+    public function codCollectedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cod_collected_by');
+    }
+
     public function shippingFeeCollectedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'shipping_fee_collected_by');
@@ -122,6 +150,12 @@ class GrossSalesInvoice extends Model
         );
     }
 
+    public function courierCodTreasuryVoucher(): HasOne
+    {
+        return $this->hasOne(GrossTreasuryVoucher::class, 'sales_invoice_id')
+            ->where('purpose', GrossTreasuryVoucher::PURPOSE_COURIER_COD);
+    }
+
     public function isDraft(): bool
     {
         return $this->status === self::STATUS_DRAFT;
@@ -137,9 +171,69 @@ class GrossSalesInvoice extends Model
         return $this->status === self::STATUS_DELIVERED;
     }
 
+    public function isRefused(): bool
+    {
+        return $this->status === self::STATUS_REFUSED;
+    }
+
+    public function refusedPiecesPendingHandover(): int
+    {
+        if (! $this->isRefused()) {
+            return 0;
+        }
+
+        $this->loadMissing('lines.allocation');
+
+        return (int) $this->lines->sum(
+            fn ($line) => (int) ($line->allocation?->returnedPendingHandover() ?? 0),
+        );
+    }
+
+    public function isRefusedHandoverComplete(): bool
+    {
+        return $this->isRefused() && $this->refusedPiecesPendingHandover() < 1;
+    }
+
+    public function deliveryFeeOwed(): float
+    {
+        if (! $this->isRefused() || (float) $this->shipping_fee <= 0) {
+            return 0.0;
+        }
+
+        return (float) $this->shipping_fee;
+    }
+
     public function shippingFeeIsPending(): bool
     {
         return $this->shipping_fee_status === self::SHIPPING_FEE_PENDING;
+    }
+
+    public function codIsPending(): bool
+    {
+        return $this->cod_collection_status === self::COD_PENDING;
+    }
+
+    public function collectibleAmount(): float
+    {
+        return $this->courierMerchandiseAmount();
+    }
+
+    /** Merchandise owed by courier (shipping fee stays with courier). */
+    public function courierMerchandiseAmount(): float
+    {
+        return max(0, round((float) $this->net_subtotal - (float) $this->net_discount, 2));
+    }
+
+    /** Merchandise on invoice at confirm (excludes shipping fee). */
+    public function originalMerchandiseAmount(): float
+    {
+        $subtotal = (float) $this->subtotal;
+        $percent = (float) $this->discount_percent;
+        if ($percent > 0) {
+            return max(0, round($subtotal * (1 - $percent / 100), 2));
+        }
+
+        return max(0, round($subtotal - (float) $this->discount_amount, 2));
     }
 
     public function canMarkDelivered(): bool
@@ -148,10 +242,9 @@ class GrossSalesInvoice extends Model
             return false;
         }
 
-        return in_array($this->shipping_fee_status, [
-            self::SHIPPING_FEE_NONE,
-            self::SHIPPING_FEE_COLLECTED,
-            self::SHIPPING_FEE_SETTLED,
+        return in_array($this->cod_collection_status, [
+            self::COD_NONE,
+            self::COD_COLLECTED,
         ], true);
     }
 }

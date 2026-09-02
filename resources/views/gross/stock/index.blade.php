@@ -96,6 +96,10 @@
                 </div>
             </form>
 
+            <p class="text-body-secondary small mb-3">
+                {{ __('gross.stock.location_hint') }}
+            </p>
+
             @if ($items->isEmpty())
                 <x-empty-state
                     :title="(($filters['q'] ?? '') !== '' || ! empty($filters['low_stock'])) ? __('general.no_filter_results') : __('gross.stock.empty')"
@@ -108,6 +112,7 @@
                                 <th style="width: 3.5rem"></th>
                                 <th>{{ __('gross.fields.code') }}</th>
                                 <th>{{ __('gross.fields.name') }}</th>
+                                <th class="col-num">{{ __('gross.fields.total_pieces') }}</th>
                                 <th class="col-num">{{ __('gross.fields.on_hand') }}</th>
                                 <th class="col-num">{{ __('gross.fields.with_courier') }}</th>
                                 <th class="col-num">{{ __('gross.fields.lost') }}</th>
@@ -117,7 +122,19 @@
                         </thead>
                         <tbody>
                             @foreach ($items as $item)
-                                @php($thumb = $item->images->first())
+                                @php
+                                    $thumb = $item->images->first();
+                                    $onHand = (int) ($item->balance?->qty_on_hand_pieces ?? 0);
+                                    $withCourier = (int) ($item->balance?->qty_with_courier_pieces ?? 0);
+                                    $lost = (int) ($item->balance?->qty_lost_pieces ?? 0);
+                                    $total = $onHand + $withCourier + $lost;
+                                    $breakdown = $courierBreakdown[$item->id] ?? [];
+                                    $summary = $courierSummary[$item->id] ?? [
+                                        'awaiting_delivery' => 0,
+                                        'refused_with_courier' => 0,
+                                        'total_with_courier' => 0,
+                                    ];
+                                @endphp
                                 <tr @class(['table-warning' => $item->isLowStock()])>
                                     <td>
                                         @if ($thumb)
@@ -138,9 +155,25 @@
                                             <span class="badge text-bg-warning ms-1">{{ __('gross.fields.low_stock') }}</span>
                                         @endif
                                     </td>
-                                    <td class="col-num"><span class="num-ltr">{{ $item->balance?->qty_on_hand_pieces ?? 0 }}</span></td>
-                                    <td class="col-num"><span class="num-ltr">{{ $item->balance?->qty_with_courier_pieces ?? 0 }}</span></td>
-                                    <td class="col-num"><span class="num-ltr">{{ $item->balance?->qty_lost_pieces ?? 0 }}</span></td>
+                                    <td class="col-num fw-semibold"><span class="num-ltr">{{ $total }}</span></td>
+                                    <td class="col-num"><span class="num-ltr">{{ $onHand }}</span></td>
+                                    <td class="col-num">
+                                        <span class="num-ltr">{{ $withCourier }}</span>
+                                        @if (($summary['awaiting_delivery'] ?? 0) > 0)
+                                            <div class="small text-primary">
+                                                <span class="num-ltr">{{ $summary['awaiting_delivery'] }}</span> {{ __('gross.stock.waiting_client') }}
+                                            </div>
+                                        @endif
+                                        @if (($summary['refused_with_courier'] ?? 0) > 0)
+                                            <div class="small text-warning">
+                                                <span class="num-ltr">{{ $summary['refused_with_courier'] }}</span> {{ __('gross.stock.refused_with_courier') }}
+                                            </div>
+                                        @endif
+                                        @if ($breakdown !== [])
+                                            @include('gross.partials.courier-breakdown-list', ['breakdown' => $breakdown])
+                                        @endif
+                                    </td>
+                                    <td class="col-num"><span class="num-ltr">{{ $lost }}</span></td>
                                     <td class="col-num"><span class="num-ltr">{{ $item->reorder_level }}</span></td>
                                     <td class="text-end text-nowrap">
                                         <a href="{{ route('gross.items.show', $item) }}" class="btn btn-sm btn-outline-primary">{{ __('general.view') }}</a>

@@ -38,4 +38,9 @@ return [
     'gross_collections' => 'Courier collections',
     'gross_treasury' => 'Treasury',
     'gross_expense_types' => 'Expense types',
+    'gross_section_catalog' => 'Catalog',
+    'gross_section_inventory' => 'Inventory',
+    'gross_section_purchasing' => 'Purchasing',
+    'gross_section_sales' => 'Sales & shipping',
+    'gross_section_finance' => 'Finance',
 ];

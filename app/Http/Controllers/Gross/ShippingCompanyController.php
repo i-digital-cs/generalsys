@@ -7,7 +7,10 @@ use App\Http\Requests\Gross\ImportGrossShippingCompanyRequest;
 use App\Http\Requests\Gross\StoreGrossShippingCompanyRequest;
 use App\Http\Requests\Gross\UpdateGrossShippingCompanyRequest;
 use App\Models\Gross\GrossShippingCompany;
+use App\Services\Gross\PieceLocationService;
+use App\Services\Gross\ShippingCollectionStatementService;
 use App\Services\Gross\ShippingCompanyService;
+use App\Services\Gross\ShippingReturnsReportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,7 +19,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ShippingCompanyController extends Controller
 {
-    public function __construct(private readonly ShippingCompanyService $companies) {}
+    public function __construct(
+        private readonly ShippingCompanyService $companies,
+        private readonly ShippingReturnsReportService $returnsReport,
+        private readonly ShippingCollectionStatementService $statement,
+        private readonly PieceLocationService $locations,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -57,6 +65,42 @@ class ShippingCompanyController extends Controller
             'company' => $shipping,
             'stats' => $this->companies->stats($shipping),
             'invoices' => $this->companies->paginateInvoices($shipping),
+            'withCourierActive' => $this->locations->activeWithCourierForCompany($shipping),
+            'returnsPreview' => $this->returnsReport->paginate($shipping, [], 50),
+        ]);
+    }
+
+    public function returnsReport(Request $request, GrossShippingCompany $shipping): View
+    {
+        $this->authorize('view', $shipping);
+
+        $filters = [
+            'from' => trim((string) $request->query('from', '')),
+            'to' => trim((string) $request->query('to', '')),
+        ];
+
+        return view('gross.shipping.returns', [
+            'company' => $shipping,
+            'filters' => $filters,
+            'totals' => $this->returnsReport->totals($shipping, $filters),
+            'entries' => $this->returnsReport->paginate($shipping, $filters),
+        ]);
+    }
+
+    public function statement(Request $request, GrossShippingCompany $shipping): View
+    {
+        $this->authorize('view', $shipping);
+
+        $filters = [
+            'currency' => strtoupper(trim((string) $request->query('currency', 'EGP'))),
+            'from' => trim((string) $request->query('from', '')),
+            'to' => trim((string) $request->query('to', '')),
+        ];
+
+        return view('gross.shipping.statement', [
+            'company' => $shipping,
+            'filters' => $filters,
+            'statement' => $this->statement->build($shipping, $filters),
         ]);
     }
 

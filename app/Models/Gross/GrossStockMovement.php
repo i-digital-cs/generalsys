@@ -16,6 +16,9 @@ class GrossStockMovement extends Model
 
     public const TYPE_SALE_RETURN = 'SALE_RETURN';
 
+    /** Client refused at delivery — money adjusts; pieces still with courier (no stock move). */
+    public const TYPE_SALE_RETURN_CLIENT = 'SALE_RETURN_CLIENT';
+
     public const TYPE_SALE_DELIVERED = 'SALE_DELIVERED';
 
     public const TYPE_REFUSE_RETURN = 'REFUSE_RETURN';
@@ -66,5 +69,10 @@ class GrossStockMovement extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function shipmentAllocation(): BelongsTo
+    {
+        return $this->belongsTo(GrossShipmentAllocation::class, 'ref_id');
     }
 }

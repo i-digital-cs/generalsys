@@ -38,4 +38,9 @@ return [
     'gross_collections' => 'تحصيل المندوب',
     'gross_treasury' => 'الخزينة',
     'gross_expense_types' => 'أنواع المصروفات',
+    'gross_section_catalog' => 'الكتالوج',
+    'gross_section_inventory' => 'المخزون',
+    'gross_section_purchasing' => 'المشتريات',
+    'gross_section_sales' => 'المبيعات والشحن',
+    'gross_section_finance' => 'المالية',
 ];

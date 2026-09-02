@@ -14,6 +14,12 @@
             </p>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('gross.shipping.statement', $company) }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-journal-text me-1" aria-hidden="true"></i>{{ __('gross.shipping.statement_link') }}
+            </a>
+            <a href="{{ route('gross.shipping.returns', $company) }}" class="btn btn-outline-warning btn-sm">
+                {{ __('gross.shipping.returns_link') }}
+            </a>
             <a href="{{ route('gross.shipping.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('general.back') }}</a>
             @can('update', $company)
                 <a href="{{ route('gross.shipping.edit', $company) }}" class="btn btn-outline-primary btn-sm">{{ __('general.edit') }}</a>
@@ -63,12 +69,11 @@
     </div>
 
     <h2 class="h6 mb-2">{{ __('gross.shipping.stats_pieces') }}</h2>
+    <p class="text-body-secondary small mb-2">{{ __('gross.shipping.stats_pieces_hint') }}</p>
     <div class="row g-2 mb-3">
         @foreach ([
             'shipped' => 'stats_shipped',
             'delivered' => 'stats_delivered',
-            'returned' => 'stats_returned',
-            'with_courier' => 'stats_with_courier',
             'lost' => 'stats_lost',
         ] as $key => $label)
             <div class="col-6 col-md">
@@ -80,6 +85,103 @@
                 </div>
             </div>
         @endforeach
+
+        @php
+            $returnedCount = (int) ($stats['pieces']['returned'] ?? 0);
+            $withCourierCount = (int) ($stats['pieces']['with_courier'] ?? 0);
+        @endphp
+
+        <div class="col-6 col-md">
+            @if ($returnedCount > 0)
+                <button type="button"
+                        class="card border-0 shadow-sm h-100 w-100 text-start btn p-0"
+                        data-bs-toggle="modal"
+                        data-bs-target="#shippingReturnsModal">
+                    <div class="card-body py-2">
+                        <div class="text-body-secondary small">
+                            {{ __('gross.shipping.stats_returned') }}
+                            <i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i>
+                        </div>
+                        <div class="fs-5 fw-semibold num-ltr">{{ $returnedCount }}</div>
+                        <div class="small text-primary">{{ __('gross.shipping.stats_click_hint') }}</div>
+                    </div>
+                </button>
+            @else
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body py-2">
+                        <div class="text-body-secondary small">{{ __('gross.shipping.stats_returned') }}</div>
+                        <div class="fs-5 fw-semibold num-ltr">0</div>
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <div class="col-6 col-md">
+            @if ($withCourierCount > 0)
+                <button type="button"
+                        class="card border-0 shadow-sm h-100 w-100 text-start btn p-0"
+                        data-bs-toggle="modal"
+                        data-bs-target="#shippingWithCourierModal">
+                    <div class="card-body py-2">
+                        <div class="text-body-secondary small">
+                            {{ __('gross.shipping.stats_with_courier') }}
+                            <i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i>
+                        </div>
+                        <div class="fs-5 fw-semibold num-ltr">{{ $withCourierCount }}</div>
+                        <div class="small text-primary">{{ __('gross.shipping.stats_click_hint') }}</div>
+                    </div>
+                </button>
+            @else
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body py-2">
+                        <div class="text-body-secondary small">{{ __('gross.shipping.stats_with_courier') }}</div>
+                        <div class="fs-5 fw-semibold num-ltr">0</div>
+                    </div>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    <div class="modal fade" id="shippingReturnsModal" tabindex="-1" aria-labelledby="shippingReturnsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="shippingReturnsModalLabel">{{ __('gross.shipping.returns_modal_title') }}</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('general.close') }}"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-body-secondary small">{{ __('gross.shipping.returns_modal_help', ['count' => $returnedCount]) }}</p>
+                    @include('gross.partials.returns-preview-table', ['entries' => $returnsPreview])
+                </div>
+                <div class="modal-footer">
+                    <a href="{{ route('gross.shipping.returns', $company) }}" class="btn btn-primary btn-sm">
+                        {{ __('gross.shipping.returns_modal_open_full') }}
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">{{ __('general.close') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="shippingWithCourierModal" tabindex="-1" aria-labelledby="shippingWithCourierModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="shippingWithCourierModalLabel">{{ __('gross.shipping.with_courier_modal_title') }}</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('general.close') }}"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-body-secondary small">{{ __('gross.stock.location_hint') }}</p>
+                    @include('gross.partials.courier-pieces-table', [
+                        'rows' => $withCourierActive,
+                        'emptyText' => __('gross.shipping.with_courier_modal_empty'),
+                    ])
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">{{ __('general.close') }}</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <h2 class="h6 mb-2">{{ __('gross.shipping.stats_fees') }}</h2>

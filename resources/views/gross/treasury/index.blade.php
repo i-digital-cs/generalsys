@@ -61,6 +61,8 @@
                         <option value="">{{ __('general.all') }}</option>
                         <option value="EXPENSE" @selected(($filters['purpose'] ?? '') === 'EXPENSE')>{{ __('gross.treasury.purposes.EXPENSE') }}</option>
                         <option value="SUPPLIER" @selected(($filters['purpose'] ?? '') === 'SUPPLIER')>{{ __('gross.treasury.purposes.SUPPLIER') }}</option>
+                        <option value="COURIER_COD" @selected(($filters['purpose'] ?? '') === 'COURIER_COD')>{{ __('gross.treasury.purposes.COURIER_COD') }}</option>
+                        <option value="OTHER" @selected(($filters['purpose'] ?? '') === 'OTHER')>{{ __('gross.treasury.purposes.OTHER') }}</option>
                     </select>
                 </div>
                 <div class="col-md-2">

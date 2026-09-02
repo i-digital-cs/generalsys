@@ -155,7 +155,33 @@ class TreasuryVoucherTest extends TestCase
             ->assertOk()
             ->assertSee('value="'.$supplier->id.'"', false)
             ->assertSee('selected', false)
-            ->assertSee('Preselect Mill', false);
+            ->assertSee('Preselect Mill', false)
+            ->assertSee('Account balance', false)
+            ->assertSee('Purchases', false)
+            ->assertSee('Balance', false);
+    }
+
+    public function test_receipt_create_shows_account_balance_context(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $cash = GrossTreasuryAccount::query()->where('kind', GrossTreasuryAccount::KIND_CASH)->firstOrFail();
+
+        $this->actingAs($manager)
+            ->post(route('gross.treasury.store'), [
+                'type' => GrossTreasuryVoucher::TYPE_RECEIPT,
+                'purpose' => GrossTreasuryVoucher::PURPOSE_OTHER,
+                'account_id' => $cash->id,
+                'amount' => 250,
+                'voucher_date' => now()->toDateString(),
+            ])
+            ->assertRedirect();
+
+        $this->withSession(['locale' => 'en'])->actingAs($manager)
+            ->get(route('gross.treasury.create', ['type' => 'RECEIPT']))
+            ->assertOk()
+            ->assertSee('Account balance', false)
+            ->assertSee('250.00', false)
+            ->assertSee('Collection increases the selected account balance.', false);
     }
 
     public function test_payment_blocked_when_cash_insufficient(): void
@@ -181,6 +207,53 @@ class TreasuryVoucherTest extends TestCase
             ->assertSessionHasErrors('amount');
 
         $this->assertSame(0, GrossTreasuryVoucher::query()->count());
+    }
+
+    public function test_other_receipt_increases_balance_without_supplier_or_expense(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $supplier = GrossSupplier::query()->create([
+            'name' => 'Cairo Textiles',
+            'phone' => '01001110000',
+        ]);
+        $cash = GrossTreasuryAccount::query()->where('kind', GrossTreasuryAccount::KIND_CASH)->firstOrFail();
+
+        $this->withSession(['locale' => 'en'])->actingAs($manager)
+            ->get(route('gross.treasury.create', ['type' => 'RECEIPT']))
+            ->assertOk()
+            ->assertSee('value="OTHER"', false)
+            ->assertSee('Other', false);
+
+        $this->actingAs($manager)
+            ->post(route('gross.treasury.store'), [
+                'type' => GrossTreasuryVoucher::TYPE_RECEIPT,
+                'purpose' => GrossTreasuryVoucher::PURPOSE_OTHER,
+                'account_id' => $cash->id,
+                'amount' => 1000,
+                'voucher_date' => now()->toDateString(),
+                'notes' => 'Owner capital injection',
+            ])
+            ->assertRedirect();
+
+        $receipt = GrossTreasuryVoucher::query()->where('purpose', GrossTreasuryVoucher::PURPOSE_OTHER)->firstOrFail();
+        $this->assertSame(GrossTreasuryVoucher::TYPE_RECEIPT, $receipt->type);
+        $this->assertNull($receipt->supplier_id);
+        $this->assertNull($receipt->expense_type_id);
+        $this->assertNull($receipt->sales_invoice_id);
+        $this->assertEqualsWithDelta(1000.0, app(TreasuryService::class)->balanceOf($cash->fresh()), 0.01);
+
+        $statement = app(SupplierStatementService::class)->build($supplier, ['currency' => 'EGP']);
+        $this->assertSame([], $statement['entries']);
+
+        $this->actingAs($manager)
+            ->post(route('gross.treasury.store'), [
+                'type' => GrossTreasuryVoucher::TYPE_PAYMENT,
+                'purpose' => GrossTreasuryVoucher::PURPOSE_OTHER,
+                'account_id' => $cash->id,
+                'amount' => 100,
+                'voucher_date' => now()->toDateString(),
+            ])
+            ->assertSessionHasErrors('purpose');
     }
 
     public function test_sales_forbidden_accountant_allowed(): void

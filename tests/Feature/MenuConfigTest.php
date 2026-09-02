@@ -19,6 +19,11 @@ class MenuConfigTest extends TestCase
             $this->assertNotEmpty($items, "Menu for {$role} is empty");
 
             foreach ($items as $item) {
+                if (($item['type'] ?? '') === 'heading') {
+                    $this->assertArrayHasKey('key', $item);
+
+                    continue;
+                }
                 $this->assertArrayHasKey('key', $item);
                 $this->assertArrayHasKey('route', $item);
                 $this->assertArrayHasKey('icon', $item);
@@ -92,6 +97,9 @@ class MenuConfigTest extends TestCase
 
         foreach ($allItems as $items) {
             foreach ($items as $item) {
+                if (($item['type'] ?? '') === 'heading') {
+                    continue;
+                }
                 foreach (['ar', 'en'] as $locale) {
                     $this->assertNotSame(
                         $item['key'],
@@ -105,8 +113,15 @@ class MenuConfigTest extends TestCase
 
     public function test_service_and_product_menus_point_at_valuation(): void
     {
-        $serviceRoutes = array_column(config('module_menu.service'), 'route');
-        $productRoutes = array_column(config('module_menu.product'), 'route');
+        $linkRoutes = static function (array $items): array {
+            return array_values(array_filter(array_map(
+                fn (array $item) => $item['route'] ?? null,
+                $items,
+            )));
+        };
+
+        $serviceRoutes = $linkRoutes(config('module_menu.service'));
+        $productRoutes = $linkRoutes(config('module_menu.product'));
 
         $this->assertContains('portal.service', $serviceRoutes);
         $this->assertContains('valuation.sheets.index', $serviceRoutes);

@@ -77,6 +77,76 @@ class SupplierStatementService
     }
 
     /**
+     * Statement totals for treasury create forms (per supplier, one currency).
+     *
+     * @param  list<int>|Collection<int, int>  $supplierIds
+     * @return array<int, array{
+     *     total_purchases: string,
+     *     total_returns: string,
+     *     total_payments: string,
+     *     balance: string,
+     *     currency: string
+     * }>
+     */
+    public function summariesForSuppliers(iterable $supplierIds, string $currency = 'EGP'): array
+    {
+        $ids = collect($supplierIds)->map(fn ($id) => (int) $id)->filter(fn ($id) => $id > 0)->unique()->values();
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $currency = strtoupper(trim($currency));
+        if (! in_array($currency, ['EGP', 'AED'], true)) {
+            $currency = 'EGP';
+        }
+
+        $purchases = GrossPurchaseInvoice::query()
+            ->whereIn('supplier_id', $ids)
+            ->where('status', GrossPurchaseInvoice::STATUS_CONFIRMED)
+            ->where('currency', $currency)
+            ->groupBy('supplier_id')
+            ->selectRaw('supplier_id, COALESCE(SUM(total), 0) as amount')
+            ->pluck('amount', 'supplier_id');
+
+        $returnTotals = GrossPurchaseReturn::query()
+            ->join('gross_purchase_invoices', 'gross_purchase_invoices.id', '=', 'gross_purchase_returns.purchase_invoice_id')
+            ->join('gross_purchase_return_lines', 'gross_purchase_return_lines.purchase_return_id', '=', 'gross_purchase_returns.id')
+            ->whereIn('gross_purchase_invoices.supplier_id', $ids)
+            ->where('gross_purchase_invoices.currency', $currency)
+            ->where('gross_purchase_invoices.status', GrossPurchaseInvoice::STATUS_CONFIRMED)
+            ->groupBy('gross_purchase_invoices.supplier_id')
+            ->selectRaw('gross_purchase_invoices.supplier_id as supplier_id, COALESCE(SUM(gross_purchase_return_lines.line_total), 0) as amount')
+            ->pluck('amount', 'supplier_id');
+
+        $payments = GrossTreasuryVoucher::query()
+            ->whereIn('supplier_id', $ids)
+            ->where('type', GrossTreasuryVoucher::TYPE_PAYMENT)
+            ->where('purpose', GrossTreasuryVoucher::PURPOSE_SUPPLIER)
+            ->where('currency', $currency)
+            ->groupBy('supplier_id')
+            ->selectRaw('supplier_id, COALESCE(SUM(amount), 0) as amount')
+            ->pluck('amount', 'supplier_id');
+
+        $out = [];
+        foreach ($ids as $id) {
+            $totalPurchases = round((float) ($purchases[$id] ?? 0), 2);
+            $totalReturns = round((float) ($returnTotals[$id] ?? 0), 2);
+            $totalPayments = round((float) ($payments[$id] ?? 0), 2);
+            $balance = round($totalPurchases - $totalReturns - $totalPayments, 2);
+
+            $out[$id] = [
+                'total_purchases' => $this->money($totalPurchases),
+                'total_returns' => $this->money($totalReturns),
+                'total_payments' => $this->money($totalPayments),
+                'balance' => $this->money($balance),
+                'currency' => $currency,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * @param  array{currency?: string, from?: string, to?: string}  $filters
      * @return array{
      *     currency: string,

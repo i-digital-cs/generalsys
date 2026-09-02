@@ -51,7 +51,10 @@ class GrossFoundationTest extends TestCase
 
     public function test_product_menu_includes_gross_routes(): void
     {
-        $routes = array_column(config('module_menu.product'), 'route');
+        $routes = array_values(array_filter(array_map(
+            fn (array $item) => $item['route'] ?? null,
+            config('module_menu.product'),
+        )));
         $this->assertContains('gross.items.index', $routes);
         $this->assertContains('gross.stock.index', $routes);
         $this->assertContains('gross.stock.movements', $routes);

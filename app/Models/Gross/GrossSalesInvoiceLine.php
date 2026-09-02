@@ -30,6 +30,9 @@ class GrossSalesInvoiceLine extends Model
         'discount_amount',
         'discount_percent',
         'line_total',
+        'returned_amount',
+        'lost_amount',
+        'net_line_total',
     ];
 
     protected function casts(): array
@@ -42,6 +45,9 @@ class GrossSalesInvoiceLine extends Model
             'discount_amount' => 'decimal:2',
             'discount_percent' => 'decimal:2',
             'line_total' => 'decimal:2',
+            'returned_amount' => 'decimal:2',
+            'lost_amount' => 'decimal:2',
+            'net_line_total' => 'decimal:2',
         ];
     }
 

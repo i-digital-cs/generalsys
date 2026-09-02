@@ -126,6 +126,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/shipping/import', [GrossShippingCompanyController::class, 'import'])->name('shipping.import');
         Route::get('/shipping/create', [GrossShippingCompanyController::class, 'create'])->name('shipping.create');
         Route::post('/shipping', [GrossShippingCompanyController::class, 'store'])->name('shipping.store');
+        Route::get('/shipping/{shipping}/returns', [GrossShippingCompanyController::class, 'returnsReport'])->name('shipping.returns');
+        Route::get('/shipping/{shipping}/statement', [GrossShippingCompanyController::class, 'statement'])->name('shipping.statement');
         Route::get('/shipping/{shipping}', [GrossShippingCompanyController::class, 'show'])->name('shipping.show');
         Route::get('/shipping/{shipping}/edit', [GrossShippingCompanyController::class, 'edit'])->name('shipping.edit');
         Route::put('/shipping/{shipping}', [GrossShippingCompanyController::class, 'update'])->name('shipping.update');
@@ -165,15 +167,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/sales/{invoice}/confirm', [GrossSalesInvoiceController::class, 'confirm'])->name('sales.confirm');
         Route::post('/sales/{invoice}/cancel', [GrossSalesInvoiceController::class, 'cancel'])->name('sales.cancel');
         Route::post('/sales/{invoice}/refuse', [GrossSalesInvoiceController::class, 'refuse'])->name('sales.refuse');
+        Route::post('/sales/{invoice}/receive-refused', [GrossSalesInvoiceController::class, 'receiveRefused'])->name('sales.receive-refused');
         Route::post('/sales/{invoice}/return', [GrossSalesInvoiceController::class, 'returnLine'])->name('sales.return');
         Route::post('/sales/{invoice}/loss', [GrossSalesInvoiceController::class, 'lossLine'])->name('sales.loss');
-        Route::post('/sales/{invoice}/collect-fee', [GrossSalesInvoiceController::class, 'collectShippingFee'])->name('sales.collect-fee');
+        Route::post('/sales/{invoice}/collect-cod', [GrossSalesInvoiceController::class, 'collectCod'])->name('sales.collect-cod');
         Route::post('/sales/{invoice}/deliver', [GrossSalesInvoiceController::class, 'markDelivered'])->name('sales.deliver');
 
         Route::get('/purchases', [GrossPurchaseInvoiceController::class, 'index'])->name('purchases.index');
         Route::get('/purchases/create', [GrossPurchaseInvoiceController::class, 'create'])->name('purchases.create');
         Route::post('/purchases', [GrossPurchaseInvoiceController::class, 'store'])->name('purchases.store');
         Route::get('/purchases/{purchase}', [GrossPurchaseInvoiceController::class, 'show'])->name('purchases.show');
+        Route::get('/purchases/{purchase}/pdf', [GrossPurchaseInvoiceController::class, 'pdf'])->name('purchases.pdf');
+        Route::get('/purchases/{purchase}/excel', [GrossPurchaseInvoiceController::class, 'excel'])->name('purchases.excel');
         Route::get('/purchases/{purchase}/edit', [GrossPurchaseInvoiceController::class, 'edit'])->name('purchases.edit');
         Route::put('/purchases/{purchase}', [GrossPurchaseInvoiceController::class, 'update'])->name('purchases.update');
         Route::post('/purchases/{purchase}/confirm', [GrossPurchaseInvoiceController::class, 'confirm'])->name('purchases.confirm');
@@ -184,6 +189,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/treasury/create', [GrossTreasuryController::class, 'create'])->name('treasury.create');
         Route::post('/treasury', [GrossTreasuryController::class, 'store'])->name('treasury.store');
         Route::get('/treasury/{voucher}', [GrossTreasuryController::class, 'show'])->name('treasury.show');
+        Route::get('/treasury/{voucher}/attachments/{attachment}', [GrossTreasuryController::class, 'downloadAttachment'])
+            ->name('treasury.attachments.download');
 
         Route::get('/expense-types', [GrossExpenseTypeController::class, 'index'])->name('expense-types.index');
         Route::post('/expense-types', [GrossExpenseTypeController::class, 'store'])->name('expense-types.store');

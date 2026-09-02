@@ -153,4 +153,41 @@ class SupplierStatementTest extends TestCase
         $this->assertSame([], $statement['entries']);
         $this->assertSame('0.00', $statement['balance']);
     }
+
+    public function test_summaries_for_suppliers_matches_statement_totals(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $supplier = GrossSupplier::query()->create([
+            'name' => 'Summary Mill',
+            'phone' => '01005556666',
+        ]);
+        $item = app(ItemService::class)->create([
+            'name' => 'Thread',
+            'status' => GrossItem::STATUS_ACTIVE,
+        ]);
+
+        $purchases = app(PurchaseInvoiceService::class);
+        $invoice = $purchases->createDraft($manager, [
+            'supplier_id' => $supplier->id,
+            'supplier_name' => $supplier->name,
+            'supplier_phone' => $supplier->phone,
+            'currency' => 'EGP',
+        ], [[
+            'item_id' => $item->id,
+            'qty' => 5,
+            'unit' => 'PIECE',
+            'buy_price' => 100,
+            'sale_price' => 150,
+        ]]);
+        $purchases->confirm($invoice, $manager);
+
+        $statement = app(SupplierStatementService::class);
+        $summary = $statement->summariesForSuppliers([$supplier->id], 'EGP')[$supplier->id];
+        $built = $statement->build($supplier, ['currency' => 'EGP']);
+
+        $this->assertSame($built['total_purchases'], $summary['total_purchases']);
+        $this->assertSame($built['total_returns'], $summary['total_returns']);
+        $this->assertSame($built['total_payments'], $summary['total_payments']);
+        $this->assertSame($built['balance'], $summary['balance']);
+    }
 }
