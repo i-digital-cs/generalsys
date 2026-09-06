@@ -77,7 +77,7 @@ final class ValuationCopy
 
     public static function showDynamicDrivers(string $module): bool
     {
-        return $module !== AppModule::PRODUCT;
+        return true;
     }
 
     public static function showProviders(string $module): bool

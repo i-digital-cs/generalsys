@@ -19,23 +19,35 @@
             <div class="row g-3">
                 <div class="col-12 col-md-4">
                     <div class="form-label">{{ $line('fields.score') }}</div>
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        @if ($editable)
-                            <label class="visually-hidden" for="{{ $scoreKey }}">{{ $line('fields.score') }}</label>
-                            <input class="form-control" dir="ltr" name="input[{{ $scoreKey }}]" id="{{ $scoreKey }}"
-                                   value="{{ $score($scoreKey) }}" min="0" max="100" step="1" data-star-source>
-                            <x-stars :score="$score($scoreKey)" data-star-out />
-                        @else
+                    @if ($editable)
+                        <label class="visually-hidden" for="{{ $scoreKey }}">{{ $line('fields.score') }}</label>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <input class="form-control @error('input.'.$scoreKey) is-invalid @enderror" dir="ltr"
+                                   name="input[{{ $scoreKey }}]" id="{{ $scoreKey }}"
+                                   value="{{ $score($scoreKey) }}" min="0" max="100" step="1"
+                                   inputmode="decimal" autocomplete="off" data-star-source
+                                   style="min-width: 5.5rem; max-width: 8rem;">
+                            <x-stars :score="$score($scoreKey)" data-star-out class="flex-shrink-0" />
+                        </div>
+                        @error('input.'.$scoreKey)
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    @else
+                        <div class="d-flex flex-wrap align-items-center gap-2">
                             <span class="num-ltr fw-semibold">{{ $score($scoreKey) }}%</span>
                             <x-stars :score="$score($scoreKey)" />
-                        @endif
-                    </div>
+                        </div>
+                    @endif
                 </div>
                 @isset($notesKey)
                     <div class="col-12 col-md-8">
                         <div class="form-label">{{ $line('fields.notes') }}</div>
                         @if ($editable)
-                            <textarea name="input[{{ $notesKey }}]" id="{{ $notesKey }}" class="form-control" rows="2">{{ $text($notesKey) }}</textarea>
+                            <textarea name="input[{{ $notesKey }}]" id="{{ $notesKey }}"
+                                      class="form-control @error('input.'.$notesKey) is-invalid @enderror" rows="2">{{ $text($notesKey) }}</textarea>
+                            @error('input.'.$notesKey)
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         @else
                             <p class="mb-0 text-break" style="white-space: pre-wrap">{{ $blank($text($notesKey)) }}</p>
                         @endif
@@ -46,7 +58,11 @@
                         <div class="col-12">
                             <div class="form-label">{{ $line('fields.'.$ek) }}</div>
                             @if ($editable)
-                                <textarea name="input[{{ $ek }}]" id="{{ $ek }}" class="form-control" rows="3">{{ $text($ek) }}</textarea>
+                                <textarea name="input[{{ $ek }}]" id="{{ $ek }}"
+                                          class="form-control @error('input.'.$ek) is-invalid @enderror" rows="3">{{ $text($ek) }}</textarea>
+                                @error('input.'.$ek)
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             @else
                                 <p class="mb-0 text-break" style="white-space: pre-wrap">{{ $blank($text($ek)) }}</p>
                             @endif

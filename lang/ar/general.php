@@ -25,6 +25,7 @@ return [
     'all' => 'الكل',
     'none' => 'لا يوجد',
     'not_available' => '—',
+    'form_errors' => 'يرجى تصحيح التالي:',
     'currencies' => [
         'EGP' => 'ج.م',
         'AED' => 'د.إ',

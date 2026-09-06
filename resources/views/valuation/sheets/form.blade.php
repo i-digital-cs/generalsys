@@ -5,19 +5,26 @@
 @section('content')
     <h1 class="h4 mb-3">{{ __('portal.'.$module) }} — {{ __('valuation.fill') }}</h1>
 
-    <form method="POST" action="{{ route('valuation.sheets.store', $module) }}" class="row g-3" data-valuation-form>
+    <form method="POST" action="{{ route('valuation.sheets.store', $module) }}" class="row g-3" data-valuation-form novalidate>
         @csrf
         <div class="col-12 col-md-4">
             <label class="form-label" for="date">{{ __('valuation.date') }}</label>
-            <input type="date" name="date" id="date" class="form-control" dir="ltr"
+            <input type="date" name="date" id="date"
+                   class="form-control @error('date') is-invalid @enderror" dir="ltr"
                    value="{{ old('date', $date) }}" required>
+            @error('date')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
         </div>
         <div class="col-12 col-md-4">
             <label class="form-label" for="status">{{ __('valuation.status') }}</label>
-            <select name="status" id="status" class="form-select">
+            <select name="status" id="status" class="form-select @error('status') is-invalid @enderror">
                 <option value="DRAFT" @selected(old('status', $sheet->status) === 'DRAFT')>{{ __('valuation.statuses.DRAFT') }}</option>
                 <option value="SUBMITTED" @selected(old('status', $sheet->status) === 'SUBMITTED')>{{ __('valuation.statuses.SUBMITTED') }}</option>
             </select>
+            @error('status')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
         </div>
 
         @include('valuation.sheets._body', ['editable' => true, 'module' => $module, 'input' => $input, 'result' => $result])

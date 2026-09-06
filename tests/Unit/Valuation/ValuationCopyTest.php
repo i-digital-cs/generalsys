@@ -52,7 +52,7 @@ class ValuationCopyTest extends TestCase
 
     public function test_product_hides_service_only_blocks(): void
     {
-        $this->assertFalse(ValuationCopy::showDynamicDrivers(AppModule::PRODUCT));
+        $this->assertTrue(ValuationCopy::showDynamicDrivers(AppModule::PRODUCT));
         $this->assertFalse(ValuationCopy::showProviders(AppModule::PRODUCT));
         $this->assertFalse(ValuationCopy::showLogisticsBlock(AppModule::PRODUCT));
         $this->assertTrue(ValuationCopy::showOperationalNotesAfterSuppliers(AppModule::PRODUCT));

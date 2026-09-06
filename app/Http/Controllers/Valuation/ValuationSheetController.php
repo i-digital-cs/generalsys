@@ -47,7 +47,7 @@ class ValuationSheetController extends Controller
     {
         $this->guardModule($module);
         $user = $request->user();
-        $date = $request->query('date', now()->toDateString());
+        $date = $this->resolveFormDate($request);
 
         try {
             $this->sheets->assertMayAccessModule($user, $module);
@@ -88,7 +88,13 @@ class ValuationSheetController extends Controller
                 $data['status'],
             );
         } catch (ValuationException $e) {
-            abort(403, __($e->getMessage()));
+            return redirect()
+                ->route('valuation.sheets.form', [
+                    'module' => $module,
+                    'date' => $data['date'] ?? now()->toDateString(),
+                ])
+                ->withInput()
+                ->with('error', __($e->getMessage()));
         }
 
         return redirect()
@@ -124,6 +130,26 @@ class ValuationSheetController extends Controller
         );
 
         return $this->exports->downloadPdf($sheet)->download($filename);
+    }
+
+    /**
+     * old('date') can be null/'' after a failed submit — never pass that to findForForm().
+     */
+    private function resolveFormDate(Request $request): string
+    {
+        $candidates = [
+            old('date'),
+            $request->query('date'),
+            now()->toDateString(),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && $candidate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $candidate)) {
+                return $candidate;
+            }
+        }
+
+        return now()->toDateString();
     }
 
     private function guardModule(string $module): void

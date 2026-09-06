@@ -21,9 +21,9 @@
            href="{{ route('portal.home') }}">{{ config('app.name') }}</a>
 
         @auth
-            <div class="d-flex flex-nowrap flex-grow-1 overflow-auto gap-1 py-1" role="tablist" aria-label="{{ __('portal.title') }}">
+            <div class="d-flex flex-nowrap flex-grow-1 overflow-auto gap-1 align-items-center py-1" role="tablist" aria-label="{{ __('portal.title') }}">
                 @foreach (\App\Support\AppModule::navItems($authUser) as $moduleId)
-                    <a class="btn btn-sm flex-shrink-0 {{ $appModule === $moduleId ? 'btn-light text-primary' : 'btn-outline-light' }}"
+                    <a class="btn btn-sm flex-shrink-0 hp-module-tab {{ $appModule === $moduleId ? 'btn-light text-primary' : 'btn-outline-light' }}"
                        href="{{ route(\App\Support\AppModule::navRoute($moduleId)) }}"
                        role="tab"
                        aria-selected="{{ $appModule === $moduleId ? 'true' : 'false' }}">

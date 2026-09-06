@@ -72,6 +72,10 @@ return [
     'errors' => [
         'not_allowed' => 'You cannot edit this valuation sheet.',
         'not_assigned' => 'You are not assigned to this module.',
+        'form_title' => 'Please fix the following:',
+        'driver_identity' => 'Driver #:n — pick an employee or enter a manual name.',
+        'driver_orders' => 'Driver #:n — orders are required.',
+        'driver_score' => 'Driver #:n — score must be between 0 and 100.',
     ],
     'statuses' => [
         'DRAFT' => 'Draft',

@@ -25,6 +25,7 @@ return [
     'all' => 'All',
     'none' => 'None',
     'not_available' => '—',
+    'form_errors' => 'Please fix the following:',
     'currencies' => [
         'EGP' => 'EGP',
         'AED' => 'AED',

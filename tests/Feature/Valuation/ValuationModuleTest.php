@@ -257,8 +257,9 @@ class ValuationModuleTest extends TestCase
             ->assertSee(__('valuation.mohra.fields.haroon_news'), false)
             ->assertSee('name="input[target_count_total]"', false)
             ->assertSee('value="35"', false)
+            ->assertSee(__('valuation.drivers.add'), false)
+            ->assertSee('name="input[drivers][0][user_id]"', false)
             ->assertDontSee(__('valuation.sections.laundry_king'), false)
-            ->assertDontSee(__('valuation.drivers.add'), false)
             ->assertDontSee(__('valuation.sections.providers'), false);
 
         $this->actingAs($employee)
@@ -340,5 +341,76 @@ class ValuationModuleTest extends TestCase
             ->assertSee('data-table-filter="date"', false)
             ->assertSee(route('admin.employees.edit', $hamad), false)
             ->assertSee(__('valuation.stats.hint', ['count' => 2]), false);
+    }
+
+    public function test_validation_errors_are_shown_on_the_form(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $hamad = User::factory()->employee()->create();
+        ValuationAssignment::query()->create([
+            'user_id' => $hamad->id,
+            'assigned_by' => $manager->id,
+            'module' => 'service',
+        ]);
+
+        app()->setLocale('en');
+
+        $this->actingAs($hamad)
+            ->from(route('valuation.sheets.form', 'service'))
+            ->post(route('valuation.sheets.store', 'service'), [
+                'date' => '2026-08-19',
+                'status' => ValuationSheet::STATUS_DRAFT,
+                'input' => [
+                    'laundry_king_score' => 150,
+                    'drivers' => [
+                        ['user_id' => '', 'name' => '', 'orders' => 12, 'score' => '', 'notes' => ''],
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('valuation.sheets.form', [
+                'module' => 'service',
+                'date' => '2026-08-19',
+            ]))
+            ->assertSessionHasErrors(['input.laundry_king_score', 'input.drivers.0.user_id', 'input.drivers.0.name'])
+            ->assertSessionHas('error');
+
+        $this->actingAs($hamad)
+            ->withSession(['locale' => 'en'])
+            ->get(route('valuation.sheets.form', ['module' => 'service', 'date' => '2026-08-19']))
+            ->assertOk()
+            ->assertSee(__('general.form_errors'), false)
+            ->assertSee(__('valuation.errors.driver_identity', ['n' => 1]), false)
+            ->assertSee('hp-toast--danger', false)
+            ->assertSee('data-hp-toast', false)
+            ->assertDontSee('id="valuation-form-errors"', false)
+            ->assertDontSee('id="validation-errors"', false);
+
+        $this->assertSame(0, ValuationSheet::query()->count());
+    }
+
+    public function test_form_survives_failed_submit_with_empty_date(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $hamad = User::factory()->employee()->create();
+        ValuationAssignment::query()->create([
+            'user_id' => $hamad->id,
+            'assigned_by' => $manager->id,
+            'module' => 'product',
+        ]);
+
+        $this->actingAs($hamad)
+            ->from(route('valuation.sheets.form', ['module' => 'product', 'date' => '2026-09-07']))
+            ->post(route('valuation.sheets.store', 'product'), [
+                'date' => '',
+                'status' => ValuationSheet::STATUS_DRAFT,
+                'input' => ['laundry_mart_score' => '80'],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('date');
+
+        $this->actingAs($hamad)
+            ->get(route('valuation.sheets.form', ['module' => 'product', 'date' => '2026-09-07']))
+            ->assertOk()
+            ->assertSee('hp-toast--danger', false);
     }
 }

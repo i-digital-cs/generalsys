@@ -10,6 +10,11 @@ initTableFilters();
 initThemeToggle();
 initClockCtaColors();
 
+// Flash toasts: Blade renders them with .show (visible before this module runs).
+document.querySelectorAll('[data-hp-toast]').forEach((el) => {
+    bootstrap.Toast.getOrCreateInstance(el).show();
+});
+
 // Navbar user menu: Popper's bottom-end hugs the wrong edge under dir=rtl,
 // so pin placement from the document direction once at boot.
 document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((toggle) => {

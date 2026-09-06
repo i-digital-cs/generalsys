@@ -177,12 +177,87 @@ h6, .h6 { font-size: .9rem; }
 .breadcrumb { margin-bottom: .75rem; font-size: .85rem; }
 .alert { padding: .65rem 1rem; font-size: .875rem; }
 
-// Badges: inline-flex avoids extra space under text when flex rows stretch items.
+// Badges: keep content vertically centered without stretching in flex rows.
 .badge {
     display: inline-flex;
     align-items: center;
     line-height: 1.2;
     vertical-align: middle;
+}
+
+// Validation icons (Bootstrap background SVG) clip typed values in RTL / compact inputs.
+.form-control.is-invalid,
+.form-control.is-valid,
+.form-select.is-invalid,
+.form-select.is-valid,
+.was-validated .form-control:invalid,
+.was-validated .form-control:valid,
+.was-validated .form-select:invalid,
+.was-validated .form-select:valid {
+    background-image: none;
+}
+
+.form-control.is-invalid:not(.form-control-sm):not(.form-control-lg),
+.form-control.is-valid:not(.form-control-sm):not(.form-control-lg),
+.form-select.is-invalid:not(.form-select-sm):not(.form-select-lg),
+.form-select.is-valid:not(.form-select-sm):not(.form-select-lg) {
+    padding-inline: .65rem;
+}
+
+.card-header {
+    line-height: 1.35;
+}
+
+// Toast notifications (success / validation / warning)
+// Physical centering — Bootstrap start-50 + translate-middle-x breaks under dir=rtl.
+.hp-toast-stack {
+    position: fixed;
+    top: 4.75rem;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    z-index: 1090;
+    width: min(28rem, calc(100vw - 1.5rem));
+    padding: 0 .75rem;
+    pointer-events: none;
+
+    .toast {
+        pointer-events: auto;
+    }
+}
+
+.hp-toast {
+    width: 100%;
+    border-radius: .75rem;
+    overflow: hidden;
+    color: #fff;
+    opacity: 1;
+
+    .btn-close {
+        filter: invert(1) grayscale(100%);
+        opacity: .85;
+    }
+
+    &--success {
+        background: linear-gradient(135deg, #146c43 0%, #198754 100%);
+    }
+
+    &--danger {
+        background: linear-gradient(135deg, #b02a37 0%, #dc3545 100%);
+    }
+
+    &--warning {
+        background: linear-gradient(135deg, #cc9a06 0%, #ffc107 100%);
+        color: #212529;
+
+        .btn-close {
+            filter: none;
+        }
+    }
+
+    &__icon {
+        background: rgba(0, 0, 0, .12);
+    }
 }
 
 .pagination {
@@ -250,15 +325,33 @@ h6, .h6 { font-size: .9rem; }
 
     .container-fluid {
         overflow: visible;
+        align-items: center;
     }
 
     .navbar-brand {
         min-width: 0;
         max-width: min(55vw, 16rem);
+        line-height: 1.2;
+        padding-block: 0;
+    }
+
+    // Module pills (جنرال هاوس / مهرة / …): Cairo leaves extra descender space —
+    // center label with flex + tight line-height so text isn’t top-heavy.
+    .hp-module-tab {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.15;
+        padding-block: .35rem;
+        padding-inline: .75rem;
+        min-height: 2rem;
     }
 
     .nav-link {
         white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        line-height: 1.15;
     }
 
     .hp-user-menu {

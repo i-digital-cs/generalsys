@@ -64,7 +64,8 @@
                             <div class="row g-2 align-items-end">
                                 <div class="col-12 col-md-4">
                                     <label class="form-label" for="driver_user_{{ $i }}">{{ __('valuation.drivers.employee') }}</label>
-                                    <select class="form-select" data-field="user_id" data-driver-user
+                                    <select class="form-select @error('input.drivers.'.$i.'.user_id') is-invalid @enderror"
+                                            data-field="user_id" data-driver-user
                                             name="input[drivers][{{ $i }}][user_id]" id="driver_user_{{ $i }}">
                                         <option value="">{{ __('valuation.drivers.select_employee') }}</option>
                                         @foreach ($employees as $employee)
@@ -73,20 +74,31 @@
                                             </option>
                                         @endforeach
                                     </select>
+                                    @error('input.drivers.'.$i.'.user_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-12 col-md-4">
                                     <label class="form-label" for="driver_name_{{ $i }}">{{ __('valuation.drivers.manual_name') }}</label>
-                                    <input type="text" class="form-control" data-field="name" data-driver-name
+                                    <input type="text" class="form-control @error('input.drivers.'.$i.'.name') is-invalid @enderror"
+                                           data-field="name" data-driver-name
                                            name="input[drivers][{{ $i }}][name]" id="driver_name_{{ $i }}"
                                            value="{{ $row['name'] ?? '' }}" maxlength="150" autocomplete="off"
                                            @disabled($hasUser)
                                            placeholder="{{ __('valuation.drivers.manual_placeholder') }}">
+                                    @error('input.drivers.'.$i.'.name')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-6 col-md-2">
                                     <label class="form-label" for="driver_orders_{{ $i }}">{{ __('valuation.drivers.orders') }}</label>
-                                    <input class="form-control" dir="ltr" data-field="orders" data-driver-orders
+                                    <input class="form-control @error('input.drivers.'.$i.'.orders') is-invalid @enderror"
+                                           dir="ltr" data-field="orders" data-driver-orders
                                            name="input[drivers][{{ $i }}][orders]" id="driver_orders_{{ $i }}"
                                            value="{{ $orders }}" min="0" step="1" inputmode="decimal" autocomplete="off">
+                                    @error('input.drivers.'.$i.'.orders')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-6 col-md-2">
                                     <div class="form-label">{{ __('valuation.drivers.over_target_label') }}</div>
@@ -98,16 +110,25 @@
                                 <div class="col-12 col-md-4">
                                     <label class="form-label" for="driver_score_{{ $i }}">{{ __('valuation.fields.score') }}</label>
                                     <div class="d-flex flex-wrap align-items-center gap-2">
-                                        <input class="form-control" dir="ltr" data-field="score" data-star-source
+                                        <input class="form-control @error('input.drivers.'.$i.'.score') is-invalid @enderror"
+                                               dir="ltr" data-field="score" data-star-source
                                                name="input[drivers][{{ $i }}][score]" id="driver_score_{{ $i }}"
-                                               value="{{ $rowScore }}" min="0" max="100" step="1" inputmode="decimal" autocomplete="off">
-                                        <x-stars :score="$rowScore === '' ? 0 : $rowScore" data-star-out />
+                                               value="{{ $rowScore }}" min="0" max="100" step="1" inputmode="decimal" autocomplete="off"
+                                               style="min-width: 5.5rem; max-width: 8rem;">
+                                        <x-stars :score="$rowScore === '' ? 0 : $rowScore" data-star-out class="flex-shrink-0" />
                                     </div>
+                                    @error('input.drivers.'.$i.'.score')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-12 col-md-7">
                                     <label class="form-label" for="driver_notes_{{ $i }}">{{ __('valuation.fields.notes') }}</label>
-                                    <textarea class="form-control" data-field="notes" rows="2"
+                                    <textarea class="form-control @error('input.drivers.'.$i.'.notes') is-invalid @enderror"
+                                              data-field="notes" rows="2"
                                               name="input[drivers][{{ $i }}][notes]" id="driver_notes_{{ $i }}">{{ $row['notes'] ?? '' }}</textarea>
+                                    @error('input.drivers.'.$i.'.notes')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-12 col-md-1 d-flex align-items-end">
                                     <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row
