@@ -10,9 +10,21 @@ initTableFilters();
 initThemeToggle();
 initClockCtaColors();
 
-// Flash toasts: Blade renders them with .show (visible before this module runs).
+// Flash toasts: Blade already renders `.show` so the message is visible before
+// this deferred module loads. Calling toast.show() again would hide→show (flicker).
 document.querySelectorAll('[data-hp-toast]').forEach((el) => {
-    bootstrap.Toast.getOrCreateInstance(el).show();
+    const delay = Number(el.getAttribute('data-bs-delay') || 5500);
+    const autohide = el.getAttribute('data-bs-autohide') !== 'false';
+    const toast = bootstrap.Toast.getOrCreateInstance(el, { autohide, delay });
+
+    if (el.classList.contains('show')) {
+        if (autohide) {
+            window.setTimeout(() => toast.hide(), delay);
+        }
+        return;
+    }
+
+    toast.show();
 });
 
 // Navbar user menu: Popper's bottom-end hugs the wrong edge under dir=rtl,

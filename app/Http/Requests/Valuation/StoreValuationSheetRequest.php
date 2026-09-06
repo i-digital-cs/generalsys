@@ -99,8 +99,6 @@ class StoreValuationSheetRequest extends FormRequest
         $module = (string) $this->route('module');
         $date = (string) ($this->input('date') ?: now()->toDateString());
 
-        session()->flash('error', __('valuation.errors.form_title'));
-
         throw (new ValidationException($validator))
             ->errorBag('default')
             ->redirectTo(route('valuation.sheets.form', [
@@ -113,8 +111,6 @@ class StoreValuationSheetRequest extends FormRequest
     {
         $module = (string) $this->route('module');
         $date = (string) ($this->input('date') ?: now()->toDateString());
-
-        session()->flash('error', __('valuation.errors.not_assigned'));
 
         throw ValidationException::withMessages([
             'date' => __('valuation.errors.not_assigned'),

@@ -371,8 +371,7 @@ class ValuationModuleTest extends TestCase
                 'module' => 'service',
                 'date' => '2026-08-19',
             ]))
-            ->assertSessionHasErrors(['input.laundry_king_score', 'input.drivers.0.user_id', 'input.drivers.0.name'])
-            ->assertSessionHas('error');
+            ->assertSessionHasErrors(['input.laundry_king_score', 'input.drivers.0.user_id', 'input.drivers.0.name']);
 
         $this->actingAs($hamad)
             ->withSession(['locale' => 'en'])
