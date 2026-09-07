@@ -42,7 +42,7 @@
                 <div class="col-6 col-md-4 col-xl-2">
                     <label for="kind" class="form-label">{{ __('attendance.history.kind') }}</label>
                     <select id="kind" name="kind" class="form-select">
-                        @foreach (['all', 'present', 'absent', 'rest', 'vacation'] as $option)
+                        @foreach (['all', 'present', 'absent', 'shortfall', 'rest', 'vacation'] as $option)
                             <option value="{{ $option }}" @selected($kind === $option)>
                                 {{ __('attendance.history.kinds.'.$option) }}
                             </option>
@@ -137,7 +137,7 @@
                                             'badge',
                                             'text-bg-success' => $row['kind'] === 'present',
                                             'text-bg-danger' => $row['kind'] === 'absent',
-                                            'text-bg-warning text-dark' => $row['kind'] === 'rest',
+                                            'text-bg-warning text-dark' => $row['kind'] === 'shortfall' || $row['kind'] === 'rest',
                                             'text-bg-info' => $row['kind'] === 'vacation',
                                         ])>
                                             {{ __('attendance.history.kinds.'.$row['kind']) }}
@@ -242,35 +242,43 @@
                                             aria-label="{{ __('general.close') }}"></button>
                                 </div>
                                 <div class="modal-body pt-3">
-                                    <div class="row g-3 mb-3">
-                                        <div class="col-md-6">
-                                            <div class="attendance-detail-section h-100">
-                                                <h3 class="h6 mb-3">{{ __('attendance.history.hours_column') }}</h3>
-                                                <dl class="row mb-0 small">
-                                                    <dt class="col-7">{{ __('dashboard.hours.should_spend') }}</dt>
-                                                    <dd class="col-5 num-ltr text-end mb-2">{{ number_format($row['planned_hours'], 2) }}h</dd>
-                                                    <dt class="col-7">{{ __('attendance_review.raw_hours') }}</dt>
-                                                    <dd class="col-5 num-ltr text-end mb-2">{{ number_format($row['raw_hours'], 2) }}h</dd>
-                                                    <dt class="col-7">{{ __('dashboard.hours.spent') }}</dt>
-                                                    <dd class="col-5 num-ltr text-end mb-0">{{ number_format($row['actual_hours'], 2) }}h</dd>
+                                    <div class="attendance-detail-section mb-3">
+                                        <div class="attendance-detail-metrics">
+                                            <div>
+                                                <h3 class="h6 mb-2">{{ __('attendance.history.hours_column') }}</h3>
+                                                <dl class="attendance-detail-metric mb-2">
+                                                    <dt>{{ __('dashboard.hours.should_spend') }}</dt>
+                                                    <dd class="num-ltr hp-value">{{ number_format($row['planned_hours'], 2) }}h</dd>
+                                                </dl>
+                                                <dl class="attendance-detail-metric mb-2">
+                                                    <dt>{{ __('attendance_review.raw_hours') }}</dt>
+                                                    <dd class="num-ltr hp-value">{{ number_format($row['raw_hours'], 2) }}h</dd>
+                                                </dl>
+                                                <dl class="attendance-detail-metric mb-0">
+                                                    <dt>{{ __('dashboard.hours.spent') }}</dt>
+                                                    <dd class="num-ltr hp-value">{{ number_format($row['actual_hours'], 2) }}h</dd>
                                                 </dl>
                                             </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="attendance-detail-section h-100">
-                                                <h3 class="h6 mb-3">{{ __('attendance.history.minutes_column') }}</h3>
-                                                <dl class="row mb-0 small">
-                                                    <dt class="col-7">{{ __('clock.late_minutes') }}</dt>
-                                                    <dd class="col-5 num-ltr text-end mb-2">{{ $late }}</dd>
-                                                    <dt class="col-7">{{ __('attendance_review.early_minutes') }}</dt>
-                                                    <dd class="col-5 num-ltr text-end mb-2">{{ (int) ($row['early_departure_minutes'] ?? 0) }}</dd>
-                                                    <dt class="col-7">{{ __('attendance_review.breakdown.gap') }}</dt>
-                                                    <dd class="col-5 num-ltr text-end mb-2">{{ $gap }}</dd>
-                                                    @if ($ot > 0)
-                                                        <dt class="col-7">{{ __('attendance_review.overtime_minutes') }}</dt>
-                                                        <dd class="col-5 num-ltr text-end mb-0">{{ $ot }}</dd>
-                                                    @endif
+                                            <div>
+                                                <h3 class="h6 mb-2">{{ __('attendance.history.minutes_column') }}</h3>
+                                                <dl class="attendance-detail-metric mb-2">
+                                                    <dt>{{ __('clock.late_minutes') }}</dt>
+                                                    <dd class="num-ltr hp-value">{{ $late }}</dd>
                                                 </dl>
+                                                <dl class="attendance-detail-metric mb-2">
+                                                    <dt>{{ __('attendance_review.early_minutes') }}</dt>
+                                                    <dd class="num-ltr hp-value">{{ (int) ($row['early_departure_minutes'] ?? 0) }}</dd>
+                                                </dl>
+                                                <dl class="attendance-detail-metric mb-2">
+                                                    <dt>{{ __('attendance_review.breakdown.gap') }}</dt>
+                                                    <dd class="num-ltr hp-value">{{ $gap }}</dd>
+                                                </dl>
+                                                @if ($ot > 0)
+                                                    <dl class="attendance-detail-metric mb-0">
+                                                        <dt>{{ __('attendance_review.overtime_minutes') }}</dt>
+                                                        <dd class="num-ltr hp-value">{{ $ot }}</dd>
+                                                    </dl>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
@@ -295,7 +303,7 @@
 
                                     @forelse ($reviewable as $attendanceRow)
                                         <div @class(['attendance-detail-section', 'mb-3' => ! $loop->last])>
-                                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                            <div class="attendance-shift-header">
                                                 <h3 class="h6 mb-0">{{ __('clock.shifts.'.$attendanceRow->shift_type) }}</h3>
                                                 <x-attendance-location-badges
                                                     :attendance="$attendanceRow"
@@ -321,7 +329,7 @@
                                                 <x-attendance-overtime-review
                                                     :attendance="$attendanceRow"
                                                     embedded
-                                                    class="mt-3"
+                                                    class="mt-0"
                                                 />
                                             @endif
                                         </div>

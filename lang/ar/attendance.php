@@ -29,7 +29,8 @@ return [
         'kinds' => [
             'all' => 'الكل',
             'present' => 'حاضر',
-            'absent' => 'غائب / نقص',
+            'absent' => 'غائب',
+            'shortfall' => 'نقص',
             'rest' => 'راحة',
             'vacation' => 'إجازة',
         ],

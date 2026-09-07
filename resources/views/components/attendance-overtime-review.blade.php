@@ -23,7 +23,7 @@
         && $summary->needsTlOvertimeReview();
     $showAdminForm = ($actor?->canManageOperations() ?? false)
         && $summary->needsAdminOvertimeReview();
-    $showSection = ! $compact && (
+    $showFullSection = ! $compact && (
         ! $embedded
         || $showTlForm
         || $showAdminForm
@@ -33,49 +33,96 @@
     );
 @endphp
 
-@if ($showSection)
-    <div {{ $attributes->merge(['class' => $compact ? '' : ($embedded ? 'attendance-detail-section__inner' : 'border rounded p-2 bg-body-tertiary')]) }}>
-        @if (! $compact)
-            <p class="fw-semibold small mb-2">{{ __('attendance_review.breakdown.overtime_title') }}</p>
-
-            @unless ($embedded)
-                <dl class="row mb-2 small">
-                    @if ($summary->extraWorkedMinutes() > 0)
-                        <dt class="col-sm-6">{{ __('attendance_review.hours_balance.difference') }}</dt>
-                        <dd class="col-sm-6 num-ltr">
-                            {{ __('attendance_review.hours_balance.extra', ['minutes' => $summary->extraWorkedMinutes()]) }}
-                        </dd>
-                    @endif
-                    @if ($summary->systemSuggestedOvertimeMinutes > 0 && $attendance->overtime_tl_recommendation === 'NONE')
-                        <dt class="col-sm-6">{{ __('attendance_review.overtime.system_suggested') }}</dt>
-                        <dd class="col-sm-6 num-ltr">+{{ $summary->systemSuggestedOvertimeMinutes }}</dd>
-                    @endif
-                    @if ($summary->approvedOvertimeMinutes > 0)
-                        <dt class="col-sm-6">{{ __('attendance_review.overtime.credited_cap') }}</dt>
-                        <dd class="col-sm-6 num-ltr">
-                            {{ __('attendance_review.overtime.credited_cap_hint', [
-                                'planned' => number_format($summary->plannedHours, 2),
-                                'minutes' => $summary->approvedOvertimeMinutes,
-                            ]) }}
-                        </dd>
-                    @endif
-                </dl>
-            @endunless
-
-            <x-attendance-overtime-status :attendance="$attendance" :summary="$summary" class="mb-2" />
-
-            @if ($attendance->overtimeTlDecider)
-                <div class="small text-body-secondary mb-1">
-                    {{ __('attendance_review.overtime.decided_by_tl') }}:
-                    {{ $attendance->overtimeTlDecider->localizedName() }}
+@if ($compact)
+    {{-- Approvals table cell: actions only --}}
+    <div {{ $attributes }}>
+        @if ($showTlForm)
+            <form method="POST" action="{{ route('team-leader.attendance.overtime.tl', $attendance) }}">
+                @csrf
+                @if ($filter)
+                    <input type="hidden" name="filter" value="{{ $filter }}">
+                @endif
+                <div class="row g-2">
+                    <div class="col-12">
+                        <label class="form-label" for="ot_minutes_c_{{ $attendance->id }}">{{ __('attendance_review.overtime_minutes') }}</label>
+                        <input type="number" min="0" max="720" name="recommended_overtime_minutes"
+                               id="ot_minutes_c_{{ $attendance->id }}"
+                               value="{{ $defaultMinutes }}"
+                               class="form-control form-control-sm">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="ot_rec_c_{{ $attendance->id }}">{{ __('attendance_review.overtime.recommendation') }}</label>
+                        <select name="overtime_tl_recommendation" id="ot_rec_c_{{ $attendance->id }}" class="form-select form-select-sm">
+                            <option value="RECOMMEND">{{ __('attendance_review.recommend_overtime') }}</option>
+                            <option value="NO_OVERTIME">{{ __('attendance_review.no_overtime') }}</option>
+                        </select>
+                    </div>
                 </div>
-            @endif
-            @if ($attendance->overtimeAdminDecider)
-                <div class="small text-body-secondary mb-2">
-                    {{ __('attendance_review.overtime.decided_by_admin') }}:
-                    {{ $attendance->overtimeAdminDecider->localizedName() }}
+                <button type="submit" class="btn btn-sm btn-primary mt-2">
+                    {{ __('attendance_review.recommend_overtime') }}
+                </button>
+            </form>
+        @elseif ($showAdminForm)
+            <form method="POST" action="{{ route('team-leader.attendance.overtime.admin', $attendance) }}">
+                @csrf
+                @if ($filter)
+                    <input type="hidden" name="filter" value="{{ $filter }}">
+                @endif
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="submit" name="overtime_admin_decision" value="APPROVED" class="btn btn-sm btn-success">
+                        {{ __('attendance_review.overtime.approve') }}
+                    </button>
+                    <button type="submit" name="overtime_admin_decision" value="REJECTED" class="btn btn-sm btn-outline-danger">
+                        {{ __('attendance_review.overtime.reject') }}
+                    </button>
                 </div>
-            @endif
+            </form>
+        @else
+            <span class="small text-body-secondary">—</span>
+        @endif
+    </div>
+@elseif ($showFullSection)
+    <div {{ $attributes->merge(['class' => $embedded ? 'attendance-detail-section__inner' : 'border rounded p-2 bg-body-tertiary']) }}>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <p class="fw-semibold small mb-0">{{ __('attendance_review.breakdown.overtime_title') }}</p>
+            <x-attendance-overtime-status :attendance="$attendance" :summary="$summary" />
+        </div>
+
+        @unless ($embedded)
+            <dl class="row mb-2 small">
+                @if ($summary->extraWorkedMinutes() > 0)
+                    <dt class="col-sm-6">{{ __('attendance_review.hours_balance.difference') }}</dt>
+                    <dd class="col-sm-6 num-ltr hp-value">
+                        {{ __('attendance_review.hours_balance.extra', ['minutes' => $summary->extraWorkedMinutes()]) }}
+                    </dd>
+                @endif
+                @if ($summary->systemSuggestedOvertimeMinutes > 0 && $attendance->overtime_tl_recommendation === 'NONE')
+                    <dt class="col-sm-6">{{ __('attendance_review.overtime.system_suggested') }}</dt>
+                    <dd class="col-sm-6 num-ltr hp-value">+{{ $summary->systemSuggestedOvertimeMinutes }}</dd>
+                @endif
+                @if ($summary->approvedOvertimeMinutes > 0)
+                    <dt class="col-sm-6">{{ __('attendance_review.overtime.credited_cap') }}</dt>
+                    <dd class="col-sm-6 num-ltr hp-value">
+                        {{ __('attendance_review.overtime.credited_cap_hint', [
+                            'planned' => number_format($summary->plannedHours, 2),
+                            'minutes' => $summary->approvedOvertimeMinutes,
+                        ]) }}
+                    </dd>
+                @endif
+            </dl>
+        @endunless
+
+        @if ($attendance->overtimeTlDecider)
+            <div class="small text-body-secondary mb-1">
+                {{ __('attendance_review.overtime.decided_by_tl') }}:
+                {{ $attendance->overtimeTlDecider->localizedName() }}
+            </div>
+        @endif
+        @if ($attendance->overtimeAdminDecider)
+            <div class="small text-body-secondary mb-2">
+                {{ __('attendance_review.overtime.decided_by_admin') }}:
+                {{ $attendance->overtimeAdminDecider->localizedName() }}
+            </div>
         @endif
 
         @if ($showTlForm)
@@ -84,27 +131,30 @@
                 @if ($filter)
                     <input type="hidden" name="filter" value="{{ $filter }}">
                 @endif
-                <div class="row g-2 align-items-end">
-                    <div class="col-6">
-                        <label class="form-label small mb-1">{{ __('attendance_review.overtime_minutes') }}</label>
+                <div class="row g-3">
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label" for="ot_minutes_{{ $attendance->id }}">{{ __('attendance_review.overtime_minutes') }}</label>
                         <input type="number" min="0" max="720" name="recommended_overtime_minutes"
+                               id="ot_minutes_{{ $attendance->id }}"
                                value="{{ $defaultMinutes }}"
-                               class="form-control form-control-sm">
+                               class="form-control">
                         <div class="form-text">{{ __('attendance_review.comparison.system_hint_minutes', [
                             'minutes' => $summary->systemSuggestedOvertimeMinutes,
                         ]) }}</div>
                     </div>
-                    <div class="col-6">
-                        <label class="form-label small mb-1">{{ __('attendance_review.overtime.recommendation') }}</label>
-                        <select name="overtime_tl_recommendation" class="form-select form-select-sm">
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label" for="ot_rec_{{ $attendance->id }}">{{ __('attendance_review.overtime.recommendation') }}</label>
+                        <select name="overtime_tl_recommendation" id="ot_rec_{{ $attendance->id }}" class="form-select">
                             <option value="RECOMMEND">{{ __('attendance_review.recommend_overtime') }}</option>
                             <option value="NO_OVERTIME">{{ __('attendance_review.no_overtime') }}</option>
                         </select>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-sm btn-outline-primary mt-2">
-                    {{ __('attendance_review.recommend_overtime') }}
-                </button>
+                <div class="attendance-review-actions">
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        {{ __('attendance_review.recommend_overtime') }}
+                    </button>
+                </div>
             </form>
         @endif
 
@@ -120,17 +170,15 @@
                         'planned' => number_format($summary->plannedHours, 2),
                     ]) }}
                 </p>
-                <div class="d-flex flex-wrap gap-2">
+                <div class="attendance-review-actions">
                     <button type="submit" name="overtime_admin_decision" value="APPROVED" class="btn btn-sm btn-success">
-                        {{ __('attendance_gaps.approve') }}
+                        {{ __('attendance_review.overtime.approve') }}
                     </button>
                     <button type="submit" name="overtime_admin_decision" value="REJECTED" class="btn btn-sm btn-outline-danger">
-                        {{ __('attendance_gaps.reject') }}
+                        {{ __('attendance_review.overtime.reject') }}
                     </button>
                 </div>
             </form>
-        @elseif ($compact)
-            <span class="small text-body-secondary">—</span>
         @endif
     </div>
 @endif

@@ -19,7 +19,7 @@ class AttendanceHistoryService
 {
     public const MAX_RANGE_DAYS = 92;
 
-    public const KINDS = ['all', 'present', 'absent', 'rest', 'vacation'];
+    public const KINDS = ['all', 'present', 'absent', 'shortfall', 'rest', 'vacation'];
 
     public const EVIDENCE = ['all', 'photos', 'location', 'outside'];
 
@@ -162,7 +162,16 @@ class AttendanceHistoryService
         $hasLocation = $attendances->contains(fn (Attendance $row): bool => $row->clock_in_lat !== null
             || $row->clock_out_lat !== null);
 
-        $kind = $this->kind($isVacation, $isRest, (float) $planned['hours'], (float) $actual['hours']);
+        $hasStarted = $attendances->contains(
+            fn (Attendance $row): bool => $row->clock_in !== null
+        );
+        $kind = $this->kind(
+            $isVacation,
+            $isRest,
+            (float) $planned['hours'],
+            (float) $actual['hours'],
+            $hasStarted,
+        );
 
         return [
             'user' => $user,
@@ -188,18 +197,28 @@ class AttendanceHistoryService
         ];
     }
 
-    private function kind(bool $isVacation, bool $isRest, float $planned, float $actual): string
-    {
-        if ($isVacation && $actual < 0.01) {
+    private function kind(
+        bool $isVacation,
+        bool $isRest,
+        float $planned,
+        float $actual,
+        bool $hasStarted,
+    ): string {
+        if ($isVacation && $actual < 0.01 && ! $hasStarted) {
             return 'vacation';
         }
-        if ($isRest && $actual < 0.01) {
+        if ($isRest && $actual < 0.01 && ! $hasStarted) {
             return 'rest';
         }
-        if ($planned > 0.01 && ($actual + 0.01) < $planned) {
+        // Absent = scheduled day with no punch at all (never started).
+        if ($planned > 0.01 && ! $hasStarted && $actual < 0.01) {
             return 'absent';
         }
-        if ($actual > 0.01) {
+        // Shortfall = started (incl. still open) but credited hours below planned.
+        if ($planned > 0.01 && ($actual + 0.01) < $planned) {
+            return 'shortfall';
+        }
+        if ($actual > 0.01 || $hasStarted) {
             return 'present';
         }
         if ($isVacation) {

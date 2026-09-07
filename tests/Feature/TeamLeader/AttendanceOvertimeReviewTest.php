@@ -112,7 +112,7 @@ class AttendanceOvertimeReviewTest extends TestCase
             ->get(route('team-leader.approvals'))
             ->assertOk()
             ->assertSee(__('attendance_review.overtime.pending_admin'), false)
-            ->assertSee(__('attendance_gaps.approve'), false);
+            ->assertSee(__('attendance_review.overtime.approve'), false);
 
         $this->actingAs($this->manager)
             ->post(route('team-leader.attendance.overtime.admin', $attendance->fresh()), [
@@ -138,7 +138,7 @@ class AttendanceOvertimeReviewTest extends TestCase
             ->get(route('team-leader.approvals'))
             ->assertOk()
             ->assertSee(__('attendance_review.overtime.section'), false)
-            ->assertSee(__('attendance_gaps.approve'), false);
+            ->assertSee(__('attendance_review.overtime.approve'), false);
 
         $this->actingAs($this->assistant)
             ->post(route('team-leader.attendance.overtime.admin', $attendance->fresh()), [

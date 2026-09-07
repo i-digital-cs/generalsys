@@ -43,4 +43,89 @@ class AttendanceHistoryServiceTest extends TestCase
         $this->assertSame('present', $page->items()[0]['kind']);
         $this->assertSame(0.0, $page->items()[0]['absent_hours']);
     }
+
+    public function test_no_punch_is_absent(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create([
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+        ]);
+
+        $page = app(AttendanceHistoryService::class)->paginate($manager, [
+            'employee_id' => $employee->id,
+            'from' => '2026-08-10',
+            'to' => '2026-08-10',
+            'kind' => 'absent',
+            'evidence' => 'all',
+            'page' => 1,
+            'path' => '/',
+        ]);
+
+        $this->assertSame(1, $page->total());
+        $this->assertSame('absent', $page->items()[0]['kind']);
+    }
+
+    public function test_partial_day_punch_is_shortfall_not_absent(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create([
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+        ]);
+        Attendance::factory()->create([
+            'user_id' => $employee->id,
+            'date' => '2026-08-10',
+            'shift_type' => Attendance::SHIFT_FULL_TIME,
+            'clock_in' => '2026-08-10 10:00:00',
+            'clock_out' => '2026-08-10 14:00:00',
+            'actual_hours' => 4,
+            'planned_hours' => 8,
+        ]);
+
+        $page = app(AttendanceHistoryService::class)->paginate($manager, [
+            'employee_id' => $employee->id,
+            'from' => '2026-08-10',
+            'to' => '2026-08-10',
+            'kind' => 'all',
+            'evidence' => 'all',
+            'page' => 1,
+            'path' => '/',
+        ]);
+
+        $this->assertSame(1, $page->total());
+        $this->assertSame('shortfall', $page->items()[0]['kind']);
+        $this->assertSame(4.0, $page->items()[0]['absent_hours']);
+    }
+
+    public function test_open_punch_is_shortfall_not_absent(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create([
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+        ]);
+        Attendance::factory()->create([
+            'user_id' => $employee->id,
+            'date' => '2026-08-10',
+            'shift_type' => Attendance::SHIFT_FULL_TIME,
+            'clock_in' => '2026-08-10 10:00:00',
+            'clock_out' => null,
+            'actual_hours' => 0,
+            'planned_hours' => 8,
+        ]);
+
+        $page = app(AttendanceHistoryService::class)->paginate($manager, [
+            'employee_id' => $employee->id,
+            'from' => '2026-08-10',
+            'to' => '2026-08-10',
+            'kind' => 'all',
+            'evidence' => 'all',
+            'page' => 1,
+            'path' => '/',
+        ]);
+
+        $this->assertSame(1, $page->total());
+        $this->assertSame('shortfall', $page->items()[0]['kind']);
+    }
 }

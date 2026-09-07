@@ -29,7 +29,8 @@ return [
         'kinds' => [
             'all' => 'All',
             'present' => 'Present',
-            'absent' => 'Absent / short',
+            'absent' => 'Absent',
+            'shortfall' => 'Shortfall',
             'rest' => 'Rest day',
             'vacation' => 'Vacation',
         ],

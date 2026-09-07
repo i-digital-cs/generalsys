@@ -77,6 +77,8 @@ return [
         'decided_by_tl' => 'Recommended by',
         'decided_by_admin' => 'Decided by',
         'admin_hint' => 'Approve :minutes min overtime on top of :planned h planned?',
+        'approve' => 'Approve overtime',
+        'reject' => 'Reject overtime',
         'empty_pending_tl' => 'No overtime awaiting team leader review.',
         'empty_pending_admin' => 'No overtime awaiting admin decision.',
         'empty_decided' => 'No decided overtime rows in this filter.',

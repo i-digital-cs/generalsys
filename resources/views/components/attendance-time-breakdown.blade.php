@@ -24,7 +24,7 @@
 
     @if (! $compact)
         <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle mb-0">
+            <table class="table table-sm table-bordered align-middle mb-0 attendance-compare-table">
             <thead>
                 <tr>
                     <th scope="col">{{ __('attendance_review.comparison.system') }}</th>
@@ -34,14 +34,14 @@
             <tbody>
                 <tr>
                     <td>
-                        <span class="d-block text-body-secondary">{{ __('attendance_review.planned_hours') }}</span>
-                        <span class="num-ltr fw-semibold">{{ number_format($summary->plannedHours, 2) }}h</span>
+                        <span class="hp-metric-label">{{ __('attendance_review.planned_hours') }}</span>
+                        <span class="num-ltr hp-value">{{ number_format($summary->plannedHours, 2) }}h</span>
                     </td>
                     <td>
-                        <span class="d-block text-body-secondary">{{ __('attendance_review.planned_hours') }}</span>
-                        <span class="num-ltr fw-semibold">{{ number_format($summary->plannedHours, 2) }}h</span>
+                        <span class="hp-metric-label">{{ __('attendance_review.planned_hours') }}</span>
+                        <span class="num-ltr hp-value">{{ number_format($summary->plannedHours, 2) }}h</span>
                         @if ($summary->approvedOvertimeMinutes > 0)
-                            <span class="d-block small text-body-secondary num-ltr">
+                            <span class="d-block small text-body-secondary num-ltr mt-1">
                                 {{ __('attendance_review.overtime.credited_cap_hint', [
                                     'planned' => number_format($summary->plannedHours, 2),
                                     'minutes' => $summary->approvedOvertimeMinutes,
@@ -52,18 +52,18 @@
                 </tr>
                 <tr>
                     <td>
-                        <span class="d-block text-body-secondary">{{ __('attendance_review.raw_hours') }}</span>
-                        <span class="num-ltr fw-semibold">{{ number_format($summary->systemRawHours, 2) }}h</span>
+                        <span class="hp-metric-label">{{ __('attendance_review.raw_hours') }}</span>
+                        <span class="num-ltr hp-value">{{ number_format($summary->systemRawHours, 2) }}h</span>
                     </td>
                     <td>
-                        <span class="d-block text-body-secondary">{{ __('attendance_review.raw_hours') }}</span>
-                        <span class="num-ltr fw-semibold">{{ number_format($summary->appliedRawHours, 2) }}h</span>
+                        <span class="hp-metric-label">{{ __('attendance_review.raw_hours') }}</span>
+                        <span class="num-ltr hp-value">{{ number_format($summary->appliedRawHours, 2) }}h</span>
                     </td>
                 </tr>
                 <tr>
                     <td>
-                        <span class="d-block text-body-secondary">{{ __('attendance_review.credited_hours') }}</span>
-                        <span class="num-ltr fw-semibold">
+                        <span class="hp-metric-label">{{ __('attendance_review.credited_hours') }}</span>
+                        <span class="num-ltr hp-value">
                             @if ($summary->open)
                                 —
                             @else
@@ -72,8 +72,8 @@
                         </span>
                     </td>
                     <td>
-                        <span class="d-block text-body-secondary">{{ __('attendance_review.credited_hours') }}</span>
-                        <span @class(['num-ltr fw-semibold', 'text-primary' => $summary->creditedOverridden])>
+                        <span class="hp-metric-label">{{ __('attendance_review.credited_hours') }}</span>
+                        <span @class(['num-ltr', 'hp-value', 'text-primary' => $summary->creditedOverridden])>
                             @if ($summary->open)
                                 —
                             @else
@@ -87,12 +87,12 @@
                 </tr>
                 <tr>
                     <td>
-                        <span class="d-block text-body-secondary">{{ __('attendance_review.late_minutes') }}</span>
-                        <span class="num-ltr">{{ $summary->systemLateMinutes }}</span>
+                        <span class="hp-metric-label">{{ __('attendance_review.late_minutes') }}</span>
+                        <span class="num-ltr hp-value">{{ $summary->systemLateMinutes }}</span>
                     </td>
                     <td>
-                        <span class="d-block text-body-secondary">{{ __('attendance_review.late_minutes') }}</span>
-                        <span @class(['num-ltr', 'text-primary' => $summary->lateOverridden])>{{ $summary->appliedLateMinutes }}</span>
+                        <span class="hp-metric-label">{{ __('attendance_review.late_minutes') }}</span>
+                        <span @class(['num-ltr', 'hp-value', 'text-primary' => $summary->lateOverridden])>{{ $summary->appliedLateMinutes }}</span>
                         @if ($summary->lateOverridden)
                             <span class="badge text-bg-primary ms-1">{{ __('attendance_review.comparison.overridden') }}</span>
                         @endif
@@ -100,12 +100,12 @@
                 </tr>
                 <tr>
                     <td>
-                        <span class="d-block text-body-secondary">{{ __('attendance_review.early_minutes') }}</span>
-                        <span class="num-ltr">{{ $summary->systemEarlyMinutes }}</span>
+                        <span class="hp-metric-label">{{ __('attendance_review.early_minutes') }}</span>
+                        <span class="num-ltr hp-value">{{ $summary->systemEarlyMinutes }}</span>
                     </td>
                     <td>
-                        <span class="d-block text-body-secondary">{{ __('attendance_review.early_minutes') }}</span>
-                        <span class="num-ltr">{{ $summary->appliedEarlyMinutes }}</span>
+                        <span class="hp-metric-label">{{ __('attendance_review.early_minutes') }}</span>
+                        <span class="num-ltr hp-value">{{ $summary->appliedEarlyMinutes }}</span>
                     </td>
                 </tr>
             </tbody>
@@ -172,24 +172,26 @@
     @if ($review && $formAction && $attendance->clock_out !== null)
         <form method="POST" action="{{ $formAction }}" class="mt-3">
             @csrf
-            <div class="row g-2">
-                <div class="col-6">
-                    <label class="form-label small">{{ __('attendance_review.credited_hours') }}</label>
+            <div class="row g-3">
+                <div class="col-12 col-sm-6">
+                    <label class="form-label" for="credited_hours_{{ $attendance->id }}">{{ __('attendance_review.credited_hours') }}</label>
                     <input type="number" step="0.01" min="0" max="24" name="credited_hours"
+                           id="credited_hours_{{ $attendance->id }}"
                            value="{{ $attendance->credited_hours ?? $attendance->actual_hours }}"
-                           class="form-control form-control-sm">
+                           class="form-control">
                     <div class="form-text">{{ __('attendance_review.comparison.system_hint', ['hours' => number_format($summary->systemCreditedHours, 2)]) }}</div>
                 </div>
-                <div class="col-6">
-                    <label class="form-label small">{{ __('attendance_review.adjusted_late') }}</label>
+                <div class="col-12 col-sm-6">
+                    <label class="form-label" for="adjusted_late_{{ $attendance->id }}">{{ __('attendance_review.adjusted_late') }}</label>
                     <input type="number" min="0" max="720" name="adjusted_late_minutes"
+                           id="adjusted_late_{{ $attendance->id }}"
                            value="{{ $attendance->adjusted_late_minutes ?? $attendance->late_minutes }}"
-                           class="form-control form-control-sm">
+                           class="form-control">
                     <div class="form-text">{{ __('attendance_review.comparison.system_hint_minutes', ['minutes' => $summary->systemLateMinutes]) }}</div>
                 </div>
             </div>
-            <div class="d-flex flex-wrap gap-2 mt-2">
-                <button type="submit" class="btn btn-sm btn-outline-primary">{{ __('attendance_review.save') }}</button>
+            <div class="attendance-review-actions">
+                <button type="submit" class="btn btn-sm btn-primary">{{ __('attendance_review.save') }}</button>
                 @if ($summary->hasOverrides())
                     <button type="submit" name="reset_system" value="1" class="btn btn-sm btn-outline-secondary">
                         {{ __('attendance_review.comparison.use_system') }}

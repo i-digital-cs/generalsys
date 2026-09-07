@@ -79,17 +79,17 @@
         @endif
     </ul>
 
-    <div class="attendance-shift-timeline__balance border-top pt-3">
+    <div class="attendance-shift-timeline__balance border-top">
         <span class="small text-body-secondary d-block mb-2">
             {{ __('attendance_review.hours_balance.title') }}
         </span>
-        <dl class="row mb-0 small">
-            <dt class="col-sm-6">{{ __('attendance_review.hours_balance.worked') }}</dt>
-            <dd class="col-sm-6 num-ltr mb-2">{{ number_format($summary->systemRawHours, 2) }}h</dd>
-            <dt class="col-sm-6">{{ __('attendance_review.hours_balance.planned') }}</dt>
-            <dd class="col-sm-6 num-ltr mb-2">{{ number_format($summary->plannedHours, 2) }}h</dd>
-            <dt class="col-sm-6">{{ __('attendance_review.hours_balance.difference') }}</dt>
-            <dd class="col-sm-6 mb-0">
+        <dl class="row mb-0 small g-1">
+            <dt class="col-6">{{ __('attendance_review.hours_balance.worked') }}</dt>
+            <dd class="col-6 num-ltr hp-value mb-1 text-end">{{ number_format($summary->systemRawHours, 2) }}h</dd>
+            <dt class="col-6">{{ __('attendance_review.hours_balance.planned') }}</dt>
+            <dd class="col-6 num-ltr hp-value mb-1 text-end">{{ number_format($summary->plannedHours, 2) }}h</dd>
+            <dt class="col-6">{{ __('attendance_review.hours_balance.difference') }}</dt>
+            <dd class="col-6 mb-0 text-end">
                 @if ($summary->overtimeDeltaMinutes > 0)
                     <span class="badge text-bg-success num-ltr">
                         {{ __('attendance_review.hours_balance.extra', ['minutes' => $summary->extraWorkedMinutes()]) }}
