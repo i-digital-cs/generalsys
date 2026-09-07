@@ -1,10 +1,13 @@
 @php
     $currency = $stats['currency'] ?? 'EGP';
+    $compactTitle = $compactTitle ?? false;
 @endphp
 <div class="mb-4">
-    <h2 class="h6 mb-3">{{ __('valuation.stats.title') }}
-        <span class="text-body-secondary fw-normal">· {{ $stats['month_label'] }}</span>
-    </h2>
+    @unless ($compactTitle)
+        <h2 class="h6 mb-3">{{ __('valuation.stats.title') }}
+            <span class="text-body-secondary fw-normal">· {{ $stats['month_label'] }}</span>
+        </h2>
+    @endunless
     <div class="row g-3">
         <div class="col-6 col-lg-3">
             <x-stat-card :title="__('valuation.stats.gross')" icon="bi-cash-stack" color="primary">

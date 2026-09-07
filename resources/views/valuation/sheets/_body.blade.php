@@ -23,7 +23,7 @@
                     @if ($editable)
                         <textarea name="input[market_status]" id="market_status" class="form-control" rows="2">{{ $text('market_status') }}</textarea>
                     @else
-                        <p class="mb-0 text-break" style="white-space: pre-wrap">{{ $blank($text('market_status')) }}</p>
+                        <p class="mb-0 text-break hp-value" style="white-space: pre-wrap">{{ $blank($text('market_status')) }}</p>
                     @endif
                 </div>
                 @foreach ([
@@ -39,7 +39,7 @@
                             <label class="visually-hidden" for="{{ $mk }}">{{ $line('fields.'.$mk) }}</label>
                             <input class="form-control" dir="ltr" name="input[{{ $mk }}]" id="{{ $mk }}" value="{{ $score($mk) }}">
                         @else
-                            <p class="mb-0 num-ltr">{{ $score($mk) }}</p>
+                            <p class="mb-0 num-ltr hp-value">{{ $score($mk) }}</p>
                         @endif
                     </div>
                 @endforeach
@@ -49,7 +49,7 @@
                         @if ($editable)
                             <textarea name="input[haroon_news]" id="haroon_news" class="form-control" rows="2">{{ $text('haroon_news') }}</textarea>
                         @else
-                            <p class="mb-0 text-break" style="white-space: pre-wrap">{{ $blank($text('haroon_news')) }}</p>
+                            <p class="mb-0 text-break hp-value" style="white-space: pre-wrap">{{ $blank($text('haroon_news')) }}</p>
                         @endif
                     </div>
                 @endif
@@ -91,7 +91,7 @@
                 @if ($editable)
                     <textarea name="input[haroon_news]" id="haroon_news" class="form-control" rows="3">{{ $text('haroon_news') }}</textarea>
                 @else
-                    <p class="mb-0 text-break" style="white-space: pre-wrap">{{ $blank($text('haroon_news')) }}</p>
+                    <p class="mb-0 text-break hp-value" style="white-space: pre-wrap">{{ $blank($text('haroon_news')) }}</p>
                 @endif
             </div>
         </div>
@@ -126,21 +126,21 @@
                                    value="{{ $score($sk) }}" min="0" max="100" step="1" data-star-source data-sales-channel>
                             <x-stars :score="$score($sk)" class="small" data-star-out />
                         @else
-                            <p class="mb-0"><span class="num-ltr">{{ $score($sk) }}%</span> <x-stars :score="$score($sk)" class="small" /></p>
+                            <p class="mb-0"><span class="num-ltr hp-value">{{ $score($sk) }}%</span> <x-stars :score="$score($sk)" class="small" /></p>
                         @endif
                     </div>
                 @endforeach
                 <div class="col-12">
                     <p class="mb-1">
                         {{ $line('fields.sales_average') }}:
-                        <span class="num-ltr fw-semibold" data-sales-avg>{{ number_format((float) ($result['sales_average'] ?? 0), 2) }}%</span>
+                        <span class="num-ltr fw-semibold hp-value" data-sales-avg>{{ number_format((float) ($result['sales_average'] ?? 0), 2) }}%</span>
                         <x-stars :score="$result['sales_average'] ?? 0" data-sales-stars />
                     </p>
                     <div class="form-label">{{ $line('fields.notes') }}</div>
                     @if ($editable)
                         <textarea name="input[sales_notes]" id="sales_notes" class="form-control" rows="2">{{ $text('sales_notes') }}</textarea>
                     @else
-                        <p class="mb-0 text-break" style="white-space: pre-wrap">{{ $blank($text('sales_notes')) }}</p>
+                        <p class="mb-0 text-break hp-value" style="white-space: pre-wrap">{{ $blank($text('sales_notes')) }}</p>
                     @endif
                 </div>
             </div>
@@ -202,7 +202,7 @@
                                 <input class="form-control" dir="ltr" name="input[{{ $pk }}]" id="{{ $pk }}"
                                        value="{{ $score($pk) }}" min="0" max="100" step="1">
                             @else
-                                <p class="mb-0 num-ltr">{{ $score($pk) }}%</p>
+                                <p class="mb-0 num-ltr hp-value">{{ $score($pk) }}%</p>
                             @endif
                         </div>
                     @endforeach

@@ -24,7 +24,9 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 - [ ] Flow: reachable from previous screen
 - [ ] Feedback: flash / validation visible
 - [ ] Inputs: typed/selected values fully visible — no icon/addon/star/badge covering the field (AGENTS.md §8.4 · UI_FRAMEWORK §9.4)
+- [ ] Input value color: typed/selected text uses `--hp-input-value-color` (not label/body color) (AGENTS.md §8.7 · UI_FRAMEWORK §9.6)
 - [ ] Typography: titles bold + title color; labels muted; body distinct (AGENTS.md §8.5 · UI_FRAMEWORK §9.5)
+- [ ] Design identity: `#79caf9` chrome / soft cards / navy dark mode; KPI tiles via `<x-stat-card>` (AGENTS.md §8.6 · UI_FRAMEWORK §4)
 - [ ] Roles: wrong role 403 or hidden menu
 - [ ] Role chain: asked user if TL↔Admin applies; implemented only per their answer (AGENTS.md §0b)
 - [ ] Money: never shown to TEAM_LEADER (if applicable)

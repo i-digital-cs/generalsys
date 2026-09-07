@@ -128,6 +128,8 @@ Any task that **builds or changes UI** (Blade views, components, menus, forms, f
 3. **Responsive:** verify ~375px, ~768px, and ~1280px — no broken layout, no clipped primary actions, tables usable on small screens (scroll container or stack).
 4. **Input values must stay visible:** validation icons, stars, badges, input-group addons, or any adornment must **never** cover, clip, or hide typed/selected data inside an input or select (RTL and LTR). Put adornments **beside** the control (sibling), not overlaid; rely on global `_hr-pro.scss` (no Bootstrap valid/invalid background SVGs). Details: `docs/UI_FRAMEWORK.md` §9.4.
 5. **Typography hierarchy:** titles, labels, and body text must **not** look the same. Titles (`h1–h6`, `.card-title`, `.modal-title`, `.card-header`) are **bold** with `--hp-title-color`. Labels (`.form-label`) use muted `--hp-label-color` and semibold. Body stays default weight/color. Details: `docs/UI_FRAMEWORK.md` §9.5.
+6. **System design identity:** brand primary / header / sparklines use **`#79caf9`** (light) with cool page wash and soft cards; dark mode uses navy page (`#0d1117`) and elevated cards. All KPI tiles use `<x-stat-card>` (pastel icon + sparkline). Floating primary actions use `.hp-fab`. Do not invent one-off dashboard skins per module. Details: `docs/UI_FRAMEWORK.md` §4.
+7. **Input value color (fixed):** any typed, selected, or stored field value must use **`--hp-input-value-color`** (sky blue `#0284c7` light / `#38bdf8` dark, semibold) — **never** the same color as titles (`#0f172a`). Apply to `.form-control` / `.form-select` / `textarea`, and to read-only displays via `.hp-value` / `.stat-value` / `<x-money>`. Placeholders use `--hp-input-placeholder-color`. Do not override per screen. Details: `docs/UI_FRAMEWORK.md` §9.6.
 
 Also: dates via Carbon `translatedFormat()`; money via `<x-money>` — never hand-format currency. Details: `docs/UI_FRAMEWORK.md` §9 · checklist: `docs/TASKS.md` UI/UX gate.
 
@@ -137,7 +139,7 @@ Also: dates via Carbon `translatedFormat()`; money via `<x-money>` — never han
 - [ ] Migration + schema doc updated (if schema touched)
 - [ ] Current task in `docs/TASKS.md` has dependencies `done`; this task set `done` after tests + UI/UX
 - [ ] Unit + feature tests added/updated and **green**; step report pasted (commands + PASS)
-- [ ] UI/UX checklist PASS (or N/A for backend-only): **AR+EN keys**, **RTL+LTR**, **responsive** (375 / 768 / 1280), **input values not covered by icons/adornments**, **titles ≠ labels ≠ body**; previous↔next screen flow verified
+- [ ] UI/UX checklist PASS (or N/A for backend-only): **AR+EN keys**, **RTL+LTR**, **responsive** (375 / 768 / 1280), **input values not covered**, **titles ≠ labels ≠ body ≠ input-value color**; previous↔next screen flow verified
 - [ ] Current Gate in `docs/BUILD_AND_TEST_GATES.md` checklist items for this step checked
 - [ ] `php -l` clean; Pint clean; no N+1 (`preventLazyLoading` / Debugbar in dev)
 - [ ] No dead code, no unused files/columns introduced

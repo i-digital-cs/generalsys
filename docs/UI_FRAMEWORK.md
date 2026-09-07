@@ -53,20 +53,34 @@ resources/views/
 
 Flash messages: `session('success'|'error')` → Bootstrap toast, auto-dismiss 4s.
 
-## 4. Design Tokens (Bootstrap overrides in `resources/scss/app.scss`)
+## 4. Design Tokens (Bootstrap overrides in `resources/scss/app.scss` + `_hr-pro.scss`)
+
+**System design identity (all screens — light + dark):**
 
 ```scss
-$primary:   #0d6efd;   // default, brand override TBD
+$primary: #79caf9;           // brand / header / accents
 $font-family-sans-serif: 'Cairo', system-ui, sans-serif;
-$border-radius: .5rem;
-// RTL: import "bootstrap/dist/css/bootstrap.rtl.min.css" when dir=rtl
+$border-radius: .65rem;
+// CSS vars in _hr-pro.scss:
+// --hp-header-bg: #79caf9 (light) · navy header (dark)
+// --hp-page-bg: #eef6fb (light) · #0d1117 (dark)
+// --hp-title-color / --hp-label-color · titles ≠ labels ≠ body
+// --hp-card-radius: .85rem · soft cards + sparklines on <x-stat-card>
 ```
 
-**Compact density (modern scale)** — defined once in `resources/scss/_hr-pro.scss` as plain CSS so it applies to both builds: base type 14px (`--bs-body-font-size: .875rem`), buttons/inputs/tables at .875rem with tighter padding, card spacers .85rem/1rem, card radius .65rem, headings one step smaller, navbar padding .45rem. Sidebar width 210px; main content padding `p-3`.
+| Surface | Light | Dark |
+|---------|-------|------|
+| Navbar | `#79caf9` + dark text | `#1e3a5f` + white text |
+| Page | cool wash `#eef6fb` | navy `#0d1117` |
+| Cards | white, soft shadow | `#1a2332` |
+| Primary button / FAB | `#79caf9` (dark label) | `#4dabf7` |
+| KPI cards | pastel icon tile + SVG sparkline (`<x-stat-card>`) | same structure |
 
-- Currency display: `<x-money :amount="$record->net_pay" :currency="$record->currency"/>` → `2,808.00 ج.م` / `2,808.00 AED`.
-- Dates via Carbon `->translatedFormat()` so Arabic month names render.
+**Compact density** — base type 14px, tighter controls, sidebar 210px, main `p-3`. Floating CTAs use `.hp-fab` (fixed, pill).
+
+- Currency: `<x-money …/>`. Dates: Carbon `translatedFormat()`.
 - Status colors: PRESENT=success, LATE=warning, ABSENT=danger, PENDING=secondary, FORCED=dark.
+- Remaining-days style: `.badge.rounded-pill` / `.hp-pill--primary`.
 
 ## 5. Screen Map (routes → Blade views)
 
@@ -119,10 +133,17 @@ Navbar: Service · Production · HR tabs. HR sidebar only inside HR.
 
 ## 6. Component Examples
 
-**Stat card**
+**Stat card (system-wide KPI tile)**
 ```blade
-<x-stat-card title="{{ __('dashboard.team_attendance') }}" value="94%" icon="bi-people" color="success"/>
+<x-stat-card
+    title="{{ __('dashboard.team_attendance') }}"
+    value="94%"
+    icon="bi-people"
+    color="success"
+    :sparkline="[12, 18, 15, 22, 20]"
+/>
 ```
+Layout: pastel icon + bold value + optional SVG sparkline. Omit `:sparkline` for a stable decorative series derived from the title. Use `:show-sparkline="false"` to hide the chart.```
 
 **Data table (always paginated; use `.table-hr` + toolbar)**
 ```blade
@@ -179,13 +200,23 @@ Enforced in CSS: `resources/scss/_hr-pro.scss` removes valid/invalid background 
 
 | Role | Elements | Look |
 |------|----------|------|
-| **Title** | `h1–h6`, `.h1–.h6`, `.card-title`, `.modal-title`, `.card-header` | **Bold (700)** + `--hp-title-color` (blue ink; lighter blue in dark mode) |
-| **Label** | `.form-label`, `.col-form-label`, table `thead th` | Semibold (600) + muted `--hp-label-color`, slightly smaller |
+| **Title** | `h1–h6`, `.h1–.h6`, `.card-title`, `.modal-title`, `.card-header` | **Bold (700)** + `--hp-title-color` (ink `#1e293b` light / near-white dark) |
+| **Label** | `.form-label`, `.col-form-label`, table `thead th`, `.stat-label` | Semibold (600) + muted `--hp-label-color`, slightly smaller |
 | **Body** | paragraphs, table cells, helper text | Regular weight + default body color |
 
-Do **not** hardcode the same gray/weight on page titles and field labels. Numeric size utilities that are values (e.g. `.h4.font-monospace`, `.stat-value`) keep body color so clocks/KPIs are not styled as section titles.
+Do **not** hardcode the same gray/weight on page titles and field labels. Brand accent for chrome is **`#79caf9`** (header / primary / sparklines) — titles stay ink-colored so they stay distinct from the accent.
 
-Tokens live in `_hr-pro.scss` (`--hp-title-color`, `--hp-label-color`).
+### 9.6 Input value color (typed / selected data)
+
+| Role | Elements | Look |
+|------|----------|------|
+| **Title** | `h1–h6`, `.card-title`, `.modal-title`, `.card-header` | **Bold (700)** + near-black `--hp-title-color` (`#0f172a` light) |
+| **Label** | `.form-label`, … | Semibold + muted `--hp-label-color` |
+| **Body** | paragraphs, helper text | Regular + body color |
+| **Input / data value** | `.form-control`, `.form-select`, `.hp-value`, `.stat-value`, `<x-money>` | **Semibold** + sky blue `--hp-input-value-color` (`#0284c7` light / `#38bdf8` dark) |
+
+Titles and input values must **never** share the same hue. Read-only field values use class `hp-value` (same token as inputs).
+
 
 ## 10. Page-Level JS Rules
 

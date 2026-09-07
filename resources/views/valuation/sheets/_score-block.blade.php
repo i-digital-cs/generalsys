@@ -34,7 +34,7 @@
                         @enderror
                     @else
                         <div class="d-flex flex-wrap align-items-center gap-2">
-                            <span class="num-ltr fw-semibold">{{ $score($scoreKey) }}%</span>
+                            <span class="num-ltr fw-semibold hp-value">{{ $score($scoreKey) }}%</span>
                             <x-stars :score="$score($scoreKey)" />
                         </div>
                     @endif
@@ -49,7 +49,7 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         @else
-                            <p class="mb-0 text-break" style="white-space: pre-wrap">{{ $blank($text($notesKey)) }}</p>
+                            <p class="mb-0 text-break hp-value" style="white-space: pre-wrap">{{ $blank($text($notesKey)) }}</p>
                         @endif
                     </div>
                 @endisset
@@ -64,7 +64,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             @else
-                                <p class="mb-0 text-break" style="white-space: pre-wrap">{{ $blank($text($ek)) }}</p>
+                                <p class="mb-0 text-break hp-value" style="white-space: pre-wrap">{{ $blank($text($ek)) }}</p>
                             @endif
                         </div>
                     @endforeach

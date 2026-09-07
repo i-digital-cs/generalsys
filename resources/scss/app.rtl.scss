@@ -8,7 +8,11 @@ $bootstrap-icons-font-dir: '../../node_modules/bootstrap-icons/font/fonts';
 
 :root {
     --bs-font-sans-serif: 'Cairo', system-ui, sans-serif;
-    --bs-border-radius: .5rem;
+    --bs-border-radius: .65rem;
+    --bs-primary: #79caf9;
+    --bs-primary-rgb: 121, 202, 249;
+    --bs-link-color: #0b4f9c;
+    --bs-link-hover-color: #083a75;
 }
 
 @import 'hr-pro';

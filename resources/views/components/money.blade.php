@@ -8,4 +8,4 @@
     $code = in_array($currency, ['EGP', 'AED'], true) ? $currency : 'EGP';
     $suffix = __('general.currencies.'.$code);
 @endphp
-<span {{ $attributes->merge(['dir' => 'ltr', 'class' => 'text-nowrap']) }}>{{ $value }} {{ $suffix }}</span>
+<span {{ $attributes->merge(['dir' => 'ltr', 'class' => 'text-nowrap hp-value']) }}>{{ $value }} {{ $suffix }}</span>

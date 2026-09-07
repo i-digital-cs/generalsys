@@ -39,7 +39,7 @@
             @if (! $editable && $avgScore !== null && ($result['drivers'] ?? []) !== [])
                 <span class="small fw-normal d-inline-flex align-items-center gap-2">
                     <span class="text-body-secondary">{{ __('valuation.drivers.avg_score') }}:</span>
-                    <span class="num-ltr fw-semibold">{{ number_format((float) $avgScore, 2) }}%</span>
+                    <span class="num-ltr fw-semibold hp-value">{{ number_format((float) $avgScore, 2) }}%</span>
                     <x-stars :score="$avgScore" />
                 </span>
             @endif
@@ -228,12 +228,12 @@
                                 </div>
                                 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                                     <span class="text-body-secondary small">{{ __('valuation.fields.score') }}:</span>
-                                    <span class="num-ltr fw-semibold">{{ number_format($rowScore, 2) }}%</span>
+                                    <span class="num-ltr fw-semibold hp-value">{{ number_format($rowScore, 2) }}%</span>
                                     <x-stars :score="$rowScore" />
                                 </div>
                                 <div>
                                     <div class="text-body-secondary small mb-1">{{ __('valuation.fields.notes') }}</div>
-                                    <p class="mb-0 text-break" style="white-space: pre-wrap">{{ $rowNotes === '' ? '—' : $rowNotes }}</p>
+                                    <p class="mb-0 text-break hp-value" style="white-space: pre-wrap">{{ $rowNotes === '' ? '—' : $rowNotes }}</p>
                                 </div>
                             </div>
                         @endforeach

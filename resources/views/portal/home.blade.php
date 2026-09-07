@@ -53,7 +53,7 @@
 
         <div class="row g-3 mb-4">
             <div class="col-6 col-lg-2">
-                <x-stat-card :title="__('portal.cards.staff')" :value="$cards['staff']" icon="bi-people" color="primary" />
+                <x-stat-card :title="__('portal.cards.staff')" :value="$cards['staff']" icon="bi-people" color="primary" :sparkline="array_column($trend, 'value')" />
             </div>
             <div class="col-6 col-lg-2">
                 <x-stat-card :title="__('portal.cards.staff_active')" :value="$cards['staff_active']" icon="bi-person-check" color="success" />

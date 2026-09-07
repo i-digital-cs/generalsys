@@ -3,41 +3,67 @@
 // Bootstrap sass build and the prebuilt bootstrap.rtl.min.css.
 
 :root {
-    --hp-primary: #0d6efd;
-    --hp-primary-soft: rgba(13, 110, 253, .1);
-    --hp-card-border: rgba(0, 0, 0, .06);
-    --hp-shadow-sm: 0 .125rem .375rem rgba(15, 23, 42, .06);
+    --hp-primary: #79caf9;
+    --hp-primary-rgb: 121, 202, 249;
+    --hp-primary-soft: rgba(121, 202, 249, .18);
+    --hp-primary-strong: #3ba4e6;
+    --hp-card-border: rgba(15, 23, 42, .06);
+    --hp-shadow-sm: 0 .125rem .5rem rgba(15, 23, 42, .06);
     --hp-shadow-hover: 0 .5rem 1.25rem rgba(15, 23, 42, .12);
+    --hp-card-radius: .85rem;
+    --hp-page-bg: #eef6fb;
 
-    // Typography hierarchy — titles ≠ labels ≠ body (AGENTS.md §8.5 · UI_FRAMEWORK §9.5)
-    --hp-title-color: #0b4f9c;
-    --hp-label-color: #5c6b7a;
+    // Typography hierarchy — titles ≠ labels ≠ body ≠ input values
+    // Titles = near-black ink; input values = clear sky blue (must not look the same).
+    --hp-title-color: #0f172a;
+    --hp-label-color: #64748b;
     --hp-body-color: var(--bs-body-color);
+    --hp-input-value-color: #0284c7;
+    --hp-input-placeholder-color: #94a3b8;
 
     // Top navbar (light mode)
     --hp-header-bg: #79caf9;
     --hp-header-fg: #0b3a5c;
 
+    // Sparkline
+    --hp-spark-stroke: #79caf9;
+    --hp-spark-fill: rgba(121, 202, 249, .28);
+
     // Compact density: 14px base type instead of Bootstrap's 16px.
     // Both builds (compiled LTR + prebuilt RTL) read this var in `body`.
     --bs-body-font-size: .875rem;
+    --bs-primary: #79caf9;
+    --bs-primary-rgb: 121, 202, 249;
     color-scheme: light;
 }
 
 [data-bs-theme='dark'] {
-    --hp-primary-soft: rgba(13, 110, 253, .28);
-    --hp-card-border: rgba(255, 255, 255, .1);
-    --hp-shadow-sm: 0 .125rem .375rem rgba(0, 0, 0, .35);
+    --hp-primary: #4dabf7;
+    --hp-primary-rgb: 77, 171, 247;
+    --hp-primary-soft: rgba(77, 171, 247, .22);
+    --hp-primary-strong: #79caf9;
+    --hp-card-border: rgba(255, 255, 255, .08);
+    --hp-shadow-sm: 0 .125rem .5rem rgba(0, 0, 0, .35);
     --hp-shadow-hover: 0 .5rem 1.25rem rgba(0, 0, 0, .5);
-    --hp-title-color: #6ea8fe;
-    --hp-label-color: #adb5bd;
-    --hp-header-bg: #0d6efd;
+    --hp-page-bg: #0d1117;
+    --hp-title-color: #f8fafc;
+    --hp-label-color: #94a3b8;
+    --hp-input-value-color: #38bdf8;
+    --hp-input-placeholder-color: #64748b;
+    --hp-header-bg: #1e3a5f;
     --hp-header-fg: #ffffff;
+    --hp-spark-stroke: #4dabf7;
+    --hp-spark-fill: rgba(77, 171, 247, .22);
+    --bs-primary: #4dabf7;
+    --bs-primary-rgb: 77, 171, 247;
+    --bs-body-bg: #0d1117;
+    --bs-tertiary-bg: #111827;
+    --bs-secondary-bg: #1a2332;
     color-scheme: dark;
 }
 
 body {
-    background-color: var(--bs-tertiary-bg);
+    background-color: var(--hp-page-bg);
 }
 
 // ---- Compact density (modern SaaS scale) -----------------------------------
@@ -57,6 +83,43 @@ body {
     padding: .35rem .65rem;
     font-size: .875rem;
     border-radius: .45rem;
+}
+
+// SYSTEM RULE (AGENTS.md §8.7 · UI_FRAMEWORK §9.6):
+// Typed / selected / stored field values use a fixed sky-blue — never title ink.
+.form-control,
+.form-select,
+textarea.form-control,
+.form-control-plaintext,
+.hp-value,
+.stat-value {
+    color: var(--hp-input-value-color) !important;
+    font-weight: 600;
+}
+
+.form-control::placeholder,
+textarea.form-control::placeholder {
+    color: var(--hp-input-placeholder-color) !important;
+    font-weight: 400;
+    opacity: 1;
+}
+
+.form-control:disabled,
+.form-select:disabled,
+textarea.form-control:disabled,
+.form-control[readonly]:not(.form-control-plaintext) {
+    color: var(--hp-input-value-color) !important;
+    opacity: .72;
+}
+
+.form-select option {
+    color: var(--hp-input-value-color);
+    font-weight: 600;
+}
+
+// Badges inside KPI value slots keep their own tone (not sky-blue inherit).
+.stat-value .badge {
+    font-weight: 600;
 }
 
 .form-label {
@@ -183,7 +246,7 @@ body {
 .card {
     --bs-card-spacer-y: .85rem;
     --bs-card-spacer-x: 1rem;
-    --bs-card-border-radius: .65rem;
+    --bs-card-border-radius: var(--hp-card-radius);
 }
 
 // Headings one step smaller than Bootstrap defaults.
@@ -223,10 +286,9 @@ h6, .h6 { font-size: .9rem; }
 .h3.font-monospace,
 .h4.font-monospace,
 .h5.font-monospace,
-.h6.font-monospace,
-.stat-value {
+.h6.font-monospace {
     font-weight: 700;
-    color: var(--hp-body-color);
+    color: var(--hp-title-color);
 }
 
 .navbar {
@@ -590,25 +652,103 @@ html:not([data-bs-theme='dark']) .navbar.bg-primary {
 // ---- Cards ----------------------------------------------------------------
 .card {
     border-color: var(--hp-card-border);
+    border-radius: var(--hp-card-radius);
     box-shadow: var(--hp-shadow-sm);
+    background-clip: padding-box;
 }
 
-// ---- Stat card ------------------------------------------------------------
+[data-bs-theme='dark'] .card {
+    background-color: #1a2332;
+}
+
+// Soft primary buttons on pale #79caf9 (readable dark label in light mode).
+html:not([data-bs-theme='dark']) .btn-primary {
+    --bs-btn-color: #0b3a5c;
+    --bs-btn-bg: var(--hp-primary);
+    --bs-btn-border-color: var(--hp-primary);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--hp-primary-strong);
+    --bs-btn-hover-border-color: var(--hp-primary-strong);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--hp-primary-strong);
+    --bs-btn-active-border-color: var(--hp-primary-strong);
+    --bs-btn-disabled-color: #0b3a5c;
+    --bs-btn-disabled-bg: var(--hp-primary);
+    --bs-btn-disabled-border-color: var(--hp-primary);
+}
+
+// System-wide status / remaining-days style pills
+.badge.rounded-pill,
+.hp-pill {
+    border-radius: 2rem;
+    font-weight: 600;
+    padding: .35em .75em;
+}
+
+.badge.text-bg-primary,
+.hp-pill--primary {
+    background-color: var(--hp-primary) !important;
+    color: #0b3a5c !important;
+}
+
+[data-bs-theme='dark'] .badge.text-bg-primary,
+[data-bs-theme='dark'] .hp-pill--primary {
+    background-color: rgba(121, 202, 249, .25) !important;
+    color: #e7f5ff !important;
+}
+
+// Floating primary CTA (system chrome — valuation, primary actions)
+.hp-fab {
+    position: fixed;
+    inset-inline-end: 1rem;
+    bottom: 1.25rem;
+    z-index: 1040;
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .7rem 1.15rem;
+    border-radius: 2rem;
+    font-weight: 700;
+    box-shadow: 0 .35rem 1rem rgba(15, 23, 42, .2);
+    text-decoration: none;
+}
+
+.hp-fab:hover {
+    box-shadow: 0 .5rem 1.25rem rgba(15, 23, 42, .28);
+}
+
+@media (min-width: 992px) {
+    .hp-fab {
+        inset-inline-end: 1.5rem;
+        bottom: 1.5rem;
+    }
+}
+
+// ---- Stat card (system design — all dashboards) ---------------------------
 .stat-card {
     transition: transform .15s ease, box-shadow .15s ease;
     overflow: hidden;
+    border: 0;
+    border-radius: var(--hp-card-radius);
 
     &:hover {
         transform: translateY(-2px);
         box-shadow: var(--hp-shadow-hover);
     }
 
+    .stat-card-inner {
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+        min-width: 0;
+    }
+
     .stat-icon {
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: .625rem;
+        width: 2.6rem;
+        height: 2.6rem;
+        border-radius: .75rem;
         flex-shrink: 0;
-        font-size: 1.15rem; // beats the fs-4 utility (later in source order)
+        font-size: 1.15rem;
     }
 
     .stat-body {
@@ -616,16 +756,43 @@ html:not([data-bs-theme='dark']) .navbar.bg-primary {
         min-width: 0;
     }
 
+    .stat-label {
+        color: var(--hp-label-color);
+        font-size: .75rem;
+        font-weight: 600;
+        line-height: 1.25;
+        margin-bottom: .15rem;
+    }
+
     .stat-value {
         font-size: clamp(0.95rem, 2.8vw, 1.35rem);
         line-height: 1.25;
+        font-weight: 700;
         overflow-wrap: anywhere;
         word-break: break-word;
 
-        // <x-money> uses text-nowrap; allow wrap inside narrow KPI cards (RTL col-6).
         .text-nowrap {
             white-space: normal !important;
         }
+    }
+
+    .stat-subtitle {
+        color: var(--hp-label-color);
+        font-size: .72rem;
+        margin-top: .15rem;
+    }
+
+    .stat-sparkline {
+        flex: 0 0 auto;
+        width: 3.25rem;
+        height: 2.25rem;
+        color: var(--hp-spark-stroke);
+    }
+
+    .stat-sparkline svg {
+        width: 100%;
+        height: 100%;
+        display: block;
     }
 }
 
@@ -957,7 +1124,7 @@ html:not([data-bs-theme='dark']) .navbar.bg-primary {
 
     &--shift,
     &--planned {
-        background: #0d6efd;
+        background: var(--hp-primary-strong);
     }
 
     &--planned_default {
