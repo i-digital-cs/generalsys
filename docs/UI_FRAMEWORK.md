@@ -175,6 +175,18 @@ Every task that ships UI must pass all four (also in `docs/TASKS.md` UI/UX gate 
 
 Enforced in CSS: `resources/scss/_hr-pro.scss` removes valid/invalid background images and restores logical padding. New forms must follow the sibling-adornment pattern; do not reintroduce background validation icons.
 
+### 9.5 Typography hierarchy — titles ≠ labels ≠ body
+
+| Role | Elements | Look |
+|------|----------|------|
+| **Title** | `h1–h6`, `.h1–.h6`, `.card-title`, `.modal-title`, `.card-header` | **Bold (700)** + `--hp-title-color` (blue ink; lighter blue in dark mode) |
+| **Label** | `.form-label`, `.col-form-label`, table `thead th` | Semibold (600) + muted `--hp-label-color`, slightly smaller |
+| **Body** | paragraphs, table cells, helper text | Regular weight + default body color |
+
+Do **not** hardcode the same gray/weight on page titles and field labels. Numeric size utilities that are values (e.g. `.h4.font-monospace`, `.stat-value`) keep body color so clocks/KPIs are not styled as section titles.
+
+Tokens live in `_hr-pro.scss` (`--hp-title-color`, `--hp-label-color`).
+
 ## 10. Page-Level JS Rules
 
 - One small `resources/js/pages/<name>.js` per interactive page, imported via `@vite` in that view only.

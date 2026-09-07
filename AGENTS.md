@@ -127,6 +127,7 @@ Any task that **builds or changes UI** (Blade views, components, menus, forms, f
 2. **RTL + LTR:** verify the screen in Arabic (`dir=rtl`) **and** English (`dir=ltr`). Use Bootstrap RTL/LTR builds per `docs/UI_FRAMEWORK.md`; prefer logical properties (`ms`/`me`, `start`/`end`) over physical `left`/`right`.
 3. **Responsive:** verify ~375px, ~768px, and ~1280px — no broken layout, no clipped primary actions, tables usable on small screens (scroll container or stack).
 4. **Input values must stay visible:** validation icons, stars, badges, input-group addons, or any adornment must **never** cover, clip, or hide typed/selected data inside an input or select (RTL and LTR). Put adornments **beside** the control (sibling), not overlaid; rely on global `_hr-pro.scss` (no Bootstrap valid/invalid background SVGs). Details: `docs/UI_FRAMEWORK.md` §9.4.
+5. **Typography hierarchy:** titles, labels, and body text must **not** look the same. Titles (`h1–h6`, `.card-title`, `.modal-title`, `.card-header`) are **bold** with `--hp-title-color`. Labels (`.form-label`) use muted `--hp-label-color` and semibold. Body stays default weight/color. Details: `docs/UI_FRAMEWORK.md` §9.5.
 
 Also: dates via Carbon `translatedFormat()`; money via `<x-money>` — never hand-format currency. Details: `docs/UI_FRAMEWORK.md` §9 · checklist: `docs/TASKS.md` UI/UX gate.
 
@@ -136,7 +137,7 @@ Also: dates via Carbon `translatedFormat()`; money via `<x-money>` — never han
 - [ ] Migration + schema doc updated (if schema touched)
 - [ ] Current task in `docs/TASKS.md` has dependencies `done`; this task set `done` after tests + UI/UX
 - [ ] Unit + feature tests added/updated and **green**; step report pasted (commands + PASS)
-- [ ] UI/UX checklist PASS (or N/A for backend-only): **AR+EN keys**, **RTL+LTR**, **responsive** (375 / 768 / 1280), **input values not covered by icons/adornments**; previous↔next screen flow verified
+- [ ] UI/UX checklist PASS (or N/A for backend-only): **AR+EN keys**, **RTL+LTR**, **responsive** (375 / 768 / 1280), **input values not covered by icons/adornments**, **titles ≠ labels ≠ body**; previous↔next screen flow verified
 - [ ] Current Gate in `docs/BUILD_AND_TEST_GATES.md` checklist items for this step checked
 - [ ] `php -l` clean; Pint clean; no N+1 (`preventLazyLoading` / Debugbar in dev)
 - [ ] No dead code, no unused files/columns introduced

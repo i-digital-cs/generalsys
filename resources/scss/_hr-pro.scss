@@ -9,6 +9,15 @@
     --hp-shadow-sm: 0 .125rem .375rem rgba(15, 23, 42, .06);
     --hp-shadow-hover: 0 .5rem 1.25rem rgba(15, 23, 42, .12);
 
+    // Typography hierarchy — titles ≠ labels ≠ body (AGENTS.md §8.5 · UI_FRAMEWORK §9.5)
+    --hp-title-color: #0b4f9c;
+    --hp-label-color: #5c6b7a;
+    --hp-body-color: var(--bs-body-color);
+
+    // Top navbar (light mode)
+    --hp-header-bg: #79caf9;
+    --hp-header-fg: #0b3a5c;
+
     // Compact density: 14px base type instead of Bootstrap's 16px.
     // Both builds (compiled LTR + prebuilt RTL) read this var in `body`.
     --bs-body-font-size: .875rem;
@@ -20,6 +29,10 @@
     --hp-card-border: rgba(255, 255, 255, .1);
     --hp-shadow-sm: 0 .125rem .375rem rgba(0, 0, 0, .35);
     --hp-shadow-hover: 0 .5rem 1.25rem rgba(0, 0, 0, .5);
+    --hp-title-color: #6ea8fe;
+    --hp-label-color: #adb5bd;
+    --hp-header-bg: #0d6efd;
+    --hp-header-fg: #ffffff;
     color-scheme: dark;
 }
 
@@ -48,8 +61,16 @@ body {
 
 .form-label {
     margin-bottom: .25rem;
-    font-size: .85rem;
-    font-weight: 500;
+    font-size: .8125rem;
+    font-weight: 600;
+    color: var(--hp-label-color);
+    letter-spacing: .01em;
+}
+
+.col-form-label {
+    font-size: .8125rem;
+    font-weight: 600;
+    color: var(--hp-label-color);
 }
 
 .input-group-text {
@@ -60,6 +81,11 @@ body {
     --bs-table-cell-padding-y: .5rem;
     --bs-table-cell-padding-x: .625rem;
     font-size: .875rem;
+
+    thead th {
+        font-weight: 600;
+        color: var(--hp-label-color);
+    }
 }
 
 .num-ltr {
@@ -144,8 +170,9 @@ body {
 .table-toolbar {
     .form-label {
         margin-bottom: .25rem;
-        font-size: .8rem;
-        color: var(--bs-secondary-color);
+        font-size: .75rem;
+        font-weight: 600;
+        color: var(--hp-label-color);
     }
 }
 
@@ -160,12 +187,47 @@ body {
 }
 
 // Headings one step smaller than Bootstrap defaults.
+// Titles: bold + distinct color — never the same look as labels or body text.
+h1, .h1,
+h2, .h2,
+h3, .h3,
+h4, .h4,
+h5, .h5,
+h6, .h6 {
+    font-weight: 700;
+    color: var(--hp-title-color);
+    line-height: 1.3;
+}
+
 h1, .h1 { font-size: 1.75rem; }
 h2, .h2 { font-size: 1.5rem; }
 h3, .h3 { font-size: 1.3rem; }
 h4, .h4 { font-size: 1.1rem; }
 h5, .h5 { font-size: 1rem; }
 h6, .h6 { font-size: .9rem; }
+
+.card-title,
+.modal-title {
+    font-weight: 700;
+    color: var(--hp-title-color);
+}
+
+.card-header {
+    font-weight: 700;
+    color: var(--hp-title-color);
+}
+
+// Numeric / monospace size utilities are values, not section titles.
+.h1.font-monospace,
+.h2.font-monospace,
+.h3.font-monospace,
+.h4.font-monospace,
+.h5.font-monospace,
+.h6.font-monospace,
+.stat-value {
+    font-weight: 700;
+    color: var(--hp-body-color);
+}
 
 .navbar {
     --bs-navbar-padding-y: .45rem;
@@ -349,11 +411,19 @@ textarea.form-control.is-valid,
 // ---- Navbar ---------------------------------------------------------------
 .navbar.bg-primary {
     overflow: visible;
+    background-color: var(--hp-header-bg) !important;
+    color: var(--hp-header-fg);
     box-shadow: 0 .125rem .5rem rgba(15, 23, 42, .15);
 
     .container-fluid {
         overflow: visible;
         align-items: center;
+    }
+
+    .navbar-brand,
+    .nav-link,
+    .nav-link.text-white {
+        color: var(--hp-header-fg) !important;
     }
 
     .navbar-brand {
@@ -385,6 +455,7 @@ textarea.form-control.is-valid,
     .hp-user-menu {
         max-width: 12rem;
         box-shadow: none;
+        color: var(--hp-header-fg) !important;
 
         .hp-user-menu-name {
             max-width: 8rem;
@@ -401,6 +472,26 @@ textarea.form-control.is-valid,
     .dropdown-menu {
         min-width: 12rem;
         z-index: 1080;
+    }
+}
+
+// Light header (#79caf9): outline tabs need dark borders, not white.
+html:not([data-bs-theme='dark']) .navbar.bg-primary {
+    .btn-outline-light {
+        --bs-btn-color: var(--hp-header-fg);
+        --bs-btn-border-color: var(--hp-header-fg);
+        --bs-btn-hover-color: #fff;
+        --bs-btn-hover-bg: var(--hp-header-fg);
+        --bs-btn-hover-border-color: var(--hp-header-fg);
+        --bs-btn-active-color: #fff;
+        --bs-btn-active-bg: var(--hp-header-fg);
+        --bs-btn-active-border-color: var(--hp-header-fg);
+    }
+
+    .btn-light.text-primary {
+        --bs-btn-color: #0b4f9c;
+        --bs-btn-bg: #fff;
+        --bs-btn-border-color: #fff;
     }
 }
 

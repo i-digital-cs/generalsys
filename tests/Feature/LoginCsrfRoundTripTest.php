@@ -10,9 +10,20 @@ class LoginCsrfRoundTripTest extends TestCase
     {
         config(['preprod.access_key' => null]);
 
-        $this->get('/login')
+        $response = $this->get('/login')
             ->assertOk()
             ->assertSee('name="_token"', false);
+
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+    }
+
+    public function test_csrf_token_endpoint_returns_token(): void
+    {
+        config(['preprod.access_key' => null]);
+
+        $this->getJson('/csrf-token')
+            ->assertOk()
+            ->assertJsonStructure(['token']);
     }
 
     public function test_login_page_hidden_when_preprod_gate_enabled(): void

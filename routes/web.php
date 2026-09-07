@@ -59,6 +59,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
 });
 
+Route::get('/csrf-token', [AuthenticatedSessionController::class, 'csrfToken'])
+    ->middleware('web')
+    ->name('csrf.token');
+
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')->name('logout');
 

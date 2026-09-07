@@ -25,6 +25,12 @@
     "src": "resources/js/pages/employee-form.js",
     "isEntry": true
   },
+  "resources/js/pages/login.js": {
+    "file": "assets/login-CaZz5jvH.js",
+    "name": "login",
+    "src": "resources/js/pages/login.js",
+    "isEntry": true
+  },
   "resources/js/pages/valuation-form.js": {
     "file": "assets/valuation-form-cBv5xWF-.js",
     "name": "valuation-form",
@@ -32,12 +38,12 @@
     "isEntry": true
   },
   "resources/scss/app.rtl.scss": {
-    "file": "assets/app-CJJgGkdu.css",
+    "file": "assets/app-CKmSgQyd.css",
     "src": "resources/scss/app.rtl.scss",
     "isEntry": true
   },
   "resources/scss/app.scss": {
-    "file": "assets/app-CcTswA11.css",
+    "file": "assets/app-DqqPYABG.css",
     "src": "resources/scss/app.scss",
     "isEntry": true
   }

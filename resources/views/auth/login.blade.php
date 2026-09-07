@@ -8,13 +8,13 @@
             <h1 class="h4 text-center mb-1">{{ config('app.name') }}</h1>
             <p class="text-center text-body-secondary mb-4">{{ __('auth.sign_in') }}</p>
 
-            <form method="POST" action="{{ route('login.store') }}">
+            <form method="POST" action="{{ route('login.store') }}" data-login-form autocomplete="on">
                 @csrf
                 <div class="mb-3">
                     <label for="email" class="form-label">{{ __('auth.email') }}</label>
                     <input type="email" class="form-control @error('email') is-invalid @enderror"
                            id="email" name="email" value="{{ old('email') }}"
-                           autocomplete="email" required autofocus>
+                           autocomplete="username" required autofocus>
                     @error('email')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -45,3 +45,7 @@
         </a>
     </div>
 @endsection
+
+@push('scripts')
+    @vite(['resources/js/pages/login.js'])
+@endpush
