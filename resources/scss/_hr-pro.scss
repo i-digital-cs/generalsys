@@ -185,23 +185,51 @@ h6, .h6 { font-size: .9rem; }
     vertical-align: middle;
 }
 
-// Validation icons (Bootstrap background SVG) clip typed values in RTL / compact inputs.
+// SYSTEM RULE (AGENTS.md §8.4 · UI_FRAMEWORK §9.4):
+// Icons / adornments must never hide typed or selected values inside inputs.
+// Bootstrap valid/invalid background SVGs clip text in RTL and compact fields — remove them.
 .form-control.is-invalid,
 .form-control.is-valid,
 .form-select.is-invalid,
 .form-select.is-valid,
+textarea.form-control.is-invalid,
+textarea.form-control.is-valid,
 .was-validated .form-control:invalid,
 .was-validated .form-control:valid,
 .was-validated .form-select:invalid,
-.was-validated .form-select:valid {
-    background-image: none;
+.was-validated .form-select:valid,
+.was-validated textarea.form-control:invalid,
+.was-validated textarea.form-control:valid,
+.input-group .form-control.is-invalid,
+.input-group .form-control.is-valid,
+.input-group .form-select.is-invalid,
+.input-group .form-select.is-valid {
+    background-image: none !important;
+    background-position: unset;
+    background-size: unset;
+    background-repeat: unset;
 }
 
+// Restore full typing area after Bootstrap adds icon padding on valid/invalid states.
 .form-control.is-invalid:not(.form-control-sm):not(.form-control-lg),
 .form-control.is-valid:not(.form-control-sm):not(.form-control-lg),
 .form-select.is-invalid:not(.form-select-sm):not(.form-select-lg),
 .form-select.is-valid:not(.form-select-sm):not(.form-select-lg) {
     padding-inline: .65rem;
+}
+
+.form-control-sm.is-invalid,
+.form-control-sm.is-valid,
+.form-select-sm.is-invalid,
+.form-select-sm.is-valid {
+    padding-inline: .5rem;
+}
+
+.form-control-lg.is-invalid,
+.form-control-lg.is-valid,
+.form-select-lg.is-invalid,
+.form-select-lg.is-valid {
+    padding-inline: 1rem;
 }
 
 .card-header {

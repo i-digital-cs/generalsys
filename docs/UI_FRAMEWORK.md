@@ -155,13 +155,25 @@ Rules: never put `dir="ltr"` on a whole `th`/`td` (breaks RTL column alignment).
     <td><x-money :amount="$payroll->net_pay" :currency="$payroll->currency"/></td></tr>
 ```
 
-## 9. UI task hard rules — Translate · RTL/LTR · Responsive
+## 9. UI task hard rules — Translate · RTL/LTR · Responsive · Inputs
 
-Every task that ships UI must pass all three (also in `docs/TASKS.md` UI/UX gate and `AGENTS.md` §8):
+Every task that ships UI must pass all four (also in `docs/TASKS.md` UI/UX gate and `AGENTS.md` §8):
 
 1. **Translate:** `__('key')` only; keys in **both** `lang/ar` and `lang/en` in the same PR/change.
 2. **RTL + LTR:** test Arabic RTL and English LTR before `done`. Layout uses Bootstrap RTL/LTR CSS; prefer `ms-*` / `me-*` / logical alignment.
 3. **Responsive:** verify **375px · 768px · 1280px**. No clipped primary actions; tables scroll or stack on small viewports.
+4. **Input value visibility (system-wide):** typed or selected values in `.form-control` / `.form-select` / `textarea` must remain fully readable. Icons and adornments (validation state, stars, badges, `%` / currency hints, clear buttons) must **not** sit on top of the value area.
+
+### 9.4 Input adornments — do / don’t
+
+| Do | Don’t |
+|----|--------|
+| Place stars, badges, units in a **sibling** next to the field (`d-flex` / `input-group`) | Overlay with `position-absolute` over the text box |
+| Use `input-group-text` for units (`%`, currency) | Rely on Bootstrap `is-valid` / `is-invalid` background SVG icons (disabled globally in `_hr-pro.scss`) |
+| Keep invalid feedback **below** the control (`invalid-feedback`) | Shrink padding so long values collide with an icon |
+| Verify RTL: value + cursor still clear with `dir=rtl` | Use physical `padding-left`/`right` that breaks when validation padding flips |
+
+Enforced in CSS: `resources/scss/_hr-pro.scss` removes valid/invalid background images and restores logical padding. New forms must follow the sibling-adornment pattern; do not reintroduce background validation icons.
 
 ## 10. Page-Level JS Rules
 

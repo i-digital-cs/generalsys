@@ -23,6 +23,7 @@ Related: `MASTER_CONTEXT.md` · `AGENTS.md`
 - [ ] Responsive ~1280px
 - [ ] Flow: reachable from previous screen
 - [ ] Feedback: flash / validation visible
+- [ ] Inputs: typed/selected values fully visible — no icon/addon/star/badge covering the field (AGENTS.md §8.4 · UI_FRAMEWORK §9.4)
 - [ ] Roles: wrong role 403 or hidden menu
 - [ ] Role chain: asked user if TL↔Admin applies; implemented only per their answer (AGENTS.md §0b)
 - [ ] Money: never shown to TEAM_LEADER (if applicable)

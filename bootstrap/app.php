@@ -7,6 +7,8 @@ use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Hostinger / shared hosting terminates TLS at the proxy.
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             SetLocale::class,
             ResolveAppModule::class,
@@ -27,5 +32,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/home');
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->renderable(function (TokenMismatchException $e, Request $request) {
+            if ($request->expectsJson()) {
+                return null;
+            }
+
+            return redirect()
+                ->route('login')
+                ->with('error', __('auth.session_expired'));
+        });
     })->create();
