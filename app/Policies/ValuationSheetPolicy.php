@@ -26,4 +26,9 @@ class ValuationSheetPolicy
     {
         return $user->is($sheet->user);
     }
+
+    public function delete(User $user, ValuationSheet $sheet): bool
+    {
+        return $user->isManager();
+    }
 }

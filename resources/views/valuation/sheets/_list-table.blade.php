@@ -139,6 +139,15 @@
                             @if (auth()->id() === $row->user_id)
                                 <a class="btn btn-sm btn-outline-primary" href="{{ route('valuation.sheets.form', ['module' => $module, 'date' => $dateKey]) }}">{{ __('valuation.edit') }}</a>
                             @endif
+                            @can('delete', $row)
+                                <form method="POST" action="{{ route('valuation.sheets.destroy', ['module' => $module, 'sheet' => $row]) }}"
+                                      class="d-inline"
+                                      onsubmit="return confirm(@js(__('valuation.confirm_delete')))">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ __('valuation.delete') }}</button>
+                                </form>
+                            @endcan
                         </td>
                     </tr>
                 @endforeach

@@ -7,7 +7,7 @@ namespace App\Services\Valuation;
  */
 final class ValuationFields
 {
-    /** Per-driver daily orders target; above this = over target. */
+    /** Default per-driver daily orders target when none is set (legacy sheets). */
     public const DRIVER_ORDERS_TARGET = 25;
 
     /** @var list<string> */
@@ -95,9 +95,9 @@ final class ValuationFields
 
     /**
      * Drop fully blank driver rows. Each row is either an employee (user_id)
-     * or a manual name — not both. Includes per-driver score (0–100) + notes.
+     * or a manual name — not both. Includes per-driver target, score (0–100) + notes.
      *
-     * @return list<array{user_id: int|null, name: string, orders: float, score: float, notes: string}>
+     * @return list<array{user_id: int|null, name: string, orders: float, target: float, score: float, notes: string}>
      */
     public static function normalizeDrivers(mixed $rows): array
     {
@@ -120,6 +120,8 @@ final class ValuationFields
             $scoreRaw = $row['score'] ?? null;
             $scoreEmpty = $scoreRaw === null || $scoreRaw === '';
             $score = is_numeric($scoreRaw) ? (float) $scoreRaw : 0.0;
+            $targetRaw = $row['target'] ?? null;
+            $target = is_numeric($targetRaw) ? (float) $targetRaw : (float) self::DRIVER_ORDERS_TARGET;
 
             if ($userId <= 0 && $name === '' && ($ordersEmpty || $orders <= 0.0) && $scoreEmpty && $notes === '') {
                 continue;
@@ -129,6 +131,7 @@ final class ValuationFields
                 'user_id' => $userId > 0 ? $userId : null,
                 'name' => $userId > 0 ? '' : mb_substr($name, 0, 150),
                 'orders' => round(max(0.0, $orders), 2),
+                'target' => round(max(0.0, $target), 2),
                 'score' => round(max(0.0, min(100.0, $score)), 2),
                 'notes' => mb_substr($notes, 0, 5000),
             ];
@@ -155,8 +158,17 @@ final class ValuationFields
         return $name !== '' ? $name : '—';
     }
 
-    public static function driverOverTarget(float $orders): float
+    public static function driverOverTarget(float $orders, ?float $target = null): float
     {
-        return round(max(0.0, $orders - self::DRIVER_ORDERS_TARGET), 2);
+        $threshold = $target ?? (float) self::DRIVER_ORDERS_TARGET;
+
+        return round(max(0.0, $orders - max(0.0, $threshold)), 2);
+    }
+
+    public static function driverUnderTarget(float $orders, ?float $target = null): float
+    {
+        $threshold = $target ?? (float) self::DRIVER_ORDERS_TARGET;
+
+        return round(max(0.0, max(0.0, $threshold) - $orders), 2);
     }
 }

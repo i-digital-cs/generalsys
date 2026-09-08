@@ -93,6 +93,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/{module}/valuations/{sheet}/export.pdf', [ValuationSheetController::class, 'exportPdf'])
         ->whereIn('module', ['service', 'product'])
         ->name('valuation.sheets.export.pdf');
+    Route::delete('/{module}/valuations/{sheet}', [ValuationSheetController::class, 'destroy'])
+        ->whereIn('module', ['service', 'product'])
+        ->name('valuation.sheets.destroy');
     Route::get('/{module}/valuations/{sheet}', [ValuationSheetController::class, 'show'])
         ->whereIn('module', ['service', 'product'])
         ->name('valuation.sheets.show');

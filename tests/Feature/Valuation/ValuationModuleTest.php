@@ -40,8 +40,8 @@ class ValuationModuleTest extends TestCase
                     'laundry_king_positives' => 'King on time',
                     'drivers_notes' => 'Eighteen trips',
                     'drivers' => [
-                        ['user_id' => $hamad->id, 'orders' => 30, 'score' => 80, 'notes' => 'Fast delivery'],
-                        ['name' => 'Freelance Driver', 'orders' => 40, 'score' => 100, 'notes' => 'Guest notes'],
+                        ['user_id' => $hamad->id, 'orders' => 30, 'target' => 20, 'score' => 80, 'notes' => 'Fast delivery'],
+                        ['name' => 'Freelance Driver', 'orders' => 40, 'target' => 25, 'score' => 100, 'notes' => 'Guest notes'],
                         ['user_id' => '', 'orders' => ''],
                     ],
                     'provider_mart' => 100,
@@ -63,7 +63,8 @@ class ValuationModuleTest extends TestCase
         $this->assertSame('loss', $sheet->result['kpi_label']);
         $this->assertSame('service', $sheet->module);
         $this->assertCount(2, $sheet->input['drivers']);
-        $this->assertEqualsWithDelta(5.0, $sheet->result['drivers'][0]['over_target'], 0.01);
+        $this->assertEqualsWithDelta(20.0, $sheet->input['drivers'][0]['target'], 0.01);
+        $this->assertEqualsWithDelta(10.0, $sheet->result['drivers'][0]['over_target'], 0.01);
         $this->assertSame('Freelance Driver', $sheet->input['drivers'][1]['name']);
         $this->assertEqualsWithDelta(15.0, $sheet->result['drivers'][1]['over_target'], 0.01);
         $this->assertEqualsWithDelta(80.0, $sheet->input['drivers'][0]['score'], 0.01);
@@ -91,7 +92,7 @@ class ValuationModuleTest extends TestCase
             ->assertSee(__('valuation.sections.laundry_king'), false)
             ->assertSee('King on time', false)
             ->assertSee(__('valuation.sections.drivers'), false)
-            ->assertSee(__('valuation.drivers.over_target', ['x' => 5]), false)
+            ->assertSee(__('valuation.drivers.over_target', ['x' => 10]), false)
             ->assertSee('Freelance Driver', false)
             ->assertSee(__('valuation.drivers.over_target', ['x' => 15]), false)
             ->assertSee('Fast delivery', false)
@@ -119,7 +120,7 @@ class ValuationModuleTest extends TestCase
         $this->assertStringContainsString('King on time', $pdfHtml);
         $this->assertStringContainsString('class="stars"', $pdfHtml);
         $this->assertStringNotContainsString('*****', $pdfHtml);
-        $this->assertStringContainsString('Over target 5', $pdfHtml);
+        $this->assertStringContainsString('Over target 10', $pdfHtml);
         $this->assertStringNotContainsString('****-', $pdfHtml);
 
         app()->setLocale('ar');
@@ -204,6 +205,48 @@ class ValuationModuleTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_manager_can_delete_sheet_others_cannot(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $hamad = User::factory()->employee()->create();
+        $ahmed = User::factory()->employee()->create();
+        ValuationAssignment::query()->create([
+            'user_id' => $hamad->id,
+            'assigned_by' => $manager->id,
+            'module' => 'service',
+        ]);
+
+        $sheet = ValuationSheet::query()->create([
+            'user_id' => $hamad->id,
+            'module' => 'service',
+            'date' => '2026-08-19',
+            'status' => ValuationSheet::STATUS_SUBMITTED,
+            'input' => [],
+            'result' => ['actual_amount_total' => 100, 'kpi_label' => 'loss'],
+        ]);
+
+        $this->actingAs($hamad)
+            ->delete(route('valuation.sheets.destroy', ['module' => 'service', 'sheet' => $sheet]))
+            ->assertForbidden();
+
+        $this->actingAs($ahmed)
+            ->delete(route('valuation.sheets.destroy', ['module' => 'service', 'sheet' => $sheet]))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('valuation_sheets', ['id' => $sheet->id]);
+
+        $this->actingAs($manager)
+            ->get(route('valuation.sheets.index', 'service'))
+            ->assertOk()
+            ->assertSee(__('valuation.delete'), false);
+
+        $this->actingAs($manager)
+            ->delete(route('valuation.sheets.destroy', ['module' => 'service', 'sheet' => $sheet]))
+            ->assertRedirect(route('valuation.sheets.index', 'service'));
+
+        $this->assertDatabaseMissing('valuation_sheets', ['id' => $sheet->id]);
+    }
+
     public function test_form_keeps_sales_spread_and_king_fields_once(): void
     {
         $manager = User::factory()->manager()->create();
@@ -227,6 +270,7 @@ class ValuationModuleTest extends TestCase
             ->assertSee('name="input[drivers][0][user_id]"', false)
             ->assertSee('name="input[drivers][0][name]"', false)
             ->assertSee('name="input[drivers][0][orders]"', false)
+            ->assertSee('name="input[drivers][0][target]"', false)
             ->assertSee('name="input[drivers][0][score]"', false)
             ->assertSee('name="input[drivers][0][notes]"', false)
             ->assertSee(__('valuation.drivers.or_manual_hint'), false)
@@ -257,7 +301,7 @@ class ValuationModuleTest extends TestCase
             ->assertSee(__('valuation.mohra.fields.haroon_news'), false)
             ->assertSee('name="input[target_count_total]"', false)
             ->assertSee('value="35"', false)
-            ->assertSee(__('valuation.drivers.add'), false)
+            ->assertSee(__('valuation.mohra.drivers.add'), false)
             ->assertSee('name="input[drivers][0][user_id]"', false)
             ->assertDontSee(__('valuation.sections.laundry_king'), false)
             ->assertDontSee(__('valuation.sections.providers'), false);

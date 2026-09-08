@@ -10,11 +10,20 @@
     @endphp
     <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
         <h1 class="h4 mb-0">{{ __('portal.'.$module) }} — {{ $name }}</h1>
-        <div>
+        <div class="d-flex flex-wrap gap-2">
             @if (auth()->id() === $sheet->user_id)
                 <a class="btn btn-primary" href="{{ route('valuation.sheets.form', ['module' => $module, 'date' => $sheet->date->toDateString()]) }}">{{ __('valuation.edit') }}</a>
             @endif
             <a class="btn btn-outline-primary" href="{{ route('valuation.sheets.export.pdf', ['module' => $module, 'sheet' => $sheet]) }}">{{ __('valuation.export_pdf') }}</a>
+            @can('delete', $sheet)
+                <form method="POST" action="{{ route('valuation.sheets.destroy', ['module' => $module, 'sheet' => $sheet]) }}"
+                      class="d-inline"
+                      onsubmit="return confirm(@js(__('valuation.confirm_delete')))">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger">{{ __('valuation.delete') }}</button>
+                </form>
+            @endcan
             <a class="btn btn-outline-secondary" href="{{ route('valuation.sheets.index', $module) }}">{{ __('valuation.back') }}</a>
         </div>
     </div>

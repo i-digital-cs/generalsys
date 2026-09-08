@@ -132,6 +132,23 @@ class ValuationSheetController extends Controller
         return $this->exports->downloadPdf($sheet)->download($filename);
     }
 
+    public function destroy(Request $request, string $module, ValuationSheet $sheet): RedirectResponse
+    {
+        $this->guardModule($module);
+        abort_unless($sheet->module === $module, 404);
+        $this->authorize('delete', $sheet);
+
+        try {
+            $this->sheets->delete($request->user(), $sheet);
+        } catch (ValuationException $e) {
+            abort(403, __($e->getMessage()));
+        }
+
+        return redirect()
+            ->route('valuation.sheets.index', $module)
+            ->with('success', __('valuation.flash.deleted'));
+    }
+
     /**
      * old('date') can be null/'' after a failed submit — never pass that to findForForm().
      */

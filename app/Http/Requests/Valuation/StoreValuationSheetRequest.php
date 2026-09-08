@@ -66,7 +66,7 @@ class StoreValuationSheetRequest extends FormRequest
                 if (! is_array($row)) {
                     continue;
                 }
-                foreach (['orders', 'score'] as $field) {
+                foreach (['orders', 'target', 'score'] as $field) {
                     if (! isset($row[$field]) || ! is_string($row[$field])) {
                         continue;
                     }
@@ -162,6 +162,7 @@ class StoreValuationSheetRequest extends FormRequest
                 'required_without:input.drivers.*.user_id',
             ],
             'input.drivers.*.orders' => ['required', 'numeric', 'min:0'],
+            'input.drivers.*.target' => ['required', 'numeric', 'min:0'],
             'input.drivers.*.score' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'input.drivers.*.notes' => ['nullable', 'string', 'max:5000'],
             'input.marketing_notes' => ['nullable', 'string', 'max:5000'],
@@ -211,6 +212,7 @@ class StoreValuationSheetRequest extends FormRequest
             $attrs['input.drivers.'.$i.'.user_id'] = __('valuation.drivers.employee').' #'.$n;
             $attrs['input.drivers.'.$i.'.name'] = __('valuation.drivers.manual_name').' #'.$n;
             $attrs['input.drivers.'.$i.'.orders'] = __('valuation.drivers.orders').' #'.$n;
+            $attrs['input.drivers.'.$i.'.target'] = __('valuation.drivers.target').' #'.$n;
             $attrs['input.drivers.'.$i.'.score'] = __('valuation.fields.score').' #'.$n;
             $attrs['input.drivers.'.$i.'.notes'] = __('valuation.fields.notes').' #'.$n;
         }
@@ -230,6 +232,7 @@ class StoreValuationSheetRequest extends FormRequest
             $messages['input.drivers.'.$i.'.user_id.required_without'] = __('valuation.errors.driver_identity', ['n' => $n]);
             $messages['input.drivers.'.$i.'.name.required_without'] = __('valuation.errors.driver_identity', ['n' => $n]);
             $messages['input.drivers.'.$i.'.orders.required'] = __('valuation.errors.driver_orders', ['n' => $n]);
+            $messages['input.drivers.'.$i.'.target.required'] = __('valuation.errors.driver_target', ['n' => $n]);
             $messages['input.drivers.'.$i.'.score.max'] = __('valuation.errors.driver_score', ['n' => $n]);
             $messages['input.drivers.'.$i.'.score.min'] = __('valuation.errors.driver_score', ['n' => $n]);
         }

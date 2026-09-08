@@ -1,4 +1,4 @@
-// Valuation form: dynamic driver rows + live over-target (orders > 25).
+// Valuation form: dynamic driver rows + live target gap (over / under).
 // Names MUST be indexed (input[drivers][0][user_id]), same as employee contacts.
 
 function reindexDriverRows(container, prefix) {
@@ -11,6 +11,8 @@ function reindexDriverRows(container, prefix) {
                 input.id = 'driver_name_' + index;
             } else if (input.dataset.field === 'orders') {
                 input.id = 'driver_orders_' + index;
+            } else if (input.dataset.field === 'target') {
+                input.id = 'driver_target_' + index;
             } else if (input.dataset.field === 'score') {
                 input.id = 'driver_score_' + index;
             } else if (input.dataset.field === 'notes') {
@@ -20,26 +22,53 @@ function reindexDriverRows(container, prefix) {
     });
 }
 
-function refreshDriverOver(row, target, overTemplate) {
+function parseDriverNumber(raw) {
+    const value = parseFloat(String(raw || '').replace(',', '.'));
+
+    return Number.isFinite(value) ? value : 0;
+}
+
+function refreshDriverOver(row, defaultTarget, overTemplate, underTemplate) {
     const ordersInput = row.querySelector('[data-driver-orders]');
+    const targetInput = row.querySelector('[data-driver-target]');
     const overEl = row.querySelector('[data-driver-over]');
+    const underEl = row.querySelector('[data-driver-under]');
     const okEl = row.querySelector('[data-driver-ok]');
     if (! ordersInput || ! overEl) {
         return;
     }
 
-    const orders = parseFloat(String(ordersInput.value).replace(',', '.'));
-    const value = Number.isFinite(orders) ? orders : 0;
-    const over = Math.max(0, value - target);
+    const orders = parseDriverNumber(ordersInput.value);
+    const target = targetInput
+        ? parseDriverNumber(targetInput.value || defaultTarget)
+        : defaultTarget;
+    const safeTarget = Math.max(0, target);
+    const over = Math.max(0, orders - safeTarget);
+    const under = Math.max(0, safeTarget - orders);
 
     if (over > 0) {
         overEl.textContent = overTemplate.replace(':x', String(over));
         overEl.classList.remove('d-none');
+        if (underEl) {
+            underEl.classList.add('d-none');
+        }
+        if (okEl) {
+            okEl.classList.add('d-none');
+        }
+    } else if (under > 0) {
+        overEl.classList.add('d-none');
+        if (underEl) {
+            underEl.textContent = underTemplate.replace(':x', String(under));
+            underEl.classList.remove('d-none');
+        }
         if (okEl) {
             okEl.classList.add('d-none');
         }
     } else {
         overEl.classList.add('d-none');
+        if (underEl) {
+            underEl.classList.add('d-none');
+        }
         if (okEl) {
             okEl.classList.remove('d-none');
         }
@@ -67,8 +96,9 @@ function syncDriverNameField(row) {
         return;
     }
 
-    const target = parseFloat(block.dataset.ordersTarget || '25') || 25;
+    const defaultTarget = parseDriverNumber(block.dataset.defaultOrdersTarget || '25') || 25;
     const overTemplate = block.dataset.overTemplate || 'Over target :x';
+    const underTemplate = block.dataset.underTemplate || 'Under target :x';
 
     document.querySelectorAll('[data-add-row]').forEach(function (button) {
         button.addEventListener('click', function () {
@@ -85,6 +115,7 @@ function syncDriverNameField(row) {
             const last = targetEl.querySelector('[data-row]:last-child');
             if (last) {
                 syncDriverNameField(last);
+                refreshDriverOver(last, defaultTarget, overTemplate, underTemplate);
             }
         });
     });
@@ -112,8 +143,8 @@ function syncDriverNameField(row) {
         if (! row) {
             return;
         }
-        if (event.target.matches('[data-driver-orders]')) {
-            refreshDriverOver(row, target, overTemplate);
+        if (event.target.matches('[data-driver-orders], [data-driver-target]')) {
+            refreshDriverOver(row, defaultTarget, overTemplate, underTemplate);
         }
     });
 
@@ -126,6 +157,6 @@ function syncDriverNameField(row) {
 
     block.querySelectorAll('[data-driver-row]').forEach(function (row) {
         syncDriverNameField(row);
-        refreshDriverOver(row, target, overTemplate);
+        refreshDriverOver(row, defaultTarget, overTemplate, underTemplate);
     });
 })();

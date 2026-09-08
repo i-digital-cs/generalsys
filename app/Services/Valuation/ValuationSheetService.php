@@ -144,4 +144,13 @@ class ValuationSheetService
 
         throw ValuationException::notAssigned();
     }
+
+    public function delete(User $actor, ValuationSheet $sheet): void
+    {
+        if (! $actor->isManager()) {
+            throw ValuationException::notAllowed();
+        }
+
+        $sheet->delete();
+    }
 }

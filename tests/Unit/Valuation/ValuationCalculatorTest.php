@@ -78,24 +78,29 @@ class ValuationCalculatorTest extends TestCase
         $this->assertSame(1, substr_count($html, 'class="star"'));
     }
 
-    public function test_driver_orders_over_target_above_25(): void
+    public function test_driver_orders_over_target_uses_per_driver_target(): void
     {
         $result = (new ValuationCalculator)->compute([
             'drivers' => [
                 ['user_id' => 10, 'orders' => 25, 'score' => 80, 'notes' => 'ok'],
                 ['user_id' => 11, 'orders' => 30, 'score' => 100],
-                ['name' => 'Guest Driver', 'orders' => 28, 'score' => 60, 'notes' => 'manual'],
+                ['name' => 'Guest Driver', 'orders' => 28, 'score' => 60, 'notes' => 'manual', 'target' => 20],
                 ['user_id' => 0, 'orders' => ''],
             ],
         ]);
 
         $this->assertSame(25, $result['driver_orders_target']);
         $this->assertCount(3, $result['drivers']);
+        $this->assertEqualsWithDelta(25.0, $result['drivers'][0]['target'], 0.01);
         $this->assertEqualsWithDelta(0.0, $result['drivers'][0]['over_target'], 0.01);
         $this->assertEqualsWithDelta(5.0, $result['drivers'][1]['over_target'], 0.01);
         $this->assertSame('Guest Driver', $result['drivers'][2]['name']);
         $this->assertNull($result['drivers'][2]['user_id']);
-        $this->assertEqualsWithDelta(3.0, $result['drivers'][2]['over_target'], 0.01);
+        $this->assertEqualsWithDelta(20.0, $result['drivers'][2]['target'], 0.01);
+        $this->assertEqualsWithDelta(8.0, $result['drivers'][2]['over_target'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $result['drivers'][2]['under_target'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $result['drivers'][0]['under_target'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $result['drivers'][1]['under_target'], 0.01);
         $this->assertSame('ok', $result['drivers'][0]['notes']);
         $this->assertSame('manual', $result['drivers'][2]['notes']);
         $this->assertEqualsWithDelta(80.0, $result['drivers'][0]['score'], 0.01);
@@ -103,7 +108,17 @@ class ValuationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(80.0, $result['drivers_score_avg'], 0.01); // (80+100+60)/3
         $this->assertSame(4, $result['stars']['drivers']);
         $this->assertEqualsWithDelta(83.0, $result['drivers_orders_total'], 0.01);
-        $this->assertEqualsWithDelta(8.0, $result['drivers_over_target_total'], 0.01);
+        $this->assertEqualsWithDelta(13.0, $result['drivers_over_target_total'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $result['drivers_under_target_total'], 0.01);
+
+        $underResult = (new ValuationCalculator)->compute([
+            'drivers' => [
+                ['name' => 'Short', 'orders' => 15, 'target' => 35, 'score' => 50],
+            ],
+        ]);
+        $this->assertEqualsWithDelta(0.0, $underResult['drivers'][0]['over_target'], 0.01);
+        $this->assertEqualsWithDelta(20.0, $underResult['drivers'][0]['under_target'], 0.01);
+        $this->assertEqualsWithDelta(20.0, $underResult['drivers_under_target_total'], 0.01);
     }
 
     public function test_kpi_bands_and_sales_average(): void

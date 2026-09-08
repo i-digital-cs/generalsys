@@ -210,17 +210,22 @@
         </table>
     @else
         <table>
-            <tr>{!! $kv($t('valuation.drivers.avg_score'), $pctScore($out['drivers_score_avg'] ?? $in['drivers_score'] ?? 0).' '.$stars($out['drivers_score_avg'] ?? $in['drivers_score'] ?? 0), $rtl) !!}</tr>
+            <tr>{!! $kv($tl('drivers.avg_score'), $pctScore($out['drivers_score_avg'] ?? $in['drivers_score'] ?? 0).' '.$stars($out['drivers_score_avg'] ?? $in['drivers_score'] ?? 0), $rtl) !!}</tr>
         </table>
         @foreach ($driverRows as $drow)
             @php
                 $dOrders = (float) ($drow['orders'] ?? 0);
-                $dOver = (float) ($drow['over_target'] ?? \App\Services\Valuation\ValuationFields::driverOverTarget($dOrders));
+                $dTarget = (float) ($drow['target'] ?? \App\Services\Valuation\ValuationFields::DRIVER_ORDERS_TARGET);
+                $dOver = (float) ($drow['over_target'] ?? \App\Services\Valuation\ValuationFields::driverOverTarget($dOrders, $dTarget));
+                $dUnder = (float) ($drow['under_target'] ?? \App\Services\Valuation\ValuationFields::driverUnderTarget($dOrders, $dTarget));
                 $dScore = (float) ($drow['score'] ?? 0);
+                $dGap = $dOver > 0
+                    ? ' · '.$tl('drivers.over_target', ['x' => $dOver])
+                    : ($dUnder > 0 ? ' · '.$tl('drivers.under_target', ['x' => $dUnder]) : '');
             @endphp
             <table>
-                <tr>{!! $kv($t('valuation.drivers.employee'), $g($driverName($drow)), $rtl) !!}</tr>
-                <tr>{!! $kv($t('valuation.drivers.orders'), $num($dOrders).($dOver > 0 ? ' · '.$t('valuation.drivers.over_target', ['x' => $dOver]) : ''), $rtl) !!}</tr>
+                <tr>{!! $kv($tl('drivers.employee'), $g($driverName($drow)), $rtl) !!}</tr>
+                <tr>{!! $kv($tl('drivers.orders'), $num($dOrders).' / '.$tl('drivers.target').' '.$num($dTarget).$dGap, $rtl) !!}</tr>
                 <tr>{!! $kv($tl('fields.score'), $pctScore($dScore).' '.$stars($dScore), $rtl) !!}</tr>
                 <tr>{!! $kv($tl('fields.notes'), $note($drow['notes'] ?? ''), $rtl) !!}</tr>
             </table>

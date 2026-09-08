@@ -135,9 +135,10 @@ class ValuationCalculator
     /**
      * @param  array<string, mixed>  $in
      * @return array{
-     *     drivers: list<array{user_id: int|null, name: string, orders: float, score: float, notes: string, over_target: float, stars: int}>,
+     *     drivers: list<array{user_id: int|null, name: string, orders: float, target: float, score: float, notes: string, over_target: float, under_target: float, stars: int}>,
      *     drivers_orders_total: float,
      *     drivers_over_target_total: float,
+     *     drivers_under_target_total: float,
      *     drivers_score_avg: float,
      *     driver_orders_target: int
      * }
@@ -147,22 +148,27 @@ class ValuationCalculator
         $rows = [];
         $ordersTotal = 0.0;
         $overTotal = 0.0;
+        $underTotal = 0.0;
         $scores = [];
 
         foreach (ValuationFields::normalizeDrivers($in['drivers'] ?? []) as $row) {
-            $over = ValuationFields::driverOverTarget($row['orders']);
+            $over = ValuationFields::driverOverTarget($row['orders'], $row['target']);
+            $under = ValuationFields::driverUnderTarget($row['orders'], $row['target']);
             $score = $row['score'];
             $rows[] = [
                 'user_id' => $row['user_id'],
                 'name' => $row['name'],
                 'orders' => $row['orders'],
+                'target' => $row['target'],
                 'score' => $score,
                 'notes' => $row['notes'],
                 'over_target' => $over,
+                'under_target' => $under,
                 'stars' => self::starsFromScore($score),
             ];
             $ordersTotal += $row['orders'];
             $overTotal += $over;
+            $underTotal += $under;
             $scores[] = self::toPercent($score);
         }
 
@@ -170,6 +176,7 @@ class ValuationCalculator
             'drivers' => $rows,
             'drivers_orders_total' => round($ordersTotal, 2),
             'drivers_over_target_total' => round($overTotal, 2),
+            'drivers_under_target_total' => round($underTotal, 2),
             'drivers_score_avg' => $this->average($scores),
             'driver_orders_target' => ValuationFields::DRIVER_ORDERS_TARGET,
         ];
