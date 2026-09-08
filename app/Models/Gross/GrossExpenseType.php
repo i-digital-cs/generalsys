@@ -13,12 +13,16 @@ class GrossExpenseType extends Model
         'name_ar',
         'name_en',
         'is_active',
+        'sort_order',
+        'supports_rent_period',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'supports_rent_period' => 'boolean',
+            'sort_order' => 'integer',
         ];
     }
 

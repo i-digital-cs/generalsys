@@ -14,6 +14,7 @@ class ExpenseTypeService
     {
         $q = GrossExpenseType::query()
             ->withCount('vouchers')
+            ->orderBy('sort_order')
             ->orderBy('name_en');
         $search = trim((string) ($filters['q'] ?? ''));
         if ($search !== '') {
@@ -50,6 +51,7 @@ class ExpenseTypeService
     {
         return GrossExpenseType::query()
             ->where('is_active', true)
+            ->orderBy('sort_order')
             ->orderBy('name_en')
             ->get();
     }

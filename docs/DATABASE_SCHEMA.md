@@ -1134,3 +1134,32 @@ CREATE TABLE gross_shipment_allocations (
 - No full-text search, no JSON columns — keep rows small and queries index-only where possible.
 - All list endpoints must paginate (max 50/page) — never `SELECT *` unbounded.
 - Payroll generation reads attendance **once per employee per month** (aggregate query), never row-by-row in PHP loops.
+
+## 23. Product calculated expenses (Mohra only)
+
+**Single source of truth with Gross treasury:** categories = `gross_expense_types`; actual spend = `gross_treasury_vouchers` where `type=PAYMENT` and `purpose=EXPENSE`. Monthly **expected** budgets only live in `product_expense_month_budgets`.
+
+Formula: `remaining = expected − SUM(expense vouchers for type in calendar month)`.
+
+```sql
+-- extends gross_expense_types: sort_order, supports_rent_period (Rent=true); seed includes Petrol
+
+CREATE TABLE product_expense_month_budgets (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    expense_type_id BIGINT UNSIGNED NOT NULL,
+    year SMALLINT UNSIGNED NOT NULL,
+    month TINYINT UNSIGNED NOT NULL,
+    expected_amount DECIMAL(12,2) NOT NULL,
+    currency ENUM('EGP','AED') NOT NULL DEFAULT 'EGP',
+    notes TEXT NULL,
+    created_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_prod_exp_budget_type (expense_type_id, year, month),
+    INDEX idx_prod_exp_budget_ym (year, month),
+    CONSTRAINT fk_prod_exp_budget_type FOREIGN KEY (expense_type_id) REFERENCES gross_expense_types(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_prod_exp_budget_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+```
+
+Adding spend from Product expense detail posts the same إذن صرف as `/product/gross/treasury/create?type=PAYMENT&purpose=EXPENSE`. Manager/Accountant write; Product access view. Does **not** feed valuation Gross tiles.

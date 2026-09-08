@@ -171,6 +171,7 @@
 - Spec: `docs/GROSS_MODULE.md`. Schema: `docs/DATABASE_SCHEMA.md` §22.
 - Role `SALES` selectable as invoice salesperson; capability `users.can_confirm_gross_loss` for Sales loss confirm (Manager/Accountant always).
 - Product display name: Mohra / مهرة (portal lang). Valuation month tiles remain separate from Gross inventory.
+- **Product calculated expenses** (T-13.1): under the eight valuation cards on `/product` — expected vs actual. **SOT:** types = Gross expense types; spent = treasury إذن صرف (`PAYMENT`/`EXPENSE`). Budgets only in `product_expense_month_budgets`. Does **not** change valuation tiles. Manager/Accountant write; Product access view.
 
 | Role | Can View Payroll? |
 |------|-------------------|

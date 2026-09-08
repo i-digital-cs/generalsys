@@ -14,6 +14,10 @@
 
     @include('valuation.sheets._month-stats', ['stats' => $stats, 'compactTitle' => true])
 
+    @if (($module ?? '') === 'product' && ! empty($expenseStats))
+        @include('product-expenses._dashboard', ['expenseStats' => $expenseStats])
+    @endif
+
     @if (($module ?? '') === 'product' && ! empty($lowStockAlert))
         @include('gross.partials.low-stock-alert-card', $lowStockAlert)
     @endif

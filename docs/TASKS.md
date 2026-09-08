@@ -1001,6 +1001,21 @@ See `docs/GROSS_MODULE.md` §12. Implement **in order**; lock §12 rules before 
 6. Login as **Sales** → can collect COD but treasury checkbox hidden/disabled (Manager/Accountant only).
 7. AR + EN + responsive check.
 
+## Phase 13 — Product calculated expenses (Mohra)
+
+Isolated from valuation Gross tiles and Gross treasury. Formula: remaining = expected − SUM(actual entries).
+
+### T-13.1 — Expected vs actual expense cards on Product dashboard
+- Depends on: T-9.5
+- Unlocks: —
+- Status: `done`
+- Scope:
+  - [x] Tables: categories, month budgets, entries (+ seed Petrol/Rent/Electricity/Other)
+  - [x] Summary cards + per-category cards under valuation month stats on `/product`
+  - [x] Category detail: formula, sources, set expected, add/delete entries (rent period on Rent)
+  - [x] Manager/Accountant manage; Product access view; categories addable
+  - [x] PHPUnit + AR/EN + does not alter valuation formulas
+
 ## Dependency map
 
 ```text
@@ -1030,6 +1045,7 @@ T-0.1 → T-0.2 → T-0.3
               T-9.5 → T-10.1 → T-10.2 → T-10.3 → T-10.6 → T-10.7 → T-10.8 → T-10.9 → T-10.10 → T-11.1 → T-11.2 → T-11.3 → T-11.4 → T-11.5 → T-11.6 → T-11.7 → T-12.1 → T-12.2 → T-12.3 → T-12.4 → T-12.5
                        T-10.1 → T-10.4 ↗
                        T-10.1 → T-10.5 ↗
+              T-9.5 → T-13.1
 ```
 
 ---
@@ -1215,3 +1231,5 @@ Example:
 - [x] 2026-09-01 T-12.3 PASS — Shipping collection statement: `ShippingCollectionStatementService`; route `gross.shipping.statement`; SALE/RETURN/REFUSE/COLLECTION ledger per currency; links from shipping show + index. Commands: `php artisan test --filter=ShippingCollection`; `php artisan test --filter=Gross` (129 PASS); LangParity; Pint. UI/UX: Cycle 3 manual pending user. Next: T-12.4.
 - [x] 2026-09-01 T-12.4 PASS — Full COD collection: `cod_collection_status` + `cod_collected_amount/at/by`; `collectCod()` records `net_total`; queue + invoice show use Collect COD; statement uses full COD amount. Commands: `php artisan migrate`; `php artisan test --filter=Gross` (132 PASS); LangParity; Pint. UI/UX: Cycle 4 manual pending user. Next: T-12.5.
 - [x] 2026-09-01 T-12.5 PASS — Treasury on COD: purpose `COURIER_COD`; Collect COD modal with optional post to treasury (Manager/Accountant); manual RECEIPT; unique per invoice; statement shows `TREASURY_RECEIPT` when posted. Commands: `php artisan migrate`; `php artisan test --filter=Gross` (137 PASS); LangParity; Pint. UI/UX: Cycle 5 manual pending user. Phase 12 complete.
+- [x] 2026-09-08 T-13.1 PASS — Product calculated expenses: expected vs actual under `/product` valuation cards; category detail + formula; Manager/Accountant write. Commands: `php artisan migrate`; `php artisan test --filter='ProductExpense|LangParityTest'` (8 PASS); Pint. UI/UX: AR+EN keys; manual check on product dashboard.
+- [x] 2026-09-08 T-13.1 unify — Single SOT with Gross: types=`gross_expense_types`; spend=`treasury PAYMENT/EXPENSE`; add from Product posts إذن صرف. Commands: `php artisan migrate`; `php artisan test --filter='ProductExpense|LangParityTest|ExpenseTypeCrud'` (9 PASS); Pint.

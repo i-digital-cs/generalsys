@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\Auth\PostLoginRedirector;
 use App\Services\Gross\LowStockAlertService;
 use App\Services\Portal\PortalStatsService;
+use App\Services\ProductExpense\ProductExpenseService;
 use App\Services\Valuation\ValuationSheetService;
 use App\Services\Valuation\ValuationStatsService;
 use App\Support\AppModule;
@@ -39,8 +40,9 @@ class PortalController extends Controller
         ValuationStatsService $stats,
         ValuationSheetService $sheets,
         LowStockAlertService $lowStock,
+        ProductExpenseService $productExpenses,
     ): View {
-        return $this->moduleHome(AppModule::PRODUCT, $stats, $sheets, $lowStock);
+        return $this->moduleHome(AppModule::PRODUCT, $stats, $sheets, $lowStock, $productExpenses);
     }
 
     private function moduleHome(
@@ -48,6 +50,7 @@ class PortalController extends Controller
         ValuationStatsService $stats,
         ValuationSheetService $sheets,
         ?LowStockAlertService $lowStock = null,
+        ?ProductExpenseService $productExpenses = null,
     ): View {
         $user = auth()->user();
         abort_unless(AppModule::mayAccessModule($user, $module), 403);
@@ -61,11 +64,17 @@ class PortalController extends Controller
             ];
         }
 
+        $expenseStats = null;
+        if ($module === AppModule::PRODUCT && $productExpenses !== null) {
+            $expenseStats = $productExpenses->monthSnapshot();
+        }
+
         return view('portal.module-home', [
             'module' => $module,
             'stats' => $stats->monthSnapshot($user, $module),
             'monthSheets' => $user->isManager() ? $sheets->monthSheetsFor($user, $module) : collect(),
             'lowStockAlert' => $lowStockAlert,
+            'expenseStats' => $expenseStats,
         ]);
     }
 

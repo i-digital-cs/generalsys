@@ -39,6 +39,7 @@ use App\Http\Controllers\Gross\SupplierController as GrossSupplierController;
 use App\Http\Controllers\Gross\TreasuryController as GrossTreasuryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortalController;
+use App\Http\Controllers\ProductExpense\ProductExpenseController;
 use App\Http\Controllers\TeamLeader\ApprovalController;
 use App\Http\Controllers\TeamLeader\AttendanceHistoryController;
 use App\Http\Controllers\TeamLeader\AttendanceReviewController;
@@ -99,6 +100,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/{module}/valuations/{sheet}', [ValuationSheetController::class, 'show'])
         ->whereIn('module', ['service', 'product'])
         ->name('valuation.sheets.show');
+
+    Route::prefix('product/expenses')->name('product.expenses.')->group(function () {
+        Route::get('/{expenseType}', [ProductExpenseController::class, 'show'])->name('show');
+        Route::put('/{expenseType}/budget', [ProductExpenseController::class, 'upsertBudget'])->name('budget');
+        Route::post('/{expenseType}/payments', [ProductExpenseController::class, 'storePayment'])->name('payments.store');
+    });
 
     Route::prefix('product/gross')->name('gross.')->group(function () {
         Route::get('/items', [GrossItemController::class, 'index'])->name('items.index');
