@@ -4,19 +4,21 @@ namespace App\Services\Gross;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 /**
- * Wipes Mohra Gross transactional + master data for a clean test cycle.
- * Does not touch HR tables or users.
+ * Wipes Mohra Gross data only (catalog, stock, sales/purchases, treasury).
+ * Never touches HR, users, or Product/Service valuation sheets.
  */
 class GrossDataResetService
 {
     /**
-     * Child tables first — safe for MySQL (FK checks off) and SQLite (DELETE).
+     * Child / dependent tables first. Valuation tables are intentionally absent.
      *
      * @var list<string>
      */
     private const TABLES = [
+        'product_expense_month_budgets',
         'gross_treasury_voucher_attachments',
         'gross_treasury_vouchers',
         'gross_shipment_allocations',
@@ -45,6 +47,8 @@ class GrossDataResetService
 
     public function fresh(): void
     {
+        $this->clearItemImageFiles();
+
         $driver = Schema::getConnection()->getDriverName();
 
         if ($driver === 'mysql') {
@@ -68,6 +72,24 @@ class GrossDataResetService
         }
 
         $this->seedDefaults();
+    }
+
+    private function clearItemImageFiles(): void
+    {
+        if (! Schema::hasTable('gross_item_images')) {
+            return;
+        }
+
+        $disk = Storage::disk('local');
+        foreach (DB::table('gross_item_images')->pluck('file_path') as $path) {
+            if (is_string($path) && $path !== '' && $disk->exists($path)) {
+                $disk->delete($path);
+            }
+        }
+
+        if ($disk->exists('gross-item-images')) {
+            $disk->deleteDirectory('gross-item-images');
+        }
     }
 
     private function seedDefaults(): void
@@ -98,29 +120,32 @@ class GrossDataResetService
         }
 
         if (Schema::hasTable('gross_expense_types') && DB::table('gross_expense_types')->count() === 0) {
-            DB::table('gross_expense_types')->insert([
-                [
-                    'name_ar' => 'كهرباء',
-                    'name_en' => 'Electricity',
+            $hasSort = Schema::hasColumn('gross_expense_types', 'sort_order');
+            $hasRent = Schema::hasColumn('gross_expense_types', 'supports_rent_period');
+
+            $rows = [
+                ['name_ar' => 'بنزين', 'name_en' => 'Petrol', 'sort_order' => 10, 'supports_rent_period' => false],
+                ['name_ar' => 'إيجار', 'name_en' => 'Rent', 'sort_order' => 20, 'supports_rent_period' => true],
+                ['name_ar' => 'كهرباء', 'name_en' => 'Electricity', 'sort_order' => 30, 'supports_rent_period' => false],
+                ['name_ar' => 'أخرى', 'name_en' => 'Other', 'sort_order' => 90, 'supports_rent_period' => false],
+            ];
+
+            foreach ($rows as $row) {
+                $insert = [
+                    'name_ar' => $row['name_ar'],
+                    'name_en' => $row['name_en'],
                     'is_active' => true,
                     'created_at' => $now,
                     'updated_at' => $now,
-                ],
-                [
-                    'name_ar' => 'إيجار',
-                    'name_en' => 'Rent',
-                    'is_active' => true,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ],
-                [
-                    'name_ar' => 'أخرى',
-                    'name_en' => 'Other',
-                    'is_active' => true,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ],
-            ]);
+                ];
+                if ($hasSort) {
+                    $insert['sort_order'] = $row['sort_order'];
+                }
+                if ($hasRent) {
+                    $insert['supports_rent_period'] = $row['supports_rent_period'];
+                }
+                DB::table('gross_expense_types')->insert($insert);
+            }
         }
     }
 }
