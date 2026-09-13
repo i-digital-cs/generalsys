@@ -81,12 +81,26 @@
     </div>
     <div class="col-md-4">
         <label class="form-label" for="shipping_company_id">{{ __('gross.fields.shipping_company') }}</label>
-        <select id="shipping_company_id" name="shipping_company_id" class="form-select">
+        <select id="shipping_company_id" name="shipping_company_id" class="form-select" data-gross-shipping-select>
             <option value="">—</option>
             @foreach ($shippingCompanies as $sc)
-                <option value="{{ $sc->id }}" @selected(old('shipping_company_id', $invoice?->shipping_company_id) == $sc->id)>{{ $sc->name }}</option>
+                <option value="{{ $sc->id }}"
+                        data-name="{{ $sc->name }}"
+                        @selected(old('shipping_company_id', $invoice?->shipping_company_id) == $sc->id)>{{ $sc->name }}</option>
             @endforeach
         </select>
+        <label class="form-label mt-2" for="shipping_company_name">{{ __('gross.sales.shipping_name_label') }}</label>
+        <input id="shipping_company_name" name="shipping_company_name" list="gross-invoice-shipping-names"
+               class="form-control"
+               value="{{ old('shipping_company_name', $invoice?->shipping_company_name) }}"
+               autocomplete="off"
+               placeholder="{{ __('gross.sales.shipping_name_placeholder') }}">
+        <datalist id="gross-invoice-shipping-names">
+            @foreach ($shippingCompanies as $sc)
+                <option value="{{ $sc->name }}"></option>
+            @endforeach
+        </datalist>
+        <div class="form-text">{{ __('gross.sales.shipping_pick_hint') }}</div>
     </div>
     <div class="col-md-2">
         <label class="form-label" for="currency">{{ __('gross.fields.currency') }}</label>
@@ -486,6 +500,29 @@
         if (name) name.value = opt.getAttribute('data-name') || '';
         if (phone) phone.value = opt.getAttribute('data-phone') || '';
         if (address) address.value = opt.getAttribute('data-address') || '';
+    });
+
+    document.querySelector('[data-gross-shipping-select]')?.addEventListener('change', function (e) {
+        const opt = e.target.options[e.target.selectedIndex];
+        const name = document.getElementById('shipping_company_name');
+        if (!name) return;
+        if (!opt || !opt.value) {
+            return;
+        }
+        name.value = opt.getAttribute('data-name') || opt.textContent.trim();
+    });
+
+    document.getElementById('shipping_company_name')?.addEventListener('input', function () {
+        const select = document.querySelector('[data-gross-shipping-select]');
+        if (!select) return;
+        const typed = (this.value || '').trim().toLowerCase();
+        let match = '';
+        Array.from(select.options).forEach(function (opt) {
+            if (!opt.value) return;
+            const n = (opt.getAttribute('data-name') || opt.textContent || '').trim().toLowerCase();
+            if (typed !== '' && n === typed) match = opt.value;
+        });
+        select.value = match;
     });
 
     body?.querySelectorAll('[data-gross-line-row]').forEach(wireRow);

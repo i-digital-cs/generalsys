@@ -22,6 +22,8 @@ class SalesInvoiceService
         private readonly AllocationService $allocations,
         private readonly SalesInvoiceNetService $net,
         private readonly TreasuryService $treasury,
+        private readonly CustomerService $customers,
+        private readonly ShippingCompanyService $shippingCompanies,
     ) {}
 
     public function paginate(int $perPage = 25): LengthAwarePaginator
@@ -94,12 +96,8 @@ class SalesInvoiceService
     public function createDraft(User $actor, array $data, array $lines): GrossSalesInvoice
     {
         return DB::transaction(function () use ($actor, $data, $lines) {
-            $customer = isset($data['customer_id'])
-                ? GrossCustomer::query()->find($data['customer_id'])
-                : null;
-            $shipping = isset($data['shipping_company_id'])
-                ? GrossShippingCompany::query()->find($data['shipping_company_id'])
-                : null;
+            $customer = $this->resolveCustomer($data);
+            $shipping = $this->resolveShipping($data);
 
             $invoice = GrossSalesInvoice::query()->create([
                 'invoice_number' => $this->nextInvoiceNumber(),
@@ -139,21 +137,13 @@ class SalesInvoiceService
         }
 
         return DB::transaction(function () use ($invoice, $data, $lines) {
-            $customer = isset($data['customer_id'])
-                ? GrossCustomer::query()->find($data['customer_id'])
-                : null;
-            $shipping = isset($data['shipping_company_id'])
-                ? GrossShippingCompany::query()->find($data['shipping_company_id'])
-                : $invoice->shippingCompany;
-
-            if (array_key_exists('shipping_company_id', $data) && $data['shipping_company_id'] === null) {
-                $shipping = null;
-            }
+            $customer = $this->resolveCustomer($data);
+            $shipping = $this->resolveShipping($data, $invoice->shippingCompany);
 
             $shippingFee = $data['shipping_fee'] ?? $invoice->shipping_fee;
 
             $invoice->update([
-                'customer_id' => array_key_exists('customer_id', $data) ? ($customer?->id) : $invoice->customer_id,
+                'customer_id' => $customer?->id,
                 'customer_name' => $data['customer_name'] ?? $customer?->name ?? $invoice->customer_name,
                 'customer_phone' => $data['customer_phone'] ?? $customer?->phone ?? $invoice->customer_phone,
                 'customer_address' => array_key_exists('customer_address', $data)
@@ -605,6 +595,51 @@ class SalesInvoiceService
         $seq->save();
 
         return sprintf('MH-%s-%04d', $yearMonth, $seq->last_number);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveCustomer(array $data): ?GrossCustomer
+    {
+        $name = trim((string) ($data['customer_name'] ?? ''));
+        $phone = trim((string) ($data['customer_phone'] ?? ''));
+        $address = $data['customer_address'] ?? null;
+
+        if ($name !== '' && $phone !== '') {
+            return $this->customers->findOrCreateFromInvoice(
+                $name,
+                $phone,
+                is_string($address) ? $address : null,
+            );
+        }
+
+        if (! empty($data['customer_id'])) {
+            return GrossCustomer::query()->find($data['customer_id']);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveShipping(array $data, ?GrossShippingCompany $fallback = null): ?GrossShippingCompany
+    {
+        if (! empty($data['shipping_company_id'])) {
+            return GrossShippingCompany::query()->find($data['shipping_company_id']);
+        }
+
+        $name = trim((string) ($data['shipping_company_name'] ?? ''));
+        if ($name !== '') {
+            return $this->shippingCompanies->findOrCreateByName($name);
+        }
+
+        if (array_key_exists('shipping_company_id', $data) || array_key_exists('shipping_company_name', $data)) {
+            return null;
+        }
+
+        return $fallback;
     }
 
     /**

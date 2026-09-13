@@ -9,9 +9,25 @@
             <p class="text-body-secondary small mb-0">{{ __('gross.purchases.subtitle') }}</p>
         </div>
         @can('create', App\Models\Gross\GrossPurchaseInvoice::class)
-            <a href="{{ route('gross.purchases.create') }}" class="btn btn-primary">{{ __('gross.purchases.create') }}</a>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('gross.purchases.template') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-download me-1" aria-hidden="true"></i>{{ __('gross.purchases.template') }}
+                </a>
+                <a href="{{ route('gross.purchases.create') }}" class="btn btn-primary">{{ __('gross.purchases.create') }}</a>
+            </div>
         @endcan
     </div>
+
+    @if ($errors->has('import'))
+        <div class="alert alert-warning py-2 small">
+            <ul class="mb-0 ps-3">
+                @foreach ((array) $errors->get('import') as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="card border-0 shadow-sm">
         <div class="card-body">
             @if ($invoices->isEmpty())
@@ -61,4 +77,34 @@
             @endif
         </div>
     </div>
+
+    @can('create', App\Models\Gross\GrossPurchaseInvoice::class)
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <div>
+                        <h2 class="h6 mb-1">{{ __('gross.purchases.import_title') }}</h2>
+                        <p class="small text-body-secondary mb-0">{{ __('gross.purchases.import_help') }}</p>
+                    </div>
+                    <a href="{{ route('gross.purchases.template') }}" class="btn btn-link btn-sm px-0">
+                        {{ __('gross.purchases.template') }}
+                    </a>
+                </div>
+                <form method="post" action="{{ route('gross.purchases.import') }}" enctype="multipart/form-data"
+                      class="row g-2 align-items-end">
+                    @csrf
+                    <div class="col-md-8">
+                        <label class="form-label mb-1" for="purchase_file">{{ __('gross.purchases.import_file') }}</label>
+                        <input id="purchase_file" name="file" type="file" class="form-control form-control-sm"
+                               accept=".xlsx,.xls,.csv" required>
+                    </div>
+                    <div class="col-md-4 col-lg-auto">
+                        <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="bi bi-upload me-1" aria-hidden="true"></i>{{ __('gross.purchases.import') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endcan
 @endsection

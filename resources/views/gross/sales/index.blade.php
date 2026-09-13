@@ -11,10 +11,24 @@
         <div class="d-flex flex-wrap gap-2">
             <a href="{{ route('gross.sales.collections') }}" class="btn btn-outline-secondary btn-sm">{{ __('gross.sales.collections_title') }}</a>
             @can('create', App\Models\Gross\GrossSalesInvoice::class)
+                <a href="{{ route('gross.sales.template') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-download me-1" aria-hidden="true"></i>{{ __('gross.sales.template') }}
+                </a>
                 <a href="{{ route('gross.sales.create') }}" class="btn btn-primary">{{ __('gross.sales.create') }}</a>
             @endcan
         </div>
     </div>
+
+    @if ($errors->has('import'))
+        <div class="alert alert-warning py-2 small">
+            <ul class="mb-0 ps-3">
+                @foreach ((array) $errors->get('import') as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="card border-0 shadow-sm">
         <div class="card-body">
             @if ($invoices->isEmpty())
@@ -64,4 +78,34 @@
             @endif
         </div>
     </div>
+
+    @can('create', App\Models\Gross\GrossSalesInvoice::class)
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <div>
+                        <h2 class="h6 mb-1">{{ __('gross.sales.import_title') }}</h2>
+                        <p class="small text-body-secondary mb-0">{{ __('gross.sales.import_help') }}</p>
+                    </div>
+                    <a href="{{ route('gross.sales.template') }}" class="btn btn-link btn-sm px-0">
+                        {{ __('gross.sales.template') }}
+                    </a>
+                </div>
+                <form method="post" action="{{ route('gross.sales.import') }}" enctype="multipart/form-data"
+                      class="row g-2 align-items-end">
+                    @csrf
+                    <div class="col-md-8">
+                        <label class="form-label mb-1" for="sales_file">{{ __('gross.sales.import_file') }}</label>
+                        <input id="sales_file" name="file" type="file" class="form-control form-control-sm"
+                               accept=".xlsx,.xls,.csv" required>
+                    </div>
+                    <div class="col-md-4 col-lg-auto">
+                        <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="bi bi-upload me-1" aria-hidden="true"></i>{{ __('gross.sales.import') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endcan
 @endsection

@@ -173,6 +173,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/sales', [GrossSalesInvoiceController::class, 'index'])->name('sales.index');
         Route::get('/sales/collections', [GrossSalesInvoiceController::class, 'collections'])->name('sales.collections');
+        Route::get('/sales/template', [GrossSalesInvoiceController::class, 'template'])->name('sales.template');
+        Route::post('/sales/import', [GrossSalesInvoiceController::class, 'import'])->name('sales.import');
         Route::get('/sales/create', [GrossSalesInvoiceController::class, 'create'])->name('sales.create');
         Route::post('/sales', [GrossSalesInvoiceController::class, 'store'])->name('sales.store');
         Route::get('/sales/{invoice}', [GrossSalesInvoiceController::class, 'show'])->name('sales.show');
@@ -190,6 +192,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/sales/{invoice}/deliver', [GrossSalesInvoiceController::class, 'markDelivered'])->name('sales.deliver');
 
         Route::get('/purchases', [GrossPurchaseInvoiceController::class, 'index'])->name('purchases.index');
+        Route::get('/purchases/template', [GrossPurchaseInvoiceController::class, 'template'])->name('purchases.template');
+        Route::post('/purchases/import', [GrossPurchaseInvoiceController::class, 'import'])->name('purchases.import');
         Route::get('/purchases/create', [GrossPurchaseInvoiceController::class, 'create'])->name('purchases.create');
         Route::post('/purchases', [GrossPurchaseInvoiceController::class, 'store'])->name('purchases.store');
         Route::get('/purchases/{purchase}', [GrossPurchaseInvoiceController::class, 'show'])->name('purchases.show');

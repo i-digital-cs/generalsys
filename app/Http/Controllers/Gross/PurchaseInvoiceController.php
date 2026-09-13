@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Gross;
 
 use App\Exceptions\GrossException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Gross\ImportGrossPurchaseInvoiceRequest;
 use App\Http\Requests\Gross\StoreGrossPurchaseInvoiceRequest;
 use App\Http\Requests\Gross\StoreGrossPurchaseReturnRequest;
 use App\Http\Requests\Gross\UpdateGrossPurchaseInvoiceRequest;
@@ -11,18 +12,21 @@ use App\Models\Gross\GrossPurchaseInvoice;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\PurchaseInvoiceDisplayService;
 use App\Services\Gross\PurchaseInvoiceExportService;
+use App\Services\Gross\PurchaseInvoiceImportService;
 use App\Services\Gross\PurchaseInvoiceService;
 use App\Services\Gross\PurchaseReturnService;
 use App\Services\Gross\SupplierService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PurchaseInvoiceController extends Controller
 {
     public function __construct(
         private readonly PurchaseInvoiceService $invoices,
+        private readonly PurchaseInvoiceImportService $imports,
         private readonly PurchaseReturnService $returns,
         private readonly SupplierService $suppliers,
         private readonly ItemService $items,
@@ -37,6 +41,44 @@ class PurchaseInvoiceController extends Controller
         return view('gross.purchases.index', [
             'invoices' => $this->invoices->paginate(),
         ]);
+    }
+
+    public function template(): BinaryFileResponse|StreamedResponse
+    {
+        $this->authorize('create', GrossPurchaseInvoice::class);
+
+        $path = storage_path('app/tmp/gross-purchase-invoices-template.xlsx');
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+        $this->imports->writeTemplate($path);
+
+        return response()->download(
+            $path,
+            'gross-purchase-invoices-template.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        )->deleteFileAfterSend(true);
+    }
+
+    public function import(ImportGrossPurchaseInvoiceRequest $request): RedirectResponse
+    {
+        $path = $request->file('file')->getRealPath();
+        $result = $this->imports->importFromPath((string) $path, $request->user());
+
+        $message = __('gross.flash.purchase_imported', [
+            'created' => $result['created'],
+            'skipped' => $result['skipped'],
+        ]);
+
+        $redirect = redirect()->route('gross.purchases.index');
+
+        if ($result['errors'] !== []) {
+            return $redirect
+                ->with('warning', $message)
+                ->withErrors(['import' => $result['errors']]);
+        }
+
+        return $redirect->with('success', $message);
     }
 
     public function create(): View

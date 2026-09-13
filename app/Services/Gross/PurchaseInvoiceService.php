@@ -14,7 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseInvoiceService
 {
-    public function __construct(private readonly StockService $stock) {}
+    public function __construct(
+        private readonly StockService $stock,
+        private readonly SupplierService $suppliers,
+    ) {}
 
     public function paginate(int $perPage = 25): LengthAwarePaginator
     {
@@ -31,9 +34,7 @@ class PurchaseInvoiceService
     public function createDraft(User $actor, array $data, array $lines): GrossPurchaseInvoice
     {
         return DB::transaction(function () use ($actor, $data, $lines) {
-            $supplier = isset($data['supplier_id'])
-                ? GrossSupplier::query()->find($data['supplier_id'])
-                : null;
+            $supplier = $this->resolveSupplier($data);
 
             $invoice = GrossPurchaseInvoice::query()->create([
                 'invoice_number' => $this->nextInvoiceNumber(),
@@ -67,12 +68,10 @@ class PurchaseInvoiceService
         }
 
         return DB::transaction(function () use ($invoice, $data, $lines) {
-            $supplier = isset($data['supplier_id'])
-                ? GrossSupplier::query()->find($data['supplier_id'])
-                : null;
+            $supplier = $this->resolveSupplier($data);
 
             $invoice->update([
-                'supplier_id' => array_key_exists('supplier_id', $data) ? ($supplier?->id) : $invoice->supplier_id,
+                'supplier_id' => $supplier?->id,
                 'supplier_name' => $data['supplier_name'] ?? $supplier?->name ?? $invoice->supplier_name,
                 'supplier_phone' => $data['supplier_phone'] ?? $supplier?->phone ?? $invoice->supplier_phone,
                 'supplier_address' => array_key_exists('supplier_address', $data)
@@ -250,6 +249,30 @@ class PurchaseInvoiceService
                 'line_total' => $lineTotal,
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveSupplier(array $data): ?GrossSupplier
+    {
+        $name = trim((string) ($data['supplier_name'] ?? ''));
+        $phone = trim((string) ($data['supplier_phone'] ?? ''));
+        $address = $data['supplier_address'] ?? null;
+
+        if ($name !== '' && $phone !== '') {
+            return $this->suppliers->findOrCreateFromInvoice(
+                $name,
+                $phone,
+                is_string($address) ? $address : null,
+            );
+        }
+
+        if (! empty($data['supplier_id'])) {
+            return GrossSupplier::query()->find($data['supplier_id']);
+        }
+
+        return null;
     }
 
     private function nextInvoiceNumber(): string

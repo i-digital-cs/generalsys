@@ -79,6 +79,41 @@ class SupplierService
     }
 
     /**
+     * Link purchase invoices to the suppliers master list (match by phone).
+     */
+    public function findOrCreateFromInvoice(string $name, string $phone, ?string $address = null): GrossSupplier
+    {
+        $name = trim($name);
+        $phone = trim($phone);
+        $address = $address !== null ? trim($address) : null;
+        if ($address === '') {
+            $address = null;
+        }
+
+        $existing = GrossSupplier::query()->where('phone', $phone)->first();
+        if ($existing !== null) {
+            $updates = [];
+            if ($name !== '' && $existing->name !== $name) {
+                $updates['name'] = $name;
+            }
+            if ($address !== null && $existing->address !== $address) {
+                $updates['address'] = $address;
+            }
+            if ($updates !== []) {
+                $existing->update($updates);
+            }
+
+            return $existing->refresh();
+        }
+
+        return $this->create([
+            'name' => $name,
+            'phone' => $phone,
+            'address' => $address,
+        ]);
+    }
+
+    /**
      * @param  array{name: string, phone: string, address?: string|null, notes?: string|null}  $data
      */
     public function update(GrossSupplier $supplier, array $data): GrossSupplier

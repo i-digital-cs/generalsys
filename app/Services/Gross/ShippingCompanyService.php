@@ -152,6 +152,48 @@ class ShippingCompanyService
     }
 
     /**
+     * Link sales invoices to shipping master list (match by name, case-insensitive).
+     */
+    public function findOrCreateByName(string $name, ?string $phone = null, ?string $address = null): GrossShippingCompany
+    {
+        $name = trim($name);
+        $phone = $phone !== null ? trim($phone) : null;
+        $address = $address !== null ? trim($address) : null;
+        if ($phone === '') {
+            $phone = null;
+        }
+        if ($address === '') {
+            $address = null;
+        }
+
+        $existing = GrossShippingCompany::query()
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->first();
+
+        if ($existing !== null) {
+            $updates = [];
+            if ($phone !== null && ! $existing->phone) {
+                $updates['phone'] = $phone;
+            }
+            if ($address !== null && ! $existing->address) {
+                $updates['address'] = $address;
+            }
+            if ($updates !== []) {
+                $existing->update($updates);
+            }
+
+            return $existing->refresh();
+        }
+
+        return $this->create([
+            'name' => $name,
+            'phone' => $phone,
+            'address' => $address,
+            'status' => GrossShippingCompany::STATUS_ACTIVE,
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public function update(GrossShippingCompany $company, array $data): GrossShippingCompany

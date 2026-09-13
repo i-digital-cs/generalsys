@@ -32,6 +32,7 @@ class StoreGrossSalesInvoiceRequest extends FormRequest
             'customer_phone' => ['required', 'string', 'max:40'],
             'customer_address' => ['nullable', 'string'],
             'shipping_company_id' => ['nullable', 'integer', 'exists:gross_shipping_companies,id'],
+            'shipping_company_name' => ['nullable', 'string', 'max:191'],
             'sales_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'currency' => ['required', Rule::in(['EGP', 'AED'])],
             'shipping_fee' => ['nullable', 'numeric', 'min:0'],

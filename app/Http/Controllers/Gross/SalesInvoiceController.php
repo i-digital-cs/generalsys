@@ -6,6 +6,7 @@ use App\Exceptions\GrossException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Gross\CollectCodRequest;
 use App\Http\Requests\Gross\GrossAllocationQtyRequest;
+use App\Http\Requests\Gross\ImportGrossSalesInvoiceRequest;
 use App\Http\Requests\Gross\RefuseGrossSalesInvoiceRequest;
 use App\Http\Requests\Gross\StoreGrossSalesInvoiceRequest;
 use App\Http\Requests\Gross\UpdateGrossSalesInvoiceRequest;
@@ -16,6 +17,7 @@ use App\Services\Gross\CustomerService;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\SalesInvoiceDisplayService;
 use App\Services\Gross\SalesInvoiceExportService;
+use App\Services\Gross\SalesInvoiceImportService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\TreasuryService;
@@ -24,12 +26,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SalesInvoiceController extends Controller
 {
     public function __construct(
         private readonly SalesInvoiceService $invoices,
+        private readonly SalesInvoiceImportService $imports,
         private readonly AllocationService $allocations,
         private readonly CustomerService $customers,
         private readonly ShippingCompanyService $shipping,
@@ -46,6 +50,44 @@ class SalesInvoiceController extends Controller
         return view('gross.sales.index', [
             'invoices' => $this->invoices->paginate(),
         ]);
+    }
+
+    public function template(): BinaryFileResponse|StreamedResponse
+    {
+        $this->authorize('create', GrossSalesInvoice::class);
+
+        $path = storage_path('app/tmp/gross-sales-invoices-template.xlsx');
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+        $this->imports->writeTemplate($path);
+
+        return response()->download(
+            $path,
+            'gross-sales-invoices-template.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        )->deleteFileAfterSend(true);
+    }
+
+    public function import(ImportGrossSalesInvoiceRequest $request): RedirectResponse
+    {
+        $path = $request->file('file')->getRealPath();
+        $result = $this->imports->importFromPath((string) $path, $request->user());
+
+        $message = __('gross.flash.sales_imported', [
+            'created' => $result['created'],
+            'skipped' => $result['skipped'],
+        ]);
+
+        $redirect = redirect()->route('gross.sales.index');
+
+        if ($result['errors'] !== []) {
+            return $redirect
+                ->with('warning', $message)
+                ->withErrors(['import' => $result['errors']]);
+        }
+
+        return $redirect->with('success', $message);
     }
 
     public function create(): View
