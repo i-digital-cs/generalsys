@@ -18,7 +18,7 @@ class SalesInvoiceFormTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_create_form_loads_many_items_and_add_line_controls(): void
+    public function test_create_form_uses_typeahead_item_search_controls(): void
     {
         $manager = User::factory()->manager()->create();
         $items = app(ItemService::class);
@@ -34,10 +34,12 @@ class SalesInvoiceFormTest extends TestCase
             ->get(route('gross.sales.create'))
             ->assertOk()
             ->assertSee('Add item', false)
-            ->assertSee('Filter items in lists', false)
+            ->assertSee('Type item name or code', false)
+            ->assertSee('Type in each line to search items', false)
             ->assertSee('Invoice discount', false)
-            ->assertSee('Item 1', false)
-            ->assertSee('Item 3', false);
+            ->assertSee(route('gross.items.search', [], false), false)
+            ->assertDontSee('Item 1', false)
+            ->assertDontSee('Item 3', false);
     }
 
     public function test_store_multi_line_with_line_and_invoice_percent_discounts(): void

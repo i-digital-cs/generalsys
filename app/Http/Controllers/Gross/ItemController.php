@@ -12,6 +12,7 @@ use App\Services\Gross\CategoryService;
 use App\Services\Gross\ItemAttributeService;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\PieceLocationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -48,6 +49,17 @@ class ItemController extends Controller
             'models' => $this->attributes->listByKind(GrossItemAttribute::KIND_MODEL),
             'categories' => $this->categories->roots(),
         ]);
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', GrossItem::class);
+
+        $results = $this->items->searchForForms((string) $request->query('q', ''), 25);
+
+        return response()->json(
+            $results->map(fn (GrossItem $item) => $this->items->toFormOption($item))->values()
+        );
     }
 
     public function create(): View

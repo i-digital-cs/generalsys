@@ -1,36 +1,40 @@
 @php
+    use App\Services\Gross\ItemService;
+
     $index = $index ?? 0;
     $line = $line ?? [];
-    $items = $items ?? collect();
+    $itemsById = $itemsById ?? collect();
     $mode = $line['discount_mode'] ?? 'amount';
-    $selected = $items->firstWhere('id', (int) ($line['item_id'] ?? 0));
+    $itemId = (int) ($line['item_id'] ?? 0);
+    $selected = $itemId > 0 ? ($itemsById->get($itemId) ?? $itemsById->firstWhere('id', $itemId)) : null;
+    $selectedOption = $selected ? app(ItemService::class)->toFormOption($selected) : null;
+    $selectedLabel = $selectedOption['label'] ?? '';
+    $selectedSize = $selectedOption['size'] ?? '';
 @endphp
 <tr data-gross-line-row>
     <td>
-        <select name="lines[{{ $index }}][item_id]" class="form-select form-select-sm" required data-line-item>
-            <option value="">—</option>
-            @foreach ($items as $item)
-                @php
-                    $bits = [$item->code, $item->name];
-                    if ($item->size) {
-                        $bits[] = $item->size;
-                    }
-                    $label = implode(' — ', $bits);
-                @endphp
-                <option value="{{ $item->id }}"
-                        data-buy=""
-                        data-sale="{{ $item->default_sale_price ?? '' }}"
-                        data-size="{{ $item->size ?? '' }}"
-                        data-search="{{ mb_strtolower($label) }}"
-                        @selected(($line['item_id'] ?? '') == $item->id)>
-                    {{ $label }}
-                </option>
-            @endforeach
-        </select>
+        <div class="position-relative" data-item-picker>
+            <input type="hidden"
+                   name="lines[{{ $index }}][item_id]"
+                   value="{{ $itemId > 0 ? $itemId : '' }}"
+                   required
+                   data-line-item>
+            <input type="search"
+                   class="form-control form-control-sm"
+                   value="{{ $selectedLabel }}"
+                   placeholder="{{ __('gross.purchases.item_search_placeholder') }}"
+                   data-line-item-search
+                   autocomplete="off"
+                   aria-autocomplete="list"
+                   aria-expanded="false"
+                   aria-label="{{ __('gross.fields.item') }}">
+            <div class="dropdown-menu shadow hp-item-typeahead-menu"
+                 data-line-item-results></div>
+        </div>
         <input type="hidden" name="lines[{{ $index }}][unit]" value="PIECE">
     </td>
     <td class="small text-body-secondary" data-line-size>
-        {{ $selected?->size ?: '—' }}
+        {{ $selectedSize !== '' ? $selectedSize : '—' }}
     </td>
     <td>
         <input type="number" min="1" name="lines[{{ $index }}][qty]" class="form-control form-control-sm"

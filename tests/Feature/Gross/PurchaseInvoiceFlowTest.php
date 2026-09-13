@@ -86,7 +86,10 @@ class PurchaseInvoiceFlowTest extends TestCase
             ->assertOk()
             ->assertSee('Buy price', false)
             ->assertSee('Sale price', false)
-            ->assertSee('data-gross-totals', false);
+            ->assertSee('Type item name or code', false)
+            ->assertSee(route('gross.items.search', [], false), false)
+            ->assertSee('data-gross-totals', false)
+            ->assertDontSee('Thread', false);
 
         $this->actingAs($manager)
             ->post(route('gross.purchases.store'), [

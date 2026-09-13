@@ -1,7 +1,7 @@
 @php
     $invoice = $invoice ?? null;
     $customers = $customers ?? collect();
-    $items = $items ?? collect();
+    $itemsById = $itemsById ?? collect();
     $salesPeople = $salesPeople ?? collect();
     $oldLines = old('lines', $invoice?->lines?->map(function ($l) {
         $mode = ((float) $l->discount_percent) > 0 ? 'percent' : 'amount';
@@ -29,7 +29,7 @@
         ((float) ($invoice?->discount_percent ?? 0)) > 0 ? 'percent' : 'amount'
     );
 @endphp
-<div class="row g-3 mb-3" data-gross-invoice-form>
+<div class="row g-3 mb-3" data-gross-invoice-form data-item-search-url="{{ route('gross.items.search') }}">
     <div class="col-md-4">
         <label class="form-label" for="customer_id">{{ __('gross.fields.customer') }}</label>
         <select id="customer_id" name="customer_id" class="form-select" data-gross-customer-select>
@@ -127,15 +127,13 @@
 </div>
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-    <h2 class="h6 mb-0">{{ __('gross.sales.lines') }}</h2>
-    <div class="d-flex flex-wrap gap-2 align-items-center">
-        <input type="search" class="form-control form-control-sm" style="min-width: 12rem"
-               placeholder="{{ __('gross.sales.item_filter_placeholder') }}"
-               data-gross-item-filter autocomplete="off">
-        <button type="button" class="btn btn-outline-primary btn-sm" data-gross-add-line>
-            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>{{ __('gross.sales.add_line') }}
-        </button>
+    <div>
+        <h2 class="h6 mb-0">{{ __('gross.sales.lines') }}</h2>
+        <div class="form-text mb-0">{{ __('gross.sales.item_search_hint') }}</div>
     </div>
+    <button type="button" class="btn btn-outline-primary btn-sm" data-gross-add-line>
+        <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>{{ __('gross.sales.add_line') }}
+    </button>
 </div>
 @error('lines')<div class="alert alert-danger py-2">{{ $message }}</div>@enderror
 
@@ -154,7 +152,7 @@
         </thead>
         <tbody data-gross-lines-body>
             @foreach ($oldLines as $i => $line)
-                @include('gross.sales._line', ['index' => $i, 'line' => $line, 'items' => $items])
+                @include('gross.sales._line', ['index' => $i, 'line' => $line, 'itemsById' => $itemsById])
             @endforeach
         </tbody>
     </table>
@@ -195,7 +193,7 @@
             'discount_amount' => 0,
             'discount_percent' => 0,
         ],
-        'items' => $items,
+        'itemsById' => collect(),
     ])
 </template>
 
@@ -211,7 +209,8 @@
     const body = document.querySelector('[data-gross-lines-body]');
     const template = document.getElementById('gross-invoice-line-template');
     const addBtn = document.querySelector('[data-gross-add-line]');
-    const filterInput = document.querySelector('[data-gross-item-filter]');
+    const searchUrl = document.querySelector('[data-item-search-url]')?.getAttribute('data-item-search-url') || '';
+    const emptyLabel = @json(__('gross.sales.item_search_empty'));
     let lineIndex = body ? body.querySelectorAll('[data-gross-line-row]').length : 0;
 
     function money(n) {
@@ -299,23 +298,146 @@
         recalc();
     }
 
-    function wireRow(row) {
-        const itemSelect = row.querySelector('[data-line-item]');
+    function wireItemPicker(row) {
+        const root = row.querySelector('[data-item-picker]');
+        const hidden = row.querySelector('[data-line-item]');
+        const input = row.querySelector('[data-line-item-search]');
+        const menu = row.querySelector('[data-line-item-results]');
         const priceInput = row.querySelector('[data-line-price]');
         const sizeCell = row.querySelector('[data-line-size]');
-        if (itemSelect) {
-            itemSelect.addEventListener('change', function () {
-                const opt = itemSelect.options[itemSelect.selectedIndex];
-                const price = opt ? opt.getAttribute('data-price') : '';
-                if (priceInput && price !== null && price !== '') {
-                    priceInput.value = price;
-                }
-                if (sizeCell) {
-                    sizeCell.textContent = (opt && opt.getAttribute('data-size')) ? opt.getAttribute('data-size') : '—';
-                }
-                recalc();
-            });
+        if (!root || !hidden || !input || !menu || !searchUrl) return;
+
+        // Escape .table-responsive overflow clipping.
+        if (menu.parentElement !== document.body) {
+            document.body.appendChild(menu);
         }
+        row._itemResultsMenu = menu;
+
+        let timer = null;
+        let seq = 0;
+        let lastLabel = input.value;
+
+        function closeMenu() {
+            menu.classList.remove('show');
+            input.setAttribute('aria-expanded', 'false');
+        }
+
+        function positionMenu() {
+            const rect = input.getBoundingClientRect();
+            const gap = 4;
+            const maxH = 256;
+            const spaceBelow = window.innerHeight - rect.bottom - gap;
+            const spaceAbove = rect.top - gap;
+            const openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
+            const height = Math.max(120, Math.min(maxH, openUp ? spaceAbove : spaceBelow));
+            menu.style.position = 'fixed';
+            menu.style.left = Math.max(8, rect.left) + 'px';
+            menu.style.width = Math.max(rect.width, 240) + 'px';
+            menu.style.right = 'auto';
+            menu.style.zIndex = '2000';
+            menu.style.maxHeight = height + 'px';
+            menu.style.overflowY = 'auto';
+            if (openUp) {
+                menu.style.top = 'auto';
+                menu.style.bottom = (window.innerHeight - rect.top + gap) + 'px';
+            } else {
+                menu.style.bottom = 'auto';
+                menu.style.top = (rect.bottom + gap) + 'px';
+            }
+        }
+
+        function openMenu() {
+            positionMenu();
+            menu.classList.add('show');
+            input.setAttribute('aria-expanded', 'true');
+        }
+
+        function selectItem(item) {
+            hidden.value = String(item.id);
+            input.value = item.label || '';
+            lastLabel = input.value;
+            if (priceInput && item.sale_price !== null && item.sale_price !== undefined && item.sale_price !== '') {
+                priceInput.value = item.sale_price;
+            }
+            if (sizeCell) {
+                sizeCell.textContent = item.size ? item.size : '—';
+            }
+            closeMenu();
+            recalc();
+        }
+
+        function renderResults(items) {
+            menu.innerHTML = '';
+            if (!items.length) {
+                const empty = document.createElement('div');
+                empty.className = 'dropdown-item disabled text-body-secondary';
+                empty.textContent = emptyLabel;
+                menu.appendChild(empty);
+                openMenu();
+                return;
+            }
+            items.forEach(function (item) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'dropdown-item text-wrap';
+                btn.textContent = item.label;
+                btn.addEventListener('mousedown', function (e) {
+                    e.preventDefault();
+                    selectItem(item);
+                });
+                menu.appendChild(btn);
+            });
+            openMenu();
+        }
+
+        input.addEventListener('input', function () {
+            if (input.value !== lastLabel) {
+                hidden.value = '';
+            }
+            clearTimeout(timer);
+            const q = input.value.trim();
+            if (q.length < 1) {
+                closeMenu();
+                menu.innerHTML = '';
+                return;
+            }
+            timer = setTimeout(function () {
+                const my = ++seq;
+                fetch(searchUrl + '?q=' + encodeURIComponent(q), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                }).then(function (res) { return res.json(); }).then(function (data) {
+                    if (my !== seq) return;
+                    renderResults(Array.isArray(data) ? data : []);
+                }).catch(function () {
+                    if (my !== seq) return;
+                    closeMenu();
+                });
+            }, 250);
+        });
+
+        input.addEventListener('focus', function () {
+            if (menu.children.length) openMenu();
+        });
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeMenu();
+        });
+
+        window.addEventListener('resize', function () {
+            if (menu.classList.contains('show')) positionMenu();
+        });
+        window.addEventListener('scroll', function () {
+            if (menu.classList.contains('show')) positionMenu();
+        }, true);
+
+        document.addEventListener('click', function (e) {
+            if (!root.contains(e.target) && !menu.contains(e.target)) closeMenu();
+        });
+    }
+
+    function wireRow(row) {
+        wireItemPicker(row);
         row.querySelectorAll('input, select').forEach(function (el) {
             el.addEventListener('input', recalc);
             el.addEventListener('change', recalc);
@@ -330,6 +452,7 @@
             removeBtn.addEventListener('click', function () {
                 const rows = body.querySelectorAll('[data-gross-line-row]');
                 if (rows.length <= 1) return;
+                if (row._itemResultsMenu) row._itemResultsMenu.remove();
                 row.remove();
                 recalc();
             });
@@ -344,22 +467,8 @@
         const row = wrap.firstElementChild;
         body.appendChild(row);
         wireRow(row);
-        applyItemFilter();
         recalc();
-    }
-
-    function applyItemFilter() {
-        const q = (filterInput?.value || '').trim().toLowerCase();
-        body.querySelectorAll('[data-line-item]').forEach(function (select) {
-            Array.from(select.options).forEach(function (opt, idx) {
-                if (idx === 0 || opt.value === '') {
-                    opt.hidden = false;
-                    return;
-                }
-                const hay = (opt.getAttribute('data-search') || opt.textContent || '').toLowerCase();
-                opt.hidden = q !== '' && !hay.includes(q);
-            });
-        });
+        row.querySelector('[data-line-item-search]')?.focus();
     }
 
     document.querySelector('[data-gross-invoice-discount-mode]')?.addEventListener('change', syncInvoiceDiscountMode);
@@ -381,7 +490,6 @@
 
     body?.querySelectorAll('[data-gross-line-row]').forEach(wireRow);
     addBtn?.addEventListener('click', addLine);
-    filterInput?.addEventListener('input', applyItemFilter);
     if (form) {
         form.addEventListener('input', recalc);
     }

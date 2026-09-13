@@ -109,6 +109,7 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('product/gross')->name('gross.')->group(function () {
         Route::get('/items', [GrossItemController::class, 'index'])->name('items.index');
+        Route::get('/items/search', [GrossItemController::class, 'search'])->name('items.search');
         Route::get('/items/create', [GrossItemController::class, 'create'])->name('items.create');
         Route::post('/items', [GrossItemController::class, 'store'])->name('items.store');
         Route::get('/items/template', [GrossItemController::class, 'template'])->name('items.template');

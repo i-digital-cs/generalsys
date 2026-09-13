@@ -92,6 +92,110 @@ class ItemService
     }
 
     /**
+     * Load specific active items for invoice edit / validation replay (keyed by id).
+     *
+     * @param  list<int|string>  $ids
+     * @return Collection<int, GrossItem>
+     */
+    public function findForForms(array $ids): Collection
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if ($ids === []) {
+            return collect();
+        }
+
+        return GrossItem::query()
+            ->whereIn('id', $ids)
+            ->with(['balance', 'colorOption', 'sizeOption', 'modelOption'])
+            ->get()
+            ->keyBy('id');
+    }
+
+    /**
+     * Typeahead search for invoice line item pickers (name / code / size / color / model).
+     *
+     * @return Collection<int, GrossItem>
+     */
+    public function searchForForms(string $query, int $limit = 25): Collection
+    {
+        $query = trim($query);
+        if ($query === '') {
+            return collect();
+        }
+
+        $like = '%'.$query.'%';
+
+        return GrossItem::query()
+            ->where('status', GrossItem::STATUS_ACTIVE)
+            ->with(['balance', 'colorOption', 'sizeOption', 'modelOption'])
+            ->where(function ($q) use ($like) {
+                $q->where('name', 'like', $like)
+                    ->orWhere('code', 'like', $like)
+                    ->orWhere('color', 'like', $like)
+                    ->orWhere('size', 'like', $like)
+                    ->orWhere('model', 'like', $like)
+                    ->orWhere('description', 'like', $like)
+                    ->orWhereHas('colorOption', function ($attr) use ($like) {
+                        $attr->where('name_ar', 'like', $like)->orWhere('name_en', 'like', $like);
+                    })
+                    ->orWhereHas('sizeOption', function ($attr) use ($like) {
+                        $attr->where('name_ar', 'like', $like)->orWhere('name_en', 'like', $like);
+                    })
+                    ->orWhereHas('modelOption', function ($attr) use ($like) {
+                        $attr->where('name_ar', 'like', $like)->orWhere('name_en', 'like', $like);
+                    });
+            })
+            ->orderBy('code')
+            ->limit(min(max($limit, 1), 50))
+            ->get();
+    }
+
+    /**
+     * @return array{id: int, label: string, size: string, sale_price: string|null, buy_price: string, on_hand: int|null}
+     */
+    public function toFormOption(GrossItem $item): array
+    {
+        return [
+            'id' => $item->id,
+            'label' => $this->formLabel($item),
+            'size' => $this->itemSizeLabel($item),
+            'sale_price' => $item->default_sale_price !== null ? (string) $item->default_sale_price : null,
+            'buy_price' => '',
+            'on_hand' => $item->balance?->qty_on_hand_pieces !== null
+                ? (int) $item->balance->qty_on_hand_pieces
+                : null,
+        ];
+    }
+
+    public function formLabel(GrossItem $item): string
+    {
+        $bits = [(string) $item->code, (string) $item->name];
+        $color = $item->colorOption?->localizedName() ?: trim((string) ($item->color ?? ''));
+        $size = $this->itemSizeLabel($item);
+        $model = $item->modelOption?->localizedName() ?: trim((string) ($item->model ?? ''));
+        if ($color !== '') {
+            $bits[] = $color;
+        }
+        if ($size !== '') {
+            $bits[] = $size;
+        }
+        if ($model !== '') {
+            $bits[] = $model;
+        }
+        $onHand = $item->balance?->qty_on_hand_pieces;
+        if ($onHand !== null) {
+            $bits[] = '('.$onHand.')';
+        }
+
+        return implode(' — ', $bits);
+    }
+
+    private function itemSizeLabel(GrossItem $item): string
+    {
+        return $item->sizeOption?->localizedName() ?: trim((string) ($item->size ?? ''));
+    }
+
+    /**
      * Distinct item names for autocomplete.
      *
      * @return list<string>

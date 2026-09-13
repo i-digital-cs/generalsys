@@ -55,7 +55,7 @@ class SalesInvoiceController extends Controller
         return view('gross.sales.create', [
             'customers' => $this->customers->listForForms(200),
             'shippingCompanies' => $this->shipping->activeList(),
-            'items' => $this->items->activeForForms(500),
+            'itemsById' => $this->items->findForForms($this->lineItemIdsFromRequest(null)),
             'salesPeople' => $this->invoices->salesPeople(auth()->id()),
         ]);
     }
@@ -119,7 +119,7 @@ class SalesInvoiceController extends Controller
             'invoice' => $invoice,
             'customers' => $this->customers->listForForms(200),
             'shippingCompanies' => $this->shipping->activeList(),
-            'items' => $this->items->activeForForms(500),
+            'itemsById' => $this->items->findForForms($this->lineItemIdsFromRequest($invoice)),
             'salesPeople' => $this->invoices->salesPeople($invoice->sales_user_id),
         ]);
     }
@@ -297,5 +297,18 @@ class SalesInvoiceController extends Controller
             ->firstOrFail();
 
         return $allocation;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function lineItemIdsFromRequest(?GrossSalesInvoice $invoice): array
+    {
+        $lines = old('lines');
+        if (! is_array($lines)) {
+            $lines = $invoice?->lines?->map(fn ($line) => ['item_id' => $line->item_id])->all() ?? [];
+        }
+
+        return collect($lines)->pluck('item_id')->filter()->map(fn ($id) => (int) $id)->all();
     }
 }

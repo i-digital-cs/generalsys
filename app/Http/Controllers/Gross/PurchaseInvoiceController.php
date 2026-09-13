@@ -45,7 +45,7 @@ class PurchaseInvoiceController extends Controller
 
         return view('gross.purchases.create', [
             'suppliers' => $this->suppliers->listForForms(200),
-            'items' => $this->items->activeForForms(500),
+            'itemsById' => $this->items->findForForms($this->lineItemIdsFromRequest(null)),
         ]);
     }
 
@@ -103,7 +103,7 @@ class PurchaseInvoiceController extends Controller
         return view('gross.purchases.edit', [
             'invoice' => $purchase,
             'suppliers' => $this->suppliers->listForForms(200),
-            'items' => $this->items->activeForForms(500),
+            'itemsById' => $this->items->findForForms($this->lineItemIdsFromRequest($purchase)),
         ]);
     }
 
@@ -175,5 +175,18 @@ class PurchaseInvoiceController extends Controller
         return redirect()
             ->route('gross.purchases.show', $purchase)
             ->with('success', __('gross.flash.purchase_return_applied'));
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function lineItemIdsFromRequest(?GrossPurchaseInvoice $invoice): array
+    {
+        $lines = old('lines');
+        if (! is_array($lines)) {
+            $lines = $invoice?->lines?->map(fn ($line) => ['item_id' => $line->item_id])->all() ?? [];
+        }
+
+        return collect($lines)->pluck('item_id')->filter()->map(fn ($id) => (int) $id)->all();
     }
 }
