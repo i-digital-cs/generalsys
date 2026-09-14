@@ -122,6 +122,25 @@ class EmployeeCrudTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'new.employee@hrpro.test']);
     }
 
+    public function test_store_rejects_online_full_sixteen_hour_overnight_typo(): void
+    {
+        app()->setLocale('en');
+
+        $this->actingAs($this->manager)
+            ->post(route('admin.employees.store'), $this->validPayload([
+                'default_shifts' => [
+                    [
+                        'shift_type' => 'ONLINE_FULL',
+                        'start' => '09:00',
+                        'end' => '01:00',
+                    ],
+                ],
+            ]))
+            ->assertSessionHasErrors('default_shifts.0.end');
+
+        $this->assertDatabaseMissing('users', ['email' => 'new.employee@hrpro.test']);
+    }
+
     public function test_store_allows_true_overnight_eight_hour_window(): void
     {
         $this->actingAs($this->manager)

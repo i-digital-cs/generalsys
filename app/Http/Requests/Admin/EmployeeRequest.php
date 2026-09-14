@@ -287,10 +287,11 @@ abstract class EmployeeRequest extends FormRequest
                     continue;
                 }
 
-                if (! $windows->isCompatible($type, $start, $end, $windowHours)) {
+                // Planned hours come from shift type (or TL override) — never pass window span here.
+                if (! $windows->isCompatible($type, $start, $end)) {
                     $validator->errors()->add(
                         "default_shifts.{$index}.end",
-                        $windows->errorMessage($type, $start, $end, $windowHours),
+                        $windows->errorMessage($type, $start, $end),
                     );
                 }
             }
