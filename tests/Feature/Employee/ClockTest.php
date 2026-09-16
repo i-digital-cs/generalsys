@@ -370,6 +370,45 @@ class ClockTest extends TestCase
             ->assertSessionHas('success');
     }
 
+    public function test_elapsed_timer_uses_current_open_segment_not_first_punch(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 11:48:00', config('app.timezone')));
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
+            ->assertRedirect();
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.out'), $this->withClockGps())
+            ->assertRedirect();
+
+        Carbon::setTestNow(Carbon::parse('2026-09-15 21:11:00', config('app.timezone')));
+        $this->actingAs($this->employee)
+            ->post(route('employee.clock.in'), $this->withClockGps(['shift_type' => Attendance::SHIFT_FULL_TIME]))
+            ->assertRedirect();
+
+        $segment = Attendance::query()
+            ->where('user_id', $this->employee->id)
+            ->with('segments')
+            ->latest('id')
+            ->firstOrFail()
+            ->segments
+            ->sortByDesc('sequence')
+            ->first();
+
+        $html = $this->actingAs($this->employee)
+            ->get(route('employee.clock'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString(
+            'data-clock-in="'.$segment->clock_in->toIso8601String().'"',
+            $html,
+        );
+        $this->assertStringContainsString('2026-09-15 21:11', $html);
+        $this->assertStringNotContainsString('2026-09-15 11:48', $html);
+
+        Carbon::setTestNow();
+    }
+
     public function test_clock_still_offers_missed_full_time_after_evening_online(): void
     {
         $this->employee->update([

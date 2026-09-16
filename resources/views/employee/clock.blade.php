@@ -14,6 +14,9 @@
         $scheduleShift = $scheduleShift ?? ($open?->shift_type ?? $preferredShift ?? null);
         $shiftLabel = $scheduleShift ? __('clock.shifts.'.$scheduleShift) : '';
         $clockInPhotos = $open?->photos?->where('kind', \App\Models\AttendancePhoto::KIND_CLOCK_IN) ?? collect();
+        // Live elapsed must follow the *current* open segment — not the day's first punch
+        // (mid-day resume otherwise looks like ~9h already worked).
+        $elapsedFrom = $openSegment?->clock_in ?? $open?->clock_in;
     @endphp
 
     <h1 class="h4 mb-3">{{ __('clock.title') }}</h1>
@@ -100,7 +103,7 @@
                     <dt class="col-sm-4">{{ __('clock.shift_type') }}</dt>
                     <dd class="col-sm-8">{{ __('clock.shifts.'.$open->shift_type) }}</dd>
                     <dt class="col-sm-4">{{ __('clock.clocked_at') }}</dt>
-                    <dd class="col-sm-8" dir="ltr">{{ $open->clock_in?->timezone($tz)->format('Y-m-d H:i') }}</dd>
+                    <dd class="col-sm-8" dir="ltr">{{ $elapsedFrom?->timezone($tz)->format('Y-m-d H:i') }}</dd>
                     @if ($startLabel)
                         <dt class="col-sm-4">{{ __('clock.expected_start') }}</dt>
                         <dd class="col-sm-8" dir="ltr">{{ $startLabel }}</dd>
@@ -117,7 +120,7 @@
                     <dd class="col-sm-8" dir="ltr">{{ $open->planned_hours }}</dd>
                     <dt class="col-sm-4">{{ __('clock.elapsed') }}</dt>
                     <dd class="col-sm-8 font-monospace fs-4" dir="ltr" id="clock-elapsed"
-                        data-clock-in="{{ $open->clock_in?->toIso8601String() }}">--:--:--</dd>
+                        data-clock-in="{{ $elapsedFrom?->toIso8601String() }}">--:--:--</dd>
                 </dl>
 
                 @if ($clockInPhotos->isNotEmpty())

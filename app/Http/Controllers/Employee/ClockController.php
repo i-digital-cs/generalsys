@@ -76,6 +76,7 @@ class ClockController extends Controller
 
         return view('employee.clock', [
             'open' => $open,
+            'openSegment' => $open !== null ? $this->attendance->openSegment($user) : null,
             'missingReportDate' => $user->mustSubmitDailyReports()
                 ? $this->reports->latestUnreportedClosedDay($user)?->date->toDateString()
                 : null,
