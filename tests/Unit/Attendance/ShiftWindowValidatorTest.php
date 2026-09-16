@@ -36,13 +36,16 @@ class ShiftWindowValidatorTest extends TestCase
         $this->assertTrue($v->isEmployeeWindowAllowed('22:00', '10:00'));
     }
 
-    public function test_mismatched_overnight_sixteen_hour_window_is_rejected(): void
+    public function test_mismatched_overnight_sixteen_hour_window_rejected_without_override(): void
     {
         $v = app(ShiftWindowValidator::class);
 
+        // TL assign with type/base planned (8h): 09:00→01:00 = 16h is incompatible.
         $this->assertFalse($v->isCompatible(Attendance::SHIFT_FULL_TIME, '09:00', '01:00'));
         $this->assertSame(16.0, $v->windowHours('09:00', '01:00'));
         $this->assertSame('17:00', $v->suggestedEnd('09:00', 8.0));
+        // Employee profile path allows the same span (planned = window).
+        $this->assertTrue($v->isEmployeeWindowAllowed('09:00', '01:00'));
     }
 
     public function test_online_half_rejects_oversized_window(): void

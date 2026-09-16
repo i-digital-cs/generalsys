@@ -6,8 +6,8 @@ use Carbon\Carbon;
 
 /**
  * Ensure start/end windows match planned hours (R9).
- * Blocks typos like FULL_TIME 09:00→01:00 (16h) when planned is 8h.
- * Employee default shifts derive planned hours from the window span (8/10/12h FULL_TIME).
+ * TL assignments: window must be ≤ expected_hours + 1h (blocks FULL_TIME 09:00→01:00 with 8h).
+ * Employee default profiles: planned hours = window span (1–16h); overnight 09:00→01:00 = 16h is allowed.
  */
 class ShiftWindowValidator
 {

@@ -277,21 +277,13 @@ abstract class EmployeeRequest extends FormRequest
                     continue;
                 }
 
-                $windowHours = $windows->windowHours($start, $end);
+                // Employee defaults: planned hours = window span (1–16h incl. overnight
+                // e.g. ONLINE_FULL 09:00→01:00 = 16h). Type base 8/4/12 is only a fallback
+                // when no profile exists; TL assign still uses isCompatible + expected_hours.
                 if (! $windows->isEmployeeWindowAllowed($start, $end)) {
                     $validator->errors()->add(
                         "default_shifts.{$index}.end",
                         $windows->employeeWindowRangeMessage($start, $end),
-                    );
-
-                    continue;
-                }
-
-                // Planned hours come from shift type (or TL override) — never pass window span here.
-                if (! $windows->isCompatible($type, $start, $end)) {
-                    $validator->errors()->add(
-                        "default_shifts.{$index}.end",
-                        $windows->errorMessage($type, $start, $end),
                     );
                 }
             }

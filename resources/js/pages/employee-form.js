@@ -47,6 +47,7 @@ document.addEventListener('click', function (event) {
 });
 
 // Default shift rows: choosing a type prefills that row's start/end (assign-shift style).
+// Hours on the same row = start→end span (overnight when end ≤ start).
 (function () {
     const root = document.querySelector('[data-default-shifts]');
     if (! root || ! root.dataset.shiftTimes) {
@@ -54,6 +55,53 @@ document.addEventListener('click', function (event) {
     }
 
     const windows = JSON.parse(root.dataset.shiftTimes);
+
+    function minutesFromTime(value) {
+        if (! value || value.indexOf(':') === -1) {
+            return null;
+        }
+        const parts = value.split(':');
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+            return null;
+        }
+
+        return (hours * 60) + minutes;
+    }
+
+    function windowHours(start, end) {
+        const from = minutesFromTime(start);
+        const to = minutesFromTime(end);
+        if (from === null || to === null) {
+            return null;
+        }
+        let span = to - from;
+        if (span <= 0) {
+            span += 24 * 60;
+        }
+
+        return Math.round((span / 60) * 100) / 100;
+    }
+
+    function formatHours(hours) {
+        return hours.toFixed(2) + 'h';
+    }
+
+    function syncHours(row) {
+        const startInput = row.querySelector('[data-default-shift-start]');
+        const endInput = row.querySelector('[data-default-shift-end]');
+        const hoursEl = row.querySelector('[data-default-shift-hours]');
+        if (! hoursEl) {
+            return;
+        }
+
+        const hours = windowHours(
+            startInput ? startInput.value : '',
+            endInput ? endInput.value : '',
+        );
+        hoursEl.textContent = hours === null ? '—' : formatHours(hours);
+    }
 
     root.querySelectorAll('[data-default-shift-row]').forEach(function (row) {
         const typeSelect = row.querySelector('[data-default-shift-type]');
@@ -71,6 +119,7 @@ document.addEventListener('click', function (event) {
                 if (endInput) endInput.value = '';
                 if (startInput) startInput.required = false;
                 if (endInput) endInput.required = false;
+                syncHours(row);
                 return;
             }
 
@@ -81,7 +130,19 @@ document.addEventListener('click', function (event) {
             }
             if (startInput) startInput.required = true;
             if (endInput) endInput.required = true;
+            syncHours(row);
         });
+
+        if (startInput) {
+            startInput.addEventListener('input', function () { syncHours(row); });
+            startInput.addEventListener('change', function () { syncHours(row); });
+        }
+        if (endInput) {
+            endInput.addEventListener('input', function () { syncHours(row); });
+            endInput.addEventListener('change', function () { syncHours(row); });
+        }
+
+        syncHours(row);
     });
 })();
 

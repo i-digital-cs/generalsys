@@ -187,9 +187,19 @@
             }
             $defaultProfiles = array_slice($defaultProfiles, 0, 3);
             $shiftWindows = \App\Services\Attendance\ShiftConfig::DEFAULT_TIME_WINDOWS;
+            $windowHours = static function (?string $start, ?string $end): ?float {
+                if ($start === null || $start === '' || $end === null || $end === '') {
+                    return null;
+                }
+
+                return app(\App\Services\Attendance\ShiftWindowValidator::class)->windowHours($start, $end);
+            };
         @endphp
         <div class="d-flex flex-column gap-3" data-default-shifts data-shift-times="{{ json_encode($shiftWindows) }}">
             @foreach ($defaultProfiles as $index => $row)
+                @php
+                    $rowHours = $windowHours($row['start'] ?? null, $row['end'] ?? null);
+                @endphp
                 <div class="border rounded p-3 bg-body-tertiary" data-default-shift-row>
                     <div class="small fw-semibold mb-2">
                         @if ($index === 0)
@@ -203,7 +213,7 @@
                         @endif
                     </div>
                     <div class="row g-2 align-items-end">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label" for="default_shift_type_{{ $index }}">{{ __('employees.fields.shift_type_default') }}</label>
                             <select id="default_shift_type_{{ $index }}"
                                     name="default_shifts[{{ $index }}][shift_type]"
@@ -223,7 +233,7 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-6 col-md-4">
+                        <div class="col-6 col-md-3">
                             <label class="form-label" for="default_shift_start_{{ $index }}">{{ __('employees.fields.work_start_time') }}</label>
                             <input type="time" id="default_shift_start_{{ $index }}"
                                    name="default_shifts[{{ $index }}][start]"
@@ -236,7 +246,7 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-6 col-md-4">
+                        <div class="col-6 col-md-3">
                             <label class="form-label" for="default_shift_end_{{ $index }}">{{ __('employees.fields.work_end_time') }}</label>
                             <input type="time" id="default_shift_end_{{ $index }}"
                                    name="default_shifts[{{ $index }}][end]"
@@ -248,6 +258,18 @@
                             @error('default_shifts.'.$index.'.end')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <div class="form-label">{{ __('employees.fields.shift_hours') }}</div>
+                            <div class="form-control-plaintext hp-value num-ltr mb-0"
+                                 data-default-shift-hours
+                                 aria-live="polite">
+                                @if ($rowHours !== null)
+                                    {{ number_format($rowHours, 2) }}h
+                                @else
+                                    —
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>

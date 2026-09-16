@@ -122,10 +122,8 @@ class EmployeeCrudTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'new.employee@hrpro.test']);
     }
 
-    public function test_store_rejects_online_full_sixteen_hour_overnight_typo(): void
+    public function test_store_allows_online_full_sixteen_hour_overnight_window(): void
     {
-        app()->setLocale('en');
-
         $this->actingAs($this->manager)
             ->post(route('admin.employees.store'), $this->validPayload([
                 'default_shifts' => [
@@ -136,9 +134,12 @@ class EmployeeCrudTest extends TestCase
                     ],
                 ],
             ]))
-            ->assertSessionHasErrors('default_shifts.0.end');
+            ->assertRedirect();
 
-        $this->assertDatabaseMissing('users', ['email' => 'new.employee@hrpro.test']);
+        $employee = User::where('email', 'new.employee@hrpro.test')->firstOrFail();
+        $this->assertSame('09:00', $employee->work_start_time);
+        $this->assertSame('01:00', $employee->work_end_time);
+        $this->assertSame(16.0, $employee->plannedHoursFor(Attendance::SHIFT_ONLINE_FULL));
     }
 
     public function test_store_allows_true_overnight_eight_hour_window(): void
@@ -653,6 +654,8 @@ class EmployeeCrudTest extends TestCase
             ->assertSee('name="default_shifts[0][start]"', false)
             ->assertSee('name="default_shifts[1][end]"', false)
             ->assertSee('name="default_shifts[2][shift_type]"', false)
+            ->assertSee('data-default-shift-hours', false)
+            ->assertSee(__('employees.fields.shift_hours'), false)
             ->assertSee(__('employees.shifts.ONLINE_FULL'), false)
             ->assertSee('&quot;ONLINE_HALF&quot;:[&quot;06:00&quot;,&quot;10:00&quot;]', false)
             ->assertSee('&quot;ONLINE_FULL&quot;:[&quot;10:00&quot;,&quot;22:00&quot;]', false);
@@ -663,6 +666,21 @@ class EmployeeCrudTest extends TestCase
             ->get(route('admin.employees.edit', $employee))
             ->assertOk()
             ->assertSee('data-shift-times', false);
+
+        $overnight = User::factory()->employee()->create([
+            'shift_type_default' => Attendance::SHIFT_ONLINE_FULL,
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_ONLINE_FULL, 'start' => '09:00', 'end' => '01:00'],
+            ],
+            'work_start_time' => '09:00',
+            'work_end_time' => '01:00',
+        ]);
+
+        $this->actingAs($this->manager)
+            ->get(route('admin.employees.edit', $overnight))
+            ->assertOk()
+            ->assertSee('data-default-shift-hours', false)
+            ->assertSee('16.00h', false);
     }
 
     public function test_index_filters_by_status_and_paginates(): void
