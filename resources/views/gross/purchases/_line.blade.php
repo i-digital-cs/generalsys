@@ -10,26 +10,32 @@
     $selectedOption = $selected ? app(ItemService::class)->toFormOption($selected) : null;
     $selectedLabel = $selectedOption['label'] ?? '';
     $selectedSize = $selectedOption['size'] ?? '';
+    $selectedImageUrl = $selectedOption['image_url'] ?? null;
 @endphp
 <tr data-gross-line-row>
     <td>
-        <div class="position-relative" data-item-picker>
-            <input type="hidden"
-                   name="lines[{{ $index }}][item_id]"
-                   value="{{ $itemId > 0 ? $itemId : '' }}"
-                   required
-                   data-line-item>
-            <input type="search"
-                   class="form-control form-control-sm"
-                   value="{{ $selectedLabel }}"
-                   placeholder="{{ __('gross.purchases.item_search_placeholder') }}"
-                   data-line-item-search
-                   autocomplete="off"
-                   aria-autocomplete="list"
-                   aria-expanded="false"
-                   aria-label="{{ __('gross.fields.item') }}">
-            <div class="dropdown-menu shadow hp-item-typeahead-menu"
-                 data-line-item-results></div>
+        <div class="d-flex align-items-start gap-2">
+            <span data-line-item-thumb class="flex-shrink-0">
+                <x-gross.item-thumb :item="$selected" :url="$selectedImageUrl" size="2.25rem" :alt="$selectedLabel" />
+            </span>
+            <div class="position-relative flex-grow-1" data-item-picker>
+                <input type="hidden"
+                       name="lines[{{ $index }}][item_id]"
+                       value="{{ $itemId > 0 ? $itemId : '' }}"
+                       required
+                       data-line-item>
+                <input type="search"
+                       class="form-control form-control-sm"
+                       value="{{ $selectedLabel }}"
+                       placeholder="{{ __('gross.purchases.item_search_placeholder') }}"
+                       data-line-item-search
+                       autocomplete="off"
+                       aria-autocomplete="list"
+                       aria-expanded="false"
+                       aria-label="{{ __('gross.fields.item') }}">
+                <div class="dropdown-menu shadow hp-item-typeahead-menu"
+                     data-line-item-results></div>
+            </div>
         </div>
         <input type="hidden" name="lines[{{ $index }}][unit]" value="PIECE">
     </td>

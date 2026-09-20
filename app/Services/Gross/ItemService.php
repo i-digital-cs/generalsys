@@ -106,7 +106,7 @@ class ItemService
 
         return GrossItem::query()
             ->whereIn('id', $ids)
-            ->with(['balance', 'colorOption', 'sizeOption', 'modelOption'])
+            ->with(['balance', 'colorOption', 'sizeOption', 'modelOption', 'images', 'category', 'subcategory'])
             ->get()
             ->keyBy('id');
     }
@@ -127,7 +127,7 @@ class ItemService
 
         return GrossItem::query()
             ->where('status', GrossItem::STATUS_ACTIVE)
-            ->with(['balance', 'colorOption', 'sizeOption', 'modelOption'])
+            ->with(['balance', 'colorOption', 'sizeOption', 'modelOption', 'images', 'category', 'subcategory'])
             ->where(function ($q) use ($like) {
                 $q->where('name', 'like', $like)
                     ->orWhere('code', 'like', $like)
@@ -151,19 +151,53 @@ class ItemService
     }
 
     /**
-     * @return array{id: int, label: string, size: string, sale_price: string|null, buy_price: string, on_hand: int|null}
+     * @return array{
+     *     id: int,
+     *     name: string,
+     *     label: string,
+     *     size: string,
+     *     color: string,
+     *     model: string,
+     *     sale_price: string|null,
+     *     buy_price: string,
+     *     on_hand: int|null,
+     *     image_url: string|null,
+     *     color_id: int|null,
+     *     size_id: int|null,
+     *     model_id: int|null,
+     *     category_id: int|null,
+     *     subcategory_id: int|null,
+     *     category: string,
+     *     subcategory: string
+     * }
      */
     public function toFormOption(GrossItem $item): array
     {
+        $color = $item->colorOption?->localizedName() ?: trim((string) ($item->color ?? ''));
+        $model = $item->modelOption?->localizedName() ?: trim((string) ($item->model ?? ''));
+        $category = $item->category?->localizedName() ?: '';
+        $subcategory = $item->subcategory?->localizedName() ?: '';
+
         return [
             'id' => $item->id,
+            'name' => (string) $item->name,
             'label' => $this->formLabel($item),
             'size' => $this->itemSizeLabel($item),
+            'color' => $color,
+            'model' => $model,
             'sale_price' => $item->default_sale_price !== null ? (string) $item->default_sale_price : null,
             'buy_price' => '',
             'on_hand' => $item->balance?->qty_on_hand_pieces !== null
                 ? (int) $item->balance->qty_on_hand_pieces
                 : null,
+            'image_url' => $item->thumbnailUrl(),
+            'color_id' => $item->color_id !== null ? (int) $item->color_id : null,
+            'size_id' => $item->size_id !== null ? (int) $item->size_id : null,
+            'model_id' => $item->model_id !== null ? (int) $item->model_id : null,
+            'category_id' => $item->category_id !== null ? (int) $item->category_id : null,
+            'subcategory_id' => $item->subcategory_id !== null ? (int) $item->subcategory_id : null,
+            'category' => $category,
+            'subcategory' => $subcategory,
         ];
     }
 
@@ -193,32 +227,6 @@ class ItemService
     private function itemSizeLabel(GrossItem $item): string
     {
         return $item->sizeOption?->localizedName() ?: trim((string) ($item->size ?? ''));
-    }
-
-    /**
-     * Distinct item names for autocomplete.
-     *
-     * @return list<string>
-     */
-    public function nameSuggestions(string $query = '', int $limit = 100): array
-    {
-        $q = GrossItem::query()
-            ->whereNotNull('name')
-            ->where('name', '!=', '');
-
-        $query = trim($query);
-        if ($query !== '') {
-            $q->where('name', 'like', '%'.$query.'%');
-        }
-
-        return $q->select('name')
-            ->distinct()
-            ->orderBy('name')
-            ->limit(min($limit, 100))
-            ->pluck('name')
-            ->map(fn ($v) => (string) $v)
-            ->values()
-            ->all();
     }
 
     /**

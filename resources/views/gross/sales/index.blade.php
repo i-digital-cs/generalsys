@@ -14,7 +14,10 @@
                 <a href="{{ route('gross.sales.template') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-download me-1" aria-hidden="true"></i>{{ __('gross.sales.template') }}
                 </a>
-                <a href="{{ route('gross.sales.create') }}" class="btn btn-primary">{{ __('gross.sales.create') }}</a>
+                <a href="{{ route('gross.sales.create') }}" class="btn btn-outline-primary">{{ __('gross.sales.create') }}</a>
+                <a href="{{ route('gross.sales.cashier') }}" class="btn btn-primary">
+                    <i class="bi bi-grid-3x3-gap me-1" aria-hidden="true"></i>{{ __('gross.sales.cashier') }}
+                </a>
             @endcan
         </div>
     </div>

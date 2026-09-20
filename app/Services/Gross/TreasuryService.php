@@ -35,6 +35,25 @@ class TreasuryService
             ]);
     }
 
+    /**
+     * Cash + Bank combined per currency (same-currency sum only).
+     *
+     * @param  Collection<int, array{account: GrossTreasuryAccount, balance: string}>|null  $accountsWithBalances
+     * @return Collection<int, array{currency: string, balance: string}>
+     */
+    public function combinedTotalsByCurrency(?Collection $accountsWithBalances = null): Collection
+    {
+        $rows = $accountsWithBalances ?? $this->accountsWithBalances();
+
+        return $rows
+            ->groupBy(fn (array $row) => (string) $row['account']->currency)
+            ->map(fn (Collection $group, string $currency) => [
+                'currency' => $currency,
+                'balance' => $this->money($group->sum(fn (array $row) => (float) $row['balance'])),
+            ])
+            ->values();
+    }
+
     public function paginateVouchers(array $filters = [], int $perPage = 25): LengthAwarePaginator
     {
         $q = GrossTreasuryVoucher::query()

@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\Auth\PostLoginRedirector;
 use App\Services\Gross\LowStockAlertService;
+use App\Services\Gross\SalesPersonStatsService;
 use App\Services\Portal\PortalStatsService;
 use App\Services\ProductExpense\ProductExpenseService;
 use App\Services\Valuation\ValuationSheetService;
 use App\Services\Valuation\ValuationStatsService;
 use App\Support\AppModule;
+use App\Support\GrossAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 
@@ -41,8 +43,9 @@ class PortalController extends Controller
         ValuationSheetService $sheets,
         LowStockAlertService $lowStock,
         ProductExpenseService $productExpenses,
+        SalesPersonStatsService $salesStats,
     ): View {
-        return $this->moduleHome(AppModule::PRODUCT, $stats, $sheets, $lowStock, $productExpenses);
+        return $this->moduleHome(AppModule::PRODUCT, $stats, $sheets, $lowStock, $productExpenses, $salesStats);
     }
 
     private function moduleHome(
@@ -51,6 +54,7 @@ class PortalController extends Controller
         ValuationSheetService $sheets,
         ?LowStockAlertService $lowStock = null,
         ?ProductExpenseService $productExpenses = null,
+        ?SalesPersonStatsService $salesStats = null,
     ): View {
         $user = auth()->user();
         abort_unless(AppModule::mayAccessModule($user, $module), 403);
@@ -69,12 +73,18 @@ class PortalController extends Controller
             $expenseStats = $productExpenses->monthSnapshot();
         }
 
+        $salesPersonStats = null;
+        if ($module === AppModule::PRODUCT && $salesStats !== null && GrossAccess::maySell($user)) {
+            $salesPersonStats = $salesStats->dashboardCards($user);
+        }
+
         return view('portal.module-home', [
             'module' => $module,
             'stats' => $stats->monthSnapshot($user, $module),
             'monthSheets' => $user->isManager() ? $sheets->monthSheetsFor($user, $module) : collect(),
             'lowStockAlert' => $lowStockAlert,
             'expenseStats' => $expenseStats,
+            'salesStats' => $salesPersonStats,
         ]);
     }
 

@@ -26,7 +26,7 @@ Do **not** invent rules for money, stock, invoice status, permissions, conversio
 - **Customers:** Excel template + import (`name`, `phone`, `address`); duplicate phones skipped. List supports search, inline edit, and delete (blocked if customer has invoices). New name/phone on a sales invoice **auto-creates/updates** Customers (match by phone).
 - **Shipping companies:** same list UX — search, inline edit, delete (blocked if used on invoices/allocations), name suggestions, Excel import (`name`, `phone`, `address`, `notes`, `status`; duplicate names skipped). On sales invoices, pick existing **or type a new name** — saved to Shipping companies. **Show page** (`/product/gross/shipping/{id}`): invoice counts by status, piece buckets, shipping fees by currency/status, and paginated invoices.
 - **Purchase invoices (T-11.2):** Manager/Accountant. Multi-line form (item, qty, buy price, sale price, line + invoice discount amount or percent). Confirm → `PURCHASE_IN` stock in. Numbers `MP-YYYYMM-####`. New supplier name/phone **auto-creates/updates** Suppliers. **Excel import** on purchases index (`invoice_group` → DRAFT; `item_code` required).
-- **Sales invoices:** multi-line form (add/remove rows, typeahead item search). Invoice discount and each line discount are **amount or percent** (not both). Selecting a saved customer fills name/phone/address; typed clients/shipping companies are persisted. **Excel import** on sales index (`invoice_group` → DRAFT). **Sales person** (`sales_user_id`) picker (active `SALES` users + current editor). Line table shows **size**; live JS line totals and header totals (subtotal → discounts → shipping → grand total). **Show page** is a printable invoice document (number, status, customer, sales person, shipping, lines with size, totals); operational actions stay in a non-print toolbar. **PDF** (`gross.sales.pdf`) and **Excel** (`gross.sales.excel`) via `SalesInvoiceExportService`.
+- **Sales invoices:** multi-line form (add/remove rows, typeahead item search). Invoice discount and each line discount are **amount or percent** (not both). Selecting a saved customer fills name/phone/address; typed clients/shipping companies are persisted. **Excel import** on sales index (`invoice_group` → DRAFT). **Sales person** (`sales_user_id`) picker (active `SALES` users + current editor). Line table shows **size**; live JS line totals and header totals (subtotal → discounts → shipping → grand total). **Show page** is a printable invoice document (number, status, customer, sales person, shipping, lines with size, totals); operational actions stay in a non-print toolbar. **PDF** (`gross.sales.pdf`) and **Excel** (`gross.sales.excel`) via `SalesInvoiceExportService`. **Cashier / POS create (T-14.2):** second create path (`gross.sales.cashier`) — category → subcategory → product-name cards (image/name/description) → sibling size/color modal → cart sidebar; posts the same draft payload to `gross.sales.store`. Classic form remains on `gross.sales.create`.
 - **Stock movements ledger:** read-only paginated list at `gross.stock.movements` (filter by item/date/type); link from stock index.
 - Per item (legacy column kept): `pieces_per_carton` fixed to `1` in ItemService.
   - `PIECE` → conversion factor `1`
@@ -68,7 +68,7 @@ qty_shipped_pieces =
   + qty_lost_pieces
 ```
 
-On confirm sale: `ON_HAND − qty_pieces`; allocation starts with `qty_with_courier_pieces = qty_shipped_pieces`.
+On hand-to-courier: `ON_HAND − qty_pieces`; allocation starts with `qty_with_courier_pieces = qty_shipped_pieces`. Confirm alone does **not** move stock.
 
 ---
 
@@ -76,25 +76,36 @@ On confirm sale: `ON_HAND − qty_pieces`; allocation starts with `qty_with_cour
 
 Statuses: `DRAFT | CONFIRMED | DELIVERED | REFUSED | CANCELLED`
 
+Fulfillment (while `CONFIRMED`): `PREPARING → READY_WAREHOUSE → WITH_COURIER`
+
 ```text
 DRAFT
-  → CONFIRMED          (stock out + allocations)
-  → CANCELLED          (no stock impact)
+  → CONFIRMED + PREPARING   (no stock movement; packing starts)
+  → CANCELLED               (no stock impact)
 
-CONFIRMED
-  → DELIVERED          (remaining with_courier → delivered on allocation; WITH_COURIER − on balance)
-  → REFUSED            (client refused — see §6)
-  → CANCELLED          (only if every allocation has qty_with_courier_pieces = 0
-                        AND no further silent restock of courier qty;
-                        if still WITH_COURIER → refuse/return first)
+CONFIRMED + PREPARING
+  → READY_WAREHOUSE         (packing image required)
+  → CANCELLED               (still no stock out)
+
+CONFIRMED + READY_WAREHOUSE
+  → WITH_COURIER            (hand to courier: SALE_OUT + allocations + COD flags)
+  → CANCELLED               (still no stock out)
+
+CONFIRMED + WITH_COURIER
+  → DELIVERED               (remaining with_courier → delivered on allocation; WITH_COURIER − on balance)
+  → REFUSED                 (client refused — see §6)
+  → CANCELLED               (only if every allocation has qty_with_courier_pieces = 0
+                            AND no further silent restock of courier qty;
+                            if still WITH_COURIER → refuse/return first)
 ```
 
-- Controllers/frontend never set `status` arbitrarily.
+- Controllers/frontend never set `status` / `fulfillment_status` arbitrarily.
 - Transitions only via `SalesInvoiceService` / `AllocationService`.
-- Operations are **idempotent**: second confirm/return/loss/refuse/cancel must not double-apply stock (422 or no-op after success).
+- Operations are **idempotent**: second confirm/hand-to-courier/return/loss/refuse/cancel must not double-apply stock (422 or no-op after success).
 
 Currency is immutable after `CONFIRMED`.
 
+Sidebar queues under Sales → مسار الشحنة: preparing / ready / with_courier / delivered / returned.
 ---
 
 ## 6. Client refused
@@ -119,9 +130,10 @@ One DB transaction.
 
 ## 7. Partial return & item loss
 
-- **Client partial return:** qty ≤ deliverable with courier (`with_courier − returned_pending`). Money adjusts immediately (`qty_returned_pieces` up). **Pieces stay with courier** until handover at COD collection (or refuse handover). Audit movement `SALE_RETURN_CLIENT` (no stock move).
+- **Client partial return:** qty ≤ deliverable with courier (`with_courier − returned_pending`). Money adjusts immediately (`qty_returned_pieces` up). **Pieces stay with courier** until a separate **Receive pieces from courier** action (or refuse handover). Audit movement `SALE_RETURN_CLIENT` (no stock move).
 - **Full client refuse:** same as partial but for all remaining pieces — money zeroed, **pieces stay with courier** until **Receive pieces from courier**. Delivery fee (`shipping_fee`) becomes **owed to shipping company** (shown on invoice + collection statement as `DELIVERY_FEE`).
-- **Handover from courier:** `receiveReturnedFromCourier` / **Receive refused pieces** moves refused pieces: WITH_COURIER −, ON_HAND +. Movement `SALE_RETURN` (partial/COD) or `REFUSE_RETURN` (full refuse).
+- **Handover from courier:** `receiveReturnedPiecesFromCourier` / **Receive pieces from courier** moves refused pieces: WITH_COURIER −, ON_HAND +. Movement `SALE_RETURN` (partial) or `REFUSE_RETURN` (full refuse). **Independent of Collect COD** — money and stock handover may happen in either order. **Per-line partial qty** allowed (`receive-returned-line` with `qty_pieces` ≤ pending for that allocation); top button still receives all pending lines.
+- **Collect COD:** money only (`cod_collection_status` PENDING → COLLECTED). Does **not** move returned pieces into warehouse.
 - **Deliver:** only deliverable qty (`with_courier − returned_pending`) → `SALE_DELIVERED`.
 - **Loss confirm:** requires capability `gross.loss.confirm` (see §8). Qty cap = deliverable with courier. Movement `LOSS_CONFIRM`. Never restores stock.
 - **Allocation invariant:** `shipped = delivered + with_courier + lost + returned_received`.
@@ -194,17 +206,16 @@ UI: `/product/gross/treasury` · `/product/gross/expense-types`
 ### 11.5 Courier collection (locked)
 
 ```text
-Confirm sale with shipping_fee > 0  →  shipping_fee_status = PENDING
-Refuse                              →  shipping_fee_status = LOST
-Collect shipping fee                →  PENDING → COLLECTED  (invoice status stays CONFIRMED)
+Hand to courier (WITH_COURIER) with shipping_fee > 0  →  shipping_fee_status / COD = PENDING
+Refuse                              →  shipping_fee_status = LOST (COD_LOST)
+Collect COD                         →  PENDING → COLLECTED  (invoice status stays CONFIRMED)
 Mark delivered                      →  CONFIRMED → DELIVERED
   moves remaining qty_with_courier_pieces → qty_delivered_pieces per allocation;
   stock balance WITH_COURIER − (movement SALE_DELIVERED)
-  only if shipping_fee_status ∈ {NONE, COLLECTED}
+  only if COD is COLLECTED (or NONE when no fee)
 ```
 
-UI: pending list + actions on sales invoice show.
-
+UI: مسار الشحنة queues + packing photo on sales show; deliver/refuse only after WITH_COURIER.
 ### 12.3 Sales invoice net totals (locked — persisted DB, T-12.2+)
 
 Piece counts: **`gross_shipment_allocations`** (source of truth for shipped / returned / with_courier / delivered / lost).
@@ -275,3 +286,40 @@ Collect COD modal:
 Auto-post creates RV-YYYYMM-#### linked to invoice; appears on shipping collection statement (−).
 Collect without post: allowed; manual RECEIPT COURIER_COD later if not already posted.
 ```
+
+---
+
+## 14. Sales-person statistics (T-14.1)
+
+Report `gross.sales.stats` (+ per-user detail). Period: month picker and `from`/`to` (default current month). Filter currency EGP|AED.
+
+**Invoices:** status ∈ CONFIRMED|DELIVERED|REFUSED; period on `COALESCE(confirmed_at, created_at)`. Group by `sales_user_id` (null = Unassigned, Manager/Accountant only).
+
+**KPIs (merchandise only — shipping fee excluded):**
+- Net merchandise = `SUM(net_subtotal − net_discount)`
+- Returned merchandise = `SUM(returned_merchandise)`
+- Original merchandise = percent or amount discount off `subtotal`
+- COD collected = `SUM(cod_collected_amount)` where COLLECTED
+- Counts: invoices, delivered, refused, COD pending
+
+**Who:** Manager/Accountant all; Sales own only. Product dashboard MTD cards (EGP, current month).
+
+---
+
+## 15. Cashier / POS create (T-14.2)
+
+Second create path beside classic form. Entry: Sales index → **Cashier / POS** (`gross.sales.cashier`). Classic **New invoice** unchanged.
+
+**Browse:** main category → subcategory → product cards grouped by exact item `name` (ACTIVE only; image + name + description). Tap card → modal of sibling SKUs (same `name` + `subcategory_id`) with size/color/model, price, on-hand → qty → add to cart sidebar.
+
+**Save:** same `POST gross.sales.store` / `StoreGrossSalesInvoiceRequest` / `createDraft` as classic. JSON catalog via `CashierCatalogService` (`categories`, `subcategories`, `products`, `variants`).
+
+---
+
+## 16. Sales invoice media gallery (T-14.4)
+
+Optional images on any sales invoice status (`gross_sales_invoice_media`). Title + description optional. Max 10 images / invoice, ≤5MB, jpg/jpeg/png/webp only.
+
+**Who:** upload/delete — Manager, Accountant, Sales (`maySell`). View — anyone who can view the invoice.
+
+**UI:** invoice show page only (`d-print-none`). Not in PDF/Excel. Separate from packing photo (مسار الشحنة).

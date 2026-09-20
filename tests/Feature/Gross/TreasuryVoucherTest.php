@@ -53,7 +53,8 @@ class TreasuryVoucherTest extends TestCase
             ->get(route('gross.treasury.index'))
             ->assertOk()
             ->assertSee('Treasury', false)
-            ->assertSee('Payment voucher', false);
+            ->assertSee('Payment voucher', false)
+            ->assertSee('Total (Cash + Bank)', false);
 
         $this->actingAs($manager)
             ->post(route('gross.treasury.store'), [
@@ -85,6 +86,11 @@ class TreasuryVoucherTest extends TestCase
         $payment = GrossTreasuryVoucher::query()->where('type', GrossTreasuryVoucher::TYPE_PAYMENT)->firstOrFail();
         $this->assertMatchesRegularExpression('/^PV-\d{6}-\d{4}$/', $payment->voucher_number);
         $this->assertEqualsWithDelta(420.0, app(TreasuryService::class)->balanceOf($cash->fresh()), 0.01);
+
+        $totals = app(TreasuryService::class)->combinedTotalsByCurrency();
+        $this->assertCount(1, $totals);
+        $this->assertSame('EGP', $totals->first()['currency']);
+        $this->assertSame('420.00', $totals->first()['balance']);
 
         $statement = app(SupplierStatementService::class)->build($supplier, ['currency' => 'EGP']);
         $this->assertSame('80.00', $statement['total_payments']);

@@ -39,6 +39,12 @@ class GrossSalesInvoice extends Model
 
     public const COD_LOST = 'LOST';
 
+    public const FULFILLMENT_PREPARING = 'PREPARING';
+
+    public const FULFILLMENT_READY_WAREHOUSE = 'READY_WAREHOUSE';
+
+    public const FULFILLMENT_WITH_COURIER = 'WITH_COURIER';
+
     protected $table = 'gross_sales_invoices';
 
     protected $fillable = [
@@ -62,7 +68,14 @@ class GrossSalesInvoice extends Model
         'net_discount',
         'net_total',
         'status',
+        'fulfillment_status',
         'notes',
+        'packing_image_path',
+        'packing_image_original_name',
+        'packing_image_mime',
+        'packing_image_size_bytes',
+        'packing_uploaded_at',
+        'packing_uploaded_by',
         'refused_at',
         'refused_by',
         'refuse_reason',
@@ -91,12 +104,14 @@ class GrossSalesInvoice extends Model
             'net_discount' => 'decimal:2',
             'net_total' => 'decimal:2',
             'cod_collected_amount' => 'decimal:2',
+            'packing_image_size_bytes' => 'integer',
             'refused_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'shipping_fee_collected_at' => 'datetime',
             'cod_collected_at' => 'datetime',
             'delivered_at' => 'datetime',
+            'packing_uploaded_at' => 'datetime',
         ];
     }
 
@@ -176,9 +191,43 @@ class GrossSalesInvoice extends Model
         return $this->status === self::STATUS_REFUSED;
     }
 
-    public function refusedPiecesPendingHandover(): int
+    public function isPreparing(): bool
     {
-        if (! $this->isRefused()) {
+        return $this->fulfillment_status === self::FULFILLMENT_PREPARING;
+    }
+
+    public function isReadyInWarehouse(): bool
+    {
+        return $this->fulfillment_status === self::FULFILLMENT_READY_WAREHOUSE;
+    }
+
+    public function isWithCourier(): bool
+    {
+        return $this->fulfillment_status === self::FULFILLMENT_WITH_COURIER;
+    }
+
+    public function hasPackingImage(): bool
+    {
+        return filled($this->packing_image_path);
+    }
+
+    public function packingUploadedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'packing_uploaded_by');
+    }
+
+    public function media(): HasMany
+    {
+        return $this->hasMany(GrossSalesInvoiceMedia::class, 'sales_invoice_id')->latest('id');
+    }
+
+    public function returnedPiecesPendingHandover(): int
+    {
+        if (! in_array($this->status, [
+            self::STATUS_CONFIRMED,
+            self::STATUS_DELIVERED,
+            self::STATUS_REFUSED,
+        ], true)) {
             return 0;
         }
 
@@ -187,6 +236,15 @@ class GrossSalesInvoice extends Model
         return (int) $this->lines->sum(
             fn ($line) => (int) ($line->allocation?->returnedPendingHandover() ?? 0),
         );
+    }
+
+    public function refusedPiecesPendingHandover(): int
+    {
+        if (! $this->isRefused()) {
+            return 0;
+        }
+
+        return $this->returnedPiecesPendingHandover();
     }
 
     public function isRefusedHandoverComplete(): bool

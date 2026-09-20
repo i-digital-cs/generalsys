@@ -22,6 +22,7 @@
                 <table class="table table-hr table-sm align-middle mb-0">
                     <thead>
                         <tr>
+                            <th style="width: 3.5rem"></th>
                             <th>{{ __('gross.fields.code') }}</th>
                             <th>{{ __('gross.fields.name') }}</th>
                             <th class="col-num">{{ __('gross.fields.on_hand') }}</th>
@@ -31,6 +32,9 @@
                     <tbody>
                         @foreach ($items as $item)
                             <tr>
+                                <td>
+                                    <x-gross.item-thumb :item="$item" size="2.25rem" />
+                                </td>
                                 <td>
                                     <a href="{{ route('gross.items.show', $item) }}" class="num-ltr link-body-emphasis text-decoration-none">
                                         {{ $item->code }}

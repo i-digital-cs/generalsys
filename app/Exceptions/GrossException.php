@@ -145,4 +145,29 @@ class GrossException extends RuntimeException
     {
         return new self('gross.errors.too_many_treasury_attachments');
     }
+
+    public static function tooManySalesInvoiceMedia(): self
+    {
+        return new self('gross.errors.too_many_sales_invoice_media');
+    }
+
+    public static function packingImageRequired(): self
+    {
+        return new self('gross.errors.packing_image_required');
+    }
+
+    public static function notPreparing(): self
+    {
+        return new self('gross.errors.not_preparing');
+    }
+
+    public static function notReadyWarehouse(): self
+    {
+        return new self('gross.errors.not_ready_warehouse');
+    }
+
+    public static function notWithCourier(): self
+    {
+        return new self('gross.errors.not_with_courier');
+    }
 }

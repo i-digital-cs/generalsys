@@ -13,11 +13,13 @@ use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class ShippingReturnsReportTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     private User $manager;
 
@@ -145,6 +147,6 @@ class ShippingReturnsReportTest extends TestCase
             'unit_price' => 100,
         ]]);
 
-        return $this->invoices->confirm($invoice, $this->manager)->load(['lines.allocation']);
+        return $this->shipToCourier($invoice, $this->manager)->load(['lines.allocation']);
     }
 }

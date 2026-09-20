@@ -40,8 +40,11 @@ class TreasuryController extends Controller
             'expense_type_id' => $request->query('expense_type_id'),
         ];
 
+        $accounts = $this->treasury->accountsWithBalances();
+
         return view('gross.treasury.index', [
-            'accounts' => $this->treasury->accountsWithBalances(),
+            'accounts' => $accounts,
+            'combinedTotals' => $this->treasury->combinedTotalsByCurrency($accounts),
             'vouchers' => $this->treasury->paginateVouchers($filters),
             'filters' => $filters,
             'filterAccounts' => $this->treasury->activeAccounts(),

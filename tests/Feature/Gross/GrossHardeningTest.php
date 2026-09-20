@@ -15,6 +15,7 @@ use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 /**
@@ -23,6 +24,7 @@ use Tests\TestCase;
 class GrossHardeningTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     private User $manager;
 
@@ -65,7 +67,7 @@ class GrossHardeningTest extends TestCase
         $draft = $this->draftInvoice(30);
 
         try {
-            $this->invoices->confirm($draft, $this->manager);
+            $this->shipToCourier($draft, $this->manager);
             $this->fail('Expected insufficient stock');
         } catch (GrossException $e) {
             $this->assertSame('gross.errors.insufficient_stock', $e->getMessage());
@@ -242,7 +244,7 @@ class GrossHardeningTest extends TestCase
 
     private function confirmedInvoice(int $pieces): GrossSalesInvoice
     {
-        return $this->invoices->confirm($this->draftInvoice($pieces), $this->manager)
+        return $this->shipToCourier($this->draftInvoice($pieces), $this->manager)
             ->load(['lines.allocation']);
     }
 }

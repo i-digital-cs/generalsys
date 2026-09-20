@@ -34,7 +34,7 @@ class ShippingReturnsReportService
     {
         return $this->baseQuery($company, $filters)
             ->with([
-                'item:id,code,name',
+                'item.images',
                 'creator:id,name_ar,name_en',
                 'shipmentAllocation.line.invoice:id,invoice_number,customer_name',
             ])

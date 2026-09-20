@@ -14,6 +14,10 @@
 
     @include('valuation.sheets._month-stats', ['stats' => $stats, 'compactTitle' => true])
 
+    @if (($module ?? '') === 'product' && ! empty($salesStats))
+        @include('gross.partials.sales-stats-dashboard', ['salesStats' => $salesStats])
+    @endif
+
     @if (($module ?? '') === 'product' && ! empty($expenseStats))
         @include('product-expenses._dashboard', ['expenseStats' => $expenseStats])
     @endif

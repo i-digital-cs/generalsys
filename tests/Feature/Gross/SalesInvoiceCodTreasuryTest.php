@@ -16,11 +16,13 @@ use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\StockService;
 use App\Services\Gross\TreasuryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class SalesInvoiceCodTreasuryTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     private function confirmedInvoice(User $manager): GrossSalesInvoice
     {
@@ -28,7 +30,7 @@ class SalesInvoiceCodTreasuryTest extends TestCase
         $item = app(ItemService::class)->create(['name' => 'Dress', 'status' => GrossItem::STATUS_ACTIVE]);
         app(StockService::class)->adjustIn($item, 5, GrossStockMovement::UNIT_PIECE, $manager);
 
-        return app(SalesInvoiceService::class)->confirm(
+        return $this->shipToCourier(
             app(SalesInvoiceService::class)->createDraft($manager, [
                 'customer_name' => 'Ali',
                 'customer_phone' => '0100',

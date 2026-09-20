@@ -49,6 +49,16 @@
                     <i class="bi bi-filetype-pdf" aria-hidden="true"></i>
                     <span class="visually-hidden">{{ __('gross.sales.export_pdf') }}</span>
                 </a>
+                @can('markReadyInWarehouse', $invoice)
+                    <form method="post" action="{{ route('gross.sales.mark-ready', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
+                        <button type="submit" class="btn btn-outline-primary btn-sm">{{ __('gross.sales.mark_ready_warehouse') }}</button>
+                    </form>
+                @endcan
+                @can('handToCourier', $invoice)
+                    <form method="post" action="{{ route('gross.sales.hand-to-courier', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
+                        <button type="submit" class="btn btn-primary btn-sm">{{ __('gross.sales.hand_to_courier') }}</button>
+                    </form>
+                @endcan
                 @can('markDelivered', $invoice)
                     <form method="post" action="{{ route('gross.sales.deliver', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
                         <button type="submit" class="btn btn-primary btn-sm">{{ __('gross.sales.mark_delivered') }}</button>
@@ -63,6 +73,15 @@
                         ])
                     </span>
                 @endcan
+                @can('receiveReturnedPieces', $invoice)
+                    <form method="post" action="{{ route('gross.sales.receive-returned', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                            {{ __('gross.sales.receive_returned_pieces') }}
+                            <span class="badge text-bg-light ms-1 num-ltr">{{ $invoice->returnedPiecesPendingHandover() }}</span>
+                        </button>
+                    </form>
+                @endcan
                 @can('refuse', $invoice)
                     <form method="post" action="{{ route('gross.sales.refuse', $invoice) }}"
                           class="d-inline-flex flex-nowrap align-items-center mb-0 flex-shrink-0">
@@ -75,20 +94,34 @@
                     </form>
                 @endcan
                 @can('cancel', $invoice)
-                    <form method="post" action="{{ route('gross.sales.cancel', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
-                        <button type="submit" class="btn btn-outline-danger btn-sm">{{ __('gross.sales.cancel') }}</button>
+                    @if ($invoice->isPreparing() || $invoice->isReadyInWarehouse())
+                        <form method="post" action="{{ route('gross.sales.cancel', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
+                            <button type="submit" class="btn btn-outline-danger btn-sm">{{ __('gross.sales.cancel') }}</button>
+                        </form>
+                    @endif
+                @endcan
+            @endif
+
+            @if ($invoice->isDelivered())
+                @can('receiveReturnedPieces', $invoice)
+                    <form method="post" action="{{ route('gross.sales.receive-returned', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                            {{ __('gross.sales.receive_returned_pieces') }}
+                            <span class="badge text-bg-light ms-1 num-ltr">{{ $invoice->returnedPiecesPendingHandover() }}</span>
+                        </button>
                     </form>
                 @endcan
             @endif
 
             @if ($invoice->isRefused())
                 <div class="d-inline-flex flex-nowrap align-items-center gap-2 mb-0 flex-shrink-0">
-                    @can('receiveRefused', $invoice)
-                        <form method="post" action="{{ route('gross.sales.receive-refused', $invoice) }}" class="d-inline-flex mb-0">
+                    @can('receiveReturnedPieces', $invoice)
+                        <form method="post" action="{{ route('gross.sales.receive-returned', $invoice) }}" class="d-inline-flex mb-0">
                             @csrf
                             <button type="submit" class="btn btn-primary btn-sm">
-                                {{ __('gross.sales.receive_refused_pieces') }}
-                                <span class="badge text-bg-light ms-1 num-ltr">{{ $invoice->refusedPiecesPendingHandover() }}</span>
+                                {{ __('gross.sales.receive_returned_pieces') }}
+                                <span class="badge text-bg-light ms-1 num-ltr">{{ $invoice->returnedPiecesPendingHandover() }}</span>
                             </button>
                         </form>
                     @endcan
@@ -131,7 +164,147 @@
                 </div>
                 <div class="text-end">
                     <span class="badge text-bg-secondary fs-6">{{ __('gross.statuses.'.$invoice->status) }}</span>
+                    @if ($invoice->fulfillment_status)
+                        <div class="mt-1">
+                            <span class="badge text-bg-info">{{ __('gross.sales.fulfillment.'.$invoice->fulfillment_status) }}</span>
+                        </div>
+                    @endif
                     <div class="mt-2 small">{{ __('gross.fields.currency') }}: <strong>{{ $invoice->currency }}</strong></div>
+                </div>
+            </div>
+
+            @if ($invoice->isConfirmed() && ($invoice->isPreparing() || $invoice->isReadyInWarehouse() || $invoice->hasPackingImage()))
+                <div class="card border mb-4 d-print-none">
+                    <div class="card-body">
+                        <h2 class="h6 mb-1">{{ __('gross.sales.fulfillment_title') }}</h2>
+                        @if ($invoice->isPreparing())
+                            <p class="small text-body-secondary mb-3">{{ __('gross.sales.fulfillment_help_preparing') }}</p>
+                        @elseif ($invoice->isReadyInWarehouse())
+                            <p class="small text-body-secondary mb-3">{{ __('gross.sales.fulfillment_help_ready') }}</p>
+                        @endif
+
+                        @if ($invoice->hasPackingImage())
+                            <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                                <a href="{{ route('gross.sales.packing-image.show', $invoice) }}" target="_blank" rel="noopener"
+                                   class="d-inline-block border rounded overflow-hidden" style="max-width: 9rem">
+                                    <img src="{{ route('gross.sales.packing-image.show', $invoice) }}"
+                                         alt="{{ __('gross.sales.packing_image') }}"
+                                         class="img-fluid d-block"
+                                         style="max-height: 7rem; object-fit: cover">
+                                </a>
+                                <div class="small">
+                                    <div class="fw-semibold">{{ __('gross.sales.packing_image') }}</div>
+                                    <div class="text-body-secondary num-ltr">{{ $invoice->packing_image_original_name ?: '—' }}</div>
+                                    @if ($invoice->packing_uploaded_at)
+                                        <div class="text-body-secondary">{{ $invoice->packing_uploaded_at->translatedFormat('d M Y H:i') }}</div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
+
+                        @can('storePackingImage', $invoice)
+                            <form method="post" action="{{ route('gross.sales.packing-image.store', $invoice) }}"
+                                  enctype="multipart/form-data" class="row g-2 align-items-end">
+                                @csrf
+                                <div class="col-md-8">
+                                    <label class="form-label" for="packing_image">{{ __('gross.sales.upload_packing_image') }}</label>
+                                    <input id="packing_image" name="packing_image" type="file"
+                                           class="form-control @error('packing_image') is-invalid @enderror"
+                                           accept="image/jpeg,image/png,image/webp" required>
+                                    @error('packing_image') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-outline-primary w-100">{{ __('gross.sales.upload_packing_image') }}</button>
+                                </div>
+                            </form>
+                        @endcan
+                    </div>
+                </div>
+            @endif
+
+            <div class="card border mb-4 d-print-none">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                        <h2 class="h6 mb-0">{{ __('gross.sales.media_title') }}</h2>
+                        <span class="small text-body-secondary num-ltr">
+                            {{ $invoice->media->count() }} / {{ \App\Services\Gross\SalesInvoiceMediaService::MAX_PER_INVOICE }}
+                        </span>
+                    </div>
+                    <p class="small text-body-secondary mb-3">{{ __('gross.sales.media_help') }}</p>
+
+                    @if ($invoice->media->isNotEmpty())
+                        <div class="row g-3 mb-3">
+                            @foreach ($invoice->media as $mediaItem)
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="border rounded h-100 p-2">
+                                        <a href="{{ route('gross.sales.media.show', [$invoice, $mediaItem]) }}"
+                                           target="_blank" rel="noopener"
+                                           class="d-block border rounded overflow-hidden mb-2 bg-light">
+                                            <img src="{{ route('gross.sales.media.show', [$invoice, $mediaItem]) }}"
+                                                 alt="{{ $mediaItem->title ?: __('gross.sales.media_image') }}"
+                                                 class="img-fluid w-100"
+                                                 style="height: 8rem; object-fit: cover">
+                                        </a>
+                                        @if ($mediaItem->title)
+                                            <div class="fw-semibold small text-truncate" title="{{ $mediaItem->title }}">{{ $mediaItem->title }}</div>
+                                        @endif
+                                        @if ($mediaItem->description)
+                                            <div class="small text-body-secondary" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                                {{ $mediaItem->description }}
+                                            </div>
+                                        @endif
+                                        @can('deleteMedia', $invoice)
+                                            <form method="post"
+                                                  action="{{ route('gross.sales.media.destroy', [$invoice, $mediaItem]) }}"
+                                                  class="mt-2 mb-0"
+                                                  onsubmit="return confirm(@js(__('gross.sales.media_delete_confirm')))">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger w-100">{{ __('general.delete') }}</button>
+                                            </form>
+                                        @endcan
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="small text-body-secondary mb-3">{{ __('gross.sales.media_empty') }}</p>
+                    @endif
+
+                    @can('manageMedia', $invoice)
+                        @if ($invoice->media->count() < \App\Services\Gross\SalesInvoiceMediaService::MAX_PER_INVOICE)
+                            <form method="post" action="{{ route('gross.sales.media.store', $invoice) }}"
+                                  enctype="multipart/form-data" class="row g-2 align-items-end">
+                                @csrf
+                                <div class="col-md-4">
+                                    <label class="form-label" for="invoice_media_image">{{ __('gross.sales.media_image') }}</label>
+                                    <input id="invoice_media_image" name="image" type="file"
+                                           class="form-control @error('image') is-invalid @enderror"
+                                           accept="image/jpeg,image/png,image/webp" required>
+                                    @error('image') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label" for="invoice_media_title">{{ __('gross.sales.media_field_title') }}</label>
+                                    <input id="invoice_media_title" name="title" type="text"
+                                           class="form-control @error('title') is-invalid @enderror"
+                                           value="{{ old('title') }}" maxlength="120"
+                                           placeholder="{{ __('gross.sales.media_optional') }}">
+                                    @error('title') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label" for="invoice_media_description">{{ __('gross.sales.media_field_description') }}</label>
+                                    <input id="invoice_media_description" name="description" type="text"
+                                           class="form-control @error('description') is-invalid @enderror"
+                                           value="{{ old('description') }}" maxlength="1000"
+                                           placeholder="{{ __('gross.sales.media_optional') }}">
+                                    @error('description') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-outline-primary w-100">{{ __('gross.sales.media_upload') }}</button>
+                                </div>
+                            </form>
+                        @endif
+                    @endcan
                 </div>
             </div>
 
@@ -273,6 +446,7 @@
                 <table class="table table-sm align-middle">
                     <thead>
                         <tr>
+                            <th style="width: 3.5rem"></th>
                             <th>{{ __('gross.fields.code') }}</th>
                             <th>{{ __('gross.fields.name') }}</th>
                             <th>{{ __('gross.fields.size') }}</th>
@@ -300,6 +474,9 @@
                                 $isTracked = ! empty($display['has_tracking']);
                             @endphp
                             <tr>
+                                <td>
+                                    <x-gross.item-thumb :item="$line->item" size="2.5rem" :alt="$line->item_name_snapshot" />
+                                </td>
                                 <td>
                                     @if ($line->item_id)
                                         <a href="{{ route('gross.items.show', $line->item_id) }}" class="num-ltr link-body-emphasis text-decoration-none">
@@ -459,7 +636,7 @@
         </div>
     </div>
 
-    @if ($invoice->isConfirmed())
+    @if ($invoice->isConfirmed() || ($invoice->isDelivered() && $invoice->returnedPiecesPendingHandover() > 0))
         <div class="card border-0 shadow-sm d-print-none">
             <div class="card-header bg-transparent fw-semibold">{{ __('gross.sales.allocations') }}</div>
             <div class="card-body">
@@ -469,14 +646,17 @@
                     @endphp
                     @if ($alloc)
                         <div class="border rounded p-3 mb-3">
-                            <div class="fw-semibold mb-2">
-                                @if ($line->item_id)
-                                    <a href="{{ route('gross.items.show', $line->item_id) }}" class="link-body-emphasis text-decoration-none">
+                            <div class="fw-semibold mb-2 d-flex align-items-center gap-2">
+                                <x-gross.item-thumb :item="$line->item" size="2.25rem" :alt="$line->item_name_snapshot" />
+                                <span>
+                                    @if ($line->item_id)
+                                        <a href="{{ route('gross.items.show', $line->item_id) }}" class="link-body-emphasis text-decoration-none">
+                                            {{ $line->item_code_snapshot }} — {{ $line->item_name_snapshot }}
+                                        </a>
+                                    @else
                                         {{ $line->item_code_snapshot }} — {{ $line->item_name_snapshot }}
-                                    </a>
-                                @else
-                                    {{ $line->item_code_snapshot }} — {{ $line->item_name_snapshot }}
-                                @endif
+                                    @endif
+                                </span>
                             </div>
                             <div class="small mb-2">
                                 <span class="badge text-bg-light border num-ltr">
@@ -491,7 +671,9 @@
                                 @endif
                             </div>
                             <div class="small text-body-secondary mb-2">
-                                {{ __('gross.sales.partial_return_help') }}
+                                @if ($invoice->isConfirmed())
+                                    {{ __('gross.sales.partial_return_help') }}
+                                @endif
                                 @if ($alloc->returnedPendingHandover() > 0)
                                     · {{ __('gross.sales.returned_with_courier') }}: <span class="num-ltr">{{ $alloc->returnedPendingHandover() }}</span>
                                 @endif
@@ -534,31 +716,54 @@
                                 </div>
                             @endif
                             <div class="d-flex flex-wrap gap-2">
-                                @can('returnLine', $invoice)
-                                    <form method="post" action="{{ route('gross.sales.return', $invoice) }}" class="d-flex flex-wrap align-items-center gap-2">
-                                        @csrf
-                                        <input type="hidden" name="allocation_id" value="{{ $alloc->id }}">
-                                        <label class="small mb-0" for="return-qty-{{ $alloc->id }}">{{ __('gross.fields.return_qty') }}</label>
-                                        <input id="return-qty-{{ $alloc->id }}" type="number"
-                                               min="1" max="{{ $alloc->deliverableWithCourier() }}"
-                                               name="qty_pieces" class="form-control form-control-sm" style="width:6rem"
-                                               value="1" required @disabled($alloc->deliverableWithCourier() < 1)>
-                                        <span class="small text-body-secondary">
-                                            {{ __('gross.sales.return_max', ['max' => $alloc->deliverableWithCourier()]) }}
-                                        </span>
-                                        <button class="btn btn-sm btn-outline-primary" @disabled($alloc->deliverableWithCourier() < 1)>
-                                            {{ __('gross.sales.return') }}
-                                        </button>
-                                    </form>
+                                @if ($invoice->isConfirmed())
+                                    @can('returnLine', $invoice)
+                                        <form method="post" action="{{ route('gross.sales.return', $invoice) }}" class="d-flex flex-wrap align-items-center gap-2">
+                                            @csrf
+                                            <input type="hidden" name="allocation_id" value="{{ $alloc->id }}">
+                                            <label class="small mb-0" for="return-qty-{{ $alloc->id }}">{{ __('gross.fields.return_qty') }}</label>
+                                            <input id="return-qty-{{ $alloc->id }}" type="number"
+                                                   min="1" max="{{ $alloc->deliverableWithCourier() }}"
+                                                   name="qty_pieces" class="form-control form-control-sm" style="width:6rem"
+                                                   value="1" required @disabled($alloc->deliverableWithCourier() < 1)>
+                                            <span class="small text-body-secondary">
+                                                {{ __('gross.sales.return_max', ['max' => $alloc->deliverableWithCourier()]) }}
+                                            </span>
+                                            <button class="btn btn-sm btn-outline-primary" @disabled($alloc->deliverableWithCourier() < 1)>
+                                                {{ __('gross.sales.return') }}
+                                            </button>
+                                        </form>
+                                    @endcan
+                                @endif
+                                @can('receiveReturnedPieces', $invoice)
+                                    @if ($alloc->returnedPendingHandover() > 0)
+                                        <form method="post" action="{{ route('gross.sales.receive-returned-line', $invoice) }}" class="d-flex flex-wrap align-items-center gap-2">
+                                            @csrf
+                                            <input type="hidden" name="allocation_id" value="{{ $alloc->id }}">
+                                            <label class="small mb-0" for="receive-qty-{{ $alloc->id }}">{{ __('gross.fields.receive_qty') }}</label>
+                                            <input id="receive-qty-{{ $alloc->id }}" type="number"
+                                                   min="1" max="{{ $alloc->returnedPendingHandover() }}"
+                                                   name="qty_pieces" class="form-control form-control-sm" style="width:6rem"
+                                                   value="{{ min(1, $alloc->returnedPendingHandover()) }}" required>
+                                            <span class="small text-body-secondary">
+                                                {{ __('gross.sales.receive_max', ['max' => $alloc->returnedPendingHandover()]) }}
+                                            </span>
+                                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                                {{ __('gross.sales.receive_returned_line') }}
+                                            </button>
+                                        </form>
+                                    @endif
                                 @endcan
-                                @can('lossLine', $invoice)
-                                    <form method="post" action="{{ route('gross.sales.loss', $invoice) }}" class="d-flex gap-2">
-                                        @csrf
-                                        <input type="hidden" name="allocation_id" value="{{ $alloc->id }}">
-                                        <input type="number" min="1" name="qty_pieces" class="form-control form-control-sm" style="width:6rem" value="1" required>
-                                        <button class="btn btn-sm btn-outline-danger">{{ __('gross.sales.loss') }}</button>
-                                    </form>
-                                @endcan
+                                @if ($invoice->isConfirmed())
+                                    @can('lossLine', $invoice)
+                                        <form method="post" action="{{ route('gross.sales.loss', $invoice) }}" class="d-flex gap-2">
+                                            @csrf
+                                            <input type="hidden" name="allocation_id" value="{{ $alloc->id }}">
+                                            <input type="number" min="1" name="qty_pieces" class="form-control form-control-sm" style="width:6rem" value="1" required>
+                                            <button class="btn btn-sm btn-outline-danger">{{ __('gross.sales.loss') }}</button>
+                                        </form>
+                                    @endcan
+                                @endif
                             </div>
                         </div>
                     @endif
@@ -577,14 +782,34 @@
                     @endphp
                     @if ($alloc)
                         <div class="border rounded p-3 mb-3">
-                            <div class="fw-semibold mb-2">
-                                {{ $line->item_code_snapshot }} — {{ $line->item_name_snapshot }}
+                            <div class="fw-semibold mb-2 d-flex align-items-center gap-2">
+                                <x-gross.item-thumb :item="$line->item" size="2.25rem" :alt="$line->item_name_snapshot" />
+                                <span>{{ $line->item_code_snapshot }} — {{ $line->item_name_snapshot }}</span>
                             </div>
                             <div class="small mb-2">
                                 <span class="num-ltr">{{ $alloc->qty_returned_pieces }}</span> {{ __('gross.fields.returned') }}
                                 · <span class="num-ltr">{{ $alloc->returnedPendingHandover() }}</span> {{ __('gross.sales.returned_with_courier') }}
                                 · <span class="num-ltr">{{ $alloc->qty_returned_received_pieces }}</span> {{ __('gross.sales.received_from_courier') }}
                             </div>
+                            @can('receiveReturnedPieces', $invoice)
+                                @if ($alloc->returnedPendingHandover() > 0)
+                                    <form method="post" action="{{ route('gross.sales.receive-returned-line', $invoice) }}" class="d-flex flex-wrap align-items-center gap-2">
+                                        @csrf
+                                        <input type="hidden" name="allocation_id" value="{{ $alloc->id }}">
+                                        <label class="small mb-0" for="receive-refused-qty-{{ $alloc->id }}">{{ __('gross.fields.receive_qty') }}</label>
+                                        <input id="receive-refused-qty-{{ $alloc->id }}" type="number"
+                                               min="1" max="{{ $alloc->returnedPendingHandover() }}"
+                                               name="qty_pieces" class="form-control form-control-sm" style="width:6rem"
+                                               value="{{ min(1, $alloc->returnedPendingHandover()) }}" required>
+                                        <span class="small text-body-secondary">
+                                            {{ __('gross.sales.receive_max', ['max' => $alloc->returnedPendingHandover()]) }}
+                                        </span>
+                                        <button type="submit" class="btn btn-sm btn-outline-success">
+                                            {{ __('gross.sales.receive_returned_line') }}
+                                        </button>
+                                    </form>
+                                @endif
+                            @endcan
                         </div>
                     @endif
                 @endforeach

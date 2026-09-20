@@ -1001,6 +1001,26 @@ See `docs/GROSS_MODULE.md` §12. Implement **in order**; lock §12 rules before 
 6. Login as **Sales** → can collect COD but treasury checkbox hidden/disabled (Manager/Accountant only).
 7. AR + EN + responsive check.
 
+### T-12.6 — Separate COD collect from return-to-stock handover
+- Depends on: T-12.5
+- Unlocks: —
+- Status: `done`
+- Scope:
+  - [x] `collectCod()` money-only — does **not** call `receiveReturnedFromCourier`
+  - [x] Invoice action **Receive pieces from courier** works on CONFIRMED / DELIVERED / REFUSED when pending handover > 0
+  - [x] Either order allowed: collect money without stock, or receive stock without money
+  - [x] AR+EN copy updated (hints no longer say handover happens at COD)
+  - [x] PHPUnit: collect leaves pieces with courier; receive moves to ON_HAND; reverse order OK
+  - [x] UI/UX gate on sales invoice show
+
+**Manual UI test**
+1. Confirm invoice with courier → partial return some qty.
+2. **Collect COD** → money COLLECTED; stock on-hand unchanged; badge still shows pending pieces.
+3. **Receive pieces from courier** → ON_HAND up; pending badge gone.
+4. On another invoice: receive pieces first, then Collect COD — both succeed independently.
+5. Full refuse → receive pieces still works (unchanged path).
+6. AR + EN + responsive check.
+
 ## Phase 13 — Product calculated expenses (Mohra)
 
 Isolated from valuation Gross tiles and Gross treasury. Formula: remaining = expected − SUM(actual entries).
@@ -1015,6 +1035,83 @@ Isolated from valuation Gross tiles and Gross treasury. Formula: remaining = exp
   - [x] Category detail: formula, sources, set expected, add/delete entries (rent period on Rent)
   - [x] Manager/Accountant manage; Product access view; categories addable
   - [x] PHPUnit + AR/EN + does not alter valuation formulas
+
+## Phase 14 — Mohra sales-person statistics
+
+### T-14.1 — Sales person performance report
+- Depends on: T-12.5
+- Unlocks: T-14.2
+- Status: `done`
+- Scope:
+  - [x] `SalesPersonStatsService`: period (month + from/to, default current month); group by `sales_user_id`; currency EGP|AED
+  - [x] KPIs: net merchandise (`net_subtotal − net_discount`), returned merchandise, original merchandise, COD collected, invoice/delivered/refused/COD-pending counts
+  - [x] Invoices: CONFIRMED|DELIVERED|REFUSED; period on `COALESCE(confirmed_at, created_at)`
+  - [x] Routes: `gross.sales.stats` + detail per user (+ unassigned); menu under Sales
+  - [x] Manager/Accountant: all; Sales: own only (403 on others)
+  - [x] Product dashboard MTD cards (EGP current month)
+  - [x] PHPUnit + LangParity + UI/UX AR+EN
+
+**Manual UI test**
+1. Confirm invoices for two sales people in current month.
+2. Manager opens **Sales stats** → both rows + totals; month/date/currency filters work.
+3. Click a row → invoice list for that person.
+4. Login as Sales → only own row; other user detail 403.
+5. Product dashboard shows MTD net merchandise (+ top seller for Manager).
+6. AR + EN + responsive check.
+
+### T-14.2 — Cashier / POS sales invoice create
+- Depends on: T-14.1
+- Unlocks: T-14.3
+- Status: `done`
+- Scope:
+  - [x] `CashierCatalogService`: categories → subcategories → product groups by name → sibling variants
+  - [x] Routes: `gross.sales.cashier` + JSON catalog endpoints; POST still `gross.sales.store`
+  - [x] Sales index: keep classic **New invoice** + add **Cashier / POS**
+  - [x] POS UI: cart sidebar, category/sub chips, product cards, size/color modal
+  - [x] PHPUnit + LangParity + UI/UX AR+EN
+
+**Manual UI test**
+1. Sales index → Cashier / POS opens.
+2. Pick category → subcategory → product cards with images.
+3. Tap card → select size/color variant + qty → appears in cart.
+4. Save draft → classic show page; line item_ids correct.
+5. Classic **New invoice** still works.
+6. AR + EN + RTL/LTR + ~375/768/1280.
+
+### T-14.3 — Shipment path (مسار الشحنة)
+- Depends on: T-14.2
+- Unlocks: T-14.4
+- Status: `done`
+- Scope:
+  - [x] `fulfillment_status`: PREPARING → READY_WAREHOUSE → WITH_COURIER; stock out only on hand-to-courier
+  - [x] Packing image required to leave PREPARING
+  - [x] Sidebar under Sales: مسار الشحنة queues (preparing / ready / with courier / delivered / returned)
+  - [x] Confirm no longer SALE_OUT; handToCourier creates allocations
+  - [x] PHPUnit + LangParity + UI/UX AR+EN
+
+**Manual UI test**
+1. Confirm draft → appears in جاري التجهيز; stock still on hand.
+2. Upload packing image → move to جاهز بالمخزن.
+3. Hand to courier → مع المندوب; stock WITH_COURIER.
+4. Deliver / refuse as today; queues show correct lists.
+5. AR + EN + responsive.
+
+### T-14.4 — Sales invoice media gallery
+- Depends on: T-14.3
+- Unlocks: —
+- Status: `done`
+- Scope:
+  - [x] Table `gross_sales_invoice_media` (image + optional title/description)
+  - [x] Upload/delete: Sales + Manager + Accountant; all invoice statuses
+  - [x] Images only (jpg/jpeg/png/webp), max 10 per invoice, ≤5MB
+  - [x] Show page gallery only (not PDF/Excel); packing image remains separate
+  - [x] PHPUnit + LangParity + UI/UX AR+EN
+
+**Manual UI test**
+1. Open any sales invoice → Media section → upload image with/without title & description.
+2. Thumbnail + title/description visible; open full image.
+3. Delete media; still works on CONFIRMED/DELIVERED/CANCELLED.
+4. AR + EN + RTL/LTR + ~375/768/1280.
 
 ## Dependency map
 
@@ -1042,7 +1139,7 @@ T-0.1 → T-0.2 → T-0.3
                                       ↘ T-8.5 ↗
               T-1.2 → T-9.1 → T-9.2
                        T-9.1 → T-9.3
-              T-9.5 → T-10.1 → T-10.2 → T-10.3 → T-10.6 → T-10.7 → T-10.8 → T-10.9 → T-10.10 → T-11.1 → T-11.2 → T-11.3 → T-11.4 → T-11.5 → T-11.6 → T-11.7 → T-12.1 → T-12.2 → T-12.3 → T-12.4 → T-12.5
+              T-9.5 → T-10.1 → T-10.2 → T-10.3 → T-10.6 → T-10.7 → T-10.8 → T-10.9 → T-10.10 → T-11.1 → T-11.2 → T-11.3 → T-11.4 → T-11.5 → T-11.6 → T-11.7 → T-12.1 → T-12.2 → T-12.3 → T-12.4 → T-12.5 → T-14.1 → T-14.2 → T-14.3 → T-14.4
                        T-10.1 → T-10.4 ↗
                        T-10.1 → T-10.5 ↗
               T-9.5 → T-13.1
@@ -1234,3 +1331,12 @@ Example:
 - [x] 2026-09-08 T-13.1 PASS — Product calculated expenses: expected vs actual under `/product` valuation cards; category detail + formula; Manager/Accountant write. Commands: `php artisan migrate`; `php artisan test --filter='ProductExpense|LangParityTest'` (8 PASS); Pint. UI/UX: AR+EN keys; manual check on product dashboard.
 - [x] 2026-09-08 T-13.1 unify — Single SOT with Gross: types=`gross_expense_types`; spend=`treasury PAYMENT/EXPENSE`; add from Product posts إذن صرف. Commands: `php artisan migrate`; `php artisan test --filter='ProductExpense|LangParityTest|ExpenseTypeCrud'` (9 PASS); Pint.
 - [x] 2026-09-13 Gross ext — Sales/purchase Excel import (DRAFT via `invoice_group`); auto-save customer + shipping from sales; auto-save supplier from purchase. Commands: `php artisan test --filter=Gross` (160 PASS); LangParity; Pint. UI/UX: AR+EN keys on sales/purchases index import cards.
+- [x] 2026-09-15 T-12.6 PASS — COD collect and return-to-stock are separate: `collectCod()` money-only; `receiveReturnedPiecesFromCourier` on CONFIRMED/DELIVERED/REFUSED; either order OK. Commands: `php artisan test --filter=Gross` (162 PASS); LangParity; Pint; `route:list --name=gross.sales.receive`. UI/UX: AR+EN keys on invoice show (Collect COD + Receive pieces).
+- [x] 2026-09-15 T-12.6 ext — Per-line / partial receive from courier: `qty_pieces` on allocation; route `receive-returned-line`; each item independent. Commands: `php artisan test --filter=SalesInvoiceCodCollectionTest`; LangParity; Pint.
+- [x] 2026-09-16 T-14.1 PASS — Sales person stats: `SalesPersonStatsService` + `gross.sales.stats` / show / unassigned; net merchandise (no shipping fee); month+date range; Manager/Accountant all, Sales own-only; Product MTD cards. Commands: `php artisan test --filter=SalesPersonStats` (6 PASS); `php artisan test --filter=Gross` (169 PASS); LangParity; MenuConfig; Pint; `route:list --name=gross.sales.stats`. UI/UX: AR+EN keys.
+- [x] 2026-09-16 T-14.2 PASS — Cashier / POS sales create: `CashierCatalogService` + `gross.sales.cashier` + JSON catalog; product cards by name; size/color modal; same `store` as classic; index dual buttons. Commands: `php artisan test --filter='CashierCatalogServiceTest|SalesCashierTest|LangParityTest'` (PASS); Pint; `npm run build`; `route:list --name=gross.sales.cashier`. UI/UX: AR+EN keys; manual RTL/responsive pending user.
+- [x] 2026-09-16 Fix R9 — Employee default windows may be 1–16h overnight (planned = span); ONLINE_FULL `09:00→01:00` = 16h accepted; Doaa restored. TL assign still requires `expected_hours` match. Commands: `php artisan migrate`; `php artisan test --filter='ShiftWindowValidatorTest|test_store_allows_online_full_sixteen|test_online_full_sixteen_hour_overnight|EmployeeCrudTest'`; Pint. UI/UX: N/A (validation + hint AR+EN).
+- [x] 2026-09-16 UX — Employee form default-shift rows show live **Hours** on same row (overnight span). Commands: `npm run build`; `php artisan test --filter='test_form_exposes_two_default_shift|LangParityTest'`; Pint. UI/UX: AR+EN `shift_hours`.
+- [x] 2026-09-16 Fix — Clock elapsed timer uses **current open segment** start (not day's first punch). Matches Reda/Amir night resume after mid-day punches showing ~9h. Commands: `php artisan test --filter='test_elapsed_timer_uses_current_open_segment|AttendanceMultiPunchTest'`; Pint. UI/UX: N/A.
+- [x] 2026-09-16 T-14.3 PASS — Shipment path: `fulfillment_status` PREPARING→READY_WAREHOUSE→WITH_COURIER; packing image required; stock/allocations on hand-to-courier only; sidebar queues; invoice show actions. Commands: `php artisan migrate`; `php artisan test tests/Feature/Gross tests/Unit/Gross` (185 PASS); `SalesInvoiceFulfillmentPipelineTest`; LangParity; Pint; `route:list --name=gross.sales`. UI/UX: AR+EN keys; manual RTL/responsive pending user.
+- [x] 2026-09-20 T-14.4 PASS — Sales invoice media gallery: `gross_sales_invoice_media`; optional title/description; images only max 10; Sales/Manager/Accountant; all statuses; show page only. Commands: `php artisan migrate`; `php artisan test --filter=SalesInvoiceMediaTest` (5 PASS); LangParity; Pint; `route:list --name=gross.sales.media`. UI/UX: AR+EN keys; manual RTL/responsive pending user.

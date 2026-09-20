@@ -11,11 +11,13 @@ use App\Services\Gross\ItemService;
 use App\Services\Gross\PurchaseInvoiceService;
 use App\Services\Gross\SalesInvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class GrossUiVisibilityTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_supplier_show_and_statement_expose_pay_action(): void
     {
@@ -115,7 +117,7 @@ class GrossUiVisibilityTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 20,
         ]]);
-        $sales->confirm($sale, $manager);
+        $this->shipToCourier($sale, $manager);
         $sale = $sale->fresh();
 
         $this->withSession(['locale' => 'en'])->actingAs($manager)

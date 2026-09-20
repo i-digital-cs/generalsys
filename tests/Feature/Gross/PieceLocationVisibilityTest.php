@@ -11,11 +11,13 @@ use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class PieceLocationVisibilityTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_stock_index_shows_total_and_courier_breakdown(): void
     {
@@ -28,7 +30,7 @@ class PieceLocationVisibilityTest extends TestCase
         app(StockService::class)->adjustIn($item, 20, GrossStockMovement::UNIT_PIECE, $manager);
 
         $company = app(ShippingCompanyService::class)->create(['name' => 'Bosta', 'status' => 'ACTIVE']);
-        $confirmed = app(SalesInvoiceService::class)->confirm(
+        $confirmed = $this->shipToCourier(
             app(SalesInvoiceService::class)->createDraft($manager, [
                 'customer_name' => 'Ali',
                 'customer_phone' => '0100',
@@ -67,7 +69,7 @@ class PieceLocationVisibilityTest extends TestCase
         app(StockService::class)->adjustIn($item, 20, GrossStockMovement::UNIT_PIECE, $manager);
 
         $company = app(ShippingCompanyService::class)->create(['name' => 'Bosta', 'status' => 'ACTIVE']);
-        $confirmed = app(SalesInvoiceService::class)->confirm(
+        $confirmed = $this->shipToCourier(
             app(SalesInvoiceService::class)->createDraft($manager, [
                 'customer_name' => 'Refused Client',
                 'customer_phone' => '0100',
@@ -103,7 +105,7 @@ class PieceLocationVisibilityTest extends TestCase
         app(StockService::class)->adjustIn($item, 15, GrossStockMovement::UNIT_PIECE, $manager);
 
         $company = app(ShippingCompanyService::class)->create(['name' => 'Modal Courier', 'status' => 'ACTIVE']);
-        $confirmed = app(SalesInvoiceService::class)->confirm(
+        $confirmed = $this->shipToCourier(
             app(SalesInvoiceService::class)->createDraft($manager, [
                 'customer_name' => 'Customer',
                 'customer_phone' => '0100',

@@ -114,7 +114,14 @@ class PurchaseInvoiceController extends Controller
     public function show(GrossPurchaseInvoice $purchase): View
     {
         $this->authorize('view', $purchase);
-        $purchase->load(['lines.item', 'supplier', 'creator', 'returns.lines', 'returns.creator']);
+        $purchase->load([
+            'lines.item.images',
+            'supplier',
+            'creator',
+            'returns.lines.item.images',
+            'returns.lines.invoiceLine.item.images',
+            'returns.creator',
+        ]);
 
         return view('gross.purchases.show', [
             'invoice' => $purchase,

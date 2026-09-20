@@ -21,19 +21,32 @@
 
     <div class="row g-3 mb-3">
         @foreach ($accounts as $row)
-            <div class="col-md-6">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="small text-body-secondary">{{ __('gross.treasury.kinds.'.$row['account']->kind) }} · {{ $row['account']->currency }}</div>
-                        <div class="fw-semibold">{{ $row['account']->name }}</div>
-                        <div class="fs-5 fw-semibold num-ltr mt-1">
-                            <x-money :amount="$row['balance']" :currency="$row['account']->currency" />
-                        </div>
-                        @if (! $row['account']->is_active)
-                            <div class="small text-danger mt-1">{{ __('gross.statuses.INACTIVE') }}</div>
-                        @endif
-                    </div>
-                </div>
+            <div class="col-md-4">
+                <x-stat-card
+                    :title="__('gross.treasury.kinds.'.$row['account']->kind)"
+                    :subtitle="$row['account']->name.' · '.$row['account']->currency"
+                    :icon="$row['account']->kind === \App\Models\Gross\GrossTreasuryAccount::KIND_BANK ? 'bi-bank' : 'bi-cash-coin'"
+                    :color="$row['account']->kind === \App\Models\Gross\GrossTreasuryAccount::KIND_BANK ? 'info' : 'success'"
+                    :show-sparkline="false"
+                >
+                    <span class="num-ltr"><x-money :amount="$row['balance']" :currency="$row['account']->currency" /></span>
+                    @if (! $row['account']->is_active)
+                        <span class="d-block small text-danger mt-1">{{ __('gross.statuses.INACTIVE') }}</span>
+                    @endif
+                </x-stat-card>
+            </div>
+        @endforeach
+        @foreach ($combinedTotals as $total)
+            <div class="col-md-4">
+                <x-stat-card
+                    :title="__('gross.treasury.total_cash_bank')"
+                    :subtitle="__('gross.treasury.total_cash_bank_hint', ['currency' => $total['currency']])"
+                    icon="bi-wallet2"
+                    color="primary"
+                    :show-sparkline="false"
+                >
+                    <span class="num-ltr"><x-money :amount="$total['balance']" :currency="$total['currency']" /></span>
+                </x-stat-card>
             </div>
         @endforeach
     </div>

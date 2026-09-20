@@ -70,13 +70,15 @@ class AllocationService
     }
 
     /**
-     * Courier hands refused pieces back to warehouse (usually at COD collection).
+     * Courier hands refused/returned pieces back to warehouse (separate from COD collect).
+     * Optional qty for partial handover; null = receive all pending for this allocation.
      */
     public function receiveReturnedFromCourier(
         GrossShipmentAllocation $allocation,
         ?User $actor = null,
+        ?int $qtyPieces = null,
     ): GrossShipmentAllocation {
-        return DB::transaction(function () use ($allocation, $actor) {
+        return DB::transaction(function () use ($allocation, $actor, $qtyPieces) {
             /** @var GrossShipmentAllocation $locked */
             $locked = GrossShipmentAllocation::query()
                 ->whereKey($allocation->id)
@@ -99,12 +101,17 @@ class AllocationService
                 return $locked;
             }
 
+            $receiveQty = $qtyPieces ?? $pending;
+            if ($receiveQty < 1 || $receiveQty > $pending) {
+                throw GrossException::allocationQty();
+            }
+
             $item = $locked->line?->item;
             if ($item === null) {
                 throw GrossException::invalidTransition();
             }
 
-            if ((int) $locked->qty_with_courier_pieces < $pending) {
+            if ((int) $locked->qty_with_courier_pieces < $receiveQty) {
                 throw GrossException::allocationQty();
             }
 
@@ -114,7 +121,7 @@ class AllocationService
 
             $this->stock->applyReturn(
                 $item,
-                $pending,
+                $receiveQty,
                 (int) $locked->conversion_factor_snapshot,
                 GrossShipmentAllocation::class,
                 (int) $locked->id,
@@ -122,8 +129,8 @@ class AllocationService
                 $returnType,
             );
 
-            $locked->qty_with_courier_pieces -= $pending;
-            $locked->qty_returned_received_pieces += $pending;
+            $locked->qty_with_courier_pieces -= $receiveQty;
+            $locked->qty_returned_received_pieces += $receiveQty;
             $locked->save();
             $locked->assertInvariant();
 

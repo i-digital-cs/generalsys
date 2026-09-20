@@ -12,11 +12,13 @@ use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class SalesInvoiceDocumentTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_show_page_is_readable_invoice_with_exports(): void
     {
@@ -53,7 +55,7 @@ class SalesInvoiceDocumentTest extends TestCase
             'discount_percent' => 0,
         ]]);
 
-        app(SalesInvoiceService::class)->confirm($invoice, $manager);
+        $this->shipToCourier($invoice, $manager);
         $invoice = $invoice->fresh();
 
         $this->withSession(['locale' => 'en'])->actingAs($manager)
@@ -102,7 +104,7 @@ class SalesInvoiceDocumentTest extends TestCase
             'unit_price' => 100,
         ]]);
 
-        $confirmed = app(SalesInvoiceService::class)->confirm($invoice, $manager)->load(['lines.allocation']);
+        $confirmed = $this->shipToCourier($invoice, $manager)->load(['lines.allocation']);
         app(AllocationService::class)->partialReturn($confirmed->lines->first()->allocation, 3, $manager);
 
         $excelResponse = $this->actingAs($manager)

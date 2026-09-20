@@ -319,6 +319,7 @@
         const menu = row.querySelector('[data-line-item-results]');
         const priceInput = row.querySelector('[data-line-price]');
         const sizeCell = row.querySelector('[data-line-size]');
+        const thumbHost = row.querySelector('[data-line-item-thumb]');
         if (!root || !hidden || !input || !menu || !searchUrl) return;
 
         // Escape .table-responsive overflow clipping.
@@ -330,6 +331,24 @@
         let timer = null;
         let seq = 0;
         let lastLabel = input.value;
+
+        function placeholderThumb() {
+            return '<span class="d-inline-flex align-items-center justify-content-center rounded border text-body-secondary flex-shrink-0" style="width:2.25rem;height:2.25rem" aria-hidden="true"><i class="bi bi-image"></i></span>';
+        }
+
+        function setThumb(url, alt) {
+            if (!thumbHost) return;
+            if (url) {
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = alt || '';
+                img.className = 'rounded border flex-shrink-0';
+                img.style.cssText = 'width:2.25rem;height:2.25rem;object-fit:cover';
+                thumbHost.replaceChildren(img);
+            } else {
+                thumbHost.innerHTML = placeholderThumb();
+            }
+        }
 
         function closeMenu() {
             menu.classList.remove('show');
@@ -346,7 +365,7 @@
             const height = Math.max(120, Math.min(maxH, openUp ? spaceAbove : spaceBelow));
             menu.style.position = 'fixed';
             menu.style.left = Math.max(8, rect.left) + 'px';
-            menu.style.width = Math.max(rect.width, 240) + 'px';
+            menu.style.width = Math.max(rect.width, 280) + 'px';
             menu.style.right = 'auto';
             menu.style.zIndex = '2000';
             menu.style.maxHeight = height + 'px';
@@ -376,6 +395,7 @@
             if (sizeCell) {
                 sizeCell.textContent = item.size ? item.size : '—';
             }
+            setThumb(item.image_url || null, item.label || '');
             closeMenu();
             recalc();
         }
@@ -393,8 +413,33 @@
             items.forEach(function (item) {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = 'dropdown-item text-wrap';
-                btn.textContent = item.label;
+                btn.className = 'dropdown-item text-wrap d-flex align-items-center gap-2';
+                const thumb = document.createElement('span');
+                thumb.className = 'flex-shrink-0';
+                if (item.image_url) {
+                    const img = document.createElement('img');
+                    img.src = item.image_url;
+                    img.alt = '';
+                    img.className = 'rounded border';
+                    img.style.cssText = 'width:2rem;height:2rem;object-fit:cover';
+                    thumb.appendChild(img);
+                } else {
+                    thumb.innerHTML = '<span class="d-inline-flex align-items-center justify-content-center rounded border text-body-secondary" style="width:2rem;height:2rem" aria-hidden="true"><i class="bi bi-image"></i></span>';
+                }
+                const label = document.createElement('span');
+                label.className = 'small';
+                const title = document.createElement('div');
+                title.textContent = item.label || '';
+                label.appendChild(title);
+                const cats = [item.category, item.subcategory].filter(Boolean);
+                if (cats.length) {
+                    const meta = document.createElement('div');
+                    meta.className = 'text-body-secondary';
+                    meta.textContent = cats.join(' · ');
+                    label.appendChild(meta);
+                }
+                btn.appendChild(thumb);
+                btn.appendChild(label);
                 btn.addEventListener('mousedown', function (e) {
                     e.preventDefault();
                     selectItem(item);
@@ -407,6 +452,7 @@
         input.addEventListener('input', function () {
             if (input.value !== lastLabel) {
                 hidden.value = '';
+                setThumb(null, '');
             }
             clearTimeout(timer);
             const q = input.value.trim();

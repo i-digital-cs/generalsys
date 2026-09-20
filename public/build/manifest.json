@@ -20,7 +20,7 @@
     "isEntry": true
   },
   "resources/js/pages/employee-form.js": {
-    "file": "assets/employee-form-DfaC04TI.js",
+    "file": "assets/employee-form-CPT3Dxcd.js",
     "name": "employee-form",
     "src": "resources/js/pages/employee-form.js",
     "isEntry": true
@@ -38,12 +38,12 @@
     "isEntry": true
   },
   "resources/scss/app.rtl.scss": {
-    "file": "assets/app-DGDWwF42.css",
+    "file": "assets/app-AgK0bg23.css",
     "src": "resources/scss/app.rtl.scss",
     "isEntry": true
   },
   "resources/scss/app.scss": {
-    "file": "assets/app-ChU21B2r.css",
+    "file": "assets/app-wkBbH59W.css",
     "src": "resources/scss/app.scss",
     "isEntry": true
   }

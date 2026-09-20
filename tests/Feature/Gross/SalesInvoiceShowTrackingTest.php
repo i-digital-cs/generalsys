@@ -11,11 +11,13 @@ use App\Services\Gross\ItemService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class SalesInvoiceShowTrackingTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_show_page_displays_piece_and_amount_breakdown_after_return(): void
     {
@@ -40,7 +42,7 @@ class SalesInvoiceShowTrackingTest extends TestCase
             'unit_price' => 100,
         ]]);
 
-        $confirmed = app(SalesInvoiceService::class)->confirm($invoice, $manager)->load(['lines.allocation']);
+        $confirmed = $this->shipToCourier($invoice, $manager)->load(['lines.allocation']);
         app(AllocationService::class)->partialReturn($confirmed->lines->first()->allocation, 3, $manager);
 
         $this->withSession(['locale' => 'en'])->actingAs($manager)

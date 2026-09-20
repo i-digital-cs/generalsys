@@ -15,8 +15,13 @@
                 @foreach ($rows as $row)
                     <tr>
                         <td>
-                            <span>{{ $row['item_name'] }}</span>
-                            <div class="small text-body-secondary num-ltr">{{ $row['item_code'] }}</div>
+                            <div class="d-flex align-items-center gap-2">
+                                <x-gross.item-thumb :url="$row['image_url'] ?? null" size="2.25rem" :alt="$row['item_name']" />
+                                <div>
+                                    <span>{{ $row['item_name'] }}</span>
+                                    <div class="small text-body-secondary num-ltr">{{ $row['item_code'] }}</div>
+                                </div>
+                            </div>
                         </td>
                         <td>
                             @if (($row['invoice_id'] ?? 0) > 0)

@@ -123,7 +123,6 @@
                         <tbody>
                             @foreach ($items as $item)
                                 @php
-                                    $thumb = $item->images->first();
                                     $onHand = (int) ($item->balance?->qty_on_hand_pieces ?? 0);
                                     $withCourier = (int) ($item->balance?->qty_with_courier_pieces ?? 0);
                                     $lost = (int) ($item->balance?->qty_lost_pieces ?? 0);
@@ -137,16 +136,7 @@
                                 @endphp
                                 <tr @class(['table-warning' => $item->isLowStock()])>
                                     <td>
-                                        @if ($thumb)
-                                            <img src="{{ route('gross.items.images.show', [$item, $thumb]) }}"
-                                                 alt="" class="rounded border"
-                                                 style="width: 2.5rem; height: 2.5rem; object-fit: cover">
-                                        @else
-                                            <span class="d-inline-flex align-items-center justify-content-center rounded border text-body-secondary"
-                                                  style="width: 2.5rem; height: 2.5rem">
-                                                <i class="bi bi-image" aria-hidden="true"></i>
-                                            </span>
-                                        @endif
+                                        <x-gross.item-thumb :item="$item" size="2.5rem" />
                                     </td>
                                     <td class="fw-semibold"><span class="num-ltr">{{ $item->code }}</span></td>
                                     <td>

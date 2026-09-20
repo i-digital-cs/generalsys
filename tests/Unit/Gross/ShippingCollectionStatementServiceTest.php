@@ -13,11 +13,13 @@ use App\Services\Gross\ShippingCollectionStatementService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class ShippingCollectionStatementServiceTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_running_balance_invoices_minus_returns_and_refuse(): void
     {
@@ -33,7 +35,7 @@ class ShippingCollectionStatementServiceTest extends TestCase
         $allocations = app(AllocationService::class);
         $statement = app(ShippingCollectionStatementService::class);
 
-        $partial = $invoices->confirm($invoices->createDraft($manager, [
+        $partial = $this->shipToCourier($invoices->createDraft($manager, [
             'customer_name' => 'Partial',
             'customer_phone' => '0100',
             'shipping_company_id' => $company->id,
@@ -60,7 +62,7 @@ class ShippingCollectionStatementServiceTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 40,
         ]]);
-        $invoices->refuse($invoices->confirm($refuseDraft, $manager), $manager);
+        $invoices->refuse($this->shipToCourier($refuseDraft, $manager), $manager);
 
         $built = $statement->build($company, ['currency' => 'EGP']);
 
@@ -85,7 +87,7 @@ class ShippingCollectionStatementServiceTest extends TestCase
         app(StockService::class)->adjustIn($item, 5, GrossStockMovement::UNIT_PIECE, $manager);
 
         $invoices = app(SalesInvoiceService::class);
-        $confirmed = $invoices->confirm($invoices->createDraft($manager, [
+        $confirmed = $this->shipToCourier($invoices->createDraft($manager, [
             'customer_name' => 'Ali',
             'customer_phone' => '0100',
             'shipping_company_id' => $company->id,
@@ -117,7 +119,7 @@ class ShippingCollectionStatementServiceTest extends TestCase
         app(StockService::class)->adjustIn($item, 30, GrossStockMovement::UNIT_PIECE, $manager);
 
         $invoices = app(SalesInvoiceService::class);
-        $confirmed = $invoices->confirm($invoices->createDraft($manager, [
+        $confirmed = $this->shipToCourier($invoices->createDraft($manager, [
             'customer_name' => 'Sara',
             'customer_phone' => '0100',
             'shipping_company_id' => $company->id,

@@ -7,24 +7,32 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Gross\CollectCodRequest;
 use App\Http\Requests\Gross\GrossAllocationQtyRequest;
 use App\Http\Requests\Gross\ImportGrossSalesInvoiceRequest;
+use App\Http\Requests\Gross\ReceiveReturnedLineRequest;
 use App\Http\Requests\Gross\RefuseGrossSalesInvoiceRequest;
 use App\Http\Requests\Gross\StoreGrossSalesInvoiceRequest;
+use App\Http\Requests\Gross\StorePackingImageRequest;
+use App\Http\Requests\Gross\StoreSalesInvoiceMediaRequest;
 use App\Http\Requests\Gross\UpdateGrossSalesInvoiceRequest;
 use App\Models\Gross\GrossSalesInvoice;
+use App\Models\Gross\GrossSalesInvoiceMedia;
 use App\Models\Gross\GrossShipmentAllocation;
 use App\Services\Gross\AllocationService;
+use App\Services\Gross\CashierCatalogService;
 use App\Services\Gross\CustomerService;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\SalesInvoiceDisplayService;
 use App\Services\Gross\SalesInvoiceExportService;
 use App\Services\Gross\SalesInvoiceImportService;
+use App\Services\Gross\SalesInvoiceMediaService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\TreasuryService;
 use App\Support\GrossAccess;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -41,6 +49,8 @@ class SalesInvoiceController extends Controller
         private readonly SalesInvoiceExportService $exports,
         private readonly SalesInvoiceDisplayService $display,
         private readonly TreasuryService $treasury,
+        private readonly CashierCatalogService $cashierCatalog,
+        private readonly SalesInvoiceMediaService $media,
     ) {}
 
     public function index(): View
@@ -102,6 +112,66 @@ class SalesInvoiceController extends Controller
         ]);
     }
 
+    public function cashier(): View
+    {
+        $this->authorize('create', GrossSalesInvoice::class);
+
+        return view('gross.sales.cashier', [
+            'customers' => $this->customers->listForForms(200),
+            'shippingCompanies' => $this->shipping->activeList(),
+            'salesPeople' => $this->invoices->salesPeople(auth()->id()),
+            'catalogUrls' => [
+                'categories' => route('gross.sales.cashier.categories'),
+                'subcategories' => route('gross.sales.cashier.subcategories'),
+                'products' => route('gross.sales.cashier.products'),
+                'variants' => route('gross.sales.cashier.variants'),
+            ],
+        ]);
+    }
+
+    public function cashierCategories(): JsonResponse
+    {
+        $this->authorize('create', GrossSalesInvoice::class);
+
+        return response()->json($this->cashierCatalog->categories());
+    }
+
+    public function cashierSubcategories(Request $request): JsonResponse
+    {
+        $this->authorize('create', GrossSalesInvoice::class);
+
+        $categoryId = (int) $request->query('category_id', 0);
+
+        return response()->json($this->cashierCatalog->subcategories($categoryId));
+    }
+
+    public function cashierProducts(Request $request): JsonResponse
+    {
+        $this->authorize('create', GrossSalesInvoice::class);
+
+        $subcategoryId = $request->filled('subcategory_id')
+            ? (int) $request->query('subcategory_id')
+            : null;
+        $q = $request->query('q');
+
+        return response()->json($this->cashierCatalog->productGroups(
+            $subcategoryId,
+            is_string($q) ? $q : null,
+        ));
+    }
+
+    public function cashierVariants(Request $request): JsonResponse
+    {
+        $this->authorize('create', GrossSalesInvoice::class);
+
+        $name = (string) $request->query('name', '');
+        $subcategoryId = $request->filled('subcategory_id')
+            ? (int) $request->query('subcategory_id')
+            : null;
+
+        return response()->json($this->cashierCatalog->variants($name, $subcategoryId));
+    }
+
     public function store(StoreGrossSalesInvoiceRequest $request): RedirectResponse
     {
         $data = $request->validated();
@@ -125,7 +195,15 @@ class SalesInvoiceController extends Controller
     public function show(GrossSalesInvoice $invoice): View
     {
         $this->authorize('view', $invoice);
-        $invoice->load(['lines.item', 'lines.allocation', 'customer', 'shippingCompany', 'salesUser', 'courierCodTreasuryVoucher']);
+        $invoice->load([
+            'lines.item.images',
+            'lines.allocation',
+            'customer',
+            'shippingCompany',
+            'salesUser',
+            'courierCodTreasuryVoucher',
+            'media.uploader',
+        ]);
 
         return view('gross.sales.show', [
             'invoice' => $invoice,
@@ -280,6 +358,116 @@ class SalesInvoiceController extends Controller
         ]);
     }
 
+    public function fulfillmentQueue(string $queue): View
+    {
+        $this->authorize('viewAny', GrossSalesInvoice::class);
+
+        $allowed = ['preparing', 'ready', 'with_courier', 'delivered', 'returned'];
+        abort_unless(in_array($queue, $allowed, true), 404);
+
+        return view('gross.sales.fulfillment', [
+            'queue' => $queue,
+            'invoices' => $this->invoices->paginateFulfillmentQueue($queue),
+        ]);
+    }
+
+    public function storePackingImage(StorePackingImageRequest $request, GrossSalesInvoice $invoice): RedirectResponse
+    {
+        try {
+            $this->invoices->storePackingImage($invoice, $request->file('packing_image'), $request->user());
+        } catch (GrossException $e) {
+            return back()->withErrors(['packing_image' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->route('gross.sales.show', $invoice)
+            ->with('success', __('gross.flash.packing_image_uploaded'));
+    }
+
+    public function packingImage(GrossSalesInvoice $invoice): StreamedResponse
+    {
+        $this->authorize('view', $invoice);
+        abort_unless($invoice->hasPackingImage(), 404);
+        abort_unless(Storage::disk('local')->exists($invoice->packing_image_path), 404);
+
+        return Storage::disk('local')->response(
+            $invoice->packing_image_path,
+            $invoice->packing_image_original_name ?: 'packing.jpg',
+            ['Content-Type' => $invoice->packing_image_mime ?: 'image/jpeg']
+        );
+    }
+
+    public function storeMedia(StoreSalesInvoiceMediaRequest $request, GrossSalesInvoice $invoice): RedirectResponse
+    {
+        try {
+            $this->media->store(
+                $invoice,
+                $request->file('image'),
+                $request->user(),
+                $request->validated('title'),
+                $request->validated('description'),
+            );
+        } catch (GrossException $e) {
+            return back()->withInput()->withErrors(['image' => __($e->getMessage(), [
+                'max' => SalesInvoiceMediaService::MAX_PER_INVOICE,
+            ])]);
+        }
+
+        return redirect()
+            ->route('gross.sales.show', $invoice)
+            ->with('success', __('gross.flash.invoice_media_uploaded'));
+    }
+
+    public function showMedia(GrossSalesInvoice $invoice, GrossSalesInvoiceMedia $media): StreamedResponse
+    {
+        $this->authorize('view', $invoice);
+        abort_unless((int) $media->sales_invoice_id === (int) $invoice->id, 404);
+
+        return $this->media->response($media);
+    }
+
+    public function destroyMedia(GrossSalesInvoice $invoice, GrossSalesInvoiceMedia $media): RedirectResponse
+    {
+        $this->authorize('deleteMedia', $invoice);
+        abort_unless((int) $media->sales_invoice_id === (int) $invoice->id, 404);
+
+        $this->media->delete($media);
+
+        return redirect()
+            ->route('gross.sales.show', $invoice)
+            ->with('success', __('gross.flash.invoice_media_deleted'));
+    }
+
+    public function markReadyInWarehouse(GrossSalesInvoice $invoice): RedirectResponse
+    {
+        $this->authorize('markReadyInWarehouse', $invoice);
+
+        try {
+            $this->invoices->markReadyInWarehouse($invoice);
+        } catch (GrossException $e) {
+            return back()->withErrors(['status' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->route('gross.sales.show', $invoice)
+            ->with('success', __('gross.flash.invoice_ready_warehouse'));
+    }
+
+    public function handToCourier(GrossSalesInvoice $invoice): RedirectResponse
+    {
+        $this->authorize('handToCourier', $invoice);
+
+        try {
+            $this->invoices->handToCourier($invoice, request()->user());
+        } catch (GrossException $e) {
+            return back()->withErrors(['status' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->route('gross.sales.show', $invoice)
+            ->with('success', __('gross.flash.invoice_handed_courier'));
+    }
+
     public function collectCod(CollectCodRequest $request, GrossSalesInvoice $invoice): RedirectResponse
     {
         $this->authorize('collectCod', $invoice);
@@ -316,19 +504,45 @@ class SalesInvoiceController extends Controller
             ->with('success', __('gross.flash.invoice_delivered'));
     }
 
-    public function receiveRefused(GrossSalesInvoice $invoice): RedirectResponse
+    public function receiveReturnedPieces(GrossSalesInvoice $invoice): RedirectResponse
     {
-        $this->authorize('receiveRefused', $invoice);
+        $this->authorize('receiveReturnedPieces', $invoice);
 
         try {
-            $this->invoices->receiveRefusedFromCourier($invoice, auth()->user());
+            $this->invoices->receiveReturnedPiecesFromCourier($invoice, auth()->user());
         } catch (GrossException $e) {
             return back()->withErrors(['status' => __($e->getMessage())]);
         }
 
         return redirect()
             ->route('gross.sales.show', $invoice)
-            ->with('success', __('gross.flash.refused_pieces_received'));
+            ->with('success', __('gross.flash.returned_pieces_received'));
+    }
+
+    public function receiveReturnedLine(ReceiveReturnedLineRequest $request, GrossSalesInvoice $invoice): RedirectResponse
+    {
+        $data = $request->validated();
+        $allocation = $this->allocationForInvoice($invoice, (int) $data['allocation_id']);
+
+        try {
+            $this->allocations->receiveReturnedFromCourier(
+                $allocation,
+                $request->user(),
+                (int) $data['qty_pieces'],
+            );
+        } catch (GrossException $e) {
+            return back()->withErrors(['qty_pieces' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->route('gross.sales.show', $invoice)
+            ->with('success', __('gross.flash.returned_pieces_received'));
+    }
+
+    /** @deprecated Use receiveReturnedPieces() */
+    public function receiveRefused(GrossSalesInvoice $invoice): RedirectResponse
+    {
+        return $this->receiveReturnedPieces($invoice);
     }
 
     private function allocationForInvoice(GrossSalesInvoice $invoice, int $allocationId): GrossShipmentAllocation

@@ -33,6 +33,7 @@ use App\Http\Controllers\Gross\ItemController as GrossItemController;
 use App\Http\Controllers\Gross\ItemImageController as GrossItemImageController;
 use App\Http\Controllers\Gross\PurchaseInvoiceController as GrossPurchaseInvoiceController;
 use App\Http\Controllers\Gross\SalesInvoiceController as GrossSalesInvoiceController;
+use App\Http\Controllers\Gross\SalesPersonStatsController as GrossSalesPersonStatsController;
 use App\Http\Controllers\Gross\ShippingCompanyController as GrossShippingCompanyController;
 use App\Http\Controllers\Gross\StockController as GrossStockController;
 use App\Http\Controllers\Gross\SupplierController as GrossSupplierController;
@@ -173,9 +174,20 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/sales', [GrossSalesInvoiceController::class, 'index'])->name('sales.index');
         Route::get('/sales/collections', [GrossSalesInvoiceController::class, 'collections'])->name('sales.collections');
+        Route::get('/sales/fulfillment/{queue}', [GrossSalesInvoiceController::class, 'fulfillmentQueue'])
+            ->whereIn('queue', ['preparing', 'ready', 'with_courier', 'delivered', 'returned'])
+            ->name('sales.fulfillment');
+        Route::get('/sales/stats', [GrossSalesPersonStatsController::class, 'index'])->name('sales.stats');
+        Route::get('/sales/stats/unassigned', [GrossSalesPersonStatsController::class, 'unassigned'])->name('sales.stats.unassigned');
+        Route::get('/sales/stats/{user}', [GrossSalesPersonStatsController::class, 'show'])->name('sales.stats.show');
         Route::get('/sales/template', [GrossSalesInvoiceController::class, 'template'])->name('sales.template');
         Route::post('/sales/import', [GrossSalesInvoiceController::class, 'import'])->name('sales.import');
         Route::get('/sales/create', [GrossSalesInvoiceController::class, 'create'])->name('sales.create');
+        Route::get('/sales/cashier', [GrossSalesInvoiceController::class, 'cashier'])->name('sales.cashier');
+        Route::get('/sales/cashier/categories', [GrossSalesInvoiceController::class, 'cashierCategories'])->name('sales.cashier.categories');
+        Route::get('/sales/cashier/subcategories', [GrossSalesInvoiceController::class, 'cashierSubcategories'])->name('sales.cashier.subcategories');
+        Route::get('/sales/cashier/products', [GrossSalesInvoiceController::class, 'cashierProducts'])->name('sales.cashier.products');
+        Route::get('/sales/cashier/variants', [GrossSalesInvoiceController::class, 'cashierVariants'])->name('sales.cashier.variants');
         Route::post('/sales', [GrossSalesInvoiceController::class, 'store'])->name('sales.store');
         Route::get('/sales/{invoice}', [GrossSalesInvoiceController::class, 'show'])->name('sales.show');
         Route::get('/sales/{invoice}/pdf', [GrossSalesInvoiceController::class, 'pdf'])->name('sales.pdf');
@@ -183,8 +195,17 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales/{invoice}/edit', [GrossSalesInvoiceController::class, 'edit'])->name('sales.edit');
         Route::put('/sales/{invoice}', [GrossSalesInvoiceController::class, 'update'])->name('sales.update');
         Route::post('/sales/{invoice}/confirm', [GrossSalesInvoiceController::class, 'confirm'])->name('sales.confirm');
+        Route::post('/sales/{invoice}/packing-image', [GrossSalesInvoiceController::class, 'storePackingImage'])->name('sales.packing-image.store');
+        Route::get('/sales/{invoice}/packing-image', [GrossSalesInvoiceController::class, 'packingImage'])->name('sales.packing-image.show');
+        Route::post('/sales/{invoice}/media', [GrossSalesInvoiceController::class, 'storeMedia'])->name('sales.media.store');
+        Route::get('/sales/{invoice}/media/{media}', [GrossSalesInvoiceController::class, 'showMedia'])->name('sales.media.show');
+        Route::delete('/sales/{invoice}/media/{media}', [GrossSalesInvoiceController::class, 'destroyMedia'])->name('sales.media.destroy');
+        Route::post('/sales/{invoice}/mark-ready', [GrossSalesInvoiceController::class, 'markReadyInWarehouse'])->name('sales.mark-ready');
+        Route::post('/sales/{invoice}/hand-to-courier', [GrossSalesInvoiceController::class, 'handToCourier'])->name('sales.hand-to-courier');
         Route::post('/sales/{invoice}/cancel', [GrossSalesInvoiceController::class, 'cancel'])->name('sales.cancel');
         Route::post('/sales/{invoice}/refuse', [GrossSalesInvoiceController::class, 'refuse'])->name('sales.refuse');
+        Route::post('/sales/{invoice}/receive-returned', [GrossSalesInvoiceController::class, 'receiveReturnedPieces'])->name('sales.receive-returned');
+        Route::post('/sales/{invoice}/receive-returned-line', [GrossSalesInvoiceController::class, 'receiveReturnedLine'])->name('sales.receive-returned-line');
         Route::post('/sales/{invoice}/receive-refused', [GrossSalesInvoiceController::class, 'receiveRefused'])->name('sales.receive-refused');
         Route::post('/sales/{invoice}/return', [GrossSalesInvoiceController::class, 'returnLine'])->name('sales.return');
         Route::post('/sales/{invoice}/loss', [GrossSalesInvoiceController::class, 'lossLine'])->name('sales.loss');

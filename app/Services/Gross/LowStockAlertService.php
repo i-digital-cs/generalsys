@@ -21,7 +21,7 @@ class LowStockAlertService
     public function items(int $limit = 10): Collection
     {
         return $this->baseQuery()
-            ->with('balance')
+            ->with(['balance', 'images'])
             ->orderBy('code')
             ->limit(max(1, min($limit, 50)))
             ->get();

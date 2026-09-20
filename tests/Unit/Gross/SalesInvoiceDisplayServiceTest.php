@@ -13,11 +13,13 @@ use App\Services\Gross\PurchaseReturnService;
 use App\Services\Gross\SalesInvoiceDisplayService;
 use App\Services\Gross\SalesInvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class SalesInvoiceDisplayServiceTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_piece_summary_and_stock_match_user_scenario(): void
     {
@@ -66,7 +68,7 @@ class SalesInvoiceDisplayServiceTest extends TestCase
             'unit_price' => 100,
         ]]);
 
-        $confirmed = app(SalesInvoiceService::class)->confirm($invoice, $manager)->load(['lines.allocation', 'lines.item.balance']);
+        $confirmed = $this->shipToCourier($invoice, $manager)->load(['lines.allocation', 'lines.item.balance']);
         app(AllocationService::class)->partialReturn($confirmed->lines->first()->allocation, 2, $manager);
         $confirmed->refresh()->load(['lines.allocation', 'lines.item.balance']);
 

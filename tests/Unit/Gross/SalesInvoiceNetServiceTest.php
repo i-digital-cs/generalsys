@@ -13,11 +13,13 @@ use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class SalesInvoiceNetServiceTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_partial_return_persists_net_columns_on_invoice_and_line(): void
     {
@@ -31,7 +33,7 @@ class SalesInvoiceNetServiceTest extends TestCase
 
         $company = app(ShippingCompanyService::class)->create(['name' => 'Courier', 'status' => 'ACTIVE']);
         $invoices = app(SalesInvoiceService::class);
-        $confirmed = $invoices->confirm($invoices->createDraft($manager, [
+        $confirmed = $this->shipToCourier($invoices->createDraft($manager, [
             'customer_name' => 'Ali',
             'customer_phone' => '0100',
             'shipping_company_id' => $company->id,
@@ -78,7 +80,7 @@ class SalesInvoiceNetServiceTest extends TestCase
         app(StockService::class)->adjustIn($item, 10, GrossStockMovement::UNIT_PIECE, $manager);
 
         $invoices = app(SalesInvoiceService::class);
-        $confirmed = $invoices->confirm($invoices->createDraft($manager, [
+        $confirmed = $this->shipToCourier($invoices->createDraft($manager, [
             'customer_name' => 'X',
             'customer_phone' => '1',
             'currency' => 'EGP',
@@ -106,7 +108,7 @@ class SalesInvoiceNetServiceTest extends TestCase
         app(StockService::class)->adjustIn($item, 10, GrossStockMovement::UNIT_PIECE, $manager);
 
         $invoices = app(SalesInvoiceService::class);
-        $confirmed = $invoices->confirm($invoices->createDraft($manager, [
+        $confirmed = $this->shipToCourier($invoices->createDraft($manager, [
             'customer_name' => 'Y',
             'customer_phone' => '2',
             'currency' => 'EGP',

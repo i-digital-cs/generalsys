@@ -34,8 +34,15 @@ return [
         ['type' => 'heading', 'key' => 'nav.gross_section_sales'],
         ['key' => 'nav.gross_customers', 'route' => 'gross.customers.index', 'icon' => 'bi-people'],
         ['key' => 'nav.gross_sales', 'route' => 'gross.sales.index', 'icon' => 'bi-receipt'],
+        ['key' => 'nav.gross_sales_stats', 'route' => 'gross.sales.stats', 'icon' => 'bi-bar-chart-line'],
         ['key' => 'nav.gross_collections', 'route' => 'gross.sales.collections', 'icon' => 'bi-cash-coin'],
         ['key' => 'nav.gross_shipping', 'route' => 'gross.shipping.index', 'icon' => 'bi-truck'],
+        ['type' => 'heading', 'key' => 'nav.gross_section_fulfillment'],
+        ['key' => 'nav.gross_fulfillment_preparing', 'route' => 'gross.sales.fulfillment', 'params' => ['queue' => 'preparing'], 'icon' => 'bi-hourglass-split'],
+        ['key' => 'nav.gross_fulfillment_ready', 'route' => 'gross.sales.fulfillment', 'params' => ['queue' => 'ready'], 'icon' => 'bi-box-seam'],
+        ['key' => 'nav.gross_fulfillment_with_courier', 'route' => 'gross.sales.fulfillment', 'params' => ['queue' => 'with_courier'], 'icon' => 'bi-bicycle'],
+        ['key' => 'nav.gross_fulfillment_delivered', 'route' => 'gross.sales.fulfillment', 'params' => ['queue' => 'delivered'], 'icon' => 'bi-check2-circle'],
+        ['key' => 'nav.gross_fulfillment_returned', 'route' => 'gross.sales.fulfillment', 'params' => ['queue' => 'returned'], 'icon' => 'bi-arrow-return-left'],
 
         [
             'type' => 'heading',

@@ -16,11 +16,13 @@ use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class SalesInvoiceFlowTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     private User $manager;
 
@@ -55,7 +57,7 @@ class SalesInvoiceFlowTest extends TestCase
         ]);
     }
 
-    public function test_confirm_stocks_out_and_duplicate_confirm_is_idempotent(): void
+    public function test_confirm_starts_preparing_without_stock_then_ship_moves_stock_idempotently(): void
     {
         $shippingId = GrossShippingCompany::query()->value('id');
         $invoice = $this->invoices->createDraft($this->manager, [
@@ -75,13 +77,25 @@ class SalesInvoiceFlowTest extends TestCase
 
         $confirmed = $this->invoices->confirm($invoice, $this->manager);
         $this->assertSame(GrossSalesInvoice::STATUS_CONFIRMED, $confirmed->status);
+        $this->assertSame(GrossSalesInvoice::FULFILLMENT_PREPARING, $confirmed->fulfillment_status);
 
         $balance = GrossStockBalance::query()->where('item_id', $this->item->id)->firstOrFail();
+        $this->assertSame(20, $balance->qty_on_hand_pieces);
+        $this->assertSame(0, $balance->qty_with_courier_pieces);
+        $this->assertSame(0, GrossStockMovement::query()->where('type', GrossStockMovement::TYPE_SALE_OUT)->count());
+
+        $shipped = $this->shipToCourier($confirmed, $this->manager);
+        $this->assertSame(GrossSalesInvoice::FULFILLMENT_WITH_COURIER, $shipped->fulfillment_status);
+
+        $balance->refresh();
         $this->assertSame(10, $balance->qty_on_hand_pieces);
         $this->assertSame(10, $balance->qty_with_courier_pieces);
+        $this->assertSame(1, GrossStockMovement::query()->where('type', GrossStockMovement::TYPE_SALE_OUT)->count());
 
-        $again = $this->invoices->confirm($confirmed, $this->manager);
+        $again = $this->invoices->confirm($shipped, $this->manager);
         $this->assertSame(GrossSalesInvoice::STATUS_CONFIRMED, $again->status);
+        $this->invoices->handToCourier($shipped->fresh(), $this->manager);
+
         $balance->refresh();
         $this->assertSame(10, $balance->qty_on_hand_pieces);
         $this->assertSame(10, $balance->qty_with_courier_pieces);
@@ -214,6 +228,6 @@ class SalesInvoiceFlowTest extends TestCase
             'unit_price' => 50,
         ]]);
 
-        return $this->invoices->confirm($invoice, $this->manager)->load(['lines.allocation']);
+        return $this->shipToCourier($invoice, $this->manager)->load(['lines.allocation']);
     }
 }

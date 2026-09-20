@@ -12,11 +12,13 @@ use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\ShippingReturnsReportService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class ShippingReturnsReportServiceTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_totals_count_events_and_pieces(): void
     {
@@ -44,7 +46,7 @@ class ShippingReturnsReportServiceTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 10,
         ]]);
-        $confirmed = $invoices->confirm($invoice, $manager)->load(['lines.allocation']);
+        $confirmed = $this->shipToCourier($invoice, $manager)->load(['lines.allocation']);
         $allocations->partialReturn($confirmed->lines->first()->allocation, 2, $manager);
 
         $refuseDraft = $invoices->createDraft($manager, [
@@ -58,7 +60,7 @@ class ShippingReturnsReportServiceTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 10,
         ]]);
-        $invoices->refuse($invoices->confirm($refuseDraft, $manager), $manager);
+        $invoices->refuse($this->shipToCourier($refuseDraft, $manager), $manager);
 
         $totals = $report->totals($company);
 

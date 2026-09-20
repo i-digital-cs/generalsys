@@ -38,11 +38,6 @@ class GrossSalesInvoicePolicy
         return GrossAccess::maySell($user);
     }
 
-    public function refuse(User $user, GrossSalesInvoice $invoice): bool
-    {
-        return GrossAccess::mayRefuse($user);
-    }
-
     public function returnLine(User $user, GrossSalesInvoice $invoice): bool
     {
         return GrossAccess::maySell($user);
@@ -57,6 +52,7 @@ class GrossSalesInvoicePolicy
     {
         return GrossAccess::mayCollectCourier($user)
             && $invoice->isConfirmed()
+            && $invoice->isWithCourier()
             && $invoice->codIsPending();
     }
 
@@ -68,13 +64,59 @@ class GrossSalesInvoicePolicy
 
     public function markDelivered(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::mayCollectCourier($user) && $invoice->canMarkDelivered();
+        return GrossAccess::mayCollectCourier($user)
+            && $invoice->isWithCourier()
+            && $invoice->canMarkDelivered();
     }
 
-    public function receiveRefused(User $user, GrossSalesInvoice $invoice): bool
+    public function storePackingImage(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return GrossAccess::maySell($user)
+            && $invoice->isConfirmed()
+            && $invoice->isPreparing();
+    }
+
+    public function markReadyInWarehouse(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return GrossAccess::maySell($user)
+            && $invoice->isConfirmed()
+            && $invoice->isPreparing()
+            && $invoice->hasPackingImage();
+    }
+
+    public function handToCourier(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return GrossAccess::maySell($user)
+            && $invoice->isConfirmed()
+            && $invoice->isReadyInWarehouse();
+    }
+
+    public function refuse(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return GrossAccess::mayRefuse($user)
+            && $invoice->isConfirmed()
+            && $invoice->isWithCourier();
+    }
+
+    public function receiveReturnedPieces(User $user, GrossSalesInvoice $invoice): bool
     {
         return GrossAccess::mayCollectCourier($user)
-            && $invoice->isRefused()
-            && $invoice->refusedPiecesPendingHandover() > 0;
+            && $invoice->returnedPiecesPendingHandover() > 0;
+    }
+
+    /** @deprecated Use receiveReturnedPieces() */
+    public function receiveRefused(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return $this->receiveReturnedPieces($user, $invoice);
+    }
+
+    public function manageMedia(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return GrossAccess::maySell($user);
+    }
+
+    public function deleteMedia(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return $this->manageMedia($user, $invoice);
     }
 }

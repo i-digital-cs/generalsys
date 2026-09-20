@@ -133,5 +133,6 @@ class MenuConfigTest extends TestCase
         $this->assertContains('gross.customers.index', $productRoutes);
         $this->assertContains('gross.shipping.index', $productRoutes);
         $this->assertContains('gross.sales.index', $productRoutes);
+        $this->assertContains('gross.sales.stats', $productRoutes);
     }
 }

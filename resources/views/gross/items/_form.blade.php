@@ -1,6 +1,5 @@
 @php
     $item = $item ?? null;
-    $nameSuggestions = $nameSuggestions ?? [];
     $colors = $colors ?? collect();
     $sizes = $sizes ?? collect();
     $models = $models ?? collect();
@@ -26,16 +25,23 @@
     </div>
     <div class="col-md-8">
         <label class="form-label mb-1" for="name">{{ __('gross.fields.name') }}</label>
-        <input id="name" name="name" list="gross-suggest-name"
-               class="form-control form-control-sm @error('name') is-invalid @enderror"
-               value="{{ old('name', $item?->name) }}" required autocomplete="off"
-               placeholder="{{ __('gross.fields.name_suggest_hint') }}">
-        <datalist id="gross-suggest-name">
-            @foreach ($nameSuggestions as $value)
-                <option value="{{ $value }}"></option>
-            @endforeach
-        </datalist>
-        @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <div class="position-relative"
+             data-item-name-picker
+             data-item-search-url="{{ route('gross.items.search') }}"
+             data-item-search-empty="{{ __('gross.sales.item_search_empty') }}">
+            <input id="name" name="name"
+                   class="form-control form-control-sm @error('name') is-invalid @enderror"
+                   value="{{ old('name', $item?->name) }}" required autocomplete="off"
+                   placeholder="{{ __('gross.fields.name_suggest_hint') }}"
+                   data-item-name-search
+                   aria-autocomplete="list"
+                   aria-expanded="false"
+                   aria-label="{{ __('gross.fields.name') }}">
+            <div class="dropdown-menu shadow hp-item-typeahead-menu w-100"
+                 data-item-name-results></div>
+        </div>
+        @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+        <div class="form-text">{{ __('gross.fields.name_suggest_with_image') }}</div>
     </div>
     <div class="col-md-4">
         <label class="form-label mb-1" for="color_id">{{ __('gross.fields.color') }}</label>
@@ -168,9 +174,9 @@
                 if (!root) return;
                 const category = root.querySelector('[data-gross-category]');
                 const sub = root.querySelector('[data-gross-subcategory]');
-                if (!category || !sub) return;
 
                 function filterSubs() {
+                    if (!category || !sub) return;
                     const parentId = category.value || '';
                     Array.from(sub.options).forEach(function (opt) {
                         if (!opt.value) {
@@ -186,17 +192,179 @@
                     }
                 }
 
-                sub.addEventListener('change', function () {
-                    const opt = sub.options[sub.selectedIndex];
-                    const parentId = opt && opt.value ? (opt.getAttribute('data-parent') || '') : '';
-                    if (parentId) {
-                        category.value = parentId;
+                if (category && sub) {
+                    sub.addEventListener('change', function () {
+                        const opt = sub.options[sub.selectedIndex];
+                        const parentId = opt && opt.value ? (opt.getAttribute('data-parent') || '') : '';
+                        if (parentId) {
+                            category.value = parentId;
+                            filterSubs();
+                        }
+                    });
+                    category.addEventListener('change', filterSubs);
+                    filterSubs();
+                }
+
+                // Name typeahead with item images (existing SKUs).
+                const picker = root.querySelector('[data-item-name-picker]');
+                const nameInput = root.querySelector('[data-item-name-search]');
+                const menu = root.querySelector('[data-item-name-results]');
+                const searchUrl = picker?.getAttribute('data-item-search-url') || '';
+                const emptyLabel = picker?.getAttribute('data-item-search-empty') || '';
+                if (!picker || !nameInput || !menu || !searchUrl) return;
+
+                if (menu.parentElement !== document.body) {
+                    document.body.appendChild(menu);
+                }
+
+                let timer = null;
+                let seq = 0;
+
+                function closeMenu() {
+                    menu.classList.remove('show');
+                    nameInput.setAttribute('aria-expanded', 'false');
+                }
+
+                function positionMenu() {
+                    const rect = nameInput.getBoundingClientRect();
+                    const gap = 4;
+                    const maxH = 280;
+                    const spaceBelow = window.innerHeight - rect.bottom - gap;
+                    const spaceAbove = rect.top - gap;
+                    const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+                    const height = Math.max(120, Math.min(maxH, openUp ? spaceAbove : spaceBelow));
+                    menu.style.position = 'fixed';
+                    menu.style.left = Math.max(8, rect.left) + 'px';
+                    menu.style.width = Math.max(rect.width, 280) + 'px';
+                    menu.style.right = 'auto';
+                    menu.style.zIndex = '2000';
+                    menu.style.maxHeight = height + 'px';
+                    menu.style.overflowY = 'auto';
+                    if (openUp) {
+                        menu.style.top = 'auto';
+                        menu.style.bottom = (window.innerHeight - rect.top + gap) + 'px';
+                    } else {
+                        menu.style.bottom = 'auto';
+                        menu.style.top = (rect.bottom + gap) + 'px';
+                    }
+                }
+
+                function openMenu() {
+                    positionMenu();
+                    menu.classList.add('show');
+                    nameInput.setAttribute('aria-expanded', 'true');
+                }
+
+                function setSelectValue(select, value) {
+                    if (!select || value === null || value === undefined || value === '') return;
+                    const str = String(value);
+                    const opt = Array.from(select.options).find(function (o) { return o.value === str; });
+                    if (opt) {
+                        select.value = str;
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+
+                function selectItem(item) {
+                    // Reuse product name for a new size/color sibling — leave attrs for the user to change.
+                    nameInput.value = item.name || '';
+                    if (item.category_id) {
+                        setSelectValue(category, item.category_id);
                         filterSubs();
                     }
+                    if (item.subcategory_id) {
+                        setSelectValue(sub, item.subcategory_id);
+                    }
+                    closeMenu();
+                }
+
+                function renderResults(items) {
+                    menu.innerHTML = '';
+                    if (!items.length) {
+                        const empty = document.createElement('div');
+                        empty.className = 'dropdown-item disabled text-body-secondary';
+                        empty.textContent = emptyLabel;
+                        menu.appendChild(empty);
+                        openMenu();
+                        return;
+                    }
+                    items.forEach(function (item) {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'dropdown-item text-wrap d-flex align-items-center gap-2';
+                        const thumb = document.createElement('span');
+                        thumb.className = 'flex-shrink-0';
+                        if (item.image_url) {
+                            const img = document.createElement('img');
+                            img.src = item.image_url;
+                            img.alt = item.name || '';
+                            img.className = 'rounded border';
+                            img.style.cssText = 'width:2.25rem;height:2.25rem;object-fit:cover';
+                            thumb.appendChild(img);
+                        } else {
+                            thumb.innerHTML = '<span class="d-inline-flex align-items-center justify-content-center rounded border text-body-secondary" style="width:2.25rem;height:2.25rem" aria-hidden="true"><i class="bi bi-image"></i></span>';
+                        }
+                        const text = document.createElement('span');
+                        text.className = 'small';
+                        const title = document.createElement('div');
+                        title.textContent = item.label || item.name || '';
+                        text.appendChild(title);
+                        const cats = [item.category, item.subcategory].filter(Boolean);
+                        if (cats.length) {
+                            const meta = document.createElement('div');
+                            meta.className = 'text-body-secondary';
+                            meta.textContent = cats.join(' · ');
+                            text.appendChild(meta);
+                        }
+                        btn.appendChild(thumb);
+                        btn.appendChild(text);
+                        btn.addEventListener('mousedown', function (e) {
+                            e.preventDefault();
+                            selectItem(item);
+                        });
+                        menu.appendChild(btn);
+                    });
+                    openMenu();
+                }
+
+                nameInput.addEventListener('input', function () {
+                    clearTimeout(timer);
+                    const q = nameInput.value.trim();
+                    if (q.length < 1) {
+                        closeMenu();
+                        menu.innerHTML = '';
+                        return;
+                    }
+                    timer = setTimeout(function () {
+                        const my = ++seq;
+                        fetch(searchUrl + '?q=' + encodeURIComponent(q), {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            credentials: 'same-origin',
+                        }).then(function (r) {
+                            if (!r.ok) throw new Error('HTTP ' + r.status);
+                            return r.json();
+                        }).then(function (items) {
+                            if (my !== seq) return;
+                            renderResults(Array.isArray(items) ? items : []);
+                        }).catch(function () {
+                            if (my !== seq) return;
+                            renderResults([]);
+                        });
+                    }, 200);
                 });
 
-                category.addEventListener('change', filterSubs);
-                filterSubs();
+                nameInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape') closeMenu();
+                });
+                nameInput.addEventListener('blur', function () {
+                    window.setTimeout(closeMenu, 150);
+                });
+                window.addEventListener('resize', function () {
+                    if (menu.classList.contains('show')) positionMenu();
+                });
+                window.addEventListener('scroll', function () {
+                    if (menu.classList.contains('show')) positionMenu();
+                }, true);
             })();
         </script>
     @endpush

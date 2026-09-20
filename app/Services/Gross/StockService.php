@@ -28,7 +28,7 @@ class StockService
     public function paginateMovements(array $filters = [], int $perPage = 25): LengthAwarePaginator
     {
         $q = GrossStockMovement::query()
-            ->with(['item', 'creator'])
+            ->with(['item.images', 'creator'])
             ->orderByDesc('id');
 
         $search = trim((string) ($filters['q'] ?? ''));

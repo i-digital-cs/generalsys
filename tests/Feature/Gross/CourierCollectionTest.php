@@ -14,11 +14,13 @@ use App\Services\Gross\ItemService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class CourierCollectionTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_collect_cod_then_deliver_and_block_deliver_while_pending(): void
     {
@@ -46,7 +48,7 @@ class CourierCollectionTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 100,
         ]]);
-        $service->confirm($invoice, $manager);
+        $this->shipToCourier($invoice, $manager);
         $invoice = $invoice->fresh();
 
         $this->assertSame(GrossSalesInvoice::COD_PENDING, $invoice->cod_collection_status);
@@ -112,7 +114,7 @@ class CourierCollectionTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 50,
         ]]);
-        $service->confirm($invoice, $manager);
+        $this->shipToCourier($invoice, $manager);
 
         $invoice = $invoice->fresh();
         $this->assertSame(GrossSalesInvoice::COD_NONE, $invoice->cod_collection_status);
@@ -151,7 +153,7 @@ class CourierCollectionTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 30,
         ]]);
-        $service->confirm($invoice, $manager);
+        $this->shipToCourier($invoice, $manager);
         $alloc = $invoice->fresh()->lines->first()->allocation;
         $allocations->partialReturn($alloc, 3, $manager);
 
@@ -188,7 +190,7 @@ class CourierCollectionTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 40,
         ]]);
-        $service->confirm($invoice, $manager);
+        $this->shipToCourier($invoice, $manager);
         $service->markDelivered($invoice->fresh(), $manager);
         $service->markDelivered($invoice->fresh(), $manager);
 
@@ -217,7 +219,7 @@ class CourierCollectionTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 40,
         ]]);
-        $service->confirm($invoice, $manager);
+        $this->shipToCourier($invoice, $manager);
 
         $invoice->update([
             'status' => GrossSalesInvoice::STATUS_DELIVERED,
@@ -256,7 +258,7 @@ class CourierCollectionTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 40,
         ]]);
-        $service->confirm($invoice, $manager);
+        $this->shipToCourier($invoice, $manager);
 
         $sales = User::factory()->sales()->create();
         ValuationAssignment::query()->create([
@@ -284,7 +286,7 @@ class CourierCollectionTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 40,
         ]]);
-        $service->confirm($pending, $manager);
+        $this->shipToCourier($pending, $manager);
 
         $this->actingAs($employee)
             ->post(route('gross.sales.collect-cod', $pending))

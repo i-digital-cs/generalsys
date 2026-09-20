@@ -38,6 +38,7 @@ class SalesInvoiceFormTest extends TestCase
             ->assertSee('Type in each line to search items', false)
             ->assertSee('Invoice discount', false)
             ->assertSee(route('gross.items.search', [], false), false)
+            ->assertSee('data-line-item-thumb', false)
             ->assertDontSee('Item 1', false)
             ->assertDontSee('Item 3', false);
     }

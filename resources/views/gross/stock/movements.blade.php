@@ -90,10 +90,15 @@
                                     <td class="small"><span class="num-ltr">{{ $row->created_at?->translatedFormat('d M Y H:i') }}</span></td>
                                     <td>
                                         @if ($row->item)
-                                            <a href="{{ route('gross.items.show', $row->item) }}" class="num-ltr link-body-emphasis text-decoration-none">
-                                                {{ $row->item->code }}
-                                            </a>
-                                            <div class="small text-body-secondary">{{ $row->item->name }}</div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <x-gross.item-thumb :item="$row->item" size="2.25rem" />
+                                                <div>
+                                                    <a href="{{ route('gross.items.show', $row->item) }}" class="num-ltr link-body-emphasis text-decoration-none">
+                                                        {{ $row->item->code }}
+                                                    </a>
+                                                    <div class="small text-body-secondary">{{ $row->item->name }}</div>
+                                                </div>
+                                            </div>
                                         @else
                                             —
                                         @endif

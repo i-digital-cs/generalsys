@@ -11,11 +11,13 @@ use App\Services\Gross\ItemService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class RepairGrossDeliveredStockCommandTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_command_repairs_legacy_delivered_invoice_stock(): void
     {
@@ -38,7 +40,7 @@ class RepairGrossDeliveredStockCommandTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 40,
         ]]);
-        $service->confirm($invoice, $manager);
+        $this->shipToCourier($invoice, $manager);
         $invoice->update([
             'status' => GrossSalesInvoice::STATUS_DELIVERED,
             'delivered_at' => now(),
@@ -77,7 +79,7 @@ class RepairGrossDeliveredStockCommandTest extends TestCase
             'unit' => 'PIECE',
             'unit_price' => 40,
         ]]);
-        $service->confirm($invoice, $manager);
+        $this->shipToCourier($invoice, $manager);
         $invoice->update(['status' => GrossSalesInvoice::STATUS_DELIVERED, 'delivered_at' => now()]);
 
         $this->artisan('hrpro:repair-gross-delivered-stock', ['--dry-run' => true])

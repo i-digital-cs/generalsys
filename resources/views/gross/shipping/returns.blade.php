@@ -104,8 +104,13 @@
                                     <td>{{ $invoice?->customer_name ?: '—' }}</td>
                                     <td>
                                         @if ($entry->item)
-                                            <span>{{ $entry->item->name }}</span>
-                                            <div class="small text-body-secondary num-ltr">{{ $entry->item->code }}</div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <x-gross.item-thumb :item="$entry->item" size="2.25rem" />
+                                                <div>
+                                                    <span>{{ $entry->item->name }}</span>
+                                                    <div class="small text-body-secondary num-ltr">{{ $entry->item->code }}</div>
+                                                </div>
+                                            </div>
                                         @else
                                             —
                                         @endif

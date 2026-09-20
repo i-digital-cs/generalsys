@@ -22,6 +22,7 @@ class GrossDataResetService
         'gross_treasury_voucher_attachments',
         'gross_treasury_vouchers',
         'gross_shipment_allocations',
+        'gross_sales_invoice_media',
         'gross_sales_invoice_lines',
         'gross_sales_invoices',
         'gross_purchase_return_lines',
@@ -48,6 +49,7 @@ class GrossDataResetService
     public function fresh(): void
     {
         $this->clearItemImageFiles();
+        $this->clearSalesInvoiceMediaFiles();
 
         $driver = Schema::getConnection()->getDriverName();
 
@@ -89,6 +91,24 @@ class GrossDataResetService
 
         if ($disk->exists('gross-item-images')) {
             $disk->deleteDirectory('gross-item-images');
+        }
+    }
+
+    private function clearSalesInvoiceMediaFiles(): void
+    {
+        if (! Schema::hasTable('gross_sales_invoice_media')) {
+            return;
+        }
+
+        $disk = Storage::disk('local');
+        foreach (DB::table('gross_sales_invoice_media')->pluck('file_path') as $path) {
+            if (is_string($path) && $path !== '' && $disk->exists($path)) {
+                $disk->delete($path);
+            }
+        }
+
+        if ($disk->exists('gross-sales-media')) {
+            $disk->deleteDirectory('gross-sales-media');
         }
     }
 

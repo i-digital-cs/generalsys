@@ -100,6 +100,7 @@
                 <table class="table table-sm align-middle">
                     <thead>
                         <tr>
+                            <th style="width: 3.5rem"></th>
                             <th>{{ __('gross.fields.code') }}</th>
                             <th>{{ __('gross.fields.name') }}</th>
                             <th>{{ __('gross.fields.size') }}</th>
@@ -119,6 +120,9 @@
                         @foreach (($display['has_returns'] ?? false) ? $display['lines'] : $invoice->lines->map(fn ($line) => ['line' => $line]) as $row)
                             @php $line = $row['line']; @endphp
                             <tr>
+                                <td>
+                                    <x-gross.item-thumb :item="$line->item" size="2.5rem" :alt="$line->item_name_snapshot" />
+                                </td>
                                 <td>
                                     @if ($line->item_id)
                                         <a href="{{ route('gross.items.show', $line->item_id) }}" class="num-ltr link-body-emphasis text-decoration-none">
@@ -246,9 +250,14 @@
                                         @php($remainingQty = (int) floor($line->remainingPieces() / max(1, (int) $line->conversion_factor_snapshot)))
                                         <tr>
                                             <td>
-                                                <span class="num-ltr">{{ $line->item_code_snapshot }}</span>
-                                                — {{ $line->item_name_snapshot }}
-                                                <div class="small text-body-secondary">{{ __('gross.units.'.$line->unit) }}</div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <x-gross.item-thumb :item="$line->item" size="2.25rem" :alt="$line->item_name_snapshot" />
+                                                    <div>
+                                                        <span class="num-ltr">{{ $line->item_code_snapshot }}</span>
+                                                        — {{ $line->item_name_snapshot }}
+                                                        <div class="small text-body-secondary">{{ __('gross.units.'.$line->unit) }}</div>
+                                                    </div>
+                                                </div>
                                                 <input type="hidden" name="lines[{{ $i }}][purchase_invoice_line_id]" value="{{ $line->id }}">
                                             </td>
                                             <td class="col-num"><span class="num-ltr">{{ $remainingQty }}</span></td>
@@ -294,11 +303,14 @@
                         </div>
                         <ul class="small mb-0 ps-3">
                             @foreach ($ret->lines as $rl)
-                                <li>
-                                    <span class="num-ltr">{{ $rl->invoiceLine?->item_code_snapshot ?? $rl->item?->code }}</span>
-                                    — {{ __('gross.fields.qty') }}:
-                                    <span class="num-ltr">{{ $rl->qty_pieces }}</span>
-                                    · <x-money :amount="$rl->line_total" :currency="$invoice->currency" />
+                                <li class="d-flex align-items-center gap-2 mb-1">
+                                    <x-gross.item-thumb :item="$rl->item ?? $rl->invoiceLine?->item" size="1.75rem" />
+                                    <span>
+                                        <span class="num-ltr">{{ $rl->invoiceLine?->item_code_snapshot ?? $rl->item?->code }}</span>
+                                        — {{ __('gross.fields.qty') }}:
+                                        <span class="num-ltr">{{ $rl->qty_pieces }}</span>
+                                        · <x-money :amount="$rl->line_total" :currency="$invoice->currency" />
+                                    </span>
                                 </li>
                             @endforeach
                         </ul>

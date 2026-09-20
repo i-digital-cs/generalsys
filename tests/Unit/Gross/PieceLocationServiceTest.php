@@ -12,11 +12,13 @@ use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 class PieceLocationServiceTest extends TestCase
 {
     use RefreshDatabase;
+    use ShipsGrossSalesToCourier;
 
     public function test_courier_breakdown_groups_by_company_for_confirmed_invoices(): void
     {
@@ -44,7 +46,7 @@ class PieceLocationServiceTest extends TestCase
                 'unit' => 'PIECE',
                 'unit_price' => 10,
             ]]);
-            $invoices->confirm($draft, $manager);
+            $this->shipToCourier($draft, $manager);
         }
 
         $breakdown = app(PieceLocationService::class)->courierBreakdownByItemIds([$item->id]);
@@ -65,7 +67,7 @@ class PieceLocationServiceTest extends TestCase
 
         $company = app(ShippingCompanyService::class)->create(['name' => 'Courier', 'status' => 'ACTIVE']);
         $invoices = app(SalesInvoiceService::class);
-        $confirmed = $invoices->confirm($invoices->createDraft($manager, [
+        $confirmed = $this->shipToCourier($invoices->createDraft($manager, [
             'customer_name' => 'Ali',
             'customer_phone' => '0100',
             'shipping_company_id' => $company->id,

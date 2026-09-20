@@ -1062,6 +1062,13 @@ CREATE TABLE gross_sales_invoices (
     refuse_reason TEXT NULL,
     confirmed_at TIMESTAMP NULL,
     cancelled_at TIMESTAMP NULL,
+    fulfillment_status VARCHAR(32) NULL COMMENT 'PREPARING|READY_WAREHOUSE|WITH_COURIER',
+    packing_image_path VARCHAR(255) NULL,
+    packing_image_original_name VARCHAR(191) NULL,
+    packing_image_mime VARCHAR(64) NULL,
+    packing_image_size_bytes INT UNSIGNED NULL,
+    packing_uploaded_at TIMESTAMP NULL,
+    packing_uploaded_by BIGINT UNSIGNED NULL,
     shipping_fee_collected_at TIMESTAMP NULL,
     shipping_fee_collected_by BIGINT UNSIGNED NULL,
     cod_collection_status ENUM('NONE','PENDING','COLLECTED','LOST') NOT NULL DEFAULT 'NONE',
@@ -1074,12 +1081,31 @@ CREATE TABLE gross_sales_invoices (
     updated_at TIMESTAMP NULL,
     UNIQUE KEY uq_gross_inv_number (invoice_number),
     INDEX idx_gross_inv_status (status),
+    INDEX idx_gross_inv_fulfillment (fulfillment_status),
     INDEX idx_gross_inv_created (created_at),
     CONSTRAINT fk_gross_inv_cust FOREIGN KEY (customer_id) REFERENCES gross_customers(id) ON DELETE SET NULL,
     CONSTRAINT fk_gross_inv_sales FOREIGN KEY (sales_user_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_gross_inv_ship FOREIGN KEY (shipping_company_id) REFERENCES gross_shipping_companies(id) ON DELETE SET NULL,
     CONSTRAINT fk_gross_inv_refused_by FOREIGN KEY (refused_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_inv_packing_by FOREIGN KEY (packing_uploaded_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_gross_inv_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gross_sales_invoice_media (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    sales_invoice_id BIGINT UNSIGNED NOT NULL,
+    title VARCHAR(120) NULL,
+    description TEXT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(120) NOT NULL,
+    size_bytes INT UNSIGNED NOT NULL,
+    uploaded_by BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gross_sales_media_invoice (sales_invoice_id),
+    CONSTRAINT fk_gross_sales_media_invoice FOREIGN KEY (sales_invoice_id) REFERENCES gross_sales_invoices(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gross_sales_media_user FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE gross_sales_invoice_lines (

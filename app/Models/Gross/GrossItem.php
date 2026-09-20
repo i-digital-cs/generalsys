@@ -82,6 +82,27 @@ class GrossItem extends Model
         return $this->hasMany(GrossItemImage::class, 'item_id')->orderBy('sort_order')->orderBy('id');
     }
 
+    public function primaryImage(): ?GrossItemImage
+    {
+        if ($this->relationLoaded('images')) {
+            $first = $this->images->first();
+
+            return $first instanceof GrossItemImage ? $first : null;
+        }
+
+        return $this->images()->first();
+    }
+
+    public function thumbnailUrl(): ?string
+    {
+        $image = $this->primaryImage();
+        if ($image === null) {
+            return null;
+        }
+
+        return route('gross.items.images.show', [$this, $image]);
+    }
+
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE;

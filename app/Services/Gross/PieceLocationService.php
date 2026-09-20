@@ -151,6 +151,7 @@ class PieceLocationService
      * @return list<array{
      *     item_code: string,
      *     item_name: string,
+     *     image_url: string|null,
      *     invoice_number: string,
      *     invoice_id: int,
      *     customer_name: string,
@@ -169,7 +170,7 @@ class PieceLocationService
                 GrossSalesInvoice::STATUS_DELIVERED,
                 GrossSalesInvoice::STATUS_REFUSED,
             ]))
-            ->with(['line.item:id,code,name', 'line.invoice:id,invoice_number,customer_name,status'])
+            ->with(['line.item.images', 'line.invoice:id,invoice_number,customer_name,status'])
             ->orderByDesc('updated_at')
             ->limit(100)
             ->get()
@@ -181,6 +182,7 @@ class PieceLocationService
                 return [
                     'item_code' => (string) ($item?->code ?? '—'),
                     'item_name' => (string) ($item?->name ?? '—'),
+                    'image_url' => $item?->thumbnailUrl(),
                     'invoice_number' => (string) ($invoice?->invoice_number ?? '—'),
                     'invoice_id' => (int) ($invoice?->id ?? 0),
                     'customer_name' => (string) ($invoice?->customer_name ?? '—'),

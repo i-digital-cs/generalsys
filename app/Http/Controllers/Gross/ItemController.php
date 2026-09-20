@@ -178,7 +178,6 @@ class ItemController extends Controller
 
         return [
             'categories' => $this->categories->allFlat(),
-            'nameSuggestions' => $this->items->nameSuggestions(),
             'colors' => $grouped[GrossItemAttribute::KIND_COLOR],
             'sizes' => $grouped[GrossItemAttribute::KIND_SIZE],
             'models' => $grouped[GrossItemAttribute::KIND_MODEL],

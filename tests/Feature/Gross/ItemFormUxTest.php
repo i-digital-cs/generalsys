@@ -60,7 +60,7 @@ class ItemFormUxTest extends TestCase
         $this->assertSame($low->id, $response->viewData('items')->first()->id);
     }
 
-    public function test_store_form_suggests_existing_names(): void
+    public function test_store_form_suggests_existing_items_with_search(): void
     {
         $manager = User::factory()->manager()->create();
         app(ItemService::class)->create([
@@ -72,8 +72,10 @@ class ItemFormUxTest extends TestCase
         $this->withSession(['locale' => 'en'])->actingAs($manager)
             ->get(route('gross.items.create'))
             ->assertOk()
-            ->assertSee('list="gross-suggest-name"', false)
-            ->assertSee('Blue Jacket', false);
+            ->assertSee('data-item-name-picker', false)
+            ->assertSee(route('gross.items.search', [], false), false)
+            ->assertSee(__('gross.fields.name_suggest_with_image'), false)
+            ->assertDontSee('list="gross-suggest-name"', false);
     }
 
     public function test_posting_subcategory_without_category_still_links_parent(): void
