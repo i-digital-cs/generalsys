@@ -1113,6 +1113,27 @@ Isolated from valuation Gross tiles and Gross treasury. Formula: remaining = exp
 3. Delete media; still works on CONFIRMED/DELIVERED/CANCELLED.
 4. AR + EN + RTL/LTR + ~375/768/1280.
 
+## Phase 15 — Absence permission (إذن غياب)
+
+### T-15.1 — Full-day absence permission → payroll excused
+- Depends on: T-2.9, T-4.4
+- Unlocks: —
+- Status: `done`
+- Scope:
+  - [x] New type `ABSENCE_PERMISSION` — period From→To (inclusive, max 31 days); UI hides times
+  - [x] Submit → TL/Admin Accept/Reject; Force from Rejected (Employee + TL→Admin)
+  - [x] Accept/Force writes `attendance` status `EXCUSED_ABSENCE` for each **working** day (skip rest / official holiday / approved vacation)
+  - [x] Reject: no attendance row; day-rate × calendar days stored as reject base for force
+  - [x] Forced payroll: reject_base fed to surcharge (no 3× stack with excused day-rate when `auto_penalties` on)
+  - [x] Notifications show From–To; conflict errors include the date
+  - [x] PHPUnit + LangParity + UI/UX AR+EN
+
+**Manual UI test**
+1. Employee → طلباتي → إذن غياب → من تاريخ / إلى تاريخ → submit.
+2. TL Approvals → Accept → working days show excused; rest/holiday in range skipped; payroll generate counts غياب بإذن.
+3. TL self → submit → Admin Accept.
+4. AR + EN + responsive.
+
 ## Dependency map
 
 ```text
@@ -1340,3 +1361,6 @@ Example:
 - [x] 2026-09-16 Fix — Clock elapsed timer uses **current open segment** start (not day's first punch). Matches Reda/Amir night resume after mid-day punches showing ~9h. Commands: `php artisan test --filter='test_elapsed_timer_uses_current_open_segment|AttendanceMultiPunchTest'`; Pint. UI/UX: N/A.
 - [x] 2026-09-16 T-14.3 PASS — Shipment path: `fulfillment_status` PREPARING→READY_WAREHOUSE→WITH_COURIER; packing image required; stock/allocations on hand-to-courier only; sidebar queues; invoice show actions. Commands: `php artisan migrate`; `php artisan test tests/Feature/Gross tests/Unit/Gross` (185 PASS); `SalesInvoiceFulfillmentPipelineTest`; LangParity; Pint; `route:list --name=gross.sales`. UI/UX: AR+EN keys; manual RTL/responsive pending user.
 - [x] 2026-09-20 T-14.4 PASS — Sales invoice media gallery: `gross_sales_invoice_media`; optional title/description; images only max 10; Sales/Manager/Accountant; all statuses; show page only. Commands: `php artisan migrate`; `php artisan test --filter=SalesInvoiceMediaTest` (5 PASS); LangParity; Pint; `route:list --name=gross.sales.media`. UI/UX: AR+EN keys; manual RTL/responsive pending user.
+- [x] 2026-09-20 T-15.1 PASS — إذن غياب (`ABSENCE_PERMISSION`): date-only; Accept/Force → `attendance.EXCUSED_ABSENCE` for payroll; TL→Admin. Commands: `php artisan migrate`; `php artisan test --filter='AbsencePermissionTest|PermissionRequestTest|PermissionApprovalTest|PermissionForceTest|LangParityTest'` (31 PASS); Pint. UI/UX: AR+EN keys; hide times for absence.
+- [x] 2026-09-20 T-15.1 amend — Absence supports **period** From→To (max 31 days); each day excused on accept. Commands: `php artisan migrate`; `php artisan test --filter='AbsencePermissionTest|PermissionRequestTest|PermissionApprovalTest|LangParityTest'` (23 PASS); Pint.
+- [x] 2026-09-20 T-15.1 review fixes — Skip rest/holiday/vacation on apply; forced_base = reject_base (no 3× stack); notifications From–To; dated dayAlreadyWorked; docs sync. Commands: `php artisan test --filter='AbsencePermissionTest|LangParityTest|PermissionForceTest|PermissionApprovalTest|PermissionRequestTest|PayrollCalculatorTest'` (53 PASS); Pint. UI/UX: AR+EN hint + errors.

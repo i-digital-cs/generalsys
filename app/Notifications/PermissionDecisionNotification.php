@@ -34,6 +34,7 @@ class PermissionDecisionNotification extends Notification
             'status' => $status,
             'type' => $this->permission->type,
             'request_date' => $this->permission->request_date->toDateString(),
+            'end_date' => ($this->permission->end_date ?? $this->permission->request_date)->toDateString(),
             'url' => $this->urlFor($notifiable),
         ];
     }

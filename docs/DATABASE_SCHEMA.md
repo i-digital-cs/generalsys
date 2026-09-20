@@ -338,9 +338,10 @@ CREATE TABLE attendance_daily_scores (
 CREATE TABLE permissions (
     id                  BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id             BIGINT UNSIGNED NOT NULL,
-    type                ENUM('LEAVE_PERMISSION','LATE_PERMISSION') NOT NULL,
-    request_date        DATE NOT NULL,
-    from_time           TIME NOT NULL,
+    type                ENUM('LEAVE_PERMISSION','LATE_PERMISSION','ABSENCE_PERMISSION') NOT NULL,
+    request_date        DATE NOT NULL,                        -- start date (also the only date for leave/late)
+    end_date            DATE NULL,                            -- ABSENCE period end (inclusive); leave/late = request_date
+    from_time           TIME NOT NULL,                        -- ABSENCE uses 00:00–23:59 sentinels (UI hides times)
     to_time             TIME NOT NULL,
     reason              TEXT NULL,
     status              ENUM('PENDING','ACCEPTED','REJECTED','FORCED') NOT NULL DEFAULT 'PENDING',
@@ -358,6 +359,8 @@ CREATE TABLE permissions (
     INDEX idx_perm_decided_by (decided_by)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
+
+> **ABSENCE_PERMISSION (T-15.1):** period `request_date`→`end_date` (inclusive, max 31 days). Accept/Force writes `attendance.status = EXCUSED_ABSENCE` for each **working** day (rest pool / official holiday / approved vacation skipped). Reject leaves no attendance rows. TL may submit for Admin decision.
 
 ## 9. vacations
 

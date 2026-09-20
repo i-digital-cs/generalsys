@@ -54,16 +54,16 @@ class NotificationMessage
             'permission_submitted' => __('notifications.bodies.permission_submitted', [
                 'name' => $name,
                 'type' => __('permissions.types.'.($data['type'] ?? 'LEAVE_PERMISSION')),
-                'date' => $data['request_date'] ?? '',
+                'date' => self::permissionDateLabel($data),
             ]),
             'permission_decision' => __('notifications.bodies.permission_decision', [
                 'type' => __('permissions.types.'.($data['type'] ?? 'LEAVE_PERMISSION')),
                 'status' => __('permissions.statuses.'.($data['status'] ?? 'PENDING')),
-                'date' => $data['request_date'] ?? '',
+                'date' => self::permissionDateLabel($data),
             ]),
             'permission_forced' => __('notifications.bodies.permission_forced', [
                 'type' => __('permissions.types.'.($data['type'] ?? 'LEAVE_PERMISSION')),
-                'date' => $data['request_date'] ?? '',
+                'date' => self::permissionDateLabel($data),
             ]),
             'vacation_submitted' => __('notifications.bodies.vacation_submitted', [
                 'name' => $name,
@@ -163,5 +163,21 @@ class NotificationMessage
             ]),
             default => '',
         };
+    }
+
+    /**
+     * Single day or From–To period for permission notification bodies.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private static function permissionDateLabel(array $data): string
+    {
+        $start = (string) ($data['request_date'] ?? '');
+        $end = (string) ($data['end_date'] ?? $start);
+        if ($start !== '' && $end !== '' && $end !== $start) {
+            return $start.' – '.$end;
+        }
+
+        return $start !== '' ? $start : $end;
     }
 }

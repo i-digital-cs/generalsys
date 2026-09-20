@@ -12,21 +12,28 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Leave/late permission requests (T-2.7–T-2.9).
+ * Leave/late/absence permission requests (T-2.7–T-2.9, T-15.1).
  * Submit: any role (self). Employees need ≥1 team leader; TL/Manager may omit (Admin decides).
  * Queue/decide: either membership TL, or Manager. Force: self, TL (team), or Manager.
+ * Absence accept/force writes attendance EXCUSED_ABSENCE for payroll day counts.
  * Penalty amounts never exposed on TL UI.
  */
 class PermissionRequestService
 {
+    /** Sentinel times for ABSENCE_PERMISSION (schema times NOT NULL; UI hides them). */
+    public const ABSENCE_FROM = '00:00';
+
+    public const ABSENCE_TO = '23:59';
+
     public function __construct(
         private readonly PermissionPenaltyCalculator $penalties,
         private readonly AppNotificationService $notifications,
         private readonly TeamMembershipService $membership,
+        private readonly AbsenceAttendanceApplier $absenceAttendance,
     ) {}
 
     /**
-     * @param  array{type: string, request_date: string, from_time: string, to_time: string, reason?: ?string}  $data
+     * @param  array{type: string, request_date: string, end_date?: ?string, from_time?: ?string, to_time?: ?string, reason?: ?string}  $data
      */
     public function submit(User $user, array $data): Permission
     {
@@ -34,18 +41,36 @@ class PermissionRequestService
             throw PermissionRequestException::noTeamLeader();
         }
 
-        $from = $this->normalizeTime($data['from_time']);
-        $to = $this->normalizeTime($data['to_time']);
+        $type = (string) $data['type'];
+        $date = Carbon::parse($data['request_date'])->toDateString();
+        $endDate = $date;
 
-        if ($to <= $from) {
-            throw PermissionRequestException::invalidTimeRange();
+        if ($type === Permission::TYPE_ABSENCE) {
+            $from = self::ABSENCE_FROM;
+            $to = self::ABSENCE_TO;
+            $endDate = Carbon::parse($data['end_date'] ?? $date)->toDateString();
+            if ($endDate < $date) {
+                throw PermissionRequestException::invalidAbsencePeriod();
+            }
+            $days = Carbon::parse($date)->diffInDays(Carbon::parse($endDate)) + 1;
+            if ($days > 31) {
+                throw PermissionRequestException::absencePeriodTooLong();
+            }
+            $this->assertNoOverlappingAbsence($user, $date, $endDate);
+        } else {
+            $from = $this->normalizeTime((string) ($data['from_time'] ?? ''));
+            $to = $this->normalizeTime((string) ($data['to_time'] ?? ''));
+            if ($to <= $from) {
+                throw PermissionRequestException::invalidTimeRange();
+            }
         }
 
-        return DB::transaction(function () use ($user, $data, $from, $to) {
+        return DB::transaction(function () use ($user, $data, $type, $date, $endDate, $from, $to) {
             $permission = Permission::query()->create([
                 'user_id' => $user->id,
-                'type' => $data['type'],
-                'request_date' => Carbon::parse($data['request_date'])->toDateString(),
+                'type' => $type,
+                'request_date' => $date,
+                'end_date' => $endDate,
                 'from_time' => $from,
                 'to_time' => $to,
                 'reason' => $data['reason'] ?? null,
@@ -119,6 +144,10 @@ class PermissionRequestService
         $this->assertPending($permission);
 
         return DB::transaction(function () use ($permission, $actor) {
+            if ($permission->isAbsence()) {
+                $this->absenceAttendance->apply($permission);
+            }
+
             $permission->update([
                 'status' => Permission::STATUS_ACCEPTED,
                 'penalty_amount' => 0,
@@ -157,7 +186,7 @@ class PermissionRequestService
 
     /**
      * REJECTED → FORCED; penalty × double_penalty_multiplier; is_double_penalty = true.
-     * Actor: owning employee, TL (team), or Manager.
+     * Absence also marks the day EXCUSED_ABSENCE for payroll.
      */
     public function force(User $actor, Permission $permission): Permission
     {
@@ -181,6 +210,10 @@ class PermissionRequestService
         $amount = round($base * $multiplier, 2);
 
         return DB::transaction(function () use ($permission, $amount, $actor) {
+            if ($permission->isAbsence()) {
+                $this->absenceAttendance->apply($permission);
+            }
+
             $permission->update([
                 'status' => Permission::STATUS_FORCED,
                 'penalty_amount' => $amount,
@@ -219,6 +252,33 @@ class PermissionRequestService
         }
 
         return $this->teamLeaderLeadsOwner($actor, $permission->user);
+    }
+
+    private function assertNoOverlappingAbsence(User $user, string $start, string $end): void
+    {
+        $exists = Permission::query()
+            ->where('user_id', $user->id)
+            ->where('type', Permission::TYPE_ABSENCE)
+            ->whereIn('status', [
+                Permission::STATUS_PENDING,
+                Permission::STATUS_ACCEPTED,
+                Permission::STATUS_FORCED,
+            ])
+            ->where(function ($q) use ($start, $end): void {
+                $q->whereDate('request_date', '<=', $end)
+                    ->where(function ($inner) use ($start): void {
+                        $inner->whereDate('end_date', '>=', $start)
+                            ->orWhere(function ($legacy) use ($start): void {
+                                // Pre-migration rows may lack end_date until backfill.
+                                $legacy->whereNull('end_date')->whereDate('request_date', '>=', $start);
+                            });
+                    });
+            })
+            ->exists();
+
+        if ($exists) {
+            throw PermissionRequestException::duplicateAbsence();
+        }
     }
 
     private function teamLeaderLeadsOwner(User $actor, ?User $owner): bool

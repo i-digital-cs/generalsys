@@ -385,15 +385,24 @@
                         <h2 class="h6 mb-3">{{ __('permissions.new') }}</h2>
                         <form method="POST" action="{{ route('employee.requests.permissions.store') }}">
                             @csrf
+                            @php
+                                $isAbsenceForm = old('type') === 'ABSENCE_PERMISSION';
+                            @endphp
+
                             <div class="mb-3">
                                 <label for="type" class="form-label">{{ __('permissions.fields.type') }}</label>
                                 <select id="type" name="type"
-                                        class="form-select @error('type') is-invalid @enderror" required>
+                                        class="form-select @error('type') is-invalid @enderror" required
+                                        data-permission-type
+                                        onchange="window.hpSyncPermissionForm && window.hpSyncPermissionForm()">
                                     <option value="LEAVE_PERMISSION" @selected(old('type', 'LEAVE_PERMISSION') === 'LEAVE_PERMISSION')>
                                         {{ __('permissions.types.LEAVE_PERMISSION') }}
                                     </option>
                                     <option value="LATE_PERMISSION" @selected(old('type') === 'LATE_PERMISSION')>
                                         {{ __('permissions.types.LATE_PERMISSION') }}
+                                    </option>
+                                    <option value="ABSENCE_PERMISSION" @selected(old('type') === 'ABSENCE_PERMISSION')>
+                                        {{ __('permissions.types.ABSENCE_PERMISSION') }}
                                     </option>
                                 </select>
                                 @error('type')
@@ -401,22 +410,61 @@
                                 @enderror
                             </div>
 
-                            <div class="mb-3">
+                            {{-- Leave / late: single day --}}
+                            <div class="mb-3{{ $isAbsenceForm ? ' d-none' : '' }}" data-permission-single-date>
                                 <label for="request_date" class="form-label">{{ __('permissions.fields.request_date') }}</label>
                                 <input type="date" id="request_date" name="request_date"
                                        value="{{ old('request_date', now()->toDateString()) }}"
-                                       class="form-control @error('request_date') is-invalid @enderror" required>
+                                       class="form-control @error('request_date') is-invalid @enderror"
+                                       @unless($isAbsenceForm) required @endunless
+                                       data-permission-date-single
+                                       @if ($isAbsenceForm) disabled @endif>
                                 @error('request_date')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @unless($isAbsenceForm)
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @endunless
                                 @enderror
                             </div>
 
-                            <div class="row g-2 mb-3">
+                            {{-- Absence: from → to (shown for Employee, TL, Admin on same form) --}}
+                            <div class="row g-2 mb-3{{ $isAbsenceForm ? '' : ' d-none' }}" data-permission-period>
+                                <div class="col-12 col-sm-6">
+                                    <label for="absence_from_date" class="form-label">{{ __('permissions.fields.from_date') }}</label>
+                                    <input type="date" id="absence_from_date" name="request_date"
+                                           value="{{ old('request_date', now()->toDateString()) }}"
+                                           class="form-control @error('request_date') is-invalid @enderror"
+                                           data-permission-date-start
+                                           @if ($isAbsenceForm) required @else disabled @endif>
+                                    @error('request_date')
+                                        @if ($isAbsenceForm)
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @endif
+                                    @enderror
+                                </div>
+                                <div class="col-12 col-sm-6">
+                                    <label for="absence_end_date" class="form-label">{{ __('permissions.fields.end_date') }}</label>
+                                    <input type="date" id="absence_end_date" name="end_date"
+                                           value="{{ old('end_date', old('request_date', now()->toDateString())) }}"
+                                           class="form-control @error('end_date') is-invalid @enderror"
+                                           data-permission-date-end
+                                           @if ($isAbsenceForm) required @else disabled @endif>
+                                    @error('end_date')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-text">{{ __('permissions.absence_hint') }}</div>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3{{ $isAbsenceForm ? ' d-none' : '' }}" data-permission-times>
                                 <div class="col-6">
                                     <label for="from_time" class="form-label">{{ __('permissions.fields.from_time') }}</label>
                                     <input type="time" id="from_time" name="from_time"
                                            value="{{ old('from_time') }}"
-                                           class="form-control @error('from_time') is-invalid @enderror" required>
+                                           class="form-control @error('from_time') is-invalid @enderror"
+                                           data-permission-from
+                                           @unless($isAbsenceForm) required @endunless>
                                     @error('from_time')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -425,12 +473,62 @@
                                     <label for="to_time" class="form-label">{{ __('permissions.fields.to_time') }}</label>
                                     <input type="time" id="to_time" name="to_time"
                                            value="{{ old('to_time') }}"
-                                           class="form-control @error('to_time') is-invalid @enderror" required>
+                                           class="form-control @error('to_time') is-invalid @enderror"
+                                           data-permission-to
+                                           @unless($isAbsenceForm) required @endunless>
                                     @error('to_time')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>
+
+                            <script>
+                                window.hpSyncPermissionForm = function () {
+                                    const typeSelect = document.querySelector('[data-permission-type]');
+                                    const singleDate = document.querySelector('[data-permission-single-date]');
+                                    const periodBlock = document.querySelector('[data-permission-period]');
+                                    const timesBlock = document.querySelector('[data-permission-times]');
+                                    const singleInput = document.querySelector('[data-permission-date-single]');
+                                    const startInput = document.querySelector('[data-permission-date-start]');
+                                    const endInput = document.querySelector('[data-permission-date-end]');
+                                    const fromInput = document.querySelector('[data-permission-from]');
+                                    const toInput = document.querySelector('[data-permission-to]');
+                                    if (!typeSelect || !singleDate || !periodBlock || !timesBlock) return;
+
+                                    const isAbsence = typeSelect.value === 'ABSENCE_PERMISSION';
+                                    singleDate.classList.toggle('d-none', isAbsence);
+                                    periodBlock.classList.toggle('d-none', !isAbsence);
+                                    timesBlock.classList.toggle('d-none', isAbsence);
+
+                                    if (singleInput) {
+                                        singleInput.disabled = isAbsence;
+                                        singleInput.required = !isAbsence;
+                                    }
+                                    if (startInput) {
+                                        startInput.disabled = !isAbsence;
+                                        startInput.required = isAbsence;
+                                        if (isAbsence && !startInput.value && singleInput && singleInput.value) {
+                                            startInput.value = singleInput.value;
+                                        }
+                                    }
+                                    if (endInput) {
+                                        endInput.disabled = !isAbsence;
+                                        endInput.required = isAbsence;
+                                        if (isAbsence && !endInput.value && startInput && startInput.value) {
+                                            endInput.value = startInput.value;
+                                        }
+                                    }
+                                    if (fromInput) {
+                                        fromInput.required = !isAbsence;
+                                        if (isAbsence) fromInput.value = '';
+                                    }
+                                    if (toInput) {
+                                        toInput.required = !isAbsence;
+                                        if (isAbsence) toInput.value = '';
+                                    }
+                                };
+                                window.hpSyncPermissionForm();
+                            </script>
 
                             <div class="mb-3">
                                 <label for="reason" class="form-label">{{ __('permissions.fields.reason') }}</label>
@@ -482,7 +580,7 @@
                                     <table class="table table-hr table-sm table-hover align-middle mb-0" data-table-filterable>
                                         <thead>
                                             <tr>
-                                                <th scope="col" class="col-num">{{ __('permissions.fields.request_date') }}</th>
+                                                <th scope="col" class="col-num">{{ __('permissions.fields.date_period') }}</th>
                                                 <th scope="col">{{ __('permissions.fields.type') }}</th>
                                                 <th scope="col" class="col-num">{{ __('permissions.fields.interval') }}</th>
                                                 <th scope="col">{{ __('permissions.fields.status') }}</th>
@@ -494,6 +592,9 @@
                                                 @php
                                                     $filterText = implode(' ', array_filter([
                                                         $row->request_date->toDateString(),
+                                                        $row->isAbsence()
+                                                            ? ($row->end_date ?? $row->request_date)->toDateString()
+                                                            : null,
                                                         __('permissions.types.'.$row->type),
                                                         $row->from_time,
                                                         $row->to_time,
@@ -502,10 +603,29 @@
                                                 @endphp
                                                 <tr data-filter-text="{{ $filterText }}"
                                                     data-filter-status="{{ $row->status }}">
-                                                    <td class="col-num"><span class="num-ltr">{{ $row->request_date->toDateString() }}</span></td>
+                                                    <td class="col-num">
+                                                        <span class="num-ltr">
+                                                            @if ($row->isAbsence())
+                                                                {{ $row->request_date->toDateString() }}
+                                                                –
+                                                                {{ ($row->end_date ?? $row->request_date)->toDateString() }}
+                                                            @else
+                                                                {{ $row->request_date->toDateString() }}
+                                                            @endif
+                                                        </span>
+                                                    </td>
                                                     <td>{{ __('permissions.types.'.$row->type) }}</td>
                                                     <td class="col-num text-nowrap">
-                                                        <span class="num-ltr">{{ $row->from_time }}–{{ $row->to_time }}</span>
+                                                        @if ($row->isAbsence())
+                                                            <span class="text-body-secondary">
+                                                                {{ __('permissions.full_day') }}
+                                                                @if ($row->absenceDayCount() > 1)
+                                                                    <span class="num-ltr">({{ $row->absenceDayCount() }})</span>
+                                                                @endif
+                                                            </span>
+                                                        @else
+                                                            <span class="num-ltr">{{ $row->from_time }}–{{ $row->to_time }}</span>
+                                                        @endif
                                                     </td>
                                                     <td>
                                                     <span @class([
@@ -568,5 +688,6 @@
                 </div>
             </div>
         </div>
+
     @endif
 @endsection

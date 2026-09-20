@@ -17,6 +17,10 @@ class PermissionPenaltyCalculator
 
     public function minutes(Permission $permission): int
     {
+        if ($permission->isAbsence()) {
+            return 0;
+        }
+
         $from = Carbon::createFromFormat('H:i', $permission->from_time);
         $to = Carbon::createFromFormat('H:i', $permission->to_time);
 
@@ -29,6 +33,10 @@ class PermissionPenaltyCalculator
 
     public function ratePerMinute(User $employee, string $permissionType): float
     {
+        if ($permissionType === Permission::TYPE_ABSENCE) {
+            return 0.0;
+        }
+
         $rule = $this->activeRule($employee, $permissionType);
         if ($rule !== null) {
             return (float) $rule->amount_per_unit;
@@ -42,7 +50,11 @@ class PermissionPenaltyCalculator
 
     public function doubleMultiplier(User $employee, string $permissionType): float
     {
-        $rule = $this->activeRule($employee, $permissionType);
+        $ruleType = $permissionType === Permission::TYPE_ABSENCE
+            ? PenaltyRule::TYPE_EXCUSED_ABSENCE
+            : $permissionType;
+
+        $rule = $this->activeRule($employee, $ruleType);
         if ($rule !== null) {
             return (float) $rule->double_penalty_multiplier;
         }
@@ -59,10 +71,25 @@ class PermissionPenaltyCalculator
             return 0.0;
         }
 
+        if ($permission->isAbsence()) {
+            return round($this->dayRateAmount($user) * $permission->absenceDayCount(), 2);
+        }
+
         $minutes = $this->minutes($permission);
         $rate = $this->ratePerMinute($user, $permission->type);
 
         return round($minutes * $rate, 2);
+    }
+
+    public function dayRateAmount(User $employee): float
+    {
+        $base = (float) ($employee->base_salary ?? 0);
+        $divisor = (float) config('payroll.month_divisor', 30);
+        if ($base <= 0 || $divisor <= 0) {
+            return 0.0;
+        }
+
+        return round($base / $divisor, 2);
     }
 
     private function activeRule(User $employee, string $permissionType): ?PenaltyRule

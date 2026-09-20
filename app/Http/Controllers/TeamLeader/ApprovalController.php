@@ -66,7 +66,7 @@ class ApprovalController extends Controller
             $this->permissions->approve($request->user(), $permission);
         } catch (PermissionRequestException $e) {
             throw ValidationException::withMessages([
-                'permission' => __($e->getMessage()),
+                'permission' => __($e->getMessage(), $e->replace()),
             ]);
         }
 
@@ -83,7 +83,7 @@ class ApprovalController extends Controller
             $this->permissions->reject($request->user(), $permission);
         } catch (PermissionRequestException $e) {
             throw ValidationException::withMessages([
-                'permission' => __($e->getMessage()),
+                'permission' => __($e->getMessage(), $e->replace()),
             ]);
         }
 
@@ -100,7 +100,7 @@ class ApprovalController extends Controller
             $this->permissions->force($request->user(), $permission);
         } catch (PermissionRequestException $e) {
             throw ValidationException::withMessages([
-                'permission' => __($e->getMessage()),
+                'permission' => __($e->getMessage(), $e->replace()),
             ]);
         }
 

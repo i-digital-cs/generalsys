@@ -53,7 +53,7 @@
                         <thead>
                             <tr>
                                 <th scope="col">{{ __('shifts.employee') }}</th>
-                                <th scope="col" class="col-num">{{ __('permissions.fields.request_date') }}</th>
+                                <th scope="col" class="col-num">{{ __('permissions.fields.date_period') }}</th>
                                 <th scope="col">{{ __('permissions.fields.type') }}</th>
                                 <th scope="col" class="col-num">{{ __('permissions.fields.interval') }}</th>
                                 <th scope="col">{{ __('permissions.fields.status') }}</th>
@@ -73,9 +73,30 @@
                                             </div>
                                         @endif
                                     </td>
-                                    <td class="col-num text-nowrap"><span class="num-ltr">{{ $row->request_date->toDateString() }}</span></td>
+                                    <td class="col-num text-nowrap">
+                                        <span class="num-ltr">
+                                            @if ($row->isAbsence())
+                                                {{ $row->request_date->toDateString() }}
+                                                –
+                                                {{ ($row->end_date ?? $row->request_date)->toDateString() }}
+                                            @else
+                                                {{ $row->request_date->toDateString() }}
+                                            @endif
+                                        </span>
+                                    </td>
                                     <td>{{ __('permissions.types.'.$row->type) }}</td>
-                                    <td class="col-num text-nowrap"><span class="num-ltr">{{ $row->from_time }}–{{ $row->to_time }}</span></td>
+                                    <td class="col-num text-nowrap">
+                                        @if ($row->isAbsence())
+                                            <span class="text-body-secondary">
+                                                {{ __('permissions.full_day') }}
+                                                @if ($row->absenceDayCount() > 1)
+                                                    <span class="num-ltr">({{ $row->absenceDayCount() }})</span>
+                                                @endif
+                                            </span>
+                                        @else
+                                            <span class="num-ltr">{{ $row->from_time }}–{{ $row->to_time }}</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <span @class([
                                             'badge',

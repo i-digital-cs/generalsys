@@ -124,7 +124,7 @@
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| POST | /permissions | ALL (self) | `{ "type": "LEAVE_PERMISSION", "request_date", "from_time", "to_time", "reason" }` |
+| POST | /permissions | ALL (self) | Leave/late: `{ "type": "LEAVE_PERMISSION\|LATE_PERMISSION", "request_date", "from_time", "to_time", "reason" }`. Absence: `{ "type": "ABSENCE_PERMISSION", "request_date", "end_date", "reason" }` (period inclusive, max 31 days; times omitted) |
 | GET | /permissions/my | ALL | Own requests |
 | GET | /permissions/pending | TEAM_LEADER, MANAGER | Approval queue |
 | PUT | /permissions/{id}/approve | TEAM_LEADER(team), MANAGER | Sets `ACCEPTED` |
@@ -136,7 +136,7 @@
 | Method | Route name | Path | Role |
 |--------|------------|------|------|
 | GET | `employee.requests` | `/requests?tab=permissions\|vacations` | EMPLOYEE |
-| POST | `employee.requests.permissions.store` | `/requests/permissions` | EMPLOYEE — leave/late create |
+| POST | `employee.requests.permissions.store` | `/requests/permissions` | ALL (self) — leave/late/absence create |
 | GET | `team-leader.approvals` | `/team-leader/approvals` | TEAM_LEADER (either membership TL), MANAGER |
 | POST | `team-leader.approvals.permissions.approve` | `/team-leader/approvals/permissions/{permission}/approve` | TEAM_LEADER (either membership TL), MANAGER → `ACCEPTED`, penalty 0, `decided_by` |
 | POST | `team-leader.approvals.permissions.reject` | `/team-leader/approvals/permissions/{permission}/reject` | TEAM_LEADER (either membership TL), MANAGER → `REJECTED` + `penalty_amount` (minutes × rate from `config/penalties.php` until T-4.2); amount **not** shown in TL UI; `decided_by` |

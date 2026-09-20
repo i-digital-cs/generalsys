@@ -30,6 +30,7 @@ class PermissionSubmittedNotification extends Notification
             'employee_name_en' => $employee?->name_en,
             'type' => $this->permission->type,
             'request_date' => $this->permission->request_date->toDateString(),
+            'end_date' => ($this->permission->end_date ?? $this->permission->request_date)->toDateString(),
             'url' => route('team-leader.approvals'),
         ];
     }

@@ -19,6 +19,8 @@ class Permission extends Model
 
     public const TYPE_LATE = 'LATE_PERMISSION';
 
+    public const TYPE_ABSENCE = 'ABSENCE_PERMISSION';
+
     public const STATUS_PENDING = 'PENDING';
 
     public const STATUS_ACCEPTED = 'ACCEPTED';
@@ -27,10 +29,28 @@ class Permission extends Model
 
     public const STATUS_FORCED = 'FORCED';
 
+    public function isAbsence(): bool
+    {
+        return $this->type === self::TYPE_ABSENCE;
+    }
+
+    /** Inclusive calendar days in [request_date, end_date] (leave/late = 1). */
+    public function absenceDayCount(): int
+    {
+        $start = $this->request_date;
+        $end = $this->end_date ?? $this->request_date;
+        if ($start === null || $end === null) {
+            return 1;
+        }
+
+        return max(1, (int) $start->diffInDays($end) + 1);
+    }
+
     protected $fillable = [
         'user_id',
         'type',
         'request_date',
+        'end_date',
         'from_time',
         'to_time',
         'reason',
@@ -45,6 +65,7 @@ class Permission extends Model
     {
         return [
             'request_date' => 'date',
+            'end_date' => 'date',
             'penalty_amount' => 'decimal:2',
             'is_double_penalty' => 'boolean',
         ];

@@ -251,9 +251,10 @@ Unique `(attendance_id, team_leader_id)`. Attendance % stays on `attendance`.
 permissions
 ├── id (PK)
 ├── user_id (FK)
-├── type (LEAVE_PERMISSION, LATE_PERMISSION)
-├── request_date
-├── from_time / to_time
+├── type (LEAVE_PERMISSION, LATE_PERMISSION, ABSENCE_PERMISSION)
+├── request_date                          -- period start (leave/late = single day)
+├── end_date                              -- ABSENCE inclusive end; leave/late = request_date
+├── from_time / to_time                   -- ABSENCE uses full-day sentinels; UI hides times
 ├── reason (text)
 ├── status (PENDING, ACCEPTED, REJECTED, FORCED)
 ├── team_leader_id (FK)
@@ -261,6 +262,7 @@ permissions
 ├── is_double_penalty (boolean)           -- TRUE if FORCED
 ├── created_at / updated_at
 ```
+> **ABSENCE_PERMISSION (T-15.1):** period From→To (max 31 days). Accept/Force → `attendance.EXCUSED_ABSENCE` for each **working** day (rest / official holiday / approved vacation skipped). TL may submit → Admin decides.
 
 ### 2.4 Vacations Table
 ```sql

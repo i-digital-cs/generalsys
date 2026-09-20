@@ -64,7 +64,7 @@ class RequestController extends Controller
             $this->permissions->submit($request->user(), $request->validated());
         } catch (PermissionRequestException $e) {
             throw ValidationException::withMessages([
-                'type' => __($e->getMessage()),
+                'type' => __($e->getMessage(), $e->replace()),
             ]);
         }
 
@@ -81,7 +81,7 @@ class RequestController extends Controller
             $this->permissions->force($request->user(), $permission);
         } catch (PermissionRequestException $e) {
             throw ValidationException::withMessages([
-                'permission' => __($e->getMessage()),
+                'permission' => __($e->getMessage(), $e->replace()),
             ]);
         }
 

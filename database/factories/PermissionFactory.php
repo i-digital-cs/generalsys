@@ -17,6 +17,7 @@ class PermissionFactory extends Factory
             'user_id' => User::factory()->employee(),
             'type' => Permission::TYPE_LEAVE,
             'request_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
             'from_time' => '10:00',
             'to_time' => '12:00',
             'status' => Permission::STATUS_PENDING,

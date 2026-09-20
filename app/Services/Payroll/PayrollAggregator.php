@@ -278,6 +278,16 @@ class PayrollAggregator
         $forced = 0.0;
 
         foreach ($rows as $row) {
+            if ($row->type === Permission::TYPE_ABSENCE) {
+                if ($row->status === Permission::STATUS_FORCED) {
+                    // Force stores reject_base × multiplier; calculator surcharge expects reject_base
+                    // so total with always-on excused day-rate = multiplier × day-rate × days.
+                    $forced += $this->forcedRejectBase($row);
+                }
+
+                continue;
+            }
+
             $minutes = $this->permissions->minutes($row);
             if ($row->type === Permission::TYPE_LEAVE) {
                 $leave += $minutes;
@@ -285,7 +295,7 @@ class PayrollAggregator
                 $late += $minutes;
             }
             if ($row->status === Permission::STATUS_FORCED) {
-                $forced += (float) $row->penalty_amount;
+                $forced += $this->forcedRejectBase($row);
             }
         }
 
@@ -294,6 +304,29 @@ class PayrollAggregator
             'late_minutes' => $late,
             'forced_base' => round($forced, 2),
         ];
+    }
+
+    /**
+     * Stored FORCED penalty_amount is reject_base × double multiplier.
+     * PayrollCalculator::forcedSurcharge expects reject_base.
+     */
+    private function forcedRejectBase(Permission $row): float
+    {
+        $stored = (float) $row->penalty_amount;
+        if ($stored <= 0 || ! $row->is_double_penalty) {
+            return $stored;
+        }
+
+        $row->loadMissing('user');
+        $multiplier = $row->user !== null
+            ? $this->permissions->doubleMultiplier($row->user, $row->type)
+            : (float) config('penalties.double_penalty_multiplier', 2.0);
+
+        if ($multiplier <= 1) {
+            return $stored;
+        }
+
+        return round($stored / $multiplier, 2);
     }
 
     /**
