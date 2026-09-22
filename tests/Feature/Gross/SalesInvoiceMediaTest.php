@@ -86,7 +86,7 @@ class SalesInvoiceMediaTest extends TestCase
         Storage::disk('local')->assertMissing($media->file_path);
     }
 
-    public function test_sales_can_upload_on_confirmed_invoice_without_title(): void
+    public function test_sales_cannot_upload_media_manager_can(): void
     {
         $sales = User::factory()->sales()->create();
         ValuationAssignment::query()->create([
@@ -101,12 +101,17 @@ class SalesInvoiceMediaTest extends TestCase
             ->post(route('gross.sales.media.store', $confirmed), [
                 'image' => UploadedFile::fake()->image('note.png', 100, 100),
             ])
+            ->assertForbidden();
+
+        $this->assertSame(0, GrossSalesInvoiceMedia::query()->count());
+
+        $this->actingAs($this->manager)
+            ->post(route('gross.sales.media.store', $confirmed), [
+                'image' => UploadedFile::fake()->image('note.png', 100, 100),
+            ])
             ->assertRedirect(route('gross.sales.show', $confirmed));
 
-        $media = GrossSalesInvoiceMedia::query()->firstOrFail();
-        $this->assertNull($media->title);
-        $this->assertNull($media->description);
-        $this->assertSame($sales->id, $media->uploaded_by);
+        $this->assertSame(1, GrossSalesInvoiceMedia::query()->count());
     }
 
     public function test_employee_cannot_manage_media(): void

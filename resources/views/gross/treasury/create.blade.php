@@ -83,33 +83,40 @@
                         @if ($type === 'RECEIPT')
                             @php
                                 $selectedRp = (string) old('receipt_purpose_id', $selectedReceiptPurposeId ?? '');
-                                $uiPurposeValue = $purpose === 'OTHER' && $selectedRp !== ''
-                                    ? 'OTHER:'.$selectedRp
-                                    : $purpose;
+                                $uiPurposeValue = $selectedRp !== '' ? 'OTHER:'.$selectedRp : '';
+                                $isSystemReceipt = in_array($purpose, ['SUPPLIER', 'EXPENSE', 'COURIER_COD'], true);
                             @endphp
-                            <select id="purpose_ui" class="form-select @error('purpose') is-invalid @enderror @error('receipt_purpose_id') is-invalid @enderror" required>
-                                @forelse ($receiptPurposes as $receiptPurpose)
-                                    <option value="OTHER:{{ $receiptPurpose->id }}"
-                                            @selected($uiPurposeValue === 'OTHER:'.$receiptPurpose->id)>
-                                        {{ $receiptPurpose->localizedName() }}
-                                    </option>
-                                @empty
-                                    {{-- no admin purposes yet — system options only --}}
-                                @endforelse
-                                <option value="EXPENSE" @selected($uiPurposeValue === 'EXPENSE')>{{ __('gross.treasury.purposes.EXPENSE') }}</option>
-                                <option value="SUPPLIER" @selected($uiPurposeValue === 'SUPPLIER')>{{ __('gross.treasury.purposes.SUPPLIER') }}</option>
-                                <option value="COURIER_COD" @selected($uiPurposeValue === 'COURIER_COD')>{{ __('gross.treasury.purposes.COURIER_COD') }}</option>
-                            </select>
-                            <input type="hidden" name="purpose" id="purpose" value="{{ $purpose }}">
-                            <input type="hidden" name="receipt_purpose_id" id="receipt_purpose_id" value="{{ $selectedRp }}">
-                            @error('purpose') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                            @error('receipt_purpose_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                            <div class="form-text">{{ __('gross.treasury.receipt_other_help') }}</div>
-                            @can('viewAny', App\Models\Gross\GrossReceiptPurpose::class)
-                                <div class="form-text">
-                                    <a href="{{ route('gross.receipt-purposes.index') }}">{{ __('gross.receipt_purposes.manage_link') }}</a>
+                            @if ($isSystemReceipt)
+                                {{-- Deep-link / COD / supplier receipt: system purpose fixed, not in admin list --}}
+                                <input type="hidden" name="purpose" id="purpose" value="{{ $purpose }}">
+                                <input type="hidden" name="receipt_purpose_id" id="receipt_purpose_id" value="">
+                                <div class="form-control bg-body-secondary" id="purpose_ui_readonly">
+                                    {{ __('gross.treasury.purposes.'.$purpose) }}
                                 </div>
-                            @endcan
+                                <div class="form-text">{{ __('gross.treasury.system_purpose_hint') }}</div>
+                            @else
+                                <select id="purpose_ui" class="form-select @error('purpose') is-invalid @enderror @error('receipt_purpose_id') is-invalid @enderror"
+                                        @if ($receiptPurposes->isEmpty()) disabled @endif required>
+                                    @forelse ($receiptPurposes as $receiptPurpose)
+                                        <option value="OTHER:{{ $receiptPurpose->id }}"
+                                                @selected($uiPurposeValue === 'OTHER:'.$receiptPurpose->id)>
+                                            {{ $receiptPurpose->localizedName() }}
+                                        </option>
+                                    @empty
+                                        <option value="">{{ __('gross.receipt_purposes.empty') }}</option>
+                                    @endforelse
+                                </select>
+                                <input type="hidden" name="purpose" id="purpose" value="OTHER">
+                                <input type="hidden" name="receipt_purpose_id" id="receipt_purpose_id" value="{{ $selectedRp }}">
+                                @error('purpose') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                @error('receipt_purpose_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                <div class="form-text">{{ __('gross.treasury.receipt_other_help') }}</div>
+                                @can('viewAny', App\Models\Gross\GrossReceiptPurpose::class)
+                                    <div class="form-text">
+                                        <a href="{{ route('gross.receipt-purposes.index') }}">{{ __('gross.receipt_purposes.manage_link') }}</a>
+                                    </div>
+                                @endcan
+                            @endif
                         @else
                             <select id="purpose" name="purpose" class="form-select @error('purpose') is-invalid @enderror" required>
                                 <option value="EXPENSE" @selected($purpose === 'EXPENSE')>{{ __('gross.treasury.purposes.EXPENSE') }}</option>

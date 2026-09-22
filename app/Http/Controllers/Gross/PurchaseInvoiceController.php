@@ -166,7 +166,7 @@ class PurchaseInvoiceController extends Controller
         }
 
         try {
-            $this->invoices->updateDraft($purchase, $data, $lines);
+            $this->invoices->update($purchase, $data, $lines, $request->user());
         } catch (GrossException $e) {
             return back()->withInput()->withErrors(['lines' => __($e->getMessage())]);
         }
@@ -174,6 +174,21 @@ class PurchaseInvoiceController extends Controller
         return redirect()
             ->route('gross.purchases.show', $purchase)
             ->with('success', __('gross.flash.purchase_updated'));
+    }
+
+    public function destroy(GrossPurchaseInvoice $purchase): RedirectResponse
+    {
+        $this->authorize('delete', $purchase);
+
+        try {
+            $this->invoices->delete($purchase, request()->user());
+        } catch (GrossException $e) {
+            return back()->withErrors(['status' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->route('gross.purchases.index')
+            ->with('success', __('gross.flash.purchase_deleted'));
     }
 
     public function confirm(GrossPurchaseInvoice $purchase): RedirectResponse

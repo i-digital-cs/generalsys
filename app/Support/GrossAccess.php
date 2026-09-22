@@ -60,4 +60,31 @@ final class GrossAccess
     {
         return self::mayManageMasterData($user);
     }
+
+    /**
+     * All sales-invoice mutations after create — Manager (Admin) only.
+     * Includes edit, cancel, confirm, fulfillment, COD, returns, refuse, media.
+     * Create stays on maySell so Sales can open drafts.
+     */
+    public static function mayAdminMutateSalesInvoice(?User $user): bool
+    {
+        if ($user === null || ! self::mayAccessGross($user)) {
+            return false;
+        }
+
+        return $user->isManager();
+    }
+
+    /**
+     * Purchase invoice update / delete (any status) — Manager (Admin) only.
+     * Create / confirm / returns stay on mayManageMasterData (Manager + Accountant).
+     */
+    public static function mayAdminMutatePurchaseInvoice(?User $user): bool
+    {
+        if ($user === null || ! self::mayAccessGross($user)) {
+            return false;
+        }
+
+        return $user->isManager();
+    }
 }

@@ -69,9 +69,7 @@ class TreasuryController extends Controller
         $receiptPurposeId = old('receipt_purpose_id', $request->query('receipt_purpose_id'));
 
         $defaultPurpose = $type === GrossTreasuryVoucher::TYPE_RECEIPT
-            ? ($receiptPurposes->isNotEmpty()
-                ? GrossTreasuryVoucher::PURPOSE_OTHER
-                : GrossTreasuryVoucher::PURPOSE_SUPPLIER)
+            ? GrossTreasuryVoucher::PURPOSE_OTHER
             : GrossTreasuryVoucher::PURPOSE_EXPENSE;
         $purpose = strtoupper((string) $request->query('purpose', $defaultPurpose));
         if (! in_array($purpose, [
@@ -93,12 +91,6 @@ class TreasuryController extends Controller
 
         if ($purpose === GrossTreasuryVoucher::PURPOSE_COURIER_COD) {
             $type = GrossTreasuryVoucher::TYPE_RECEIPT;
-        }
-
-        if ($type === GrossTreasuryVoucher::TYPE_RECEIPT
-            && $purpose === GrossTreasuryVoucher::PURPOSE_OTHER
-            && $receiptPurposes->isEmpty()) {
-            $purpose = GrossTreasuryVoucher::PURPOSE_SUPPLIER;
         }
 
         $supplierId = old('supplier_id', $request->query('supplier_id'));

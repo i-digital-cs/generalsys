@@ -155,8 +155,7 @@ class PurchaseInvoiceFlowTest extends TestCase
         $this->actingAs($manager)
             ->from(route('gross.purchases.show', $invoice))
             ->post(route('gross.purchases.cancel', $invoice))
-            ->assertRedirect()
-            ->assertSessionHasErrors('status');
+            ->assertForbidden();
 
         $this->assertSame(GrossPurchaseInvoice::STATUS_CONFIRMED, $invoice->fresh()->status);
     }

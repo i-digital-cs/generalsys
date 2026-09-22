@@ -61,6 +61,11 @@ class GrossException extends RuntimeException
         return new self('gross.errors.purchase_return_qty');
     }
 
+    public static function purchaseHasReturns(): self
+    {
+        return new self('gross.errors.purchase_has_returns');
+    }
+
     public static function notConfirmed(): self
     {
         return new self('gross.errors.not_confirmed');

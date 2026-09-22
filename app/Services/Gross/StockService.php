@@ -272,6 +272,47 @@ class StockService
     }
 
     /**
+     * Undo purchase stock in (admin update/delete): ON_HAND − pieces.
+     */
+    public function reversePurchaseIn(
+        GrossItem $item,
+        int $qtyPieces,
+        int $conversionFactor,
+        string $unit,
+        int $qty,
+        string $refType,
+        int $refId,
+        ?User $actor = null,
+    ): GrossStockMovement {
+        if ($qtyPieces < 1) {
+            throw GrossException::invalidQty();
+        }
+
+        return DB::transaction(function () use ($item, $qtyPieces, $conversionFactor, $unit, $qty, $refType, $refId, $actor) {
+            $balance = $this->lockBalance($item);
+
+            if ($balance->qty_on_hand_pieces < $qtyPieces) {
+                throw GrossException::insufficientStock();
+            }
+
+            $balance->qty_on_hand_pieces -= $qtyPieces;
+            $balance->save();
+
+            return $this->createMovement(
+                $item,
+                GrossStockMovement::TYPE_ADJUSTMENT_OUT,
+                $qty,
+                $unit,
+                $conversionFactor,
+                $qtyPieces,
+                $refType,
+                $refId,
+                $actor,
+            );
+        });
+    }
+
+    /**
      * Purchase return: ON_HAND − pieces.
      */
     public function applyPurchaseReturn(

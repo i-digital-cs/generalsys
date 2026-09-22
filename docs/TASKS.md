@@ -1150,6 +1150,38 @@ Isolated from valuation Gross tiles and Gross treasury. Formula: remaining = exp
 3. Show/index display purpose name; cannot delete purpose in use.
 4. AR + EN + RTL/LTR + ~375/768/1280.
 
+### T-15.3 — Sales invoice mutations: Manager (Admin) only
+- Depends on: T-10.9
+- Unlocks: —
+- Status: `done`
+- Scope:
+  - [x] `GrossAccess::mayAdminMutateSalesInvoice` → Manager only
+  - [x] Policy: update/cancel/confirm/fulfillment/COD/returns/refuse/media → Admin only
+  - [x] Create (+ import) still `maySell` (Sales can open drafts)
+  - [x] PHPUnit
+
+**Manual UI test**
+1. Login as Sales → can create draft; no Edit/Cancel/Confirm/COD buttons on show.
+2. Login as Manager → all invoice action buttons work.
+3. Accountant → same as Sales for mutations (403 / hidden).
+
+### T-15.4 — Purchase update/delete any status: Manager (Admin) only
+- Depends on: T-11.2
+- Unlocks: —
+- Status: `done`
+- Scope:
+  - [x] `GrossAccess::mayAdminMutatePurchaseInvoice` → Manager only
+  - [x] Policy `update` / `delete` any status; soft `cancel` draft-only; create/confirm/returns stay Manager+Accountant
+  - [x] Confirmed update: reverse stock → rewrite lines → re-apply (blocked if returns exist)
+  - [x] Confirmed delete: unwind returns + reverse PURCHASE_IN then hard-delete
+  - [x] Index/show: Edit + Delete for Admin on all statuses
+  - [x] PHPUnit + AR/EN
+
+**Manual UI test**
+1. Manager: Edit/Delete on draft and confirmed purchases; stock adjusts.
+2. Accountant: create/confirm OK; no Edit/Delete.
+3. Confirmed with returns: Edit blocked; Delete OK and stock nets to zero.
+
 ## Dependency map
 
 ```text
@@ -1381,3 +1413,5 @@ Example:
 - [x] 2026-09-20 T-15.1 amend — Absence supports **period** From→To (max 31 days); each day excused on accept. Commands: `php artisan migrate`; `php artisan test --filter='AbsencePermissionTest|PermissionRequestTest|PermissionApprovalTest|LangParityTest'` (23 PASS); Pint.
 - [x] 2026-09-20 T-15.1 review fixes — Skip rest/holiday/vacation on apply; forced_base = reject_base (no 3× stack); notifications From–To; dated dayAlreadyWorked; docs sync. Commands: `php artisan test --filter='AbsencePermissionTest|LangParityTest|PermissionForceTest|PermissionApprovalTest|PermissionRequestTest|PayrollCalculatorTest'` (53 PASS); Pint. UI/UX: AR+EN hint + errors.
 - [x] 2026-09-22 T-15.2 PASS — Admin receipt purposes (`gross_receipt_purposes` + voucher FK); CRUD under expense types; RECEIPT غرض lists admin purposes → OTHER+FK. Commands: `php artisan migrate --force`; `php artisan test --filter='ReceiptPurposeCrudTest|TreasuryVoucherTest|ExpenseTypeCrudTest|LangParityTest'` (12 PASS); Pint; `route:list --name=gross.receipt`. UI/UX: AR+EN keys; menu + expense-types button + create manage link.
+- [x] 2026-09-22 T-15.3 PASS — All sales-invoice mutations Manager-only (create stays maySell). Commands: `php artisan test --filter='SalesInvoiceAdminMutateTest|SalesInvoiceMediaTest|SalesInvoiceFlowTest|SalesInvoiceCodTreasuryTest|CourierCollectionTest|LangParityTest'`; Pint. UI/UX: N/A (policy; `@can` on show).
+- [x] 2026-09-22 T-15.4 PASS — Purchase update/delete any status Manager-only (confirmed stock reverse/re-apply; delete unwinds returns). Commands: `php artisan test --filter='PurchaseInvoiceAdminMutateTest|PurchaseInvoiceFlowTest|PurchaseReturnFlowTest|LangParityTest'`; Pint. UI/UX: AR+EN delete_confirm; Edit/Delete on index+show.

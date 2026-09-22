@@ -239,7 +239,10 @@ class TreasuryVoucherTest extends TestCase
             ->assertOk()
             ->assertSee('value="OTHER:'.$purpose->id.'"', false)
             ->assertSee('Owner capital', false)
-            ->assertSee('Manage receipt purposes', false);
+            ->assertSee('Manage receipt purposes', false)
+            ->assertDontSee('value="EXPENSE"', false)
+            ->assertDontSee('value="SUPPLIER"', false)
+            ->assertDontSee('value="COURIER_COD"', false);
 
         $this->actingAs($manager)
             ->post(route('gross.treasury.store'), [

@@ -147,11 +147,13 @@ One DB transaction.
 | Browse Gross (Mohra) | Mohra assignment / Manager |
 | Items / shipping / customers / suppliers CRUD | Manager, Accountant (Mohra) |
 | Purchase invoices create/confirm | Manager, Accountant (Mohra) — **not** Team Leader (deferred) |
+| Purchase update / delete (any status) | **Manager (Admin) only** — confirmed update reverses/re-applies stock; delete unwinds returns + stock |
 | Stock adjustment | Manager, Accountant |
-| Create/confirm sales invoice | Manager, Accountant, Sales |
+| Create sales invoice (draft) | Manager, Accountant, Sales |
+| Edit / cancel / confirm / fulfillment / COD / returns / refuse / media | **Manager (Admin) only** |
 | Collect shipping fee / mark delivered | Manager, Accountant, Sales |
 | Client refuse | Manager, Accountant, Sales |
-| Confirm item loss | Capability `gross.loss.confirm`: default **Manager + Accountant**; Sales only if `users.can_confirm_gross_loss = 1` |
+| Confirm item loss | Capability `gross.loss.confirm` **and** Manager (Admin) for sales-invoice loss action |
 
 ---
 
@@ -266,7 +268,7 @@ Mark delivered                                    →  only if cod ∈ {NONE, CO
 
 UI: collections queue shows invoice total + COD status (replaces shipping-fee-only queue labels).
 shipping_fee column stays on invoice (part of total math); separate “collect shipping fee” action removed.
-Who: Collect COD — Manager, Accountant, Sales (Mohra). Same as today’s collect fee.
+Who: Collect COD — **Manager (Admin) only** (all sales-invoice mutations; see § access matrix).
 ```
 
 **Migration note:** map existing `shipping_fee_status = PENDING` on CONFIRMED invoices → `cod_collection_status = PENDING`; `COLLECTED` → `COLLECTED`; `LOST` → `LOST`; `NONE` → `NONE`. Keep `shipping_fee_status` column for audit but UI/services use `cod_collection_status` after T-12.4.

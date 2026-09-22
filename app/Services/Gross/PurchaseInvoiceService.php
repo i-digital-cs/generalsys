@@ -7,6 +7,8 @@ use App\Models\Gross\GrossItem;
 use App\Models\Gross\GrossPurchaseInvoice;
 use App\Models\Gross\GrossPurchaseInvoiceLine;
 use App\Models\Gross\GrossPurchaseInvoiceSequence;
+use App\Models\Gross\GrossPurchaseReturn;
+use App\Models\Gross\GrossPurchaseReturnLine;
 use App\Models\Gross\GrossSupplier;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -58,37 +60,57 @@ class PurchaseInvoiceService
     }
 
     /**
+     * Admin update — any status. Confirmed invoices reverse then re-apply stock.
+     * Confirmed invoices with returns cannot be edited (delete first or reverse returns).
+     *
      * @param  array<string, mixed>  $data
      * @param  list<array<string, mixed>>  $lines
      */
-    public function updateDraft(GrossPurchaseInvoice $invoice, array $data, array $lines): GrossPurchaseInvoice
+    public function update(GrossPurchaseInvoice $invoice, array $data, array $lines, ?User $actor = null): GrossPurchaseInvoice
     {
-        if (! $invoice->isDraft()) {
-            throw GrossException::notDraft();
-        }
+        return DB::transaction(function () use ($invoice, $data, $lines, $actor) {
+            /** @var GrossPurchaseInvoice $locked */
+            $locked = GrossPurchaseInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            $wasConfirmed = $locked->isConfirmed();
 
-        return DB::transaction(function () use ($invoice, $data, $lines) {
+            if ($wasConfirmed) {
+                $locked->loadCount('returns');
+                if ((int) $locked->returns_count > 0) {
+                    throw GrossException::purchaseHasReturns();
+                }
+                $this->reverseConfirmedPurchaseStock($locked, $actor);
+            }
+
             $supplier = $this->resolveSupplier($data);
-
-            $invoice->update([
+            $locked->update([
                 'supplier_id' => $supplier?->id,
-                'supplier_name' => $data['supplier_name'] ?? $supplier?->name ?? $invoice->supplier_name,
-                'supplier_phone' => $data['supplier_phone'] ?? $supplier?->phone ?? $invoice->supplier_phone,
+                'supplier_name' => $data['supplier_name'] ?? $supplier?->name ?? $locked->supplier_name,
+                'supplier_phone' => $data['supplier_phone'] ?? $supplier?->phone ?? $locked->supplier_phone,
                 'supplier_address' => array_key_exists('supplier_address', $data)
                     ? $data['supplier_address']
-                    : ($supplier?->address ?? $invoice->supplier_address),
-                'currency' => $data['currency'] ?? $invoice->currency,
-                'discount_amount' => $data['discount_amount'] ?? $invoice->discount_amount,
-                'discount_percent' => $data['discount_percent'] ?? $invoice->discount_percent,
-                'notes' => array_key_exists('notes', $data) ? $data['notes'] : $invoice->notes,
+                    : ($supplier?->address ?? $locked->supplier_address),
+                'currency' => $data['currency'] ?? $locked->currency,
+                'discount_amount' => $data['discount_amount'] ?? $locked->discount_amount,
+                'discount_percent' => $data['discount_percent'] ?? $locked->discount_percent,
+                'notes' => array_key_exists('notes', $data) ? $data['notes'] : $locked->notes,
             ]);
 
-            $invoice->lines()->delete();
-            $this->syncLines($invoice->fresh(), $lines);
-            $this->recalculateTotals($invoice->fresh());
+            $locked->lines()->delete();
+            $this->syncLines($locked->fresh(), $lines);
+            $this->recalculateTotals($locked->fresh());
 
-            return $invoice->fresh(['lines', 'supplier']);
+            if ($wasConfirmed) {
+                $this->applyConfirmedPurchaseStock($locked->fresh(['lines.item']), $actor);
+            }
+
+            return $locked->fresh(['lines', 'supplier']);
         });
+    }
+
+    /** @deprecated Use update() */
+    public function updateDraft(GrossPurchaseInvoice $invoice, array $data, array $lines): GrossPurchaseInvoice
+    {
+        return $this->update($invoice, $data, $lines);
     }
 
     public function confirm(GrossPurchaseInvoice $invoice, ?User $actor = null): GrossPurchaseInvoice
@@ -111,28 +133,7 @@ class PurchaseInvoiceService
                 throw GrossException::invalidQty();
             }
 
-            foreach ($locked->lines as $line) {
-                $item = $line->item;
-                if ($item === null) {
-                    throw GrossException::invalidTransition();
-                }
-
-                $this->stock->applyPurchaseIn(
-                    $item,
-                    (int) $line->qty_pieces,
-                    (int) $line->conversion_factor_snapshot,
-                    $line->unit,
-                    (int) $line->qty,
-                    GrossPurchaseInvoiceLine::class,
-                    (int) $line->id,
-                    $actor,
-                );
-
-                $salePrice = (float) $line->sale_price;
-                if ($salePrice > 0 && (float) $item->default_sale_price !== $salePrice) {
-                    $item->update(['default_sale_price' => $salePrice]);
-                }
-            }
+            $this->applyConfirmedPurchaseStock($locked, $actor);
 
             $locked->update([
                 'status' => GrossPurchaseInvoice::STATUS_CONFIRMED,
@@ -163,6 +164,23 @@ class PurchaseInvoiceService
             ]);
 
             return $locked->fresh(['lines']);
+        });
+    }
+
+    /**
+     * Admin hard-delete — any status. Confirmed: unwind returns then reverse PURCHASE_IN.
+     */
+    public function delete(GrossPurchaseInvoice $invoice, ?User $actor = null): void
+    {
+        DB::transaction(function () use ($invoice, $actor) {
+            /** @var GrossPurchaseInvoice $locked */
+            $locked = GrossPurchaseInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->isConfirmed()) {
+                $this->unwindConfirmedForDelete($locked, $actor);
+            }
+
+            $locked->delete();
         });
     }
 
@@ -197,6 +215,104 @@ class PurchaseInvoiceService
         ]);
 
         return $invoice->refresh();
+    }
+
+    private function applyConfirmedPurchaseStock(GrossPurchaseInvoice $invoice, ?User $actor): void
+    {
+        $invoice->loadMissing(['lines.item']);
+
+        foreach ($invoice->lines as $line) {
+            $item = $line->item;
+            if ($item === null) {
+                throw GrossException::invalidTransition();
+            }
+
+            $this->stock->applyPurchaseIn(
+                $item,
+                (int) $line->qty_pieces,
+                (int) $line->conversion_factor_snapshot,
+                $line->unit,
+                (int) $line->qty,
+                GrossPurchaseInvoiceLine::class,
+                (int) $line->id,
+                $actor,
+            );
+
+            $salePrice = (float) $line->sale_price;
+            if ($salePrice > 0 && (float) $item->default_sale_price !== $salePrice) {
+                $item->update(['default_sale_price' => $salePrice]);
+            }
+        }
+    }
+
+    private function reverseConfirmedPurchaseStock(GrossPurchaseInvoice $invoice, ?User $actor): void
+    {
+        $invoice->loadMissing(['lines.item']);
+
+        foreach ($invoice->lines as $line) {
+            $item = $line->item;
+            if ($item === null) {
+                throw GrossException::invalidTransition();
+            }
+
+            $pieces = (int) $line->qty_pieces;
+            if ($pieces < 1) {
+                continue;
+            }
+
+            $this->stock->reversePurchaseIn(
+                $item,
+                $pieces,
+                (int) $line->conversion_factor_snapshot,
+                $line->unit,
+                (int) $line->qty,
+                GrossPurchaseInvoiceLine::class,
+                (int) $line->id,
+                $actor,
+            );
+        }
+    }
+
+    private function unwindConfirmedForDelete(GrossPurchaseInvoice $invoice, ?User $actor): void
+    {
+        $invoice->load(['returns.lines.item', 'lines.item']);
+
+        foreach ($invoice->returns as $return) {
+            $this->restoreReturnStock($return, $actor);
+        }
+
+        $this->reverseConfirmedPurchaseStock($invoice, $actor);
+
+        foreach ($invoice->returns as $return) {
+            $return->lines()->delete();
+            $return->delete();
+        }
+    }
+
+    private function restoreReturnStock(GrossPurchaseReturn $return, ?User $actor): void
+    {
+        foreach ($return->lines as $line) {
+            $item = $line->item;
+            if ($item === null) {
+                continue;
+            }
+
+            $pieces = (int) $line->qty_pieces;
+            if ($pieces < 1) {
+                continue;
+            }
+
+            $this->stock->applyPurchaseIn(
+                $item,
+                $pieces,
+                (int) $line->conversion_factor,
+                $line->unit,
+                (int) $line->qty,
+                GrossPurchaseReturnLine::class,
+                (int) $line->id,
+                $actor,
+            );
+        }
     }
 
     /**

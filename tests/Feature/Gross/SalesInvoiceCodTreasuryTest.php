@@ -127,7 +127,7 @@ class SalesInvoiceCodTreasuryTest extends TestCase
             ->count());
     }
 
-    public function test_sales_cannot_post_treasury_on_collect(): void
+    public function test_sales_cannot_collect_cod(): void
     {
         $manager = User::factory()->manager()->create();
         $sales = User::factory()->sales()->create();
@@ -145,10 +145,10 @@ class SalesInvoiceCodTreasuryTest extends TestCase
                 'post_to_treasury' => '1',
                 'treasury_account_id' => $cash->id,
             ])
-            ->assertRedirect();
+            ->assertForbidden();
 
         $invoice->refresh();
-        $this->assertSame(GrossSalesInvoice::COD_COLLECTED, $invoice->cod_collection_status);
+        $this->assertSame(GrossSalesInvoice::COD_PENDING, $invoice->cod_collection_status);
         $this->assertSame(0, GrossTreasuryVoucher::query()->where('sales_invoice_id', $invoice->id)->count());
     }
 

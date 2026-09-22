@@ -223,6 +223,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases/{purchase}/excel', [GrossPurchaseInvoiceController::class, 'excel'])->name('purchases.excel');
         Route::get('/purchases/{purchase}/edit', [GrossPurchaseInvoiceController::class, 'edit'])->name('purchases.edit');
         Route::put('/purchases/{purchase}', [GrossPurchaseInvoiceController::class, 'update'])->name('purchases.update');
+        Route::delete('/purchases/{purchase}', [GrossPurchaseInvoiceController::class, 'destroy'])->name('purchases.destroy');
         Route::post('/purchases/{purchase}/confirm', [GrossPurchaseInvoiceController::class, 'confirm'])->name('purchases.confirm');
         Route::post('/purchases/{purchase}/cancel', [GrossPurchaseInvoiceController::class, 'cancel'])->name('purchases.cancel');
         Route::post('/purchases/{purchase}/return', [GrossPurchaseInvoiceController::class, 'returnLines'])->name('purchases.return');

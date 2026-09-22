@@ -66,7 +66,20 @@
                                         <span class="num-ltr"><x-money :amount="$invoice->total" :currency="$invoice->currency" /></span>
                                     </td>
                                     <td class="text-end">
-                                        <a href="{{ route('gross.purchases.show', $invoice) }}" class="btn btn-sm btn-outline-primary">{{ __('general.view') }}</a>
+                                        <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                                            <a href="{{ route('gross.purchases.show', $invoice) }}" class="btn btn-sm btn-outline-primary">{{ __('general.view') }}</a>
+                                            @can('update', $invoice)
+                                                <a href="{{ route('gross.purchases.edit', $invoice) }}" class="btn btn-sm btn-outline-secondary">{{ __('general.edit') }}</a>
+                                            @endcan
+                                            @can('delete', $invoice)
+                                                <form method="post" action="{{ route('gross.purchases.destroy', $invoice) }}" class="d-inline"
+                                                      onsubmit="return confirm(@js(__('gross.purchases.delete_confirm')))">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ __('general.delete') }}</button>
+                                                </form>
+                                            @endcan
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach

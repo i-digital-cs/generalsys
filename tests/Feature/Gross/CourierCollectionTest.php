@@ -235,7 +235,7 @@ class CourierCollectionTest extends TestCase
         $this->assertSame(1, $alloc->qty_delivered_pieces);
     }
 
-    public function test_sales_can_collect_unassigned_employee_cannot(): void
+    public function test_sales_cannot_collect_unassigned_employee_cannot(): void
     {
         $manager = User::factory()->manager()->create();
         $shipping = GrossShippingCompany::query()->create(['name' => 'Courier', 'status' => 'ACTIVE']);
@@ -269,9 +269,9 @@ class CourierCollectionTest extends TestCase
 
         $this->actingAs($sales->fresh())
             ->post(route('gross.sales.collect-cod', $invoice))
-            ->assertRedirect();
+            ->assertForbidden();
 
-        $this->assertSame(GrossSalesInvoice::COD_COLLECTED, $invoice->fresh()->cod_collection_status);
+        $this->assertSame(GrossSalesInvoice::COD_PENDING, $invoice->fresh()->cod_collection_status);
 
         $employee = User::factory()->employee()->create();
         $pending = $service->createDraft($manager, [

@@ -135,6 +135,13 @@ class SalesInvoiceFlowTest extends TestCase
         $sales->update(['can_confirm_gross_loss' => true]);
         $this->assertTrue($sales->fresh()->mayConfirmGrossLoss());
 
+        $this->actingAs($sales->fresh())
+            ->post(route('gross.sales.loss', $invoice), [
+                'allocation_id' => $alloc->id,
+                'qty_pieces' => 1,
+            ])
+            ->assertForbidden();
+
         $this->allocations->confirmLoss($alloc->fresh(), 2, $this->manager);
         $alloc->refresh();
         $this->assertSame(2, $alloc->qty_lost_pieces);

@@ -22,21 +22,24 @@
                     <span class="visually-hidden">{{ __('gross.purchases.export_pdf') }}</span>
                 </a>
             @endif
+            @can('update', $invoice)
+                <a href="{{ route('gross.purchases.edit', $invoice) }}" class="btn btn-outline-primary btn-sm">{{ __('general.edit') }}</a>
+            @endcan
             @if ($invoice->isDraft())
-                @can('update', $invoice)
-                    <a href="{{ route('gross.purchases.edit', $invoice) }}" class="btn btn-outline-primary btn-sm">{{ __('general.edit') }}</a>
-                @endcan
                 @can('confirm', $invoice)
                     <form method="post" action="{{ route('gross.purchases.confirm', $invoice) }}">@csrf
                         <button class="btn btn-primary btn-sm">{{ __('gross.purchases.confirm') }}</button>
                     </form>
                 @endcan
-                @can('cancel', $invoice)
-                    <form method="post" action="{{ route('gross.purchases.cancel', $invoice) }}">@csrf
-                        <button class="btn btn-outline-danger btn-sm">{{ __('gross.purchases.cancel') }}</button>
-                    </form>
-                @endcan
             @endif
+            @can('delete', $invoice)
+                <form method="post" action="{{ route('gross.purchases.destroy', $invoice) }}"
+                      onsubmit="return confirm(@js(__('gross.purchases.delete_confirm')))">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger btn-sm">{{ __('general.delete') }}</button>
+                </form>
+            @endcan
         </div>
     </div>
 

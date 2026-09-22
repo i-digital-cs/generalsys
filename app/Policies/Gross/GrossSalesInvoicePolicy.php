@@ -6,6 +6,10 @@ use App\Models\Gross\GrossSalesInvoice;
 use App\Models\User;
 use App\Support\GrossAccess;
 
+/**
+ * Sales invoices: create = maySell; view = Gross access.
+ * All mutations (edit, cancel, confirm, fulfillment, COD, returns, media) = Manager (Admin) only.
+ */
 class GrossSalesInvoicePolicy
 {
     public function viewAny(User $user): bool
@@ -25,32 +29,33 @@ class GrossSalesInvoicePolicy
 
     public function update(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::maySell($user) && $invoice->isDraft();
+        return GrossAccess::mayAdminMutateSalesInvoice($user) && $invoice->isDraft();
     }
 
     public function confirm(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::maySell($user);
+        return GrossAccess::mayAdminMutateSalesInvoice($user);
     }
 
     public function cancel(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::maySell($user);
+        return GrossAccess::mayAdminMutateSalesInvoice($user);
     }
 
     public function returnLine(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::maySell($user);
+        return GrossAccess::mayAdminMutateSalesInvoice($user);
     }
 
     public function lossLine(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::mayConfirmLoss($user);
+        return GrossAccess::mayAdminMutateSalesInvoice($user)
+            && GrossAccess::mayConfirmLoss($user);
     }
 
     public function collectCod(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::mayCollectCourier($user)
+        return GrossAccess::mayAdminMutateSalesInvoice($user)
             && $invoice->isConfirmed()
             && $invoice->isWithCourier()
             && $invoice->codIsPending();
@@ -64,21 +69,21 @@ class GrossSalesInvoicePolicy
 
     public function markDelivered(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::mayCollectCourier($user)
+        return GrossAccess::mayAdminMutateSalesInvoice($user)
             && $invoice->isWithCourier()
             && $invoice->canMarkDelivered();
     }
 
     public function storePackingImage(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::maySell($user)
+        return GrossAccess::mayAdminMutateSalesInvoice($user)
             && $invoice->isConfirmed()
             && $invoice->isPreparing();
     }
 
     public function markReadyInWarehouse(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::maySell($user)
+        return GrossAccess::mayAdminMutateSalesInvoice($user)
             && $invoice->isConfirmed()
             && $invoice->isPreparing()
             && $invoice->hasPackingImage();
@@ -86,21 +91,21 @@ class GrossSalesInvoicePolicy
 
     public function handToCourier(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::maySell($user)
+        return GrossAccess::mayAdminMutateSalesInvoice($user)
             && $invoice->isConfirmed()
             && $invoice->isReadyInWarehouse();
     }
 
     public function refuse(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::mayRefuse($user)
+        return GrossAccess::mayAdminMutateSalesInvoice($user)
             && $invoice->isConfirmed()
             && $invoice->isWithCourier();
     }
 
     public function receiveReturnedPieces(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::mayCollectCourier($user)
+        return GrossAccess::mayAdminMutateSalesInvoice($user)
             && $invoice->returnedPiecesPendingHandover() > 0;
     }
 
@@ -112,11 +117,11 @@ class GrossSalesInvoicePolicy
 
     public function manageMedia(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::maySell($user);
+        return GrossAccess::mayAdminMutateSalesInvoice($user);
     }
 
     public function deleteMedia(User $user, GrossSalesInvoice $invoice): bool
     {
-        return $this->manageMedia($user, $invoice);
+        return GrossAccess::mayAdminMutateSalesInvoice($user);
     }
 }
