@@ -254,7 +254,7 @@ class SalesInvoiceController extends Controller
         }
 
         try {
-            $this->invoices->updateDraft($invoice, $data, $lines);
+            $this->invoices->update($invoice, $data, $lines, $request->user());
         } catch (GrossException $e) {
             return back()->withInput()->withErrors(['lines' => __($e->getMessage())]);
         }
@@ -262,6 +262,21 @@ class SalesInvoiceController extends Controller
         return redirect()
             ->route('gross.sales.show', $invoice)
             ->with('success', __('gross.flash.invoice_updated'));
+    }
+
+    public function destroy(GrossSalesInvoice $invoice): RedirectResponse
+    {
+        $this->authorize('delete', $invoice);
+
+        try {
+            $this->invoices->delete($invoice, request()->user());
+        } catch (GrossException $e) {
+            return back()->withErrors(['status' => __($e->getMessage())]);
+        }
+
+        return redirect()
+            ->route('gross.sales.index')
+            ->with('success', __('gross.flash.invoice_deleted'));
     }
 
     public function confirm(GrossSalesInvoice $invoice): RedirectResponse

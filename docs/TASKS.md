@@ -1182,6 +1182,22 @@ Isolated from valuation Gross tiles and Gross treasury. Formula: remaining = exp
 2. Accountant: create/confirm OK; no Edit/Delete.
 3. Confirmed with returns: Edit blocked; Delete OK and stock nets to zero.
 
+### T-15.5 — Sales update/delete any status: Manager (Admin) only
+- Depends on: T-15.3
+- Unlocks: —
+- Status: `done`
+- Scope:
+  - [x] Policy `update`/`delete` any status (not draft-only)
+  - [x] Service `update`/`delete`: unwind allocations (courier/delivery/loss), COD voucher, packing/media files
+  - [x] After update past draft → CONFIRMED + PREPARING (re-pack / re-ship)
+  - [x] Index/show Edit + Delete; Stock `reverseDelivery` / `reverseLoss`
+  - [x] PHPUnit + AR/EN
+
+**Manual UI test**
+1. Manager Edit/Delete on confirmed and with-courier invoices; stock returns to ON_HAND.
+2. Sales: create OK; no Edit/Delete.
+3. After Edit on shipped invoice → status CONFIRMED preparing; need packing again.
+
 ## Dependency map
 
 ```text
@@ -1415,3 +1431,4 @@ Example:
 - [x] 2026-09-22 T-15.2 PASS — Admin receipt purposes (`gross_receipt_purposes` + voucher FK); CRUD under expense types; RECEIPT غرض lists admin purposes → OTHER+FK. Commands: `php artisan migrate --force`; `php artisan test --filter='ReceiptPurposeCrudTest|TreasuryVoucherTest|ExpenseTypeCrudTest|LangParityTest'` (12 PASS); Pint; `route:list --name=gross.receipt`. UI/UX: AR+EN keys; menu + expense-types button + create manage link.
 - [x] 2026-09-22 T-15.3 PASS — All sales-invoice mutations Manager-only (create stays maySell). Commands: `php artisan test --filter='SalesInvoiceAdminMutateTest|SalesInvoiceMediaTest|SalesInvoiceFlowTest|SalesInvoiceCodTreasuryTest|CourierCollectionTest|LangParityTest'`; Pint. UI/UX: N/A (policy; `@can` on show).
 - [x] 2026-09-22 T-15.4 PASS — Purchase update/delete any status Manager-only (confirmed stock reverse/re-apply; delete unwinds returns). Commands: `php artisan test --filter='PurchaseInvoiceAdminMutateTest|PurchaseInvoiceFlowTest|PurchaseReturnFlowTest|LangParityTest'`; Pint. UI/UX: AR+EN delete_confirm; Edit/Delete on index+show.
+- [x] 2026-09-22 T-15.5 PASS — Sales update/delete any status Manager-only (unwind courier/delivery/loss + COD voucher). Commands: `php artisan test --filter='SalesInvoiceAdminMutateTest|SalesInvoiceFlowTest|SalesInvoiceFulfillmentPipelineTest|LangParityTest'`; Pint. UI/UX: AR+EN delete_confirm; Edit/Delete index+show.

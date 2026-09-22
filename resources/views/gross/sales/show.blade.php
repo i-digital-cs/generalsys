@@ -8,6 +8,17 @@
 
         <div class="ms-auto overflow-x-auto">
             <div class="d-flex flex-nowrap align-items-center gap-2 pb-1">
+            @can('update', $invoice)
+                <a href="{{ route('gross.sales.edit', $invoice) }}" class="btn btn-outline-primary btn-sm flex-shrink-0">{{ __('general.edit') }}</a>
+            @endcan
+            @can('delete', $invoice)
+                <form method="post" action="{{ route('gross.sales.destroy', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0"
+                      onsubmit="return confirm(@js(__('gross.sales.delete_confirm')))">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger btn-sm">{{ __('general.delete') }}</button>
+                </form>
+            @endcan
             @if ($invoice->isDraft())
                 <a href="{{ route('gross.sales.excel', $invoice) }}"
                    class="btn btn-outline-secondary btn-sm flex-shrink-0"
@@ -21,9 +32,6 @@
                     <i class="bi bi-filetype-pdf" aria-hidden="true"></i>
                     <span class="visually-hidden">{{ __('gross.sales.export_pdf') }}</span>
                 </a>
-                @can('update', $invoice)
-                    <a href="{{ route('gross.sales.edit', $invoice) }}" class="btn btn-outline-primary btn-sm flex-shrink-0">{{ __('general.edit') }}</a>
-                @endcan
                 @can('cancel', $invoice)
                     <form method="post" action="{{ route('gross.sales.cancel', $invoice) }}" class="d-inline-flex mb-0 flex-shrink-0">@csrf
                         <button type="submit" class="btn btn-outline-danger btn-sm">{{ __('gross.sales.cancel') }}</button>

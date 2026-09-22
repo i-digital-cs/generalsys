@@ -195,6 +195,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales/{invoice}/excel', [GrossSalesInvoiceController::class, 'excel'])->name('sales.excel');
         Route::get('/sales/{invoice}/edit', [GrossSalesInvoiceController::class, 'edit'])->name('sales.edit');
         Route::put('/sales/{invoice}', [GrossSalesInvoiceController::class, 'update'])->name('sales.update');
+        Route::delete('/sales/{invoice}', [GrossSalesInvoiceController::class, 'destroy'])->name('sales.destroy');
         Route::post('/sales/{invoice}/confirm', [GrossSalesInvoiceController::class, 'confirm'])->name('sales.confirm');
         Route::post('/sales/{invoice}/packing-image', [GrossSalesInvoiceController::class, 'storePackingImage'])->name('sales.packing-image.store');
         Route::get('/sales/{invoice}/packing-image', [GrossSalesInvoiceController::class, 'packingImage'])->name('sales.packing-image.show');

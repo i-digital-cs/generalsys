@@ -150,7 +150,7 @@ One DB transaction.
 | Purchase update / delete (any status) | **Manager (Admin) only** — confirmed update reverses/re-applies stock; delete unwinds returns + stock |
 | Stock adjustment | Manager, Accountant |
 | Create sales invoice (draft) | Manager, Accountant, Sales |
-| Edit / cancel / confirm / fulfillment / COD / returns / refuse / media | **Manager (Admin) only** |
+| Sales update / delete (any status) + confirm / fulfillment / COD / returns / refuse / media | **Manager (Admin) only** — update/delete unwind courier/delivery/loss stock + COD voucher |
 | Collect shipping fee / mark delivered | Manager, Accountant, Sales |
 | Client refuse | Manager, Accountant, Sales |
 | Confirm item loss | Capability `gross.loss.confirm` **and** Manager (Admin) for sales-invoice loss action |

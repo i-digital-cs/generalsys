@@ -8,7 +8,7 @@ use App\Support\GrossAccess;
 
 /**
  * Sales invoices: create = maySell; view = Gross access.
- * All mutations (edit, cancel, confirm, fulfillment, COD, returns, media) = Manager (Admin) only.
+ * Update / delete (any status) and all other mutations = Manager (Admin) only.
  */
 class GrossSalesInvoicePolicy
 {
@@ -29,7 +29,12 @@ class GrossSalesInvoicePolicy
 
     public function update(User $user, GrossSalesInvoice $invoice): bool
     {
-        return GrossAccess::mayAdminMutateSalesInvoice($user) && $invoice->isDraft();
+        return GrossAccess::mayAdminMutateSalesInvoice($user);
+    }
+
+    public function delete(User $user, GrossSalesInvoice $invoice): bool
+    {
+        return GrossAccess::mayAdminMutateSalesInvoice($user);
     }
 
     public function confirm(User $user, GrossSalesInvoice $invoice): bool

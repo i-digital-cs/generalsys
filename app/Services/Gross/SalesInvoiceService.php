@@ -10,6 +10,7 @@ use App\Models\Gross\GrossSalesInvoice;
 use App\Models\Gross\GrossSalesInvoiceLine;
 use App\Models\Gross\GrossShipmentAllocation;
 use App\Models\Gross\GrossShippingCompany;
+use App\Models\Gross\GrossStockMovement;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
@@ -158,46 +159,61 @@ class SalesInvoiceService
     }
 
     /**
+     * Admin update — any status. Unwinds courier/delivery/loss stock, resets to CONFIRMED+PREPARING
+     * when previously past draft (except CANCELLED stays cancelled).
+     *
      * @param  array<string, mixed>  $data
      * @param  list<array<string, mixed>>  $lines
      */
-    public function updateDraft(GrossSalesInvoice $invoice, array $data, array $lines): GrossSalesInvoice
+    public function update(GrossSalesInvoice $invoice, array $data, array $lines, ?User $actor = null): GrossSalesInvoice
     {
-        if (! $invoice->isDraft()) {
-            throw GrossException::notDraft();
-        }
+        return DB::transaction(function () use ($invoice, $data, $lines, $actor) {
+            /** @var GrossSalesInvoice $locked */
+            $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            $priorStatus = $locked->status;
 
-        return DB::transaction(function () use ($invoice, $data, $lines) {
+            $this->unwindFulfillmentStock($locked, $actor);
+            $this->clearPackingImage($locked);
+            $this->deleteCourierCodVoucher($locked);
+
             $customer = $this->resolveCustomer($data);
-            $shipping = $this->resolveShipping($data, $invoice->shippingCompany);
+            $shipping = $this->resolveShipping($data, $locked->shippingCompany);
+            $shippingFee = $data['shipping_fee'] ?? $locked->shipping_fee;
 
-            $shippingFee = $data['shipping_fee'] ?? $invoice->shipping_fee;
-
-            $invoice->update([
+            $locked->update(array_merge([
                 'customer_id' => $customer?->id,
-                'customer_name' => $data['customer_name'] ?? $customer?->name ?? $invoice->customer_name,
-                'customer_phone' => $data['customer_phone'] ?? $customer?->phone ?? $invoice->customer_phone,
+                'customer_name' => $data['customer_name'] ?? $customer?->name ?? $locked->customer_name,
+                'customer_phone' => $data['customer_phone'] ?? $customer?->phone ?? $locked->customer_phone,
                 'customer_address' => array_key_exists('customer_address', $data)
                     ? $data['customer_address']
-                    : ($customer?->address ?? $invoice->customer_address),
-                'sales_user_id' => $data['sales_user_id'] ?? $invoice->sales_user_id,
+                    : ($customer?->address ?? $locked->customer_address),
+                'sales_user_id' => $data['sales_user_id'] ?? $locked->sales_user_id,
                 'shipping_company_id' => $shipping?->id,
                 'shipping_company_name' => $shipping?->name,
-                'currency' => $data['currency'] ?? $invoice->currency,
+                'currency' => $data['currency'] ?? $locked->currency,
                 'shipping_fee' => $shippingFee,
-                'shipping_fee_status' => GrossSalesInvoice::SHIPPING_FEE_NONE,
-                'cod_collection_status' => GrossSalesInvoice::COD_NONE,
-                'discount_amount' => $data['discount_amount'] ?? $invoice->discount_amount,
-                'discount_percent' => $data['discount_percent'] ?? $invoice->discount_percent,
-                'notes' => array_key_exists('notes', $data) ? $data['notes'] : $invoice->notes,
-            ]);
+                'discount_amount' => $data['discount_amount'] ?? $locked->discount_amount,
+                'discount_percent' => $data['discount_percent'] ?? $locked->discount_percent,
+                'notes' => array_key_exists('notes', $data) ? $data['notes'] : $locked->notes,
+            ], $this->resetFulfillmentAttributes($priorStatus)));
 
-            $invoice->lines()->delete();
-            $this->syncLines($invoice->fresh(), $lines);
-            $this->recalculateTotals($invoice->fresh());
+            $locked->lines()->delete();
+            $this->syncLines($locked->fresh(), $lines);
+            $this->recalculateTotals($locked->fresh());
 
-            return $invoice->fresh(['lines', 'customer', 'shippingCompany']);
+            if ($priorStatus !== GrossSalesInvoice::STATUS_DRAFT
+                && $priorStatus !== GrossSalesInvoice::STATUS_CANCELLED) {
+                $this->net->recalculateInvoice($locked->fresh(['lines.allocation']));
+            }
+
+            return $locked->fresh(['lines', 'customer', 'shippingCompany']);
         });
+    }
+
+    /** @deprecated Use update() */
+    public function updateDraft(GrossSalesInvoice $invoice, array $data, array $lines): GrossSalesInvoice
+    {
+        return $this->update($invoice, $data, $lines);
     }
 
     public function confirm(GrossSalesInvoice $invoice, ?User $actor = null): GrossSalesInvoice
@@ -400,6 +416,22 @@ class SalesInvoiceService
             ]);
 
             return $locked->fresh(['lines.allocation']);
+        });
+    }
+
+    /**
+     * Admin hard-delete — any status. Restores stock, removes COD voucher + media files.
+     */
+    public function delete(GrossSalesInvoice $invoice, ?User $actor = null): void
+    {
+        DB::transaction(function () use ($invoice, $actor) {
+            /** @var GrossSalesInvoice $locked */
+            $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            $this->unwindFulfillmentStock($locked, $actor);
+            $this->deleteCourierCodVoucher($locked);
+            $this->deleteInvoiceFiles($locked);
+            $locked->delete();
         });
     }
 
@@ -672,6 +704,133 @@ class SalesInvoiceService
         $this->net->recalculateInvoice($invoice->fresh(['lines.allocation']));
 
         return $invoice->refresh();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function resetFulfillmentAttributes(string $priorStatus): array
+    {
+        $base = [
+            'shipping_fee_status' => GrossSalesInvoice::SHIPPING_FEE_NONE,
+            'cod_collection_status' => GrossSalesInvoice::COD_NONE,
+            'cod_collected_amount' => null,
+            'cod_collected_at' => null,
+            'cod_collected_by' => null,
+            'shipping_fee_collected_at' => null,
+            'shipping_fee_collected_by' => null,
+            'refused_at' => null,
+            'refused_by' => null,
+            'refuse_reason' => null,
+            'delivered_at' => null,
+            'packing_image_path' => null,
+            'packing_image_original_name' => null,
+            'packing_image_mime' => null,
+            'packing_image_size_bytes' => null,
+            'packing_uploaded_at' => null,
+            'packing_uploaded_by' => null,
+        ];
+
+        if ($priorStatus === GrossSalesInvoice::STATUS_DRAFT
+            || $priorStatus === GrossSalesInvoice::STATUS_CANCELLED) {
+            return $base;
+        }
+
+        return array_merge($base, [
+            'status' => GrossSalesInvoice::STATUS_CONFIRMED,
+            'fulfillment_status' => GrossSalesInvoice::FULFILLMENT_PREPARING,
+            'cancelled_at' => null,
+            'confirmed_at' => now(),
+        ]);
+    }
+
+    private function unwindFulfillmentStock(GrossSalesInvoice $invoice, ?User $actor): void
+    {
+        $invoice->load(['lines.allocation', 'lines.item']);
+
+        foreach ($invoice->lines as $line) {
+            $alloc = $line->allocation;
+            if ($alloc === null) {
+                continue;
+            }
+
+            $this->restoreAllocationStock($alloc, $line->item, $actor);
+            $alloc->delete();
+        }
+    }
+
+    private function restoreAllocationStock(
+        GrossShipmentAllocation $alloc,
+        ?GrossItem $item,
+        ?User $actor,
+    ): void {
+        if ($item === null) {
+            return;
+        }
+
+        $factor = (int) $alloc->conversion_factor_snapshot;
+        $refType = GrossShipmentAllocation::class;
+        $refId = (int) $alloc->id;
+
+        $delivered = (int) $alloc->qty_delivered_pieces;
+        if ($delivered > 0) {
+            $this->stock->reverseDelivery($item, $delivered, $factor, $refType, $refId, $actor);
+        }
+
+        $lost = (int) $alloc->qty_lost_pieces;
+        if ($lost > 0) {
+            $this->stock->reverseLoss($item, $lost, $factor, $refType, $refId, $actor);
+        }
+
+        $withCourier = (int) $alloc->qty_with_courier_pieces;
+        if ($withCourier > 0) {
+            $this->stock->applyReturn(
+                $item,
+                $withCourier,
+                $factor,
+                $refType,
+                $refId,
+                $actor,
+                GrossStockMovement::TYPE_CANCEL_RESTORE,
+            );
+        }
+    }
+
+    private function clearPackingImage(GrossSalesInvoice $invoice): void
+    {
+        if ($invoice->packing_image_path && Storage::disk('local')->exists($invoice->packing_image_path)) {
+            Storage::disk('local')->delete($invoice->packing_image_path);
+        }
+    }
+
+    private function deleteInvoiceFiles(GrossSalesInvoice $invoice): void
+    {
+        $this->clearPackingImage($invoice);
+        $invoice->loadMissing('media');
+
+        foreach ($invoice->media as $media) {
+            if ($media->file_path && Storage::disk('local')->exists($media->file_path)) {
+                Storage::disk('local')->delete($media->file_path);
+            }
+        }
+    }
+
+    private function deleteCourierCodVoucher(GrossSalesInvoice $invoice): void
+    {
+        $invoice->loadMissing('courierCodTreasuryVoucher.attachments');
+        $voucher = $invoice->courierCodTreasuryVoucher;
+        if ($voucher === null) {
+            return;
+        }
+
+        foreach ($voucher->attachments as $attachment) {
+            if ($attachment->file_path && Storage::disk('local')->exists($attachment->file_path)) {
+                Storage::disk('local')->delete($attachment->file_path);
+            }
+        }
+
+        $voucher->attachments()->delete();
+        $voucher->delete();
     }
 
     /**

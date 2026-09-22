@@ -559,6 +559,80 @@ class StockService
         });
     }
 
+    /**
+     * Undo delivery: restore pieces to ON_HAND (admin void).
+     */
+    public function reverseDelivery(
+        GrossItem $item,
+        int $qtyPieces,
+        int $conversionFactor,
+        string $refType,
+        int $refId,
+        ?User $actor = null,
+    ): GrossStockMovement {
+        if ($qtyPieces < 1) {
+            throw GrossException::invalidQty();
+        }
+
+        return DB::transaction(function () use ($item, $qtyPieces, $conversionFactor, $refType, $refId, $actor) {
+            $balance = $this->lockBalance($item);
+            $balance->qty_on_hand_pieces += $qtyPieces;
+            $balance->save();
+
+            return $this->createMovement(
+                $item,
+                GrossStockMovement::TYPE_CANCEL_RESTORE,
+                $qtyPieces,
+                GrossStockMovement::UNIT_PIECE,
+                $conversionFactor,
+                $qtyPieces,
+                $refType,
+                $refId,
+                $actor,
+            );
+        });
+    }
+
+    /**
+     * Undo loss: LOST − pieces; ON_HAND + pieces (admin void).
+     */
+    public function reverseLoss(
+        GrossItem $item,
+        int $qtyPieces,
+        int $conversionFactor,
+        string $refType,
+        int $refId,
+        ?User $actor = null,
+    ): GrossStockMovement {
+        if ($qtyPieces < 1) {
+            throw GrossException::invalidQty();
+        }
+
+        return DB::transaction(function () use ($item, $qtyPieces, $conversionFactor, $refType, $refId, $actor) {
+            $balance = $this->lockBalance($item);
+
+            if ($balance->qty_lost_pieces < $qtyPieces) {
+                throw GrossException::insufficientStock();
+            }
+
+            $balance->qty_lost_pieces -= $qtyPieces;
+            $balance->qty_on_hand_pieces += $qtyPieces;
+            $balance->save();
+
+            return $this->createMovement(
+                $item,
+                GrossStockMovement::TYPE_CANCEL_RESTORE,
+                $qtyPieces,
+                GrossStockMovement::UNIT_PIECE,
+                $conversionFactor,
+                $qtyPieces,
+                $refType,
+                $refId,
+                $actor,
+            );
+        });
+    }
+
     private function writeOnHandDelta(
         GrossItem $item,
         string $type,

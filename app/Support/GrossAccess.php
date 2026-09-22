@@ -62,8 +62,7 @@ final class GrossAccess
     }
 
     /**
-     * All sales-invoice mutations after create — Manager (Admin) only.
-     * Includes edit, cancel, confirm, fulfillment, COD, returns, refuse, media.
+     * Sales-invoice update / delete (any status) and all other mutations — Manager (Admin) only.
      * Create stays on maySell so Sales can open drafts.
      */
     public static function mayAdminMutateSalesInvoice(?User $user): bool
