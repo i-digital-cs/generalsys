@@ -4,6 +4,7 @@ namespace Tests\Feature\Gross;
 
 use App\Models\Gross\GrossExpenseType;
 use App\Models\Gross\GrossItem;
+use App\Models\Gross\GrossReceiptPurpose;
 use App\Models\Gross\GrossSupplier;
 use App\Models\Gross\GrossTreasuryAccount;
 use App\Models\Gross\GrossTreasuryVoucher;
@@ -171,11 +172,16 @@ class TreasuryVoucherTest extends TestCase
     {
         $manager = User::factory()->manager()->create();
         $cash = GrossTreasuryAccount::query()->where('kind', GrossTreasuryAccount::KIND_CASH)->firstOrFail();
+        $purpose = GrossReceiptPurpose::factory()->create([
+            'name_ar' => 'رأس مال',
+            'name_en' => 'Owner capital',
+        ]);
 
         $this->actingAs($manager)
             ->post(route('gross.treasury.store'), [
                 'type' => GrossTreasuryVoucher::TYPE_RECEIPT,
                 'purpose' => GrossTreasuryVoucher::PURPOSE_OTHER,
+                'receipt_purpose_id' => $purpose->id,
                 'account_id' => $cash->id,
                 'amount' => 250,
                 'voucher_date' => now()->toDateString(),
@@ -223,17 +229,23 @@ class TreasuryVoucherTest extends TestCase
             'phone' => '01001110000',
         ]);
         $cash = GrossTreasuryAccount::query()->where('kind', GrossTreasuryAccount::KIND_CASH)->firstOrFail();
+        $purpose = GrossReceiptPurpose::factory()->create([
+            'name_ar' => 'رأس مال المالك',
+            'name_en' => 'Owner capital',
+        ]);
 
         $this->withSession(['locale' => 'en'])->actingAs($manager)
             ->get(route('gross.treasury.create', ['type' => 'RECEIPT']))
             ->assertOk()
-            ->assertSee('value="OTHER"', false)
-            ->assertSee('Other', false);
+            ->assertSee('value="OTHER:'.$purpose->id.'"', false)
+            ->assertSee('Owner capital', false)
+            ->assertSee('Manage receipt purposes', false);
 
         $this->actingAs($manager)
             ->post(route('gross.treasury.store'), [
                 'type' => GrossTreasuryVoucher::TYPE_RECEIPT,
                 'purpose' => GrossTreasuryVoucher::PURPOSE_OTHER,
+                'receipt_purpose_id' => $purpose->id,
                 'account_id' => $cash->id,
                 'amount' => 1000,
                 'voucher_date' => now()->toDateString(),
@@ -243,6 +255,7 @@ class TreasuryVoucherTest extends TestCase
 
         $receipt = GrossTreasuryVoucher::query()->where('purpose', GrossTreasuryVoucher::PURPOSE_OTHER)->firstOrFail();
         $this->assertSame(GrossTreasuryVoucher::TYPE_RECEIPT, $receipt->type);
+        $this->assertSame($purpose->id, (int) $receipt->receipt_purpose_id);
         $this->assertNull($receipt->supplier_id);
         $this->assertNull($receipt->expense_type_id);
         $this->assertNull($receipt->sales_invoice_id);
@@ -253,8 +266,19 @@ class TreasuryVoucherTest extends TestCase
 
         $this->actingAs($manager)
             ->post(route('gross.treasury.store'), [
+                'type' => GrossTreasuryVoucher::TYPE_RECEIPT,
+                'purpose' => GrossTreasuryVoucher::PURPOSE_OTHER,
+                'account_id' => $cash->id,
+                'amount' => 50,
+                'voucher_date' => now()->toDateString(),
+            ])
+            ->assertSessionHasErrors('receipt_purpose_id');
+
+        $this->actingAs($manager)
+            ->post(route('gross.treasury.store'), [
                 'type' => GrossTreasuryVoucher::TYPE_PAYMENT,
                 'purpose' => GrossTreasuryVoucher::PURPOSE_OTHER,
+                'receipt_purpose_id' => $purpose->id,
                 'account_id' => $cash->id,
                 'amount' => 100,
                 'voucher_date' => now()->toDateString(),

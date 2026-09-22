@@ -46,6 +46,7 @@ return [
     'gross_fulfillment_returned' => 'Returned',
     'gross_treasury' => 'Treasury',
     'gross_expense_types' => 'Expense types',
+    'gross_receipt_purposes' => 'Receipt purposes',
     'gross_section_catalog' => 'Catalog',
     'gross_section_inventory' => 'Inventory',
     'gross_section_purchasing' => 'Purchasing',

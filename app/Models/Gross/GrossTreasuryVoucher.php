@@ -30,6 +30,7 @@ class GrossTreasuryVoucher extends Model
         'account_id',
         'supplier_id',
         'expense_type_id',
+        'receipt_purpose_id',
         'sales_invoice_id',
         'shipping_company_id',
         'currency',
@@ -60,6 +61,11 @@ class GrossTreasuryVoucher extends Model
     public function expenseType(): BelongsTo
     {
         return $this->belongsTo(GrossExpenseType::class, 'expense_type_id');
+    }
+
+    public function receiptPurpose(): BelongsTo
+    {
+        return $this->belongsTo(GrossReceiptPurpose::class, 'receipt_purpose_id');
     }
 
     public function salesInvoice(): BelongsTo

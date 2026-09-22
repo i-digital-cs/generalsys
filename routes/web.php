@@ -32,6 +32,7 @@ use App\Http\Controllers\Gross\ItemAttributeController as GrossItemAttributeCont
 use App\Http\Controllers\Gross\ItemController as GrossItemController;
 use App\Http\Controllers\Gross\ItemImageController as GrossItemImageController;
 use App\Http\Controllers\Gross\PurchaseInvoiceController as GrossPurchaseInvoiceController;
+use App\Http\Controllers\Gross\ReceiptPurposeController as GrossReceiptPurposeController;
 use App\Http\Controllers\Gross\SalesInvoiceController as GrossSalesInvoiceController;
 use App\Http\Controllers\Gross\SalesPersonStatsController as GrossSalesPersonStatsController;
 use App\Http\Controllers\Gross\ShippingCompanyController as GrossShippingCompanyController;
@@ -237,6 +238,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/expense-types', [GrossExpenseTypeController::class, 'store'])->name('expense-types.store');
         Route::put('/expense-types/{expenseType}', [GrossExpenseTypeController::class, 'update'])->name('expense-types.update');
         Route::delete('/expense-types/{expenseType}', [GrossExpenseTypeController::class, 'destroy'])->name('expense-types.destroy');
+
+        Route::get('/receipt-purposes', [GrossReceiptPurposeController::class, 'index'])->name('receipt-purposes.index');
+        Route::post('/receipt-purposes', [GrossReceiptPurposeController::class, 'store'])->name('receipt-purposes.store');
+        Route::put('/receipt-purposes/{receiptPurpose}', [GrossReceiptPurposeController::class, 'update'])->name('receipt-purposes.update');
+        Route::delete('/receipt-purposes/{receiptPurpose}', [GrossReceiptPurposeController::class, 'destroy'])->name('receipt-purposes.destroy');
     });
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');

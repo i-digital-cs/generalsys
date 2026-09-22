@@ -121,6 +121,21 @@ class GrossException extends RuntimeException
         return new self('gross.errors.expense_type_in_use');
     }
 
+    public static function treasuryReceiptPurposeRequired(): self
+    {
+        return new self('gross.errors.treasury_receipt_purpose_required');
+    }
+
+    public static function inactiveReceiptPurpose(): self
+    {
+        return new self('gross.errors.inactive_receipt_purpose');
+    }
+
+    public static function receiptPurposeInUse(): self
+    {
+        return new self('gross.errors.receipt_purpose_in_use');
+    }
+
     public static function courierCodAlreadyPosted(): self
     {
         return new self('gross.errors.courier_cod_already_posted');

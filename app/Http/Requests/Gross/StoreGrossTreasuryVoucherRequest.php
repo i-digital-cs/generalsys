@@ -21,6 +21,7 @@ class StoreGrossTreasuryVoucherRequest extends FormRequest
         $isSupplier = $purpose === GrossTreasuryVoucher::PURPOSE_SUPPLIER;
         $isExpense = $purpose === GrossTreasuryVoucher::PURPOSE_EXPENSE;
         $isCourierCod = $purpose === GrossTreasuryVoucher::PURPOSE_COURIER_COD;
+        $isOther = $purpose === GrossTreasuryVoucher::PURPOSE_OTHER;
 
         return [
             'type' => ['required', Rule::in([
@@ -43,6 +44,11 @@ class StoreGrossTreasuryVoucherRequest extends FormRequest
                 $isExpense ? 'required' : 'nullable',
                 'integer',
                 'exists:gross_expense_types,id',
+            ],
+            'receipt_purpose_id' => [
+                $isOther ? 'required' : 'nullable',
+                'integer',
+                'exists:gross_receipt_purposes,id',
             ],
             'sales_invoice_id' => [
                 $isCourierCod ? 'required' : 'nullable',

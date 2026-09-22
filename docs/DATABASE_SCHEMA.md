@@ -984,6 +984,17 @@ CREATE TABLE gross_expense_types (
     UNIQUE KEY uq_gross_expense_type_en (name_en)
 );
 
+CREATE TABLE gross_receipt_purposes (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name_ar VARCHAR(120) NOT NULL,
+    name_en VARCHAR(120) NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_receipt_purpose_en (name_en)
+);
+
 CREATE TABLE gross_treasury_vouchers (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     voucher_number VARCHAR(32) NOT NULL,
@@ -992,6 +1003,7 @@ CREATE TABLE gross_treasury_vouchers (
     account_id BIGINT UNSIGNED NOT NULL,
     supplier_id BIGINT UNSIGNED NULL,
     expense_type_id BIGINT UNSIGNED NULL,
+    receipt_purpose_id BIGINT UNSIGNED NULL,   -- required for new purpose=OTHER (T-15.2); legacy OTHER may be null
     sales_invoice_id BIGINT UNSIGNED NULL,
     shipping_company_id BIGINT UNSIGNED NULL,
     currency ENUM('EGP','AED') NOT NULL,
@@ -1006,10 +1018,12 @@ CREATE TABLE gross_treasury_vouchers (
     INDEX idx_gross_treas_voucher_type_date (type, voucher_date),
     INDEX idx_gross_treas_voucher_supplier (supplier_id),
     INDEX idx_gross_treas_voucher_purpose (purpose),
+    INDEX idx_gross_treas_voucher_receipt_purpose (receipt_purpose_id),
     INDEX idx_gross_treas_courier_cod_ship (shipping_company_id),
     CONSTRAINT fk_gross_treas_voucher_account FOREIGN KEY (account_id) REFERENCES gross_treasury_accounts(id) ON DELETE RESTRICT,
     CONSTRAINT fk_gross_treas_voucher_supplier FOREIGN KEY (supplier_id) REFERENCES gross_suppliers(id) ON DELETE SET NULL,
     CONSTRAINT fk_gross_treas_voucher_expense FOREIGN KEY (expense_type_id) REFERENCES gross_expense_types(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gross_treas_voucher_receipt_purpose FOREIGN KEY (receipt_purpose_id) REFERENCES gross_receipt_purposes(id) ON DELETE SET NULL,
     CONSTRAINT fk_gross_treas_voucher_invoice FOREIGN KEY (sales_invoice_id) REFERENCES gross_sales_invoices(id) ON DELETE SET NULL,
     CONSTRAINT fk_gross_treas_voucher_ship FOREIGN KEY (shipping_company_id) REFERENCES gross_shipping_companies(id) ON DELETE SET NULL,
     CONSTRAINT fk_gross_treas_voucher_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE

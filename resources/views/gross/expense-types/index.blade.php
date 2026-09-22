@@ -20,6 +20,11 @@
                     {{ __('gross.treasury.create_payment') }}
                 </a>
             @endcan
+            @can('viewAny', App\Models\Gross\GrossReceiptPurpose::class)
+                <a href="{{ route('gross.receipt-purposes.index') }}" class="btn btn-outline-primary btn-sm">
+                    {{ __('gross.receipt_purposes.title') }}
+                </a>
+            @endcan
             <a href="{{ route('gross.treasury.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('gross.treasury.title') }}</a>
         </div>
     </div>

@@ -1134,6 +1134,22 @@ Isolated from valuation Gross tiles and Gross treasury. Formula: remaining = exp
 3. TL self → submit → Admin Accept.
 4. AR + EN + responsive.
 
+### T-15.2 — Admin receipt purposes for treasury RECEIPT
+- Depends on: T-11.6
+- Unlocks: —
+- Status: `done`
+- Scope:
+  - [x] Table `gross_receipt_purposes` + voucher FK `receipt_purpose_id`
+  - [x] Admin CRUD (Manager/Accountant) mirror of expense types; menu under أنواع المصروفات
+  - [x] RECEIPT create: admin purposes in غرض (→ `purpose=OTHER` + FK); SUPPLIER/EXPENSE/COURIER_COD unchanged
+  - [x] PHPUnit + LangParity + UI/UX AR+EN
+
+**Manual UI test**
+1. Product → أنواع المصروفات → button أغراض القبض → add AR/EN purpose.
+2. Treasury → create RECEIPT → غرض lists new purpose + system options; submit.
+3. Show/index display purpose name; cannot delete purpose in use.
+4. AR + EN + RTL/LTR + ~375/768/1280.
+
 ## Dependency map
 
 ```text
@@ -1364,3 +1380,4 @@ Example:
 - [x] 2026-09-20 T-15.1 PASS — إذن غياب (`ABSENCE_PERMISSION`): date-only; Accept/Force → `attendance.EXCUSED_ABSENCE` for payroll; TL→Admin. Commands: `php artisan migrate`; `php artisan test --filter='AbsencePermissionTest|PermissionRequestTest|PermissionApprovalTest|PermissionForceTest|LangParityTest'` (31 PASS); Pint. UI/UX: AR+EN keys; hide times for absence.
 - [x] 2026-09-20 T-15.1 amend — Absence supports **period** From→To (max 31 days); each day excused on accept. Commands: `php artisan migrate`; `php artisan test --filter='AbsencePermissionTest|PermissionRequestTest|PermissionApprovalTest|LangParityTest'` (23 PASS); Pint.
 - [x] 2026-09-20 T-15.1 review fixes — Skip rest/holiday/vacation on apply; forced_base = reject_base (no 3× stack); notifications From–To; dated dayAlreadyWorked; docs sync. Commands: `php artisan test --filter='AbsencePermissionTest|LangParityTest|PermissionForceTest|PermissionApprovalTest|PermissionRequestTest|PayrollCalculatorTest'` (53 PASS); Pint. UI/UX: AR+EN hint + errors.
+- [x] 2026-09-22 T-15.2 PASS — Admin receipt purposes (`gross_receipt_purposes` + voucher FK); CRUD under expense types; RECEIPT غرض lists admin purposes → OTHER+FK. Commands: `php artisan migrate --force`; `php artisan test --filter='ReceiptPurposeCrudTest|TreasuryVoucherTest|ExpenseTypeCrudTest|LangParityTest'` (12 PASS); Pint; `route:list --name=gross.receipt`. UI/UX: AR+EN keys; menu + expense-types button + create manage link.

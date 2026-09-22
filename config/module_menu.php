@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Gross\GrossExpenseType;
+use App\Models\Gross\GrossReceiptPurpose;
 use App\Models\Gross\GrossTreasuryVoucher;
 
 /**
@@ -60,6 +61,12 @@ return [
             'route' => 'gross.expense-types.index',
             'icon' => 'bi-ui-checks-grid',
             'can' => ['viewAny', GrossExpenseType::class],
+        ],
+        [
+            'key' => 'nav.gross_receipt_purposes',
+            'route' => 'gross.receipt-purposes.index',
+            'icon' => 'bi-cash-coin',
+            'can' => ['viewAny', GrossReceiptPurpose::class],
         ],
     ],
 ];

@@ -8,6 +8,7 @@ use App\Models\Gross\GrossCustomer;
 use App\Models\Gross\GrossExpenseType;
 use App\Models\Gross\GrossItem;
 use App\Models\Gross\GrossPurchaseInvoice;
+use App\Models\Gross\GrossReceiptPurpose;
 use App\Models\Gross\GrossSalesInvoice;
 use App\Models\Gross\GrossShippingCompany;
 use App\Models\Gross\GrossSupplier;
@@ -25,6 +26,7 @@ use App\Policies\Gross\GrossCustomerPolicy;
 use App\Policies\Gross\GrossExpenseTypePolicy;
 use App\Policies\Gross\GrossItemPolicy;
 use App\Policies\Gross\GrossPurchaseInvoicePolicy;
+use App\Policies\Gross\GrossReceiptPurposePolicy;
 use App\Policies\Gross\GrossSalesInvoicePolicy;
 use App\Policies\Gross\GrossShippingCompanyPolicy;
 use App\Policies\Gross\GrossSupplierPolicy;
@@ -76,6 +78,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GrossPurchaseInvoice::class, GrossPurchaseInvoicePolicy::class);
         Gate::policy(GrossTreasuryVoucher::class, GrossTreasuryVoucherPolicy::class);
         Gate::policy(GrossExpenseType::class, GrossExpenseTypePolicy::class);
+        Gate::policy(GrossReceiptPurpose::class, GrossReceiptPurposePolicy::class);
 
         View::composer('layouts.app', function (IlluminateView $view): void {
             $service = app(ImpersonationService::class);

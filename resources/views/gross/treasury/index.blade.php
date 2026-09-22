@@ -57,7 +57,8 @@
                 $hasTreasuryFilters = ($filters['type'] ?? '') !== ''
                     || ($filters['purpose'] ?? '') !== ''
                     || ($filters['account_id'] ?? '') !== ''
-                    || ($filters['expense_type_id'] ?? '') !== '';
+                    || ($filters['expense_type_id'] ?? '') !== ''
+                    || ($filters['receipt_purpose_id'] ?? '') !== '';
             @endphp
             <form method="get" class="row g-2 align-items-end">
                 <div class="col-md-2">
@@ -85,6 +86,17 @@
                         @foreach ($filterExpenseTypes as $expenseType)
                             <option value="{{ $expenseType->id }}" @selected((string) ($filters['expense_type_id'] ?? '') === (string) $expenseType->id)>
                                 {{ $expenseType->localizedName() }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label mb-1" for="receipt_purpose_id">{{ __('gross.treasury.receipt_purpose') }}</label>
+                    <select id="receipt_purpose_id" name="receipt_purpose_id" class="form-select form-select-sm">
+                        <option value="">{{ __('general.all') }}</option>
+                        @foreach ($filterReceiptPurposes as $receiptPurpose)
+                            <option value="{{ $receiptPurpose->id }}" @selected((string) ($filters['receipt_purpose_id'] ?? '') === (string) $receiptPurpose->id)>
+                                {{ $receiptPurpose->localizedName() }}
                             </option>
                         @endforeach
                     </select>
@@ -135,11 +147,21 @@
                                     <td class="fw-semibold"><span class="num-ltr">{{ $voucher->voucher_number }}</span></td>
                                     <td class="small"><span class="num-ltr">{{ $voucher->voucher_date->translatedFormat('d M Y') }}</span></td>
                                     <td>{{ __('gross.treasury.types.'.$voucher->type) }}</td>
-                                    <td>{{ __('gross.treasury.purposes.'.$voucher->purpose) }}</td>
+                                    <td>
+                                        @if ($voucher->isOtherPurpose() && $voucher->receiptPurpose)
+                                            {{ $voucher->receiptPurpose->localizedName() }}
+                                        @else
+                                            {{ __('gross.treasury.purposes.'.$voucher->purpose) }}
+                                        @endif
+                                    </td>
                                     <td>{{ __('gross.treasury.kinds.'.$voucher->account->kind) }}</td>
                                     <td>
                                         @if ($voucher->isSupplierPurpose())
                                             {{ $voucher->supplier?->name ?? '—' }}
+                                        @elseif ($voucher->isOtherPurpose())
+                                            {{ $voucher->receiptPurpose?->localizedName() ?? '—' }}
+                                        @elseif ($voucher->isCourierCodPurpose())
+                                            {{ $voucher->salesInvoice?->invoice_number ?? '—' }}
                                         @else
                                             {{ $voucher->expenseType?->localizedName() ?? '—' }}
                                         @endif

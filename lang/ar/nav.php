@@ -46,6 +46,7 @@ return [
     'gross_fulfillment_returned' => 'مرتجع',
     'gross_treasury' => 'الخزينة',
     'gross_expense_types' => 'أنواع المصروفات',
+    'gross_receipt_purposes' => 'أغراض القبض',
     'gross_section_catalog' => 'الكتالوج',
     'gross_section_inventory' => 'المخزون',
     'gross_section_purchasing' => 'المشتريات',

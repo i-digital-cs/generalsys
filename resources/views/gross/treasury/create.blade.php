@@ -79,19 +79,44 @@
                 <input type="hidden" name="type" value="{{ $type }}">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label" for="purpose">{{ __('gross.treasury.purpose') }}</label>
-                        <select id="purpose" name="purpose" class="form-select @error('purpose') is-invalid @enderror" required>
-                            @if ($type === 'RECEIPT')
-                                <option value="OTHER" @selected($purpose === 'OTHER')>{{ __('gross.treasury.purposes.OTHER') }}</option>
-                            @endif
-                            <option value="EXPENSE" @selected($purpose === 'EXPENSE')>{{ __('gross.treasury.purposes.EXPENSE') }}</option>
-                            <option value="SUPPLIER" @selected($purpose === 'SUPPLIER')>{{ __('gross.treasury.purposes.SUPPLIER') }}</option>
-                            @if ($type === 'RECEIPT')
-                                <option value="COURIER_COD" @selected($purpose === 'COURIER_COD')>{{ __('gross.treasury.purposes.COURIER_COD') }}</option>
-                            @endif
-                        </select>
-                        @error('purpose') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        <div class="form-text">{{ __('gross.sales.partial_return_help') }}</div>
+                        <label class="form-label" for="purpose_ui">{{ __('gross.treasury.purpose') }}</label>
+                        @if ($type === 'RECEIPT')
+                            @php
+                                $selectedRp = (string) old('receipt_purpose_id', $selectedReceiptPurposeId ?? '');
+                                $uiPurposeValue = $purpose === 'OTHER' && $selectedRp !== ''
+                                    ? 'OTHER:'.$selectedRp
+                                    : $purpose;
+                            @endphp
+                            <select id="purpose_ui" class="form-select @error('purpose') is-invalid @enderror @error('receipt_purpose_id') is-invalid @enderror" required>
+                                @forelse ($receiptPurposes as $receiptPurpose)
+                                    <option value="OTHER:{{ $receiptPurpose->id }}"
+                                            @selected($uiPurposeValue === 'OTHER:'.$receiptPurpose->id)>
+                                        {{ $receiptPurpose->localizedName() }}
+                                    </option>
+                                @empty
+                                    {{-- no admin purposes yet — system options only --}}
+                                @endforelse
+                                <option value="EXPENSE" @selected($uiPurposeValue === 'EXPENSE')>{{ __('gross.treasury.purposes.EXPENSE') }}</option>
+                                <option value="SUPPLIER" @selected($uiPurposeValue === 'SUPPLIER')>{{ __('gross.treasury.purposes.SUPPLIER') }}</option>
+                                <option value="COURIER_COD" @selected($uiPurposeValue === 'COURIER_COD')>{{ __('gross.treasury.purposes.COURIER_COD') }}</option>
+                            </select>
+                            <input type="hidden" name="purpose" id="purpose" value="{{ $purpose }}">
+                            <input type="hidden" name="receipt_purpose_id" id="receipt_purpose_id" value="{{ $selectedRp }}">
+                            @error('purpose') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            @error('receipt_purpose_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            <div class="form-text">{{ __('gross.treasury.receipt_other_help') }}</div>
+                            @can('viewAny', App\Models\Gross\GrossReceiptPurpose::class)
+                                <div class="form-text">
+                                    <a href="{{ route('gross.receipt-purposes.index') }}">{{ __('gross.receipt_purposes.manage_link') }}</a>
+                                </div>
+                            @endcan
+                        @else
+                            <select id="purpose" name="purpose" class="form-select @error('purpose') is-invalid @enderror" required>
+                                <option value="EXPENSE" @selected($purpose === 'EXPENSE')>{{ __('gross.treasury.purposes.EXPENSE') }}</option>
+                                <option value="SUPPLIER" @selected($purpose === 'SUPPLIER')>{{ __('gross.treasury.purposes.SUPPLIER') }}</option>
+                            </select>
+                            @error('purpose') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        @endif
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="account_id">{{ __('gross.treasury.account') }}</label>
@@ -197,12 +222,30 @@
     var statementTitleTemplate = @json(__('gross.suppliers.statement_title', ['name' => ':name']));
 
     var purpose = document.getElementById('purpose');
+    var purposeUi = document.getElementById('purpose_ui');
+    var receiptPurposeId = document.getElementById('receipt_purpose_id');
     var accountSelect = document.getElementById('account_id');
     var supplierSelect = document.getElementById('supplier_id');
     var amount = document.getElementById('amount');
     var invoiceSelect = document.getElementById('sales_invoice_id');
 
     if (!purpose) return;
+
+    function syncPurposeFromUi() {
+        if (!purposeUi) return;
+        var raw = purposeUi.value || '';
+        if (raw.indexOf('OTHER:') === 0) {
+            purpose.value = 'OTHER';
+            if (receiptPurposeId) {
+                receiptPurposeId.value = raw.slice(6);
+            }
+        } else {
+            purpose.value = raw;
+            if (receiptPurposeId) {
+                receiptPurposeId.value = '';
+            }
+        }
+    }
 
     function panelMatches(el, value) {
         var panels = (el.getAttribute('data-purpose-panel') || '').split(',');
@@ -328,6 +371,7 @@
     }
 
     function sync() {
+        syncPurposeFromUi();
         var value = purpose.value;
         document.querySelectorAll('[data-purpose-panel]').forEach(function (el) {
             var show = panelMatches(el, value);
@@ -344,7 +388,11 @@
         syncContext();
     }
 
-    purpose.addEventListener('change', sync);
+    if (purposeUi) {
+        purposeUi.addEventListener('change', sync);
+    } else {
+        purpose.addEventListener('change', sync);
+    }
     if (accountSelect) accountSelect.addEventListener('change', syncContext);
     if (supplierSelect) supplierSelect.addEventListener('change', syncContext);
     if (amount) amount.addEventListener('input', syncContext);

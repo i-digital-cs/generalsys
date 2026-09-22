@@ -8,7 +8,11 @@
             <h1 class="h4 mb-1"><span class="num-ltr">{{ $voucher->voucher_number }}</span></h1>
             <p class="text-body-secondary small mb-0">
                 {{ __('gross.treasury.types.'.$voucher->type) }}
-                · {{ __('gross.treasury.purposes.'.$voucher->purpose) }}
+                · @if ($voucher->isOtherPurpose() && $voucher->receiptPurpose)
+                    {{ $voucher->receiptPurpose->localizedName() }}
+                @else
+                    {{ __('gross.treasury.purposes.'.$voucher->purpose) }}
+                @endif
             </p>
         </div>
         <a href="{{ route('gross.treasury.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('general.back') }}</a>
@@ -23,6 +27,10 @@
                 <dd class="col-sm-9">{{ __('gross.treasury.kinds.'.$voucher->account->kind) }} — {{ $voucher->account->name }} ({{ $voucher->currency }})</dd>
                 <dt class="col-sm-3">{{ __('gross.fields.amount') }}</dt>
                 <dd class="col-sm-9"><span class="num-ltr"><x-money :amount="$voucher->amount" :currency="$voucher->currency" /></span></dd>
+                @if ($voucher->isOtherPurpose() && $voucher->receiptPurpose)
+                    <dt class="col-sm-3">{{ __('gross.treasury.receipt_purpose') }}</dt>
+                    <dd class="col-sm-9">{{ $voucher->receiptPurpose->localizedName() }}</dd>
+                @endif
                 @if ($voucher->isCourierCodPurpose() && $voucher->salesInvoice)
                     <dt class="col-sm-3">{{ __('gross.fields.invoice_number') }}</dt>
                     <dd class="col-sm-9">

@@ -8,6 +8,7 @@ use App\Http\Requests\Gross\StoreGrossTreasuryVoucherRequest;
 use App\Models\Gross\GrossTreasuryVoucher;
 use App\Models\Gross\GrossTreasuryVoucherAttachment;
 use App\Services\Gross\ExpenseTypeService;
+use App\Services\Gross\ReceiptPurposeService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\SupplierService;
 use App\Services\Gross\SupplierStatementService;
@@ -24,6 +25,7 @@ class TreasuryController extends Controller
         private readonly TreasuryService $treasury,
         private readonly SupplierService $suppliers,
         private readonly ExpenseTypeService $expenseTypes,
+        private readonly ReceiptPurposeService $receiptPurposes,
         private readonly SalesInvoiceService $salesInvoices,
         private readonly SupplierStatementService $supplierStatements,
         private readonly TreasuryVoucherAttachmentService $attachments,
@@ -38,6 +40,7 @@ class TreasuryController extends Controller
             'purpose' => trim((string) $request->query('purpose', '')),
             'account_id' => $request->query('account_id'),
             'expense_type_id' => $request->query('expense_type_id'),
+            'receipt_purpose_id' => $request->query('receipt_purpose_id'),
         ];
 
         $accounts = $this->treasury->accountsWithBalances();
@@ -49,6 +52,7 @@ class TreasuryController extends Controller
             'filters' => $filters,
             'filterAccounts' => $this->treasury->activeAccounts(),
             'filterExpenseTypes' => $this->expenseTypes->activeForForms(),
+            'filterReceiptPurposes' => $this->receiptPurposes->activeForForms(),
         ]);
     }
 
@@ -61,8 +65,13 @@ class TreasuryController extends Controller
             $type = GrossTreasuryVoucher::TYPE_RECEIPT;
         }
 
+        $receiptPurposes = $this->receiptPurposes->activeForForms();
+        $receiptPurposeId = old('receipt_purpose_id', $request->query('receipt_purpose_id'));
+
         $defaultPurpose = $type === GrossTreasuryVoucher::TYPE_RECEIPT
-            ? GrossTreasuryVoucher::PURPOSE_OTHER
+            ? ($receiptPurposes->isNotEmpty()
+                ? GrossTreasuryVoucher::PURPOSE_OTHER
+                : GrossTreasuryVoucher::PURPOSE_SUPPLIER)
             : GrossTreasuryVoucher::PURPOSE_EXPENSE;
         $purpose = strtoupper((string) $request->query('purpose', $defaultPurpose));
         if (! in_array($purpose, [
@@ -86,6 +95,12 @@ class TreasuryController extends Controller
             $type = GrossTreasuryVoucher::TYPE_RECEIPT;
         }
 
+        if ($type === GrossTreasuryVoucher::TYPE_RECEIPT
+            && $purpose === GrossTreasuryVoucher::PURPOSE_OTHER
+            && $receiptPurposes->isEmpty()) {
+            $purpose = GrossTreasuryVoucher::PURPOSE_SUPPLIER;
+        }
+
         $supplierId = old('supplier_id', $request->query('supplier_id'));
         $expenseTypeId = old('expense_type_id', $request->query('expense_type_id'));
         $salesInvoiceId = old('sales_invoice_id', $request->query('sales_invoice_id'));
@@ -93,11 +108,18 @@ class TreasuryController extends Controller
         $suppliers = $this->suppliers->listForForms(200);
         $supplierIds = $suppliers->pluck('id');
 
+        $selectedReceiptPurposeId = $receiptPurposeId !== null && $receiptPurposeId !== ''
+            ? (int) $receiptPurposeId
+            : ($purpose === GrossTreasuryVoucher::PURPOSE_OTHER
+                ? (int) ($receiptPurposes->first()?->id ?? 0) ?: null
+                : null);
+
         return view('gross.treasury.create', [
             'type' => $type,
             'purpose' => old('purpose', $purpose),
             'selectedSupplierId' => $supplierId !== null && $supplierId !== '' ? (int) $supplierId : null,
             'selectedExpenseTypeId' => $expenseTypeId !== null && $expenseTypeId !== '' ? (int) $expenseTypeId : null,
+            'selectedReceiptPurposeId' => $selectedReceiptPurposeId,
             'selectedSalesInvoiceId' => $salesInvoiceId !== null && $salesInvoiceId !== '' ? (int) $salesInvoiceId : null,
             'accountsWithBalances' => $this->treasury->accountsWithBalances(),
             'suppliers' => $suppliers,
@@ -106,6 +128,7 @@ class TreasuryController extends Controller
                 'AED' => $this->supplierStatements->summariesForSuppliers($supplierIds, 'AED'),
             ],
             'expenseTypes' => $this->expenseTypes->activeForForms(),
+            'receiptPurposes' => $receiptPurposes,
             'courierCodInvoices' => $this->salesInvoices->listCollectedWithoutTreasury(100),
         ]);
     }
@@ -153,7 +176,7 @@ class TreasuryController extends Controller
     public function show(GrossTreasuryVoucher $voucher): View
     {
         $this->authorize('view', $voucher);
-        $voucher->load(['account', 'supplier', 'expenseType', 'salesInvoice', 'shippingCompany', 'creator', 'attachments.uploader']);
+        $voucher->load(['account', 'supplier', 'expenseType', 'receiptPurpose', 'salesInvoice', 'shippingCompany', 'creator', 'attachments.uploader']);
 
         return view('gross.treasury.show', compact('voucher'));
     }

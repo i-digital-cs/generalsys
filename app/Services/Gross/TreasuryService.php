@@ -4,6 +4,7 @@ namespace App\Services\Gross;
 
 use App\Exceptions\GrossException;
 use App\Models\Gross\GrossExpenseType;
+use App\Models\Gross\GrossReceiptPurpose;
 use App\Models\Gross\GrossSalesInvoice;
 use App\Models\Gross\GrossSupplier;
 use App\Models\Gross\GrossTreasuryAccount;
@@ -57,7 +58,7 @@ class TreasuryService
     public function paginateVouchers(array $filters = [], int $perPage = 25): LengthAwarePaginator
     {
         $q = GrossTreasuryVoucher::query()
-            ->with(['account', 'supplier', 'expenseType', 'salesInvoice', 'shippingCompany', 'creator'])
+            ->with(['account', 'supplier', 'expenseType', 'receiptPurpose', 'salesInvoice', 'shippingCompany', 'creator'])
             ->orderByDesc('voucher_date')
             ->orderByDesc('id');
 
@@ -75,6 +76,9 @@ class TreasuryService
         }
         if (! empty($filters['expense_type_id'])) {
             $q->where('expense_type_id', (int) $filters['expense_type_id']);
+        }
+        if (! empty($filters['receipt_purpose_id'])) {
+            $q->where('receipt_purpose_id', (int) $filters['receipt_purpose_id']);
         }
 
         return $q->paginate(min($perPage, 50))->withQueryString();
@@ -224,7 +228,7 @@ class TreasuryService
                 throw GrossException::insufficientTreasury();
             }
 
-            [$purpose, $supplierId, $expenseTypeId, $salesInvoiceId, $shippingCompanyId] = $this->resolvePurpose($data, $type);
+            [$purpose, $supplierId, $expenseTypeId, $salesInvoiceId, $shippingCompanyId, $receiptPurposeId] = $this->resolvePurpose($data, $type);
 
             $voucher = GrossTreasuryVoucher::query()->create([
                 'voucher_number' => $this->nextNumber($type),
@@ -233,6 +237,7 @@ class TreasuryService
                 'account_id' => $account->id,
                 'supplier_id' => $supplierId,
                 'expense_type_id' => $expenseTypeId,
+                'receipt_purpose_id' => $receiptPurposeId,
                 'sales_invoice_id' => $salesInvoiceId,
                 'shipping_company_id' => $shippingCompanyId,
                 'currency' => $account->currency,
@@ -251,8 +256,8 @@ class TreasuryService
     }
 
     /**
-     * @param  array{purpose: string, supplier_id?: int|null, expense_type_id?: int|null, sales_invoice_id?: int|null, shipping_company_id?: int|null, amount?: float|string}  $data
-     * @return array{0: string, 1: int|null, 2: int|null, 3: int|null, 4: int|null}
+     * @param  array{purpose: string, supplier_id?: int|null, expense_type_id?: int|null, receipt_purpose_id?: int|null, sales_invoice_id?: int|null, shipping_company_id?: int|null, amount?: float|string}  $data
+     * @return array{0: string, 1: int|null, 2: int|null, 3: int|null, 4: int|null, 5: int|null}
      */
     private function resolvePurpose(array $data, string $type): array
     {
@@ -271,7 +276,17 @@ class TreasuryService
                 throw GrossException::invalidTransition();
             }
 
-            return [$purpose, null, null, null, null];
+            $receiptPurposeId = (int) ($data['receipt_purpose_id'] ?? 0);
+            /** @var GrossReceiptPurpose|null $receiptPurpose */
+            $receiptPurpose = GrossReceiptPurpose::query()->whereKey($receiptPurposeId)->first();
+            if ($receiptPurpose === null) {
+                throw GrossException::treasuryReceiptPurposeRequired();
+            }
+            if (! $receiptPurpose->isActive()) {
+                throw GrossException::inactiveReceiptPurpose();
+            }
+
+            return [$purpose, null, null, null, null, $receiptPurpose->id];
         }
 
         if ($purpose === GrossTreasuryVoucher::PURPOSE_COURIER_COD) {
@@ -303,7 +318,7 @@ class TreasuryService
                 $invoice->update(['cod_collected_amount' => $expected]);
             }
 
-            return [$purpose, null, null, $invoiceId, $shippingCompanyId];
+            return [$purpose, null, null, $invoiceId, $shippingCompanyId, null];
         }
 
         if ($purpose === GrossTreasuryVoucher::PURPOSE_SUPPLIER) {
@@ -312,7 +327,7 @@ class TreasuryService
                 throw GrossException::treasurySupplierRequired();
             }
 
-            return [$purpose, $supplierId, null, null, null];
+            return [$purpose, $supplierId, null, null, null, null];
         }
 
         $expenseTypeId = (int) ($data['expense_type_id'] ?? 0);
@@ -325,7 +340,7 @@ class TreasuryService
             throw GrossException::inactiveExpenseType();
         }
 
-        return [$purpose, null, $expenseType->id, null, null];
+        return [$purpose, null, $expenseType->id, null, null, null];
     }
 
     private function nextNumber(string $type): string
