@@ -220,3 +220,119 @@ document.addEventListener('click', function (event) {
         second.addEventListener('change', syncExclusiveLeaders);
     }
 })();
+
+(function () {
+    const role = document.getElementById('role');
+    const salesLoss = document.querySelector('[data-sales-loss-flag]');
+    const pagesRoot = document.querySelector('[data-gross-pages]');
+    if (! role || ! pagesRoot) {
+        return;
+    }
+
+    const checks = pagesRoot.querySelector('[data-gross-pages-checks]');
+    const modulesRoot = pagesRoot.querySelector('[data-valuation-modules]');
+    const productCheck = pagesRoot.querySelector('[data-valuation-product]');
+    const help = pagesRoot.querySelector('[data-gross-pages-help]');
+    const managerHint = pagesRoot.querySelector('[data-gross-pages-manager-hint]');
+    const pagesHelp = pagesRoot.querySelector('[data-gross-pages-pages-help]');
+    const pagesLabel = pagesRoot.querySelector('[data-gross-pages-pages-label]');
+    let salesDefaults = [];
+    let accountantDefaults = [];
+    try {
+        salesDefaults = JSON.parse(pagesRoot.dataset.defaultsSales || '[]');
+        accountantDefaults = JSON.parse(pagesRoot.dataset.defaultsAccountant || '[]');
+    } catch (e) {
+        salesDefaults = [];
+        accountantDefaults = [];
+    }
+
+    function setChecksEnabled(enabled) {
+        if (checks) {
+            checks.querySelectorAll('input[type="checkbox"]').forEach(function (input) {
+                input.disabled = ! enabled;
+            });
+            checks.classList.toggle('d-none', ! enabled);
+        }
+        if (modulesRoot) {
+            modulesRoot.querySelectorAll('input[type="checkbox"]').forEach(function (input) {
+                input.disabled = ! enabled;
+            });
+            modulesRoot.classList.toggle('d-none', ! enabled);
+        }
+        if (pagesHelp) {
+            pagesHelp.classList.toggle('d-none', ! enabled);
+        }
+        if (pagesLabel) {
+            pagesLabel.classList.toggle('d-none', ! enabled);
+        }
+    }
+
+    function applyDefaults(keys) {
+        if (! checks) {
+            return;
+        }
+        checks.querySelectorAll('input[type="checkbox"]').forEach(function (input) {
+            input.checked = keys.indexOf(input.value) !== -1;
+        });
+        ensureProductWhenPages();
+    }
+
+    function ensureProductWhenPages() {
+        if (! productCheck || ! checks) {
+            return;
+        }
+        const anyPage = Array.prototype.some.call(
+            checks.querySelectorAll('input[type="checkbox"]'),
+            function (input) {
+                return input.checked;
+            },
+        );
+        if (anyPage) {
+            productCheck.checked = true;
+        }
+    }
+
+    function syncGrossPagesUi() {
+        const isManager = role.value === 'MANAGER';
+        const isSales = role.value === 'SALES';
+
+        if (salesLoss) {
+            salesLoss.classList.toggle('d-none', ! isSales);
+        }
+
+        if (managerHint) {
+            managerHint.classList.toggle('d-none', ! isManager);
+        }
+        if (help) {
+            help.classList.toggle('d-none', isManager);
+        }
+
+        setChecksEnabled(! isManager);
+
+        if (role.dataset.grossPagesTouched === '1') {
+            if (role.value === 'SALES') {
+                applyDefaults(salesDefaults);
+                if (productCheck) {
+                    productCheck.checked = true;
+                }
+            } else if (role.value === 'ACCOUNTANT') {
+                applyDefaults(accountantDefaults);
+                if (productCheck) {
+                    productCheck.checked = true;
+                }
+            } else if (! isManager) {
+                applyDefaults([]);
+            }
+        }
+    }
+
+    if (checks) {
+        checks.addEventListener('change', ensureProductWhenPages);
+    }
+
+    role.addEventListener('change', function () {
+        role.dataset.grossPagesTouched = '1';
+        syncGrossPagesUi();
+    });
+    syncGrossPagesUi();
+})();

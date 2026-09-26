@@ -12,6 +12,7 @@ use App\Services\Gross\CategoryService;
 use App\Services\Gross\ItemAttributeService;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\PieceLocationService;
+use App\Support\GrossAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,7 +54,13 @@ class ItemController extends Controller
 
     public function search(Request $request): JsonResponse
     {
-        $this->authorize('viewAny', GrossItem::class);
+        abort_unless(
+            GrossAccess::mayPage($request->user(), 'items')
+            || GrossAccess::mayPage($request->user(), 'sales')
+            || GrossAccess::mayPage($request->user(), 'purchases')
+            || GrossAccess::mayPage($request->user(), 'stock'),
+            403
+        );
 
         $results = $this->items->searchForForms((string) $request->query('q', ''), 25);
 

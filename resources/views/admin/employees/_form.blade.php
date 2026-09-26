@@ -81,6 +81,91 @@
                 </div>
                 @error('can_confirm_gross_loss') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             </div>
+            <div class="col-12" data-gross-pages
+                 data-defaults-sales='@json(config('gross_pages.defaults_sales'))'
+                 data-defaults-accountant='@json(config('gross_pages.defaults_accountant'))'>
+                <div class="card border-0 bg-body-tertiary">
+                    <div class="card-body py-3">
+                        <h2 class="h6 mb-1">{{ __('employees.module_access.title') }}</h2>
+                        <p class="small text-body-secondary mb-2" data-gross-pages-manager-hint>{{ __('employees.module_access.manager_all') }}</p>
+                        <p class="small text-body-secondary mb-3" data-gross-pages-help>{{ __('employees.module_access.help') }}</p>
+
+                        @php
+                            $selectedModules = old('valuation_modules', $editing
+                                ? $employee->valuationAssignments->pluck('module')->all()
+                                : []);
+                            if (! $editing && empty(old('valuation_modules'))) {
+                                $roleForMods = (string) $val('role', 'EMPLOYEE');
+                                $selectedModules = in_array($roleForMods, ['SALES', 'ACCOUNTANT'], true)
+                                    ? ['product']
+                                    : [];
+                            }
+                        @endphp
+                        <div class="mb-3" data-valuation-modules>
+                            <p class="form-label mb-2">{{ __('employees.module_access.modules_label') }}</p>
+                            <div class="d-flex flex-wrap gap-3">
+                                <div class="form-check">
+                                    <input type="checkbox"
+                                           class="form-check-input"
+                                           id="valuation_module_service"
+                                           name="valuation_modules[]"
+                                           value="service"
+                                           @checked(in_array('service', $selectedModules, true))>
+                                    <label class="form-check-label" for="valuation_module_service">{{ __('portal.service') }}</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox"
+                                           class="form-check-input"
+                                           id="valuation_module_product"
+                                           name="valuation_modules[]"
+                                           value="product"
+                                           data-valuation-product
+                                           @checked(in_array('product', $selectedModules, true))>
+                                    <label class="form-check-label" for="valuation_module_product">{{ __('portal.product') }}</label>
+                                </div>
+                            </div>
+                            @error('valuation_modules') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            @error('valuation_modules.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        </div>
+
+                        <p class="form-label mb-2" data-gross-pages-pages-label>{{ __('employees.gross_pages.title') }}</p>
+                        <p class="small text-body-secondary mb-2" data-gross-pages-pages-help>{{ __('employees.gross_pages.help') }}</p>
+                        <div class="row g-2" data-gross-pages-checks>
+                            @php
+                                $allGrossPages = config('gross_pages.keys', []);
+                                $selectedGrossPages = old('gross_page_keys', $editing
+                                    ? $employee->grossPages->pluck('page_key')->all()
+                                    : []);
+                                if (! $editing && empty(old('gross_page_keys'))) {
+                                    $roleForDefaults = (string) $val('role', 'EMPLOYEE');
+                                    $selectedGrossPages = match ($roleForDefaults) {
+                                        'SALES' => config('gross_pages.defaults_sales', []),
+                                        'ACCOUNTANT' => config('gross_pages.defaults_accountant', []),
+                                        default => [],
+                                    };
+                                }
+                            @endphp
+                            @foreach ($allGrossPages as $pageKey)
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="form-check">
+                                        <input type="checkbox"
+                                               class="form-check-input"
+                                               id="gross_page_{{ $pageKey }}"
+                                               name="gross_page_keys[]"
+                                               value="{{ $pageKey }}"
+                                               @checked(in_array($pageKey, $selectedGrossPages, true))>
+                                        <label class="form-check-label" for="gross_page_{{ $pageKey }}">
+                                            {{ __('employees.gross_pages.'.$pageKey) }}
+                                        </label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        @error('gross_page_keys') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        @error('gross_page_keys.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+            </div>
             <div class="col-md-4">
                 <label for="job_title_ar" class="form-label">{{ __('employees.fields.job_title_ar') }}</label>
                 <input type="text" id="job_title_ar" name="job_title_ar" value="{{ $val('job_title_ar') }}"

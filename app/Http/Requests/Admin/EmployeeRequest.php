@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\User;
+use App\Models\ValuationAssignment;
 use App\Services\Attendance\ShiftConfig;
 use App\Services\Attendance\ShiftWindowValidator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -36,6 +37,14 @@ abstract class EmployeeRequest extends FormRequest
                 ['name', 'phone', 'relationship'],
             ),
         ];
+
+        if ((string) $this->input('role') !== User::ROLE_MANAGER && ! $this->has('gross_page_keys')) {
+            $payload['gross_page_keys'] = [];
+        }
+
+        if ((string) $this->input('role') !== User::ROLE_MANAGER && ! $this->has('valuation_modules')) {
+            $payload['valuation_modules'] = [];
+        }
 
         // Only EMPLOYEE / DRIVER accounts get team leaders (not TL / Accountant / Assistant).
         if (! User::roleMayHaveTeamLeaders((string) $this->input('role'))) {
@@ -171,6 +180,10 @@ abstract class EmployeeRequest extends FormRequest
             'password' => $this->passwordRules(),
             'role' => ['required', Rule::in($this->user()?->staffRolesTheyMayAssign() ?? [])],
             'can_confirm_gross_loss' => ['nullable', 'boolean'],
+            'gross_page_keys' => ['nullable', 'array'],
+            'gross_page_keys.*' => ['string', Rule::in(config('gross_pages.keys', []))],
+            'valuation_modules' => ['nullable', 'array'],
+            'valuation_modules.*' => ['string', Rule::in(ValuationAssignment::MODULES)],
             'job_title_ar' => ['nullable', 'string', 'max:150'],
             'job_title_en' => ['nullable', 'string', 'max:150'],
             'currency' => ['required', Rule::in(['EGP', 'AED'])],

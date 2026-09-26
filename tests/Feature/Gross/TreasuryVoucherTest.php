@@ -10,6 +10,7 @@ use App\Models\Gross\GrossTreasuryAccount;
 use App\Models\Gross\GrossTreasuryVoucher;
 use App\Models\User;
 use App\Models\ValuationAssignment;
+use App\Services\Gross\GrossUserPageService;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\PurchaseInvoiceService;
 use App\Services\Gross\SupplierStatementService;
@@ -304,6 +305,7 @@ class TreasuryVoucherTest extends TestCase
             'assigned_by' => $manager->id,
             'module' => 'product',
         ]);
+        app(GrossUserPageService::class)->applyRoleDefaults($accountant);
 
         $this->actingAs($sales->fresh())
             ->get(route('gross.treasury.index'))

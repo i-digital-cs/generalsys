@@ -18,14 +18,16 @@ use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\AssignsGrossPages;
 use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
 
 /**
- * T-15.5 — sales update/delete any status: Manager (Admin) only.
+ * T-15.5 / T-15.6 — sales update/delete Manager only; workflow via page `sales`.
  */
 class SalesInvoiceAdminMutateTest extends TestCase
 {
+    use AssignsGrossPages;
     use RefreshDatabase;
     use ShipsGrossSalesToCourier;
 
@@ -59,6 +61,7 @@ class SalesInvoiceAdminMutateTest extends TestCase
                 'assigned_by' => $this->manager->id,
                 'module' => 'product',
             ]);
+            $this->assignGrossPages($user);
         }
 
         $item = app(ItemService::class)->create([
@@ -90,7 +93,7 @@ class SalesInvoiceAdminMutateTest extends TestCase
         ]]);
     }
 
-    public function test_sales_and_accountant_cannot_mutate_or_delete(): void
+    public function test_sales_and_accountant_cannot_edit_or_delete_but_can_confirm(): void
     {
         foreach ([$this->sales, $this->accountant] as $actor) {
             $this->actingAs($actor->fresh())
@@ -100,13 +103,13 @@ class SalesInvoiceAdminMutateTest extends TestCase
             $this->actingAs($actor->fresh())
                 ->delete(route('gross.sales.destroy', $this->draft))
                 ->assertForbidden();
-
-            $this->actingAs($actor->fresh())
-                ->post(route('gross.sales.confirm', $this->draft))
-                ->assertForbidden();
         }
 
-        $this->assertSame(GrossSalesInvoice::STATUS_DRAFT, $this->draft->fresh()->status);
+        $this->actingAs($this->sales->fresh())
+            ->post(route('gross.sales.confirm', $this->draft))
+            ->assertRedirect();
+
+        $this->assertSame(GrossSalesInvoice::STATUS_CONFIRMED, $this->draft->fresh()->status);
     }
 
     public function test_manager_can_update_and_delete_draft(): void
@@ -178,7 +181,7 @@ class SalesInvoiceAdminMutateTest extends TestCase
         $this->assertSame(0, $balance->qty_lost_pieces);
     }
 
-    public function test_sales_can_create_draft_but_not_confirm(): void
+    public function test_sales_can_create_and_confirm(): void
     {
         $this->actingAs($this->sales->fresh())
             ->post(route('gross.sales.store'), $this->payload('Buyer', 1, 40))
@@ -189,10 +192,12 @@ class SalesInvoiceAdminMutateTest extends TestCase
 
         $this->actingAs($this->sales->fresh())
             ->post(route('gross.sales.confirm', $created))
-            ->assertForbidden();
+            ->assertRedirect();
+
+        $this->assertSame(GrossSalesInvoice::STATUS_CONFIRMED, $created->fresh()->status);
     }
 
-    public function test_sales_cannot_delete_media_manager_can(): void
+    public function test_sales_can_delete_media_with_sales_page(): void
     {
         $media = app(SalesInvoiceMediaService::class)->store(
             $this->draft,
@@ -203,10 +208,6 @@ class SalesInvoiceAdminMutateTest extends TestCase
         );
 
         $this->actingAs($this->sales->fresh())
-            ->delete(route('gross.sales.media.destroy', [$this->draft, $media]))
-            ->assertForbidden();
-
-        $this->actingAs($this->manager)
             ->delete(route('gross.sales.media.destroy', [$this->draft, $media]))
             ->assertRedirect();
 

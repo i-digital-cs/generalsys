@@ -9,32 +9,89 @@ use App\Models\User;
  */
 final class GrossAccess
 {
+    /** @var array<int, list<string>> */
+    private static array $pageKeyCache = [];
+
     public static function mayAccessGross(?User $user): bool
     {
         return AppModule::mayAccessModule($user, AppModule::PRODUCT);
     }
 
+    /**
+     * Sidebar / route page gate. Manager always; others need Product + assigned page_key.
+     */
+    public static function mayPage(?User $user, string $pageKey): bool
+    {
+        if ($user === null || ! self::mayAccessGross($user)) {
+            return false;
+        }
+
+        if ($user->isManager()) {
+            return true;
+        }
+
+        $allowed = config('gross_pages.keys', []);
+        if (! in_array($pageKey, $allowed, true)) {
+            return false;
+        }
+
+        return in_array($pageKey, self::pageKeysFor($user), true);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function pageKeysFor(User $user): array
+    {
+        if ($user->isManager()) {
+            return config('gross_pages.keys', []);
+        }
+
+        if (isset(self::$pageKeyCache[$user->id])) {
+            return self::$pageKeyCache[$user->id];
+        }
+
+        if ($user->relationLoaded('grossPages')) {
+            $keys = $user->grossPages->pluck('page_key')->map(fn ($k) => (string) $k)->values()->all();
+        } else {
+            $keys = $user->grossPages()->pluck('page_key')->map(fn ($k) => (string) $k)->values()->all();
+        }
+
+        return self::$pageKeyCache[$user->id] = $keys;
+    }
+
+    public static function clearPageKeyCache(?User $user = null): void
+    {
+        if ($user === null) {
+            self::$pageKeyCache = [];
+
+            return;
+        }
+
+        unset(self::$pageKeyCache[$user->id]);
+    }
+
+    /** @deprecated Prefer mayPage — Manager always; others by checklist. */
     public static function mayManageMasterData(?User $user): bool
     {
         if ($user === null || ! self::mayAccessGross($user)) {
             return false;
         }
 
-        return $user->isManager() || $user->isAccountant();
+        return $user->isManager()
+            || self::mayPage($user, 'items')
+            || self::mayPage($user, 'purchases')
+            || self::mayPage($user, 'treasury');
     }
 
     public static function mayAdjustStock(?User $user): bool
     {
-        return self::mayManageMasterData($user);
+        return self::mayPage($user, 'stock');
     }
 
     public static function maySell(?User $user): bool
     {
-        if ($user === null || ! self::mayAccessGross($user)) {
-            return false;
-        }
-
-        return $user->isManager() || $user->isAccountant() || $user->isSales();
+        return self::mayPage($user, 'sales');
     }
 
     public static function mayRefuse(?User $user): bool
@@ -58,12 +115,11 @@ final class GrossAccess
 
     public static function mayPostTreasury(?User $user): bool
     {
-        return self::mayManageMasterData($user);
+        return self::mayPage($user, 'treasury');
     }
 
     /**
-     * Sales-invoice update / delete (any status) and all other mutations — Manager (Admin) only.
-     * Create stays on maySell so Sales can open drafts.
+     * Sales-invoice update / delete — Manager (Admin) only.
      */
     public static function mayAdminMutateSalesInvoice(?User $user): bool
     {
@@ -75,8 +131,7 @@ final class GrossAccess
     }
 
     /**
-     * Purchase invoice update / delete (any status) — Manager (Admin) only.
-     * Create / confirm / returns stay on mayManageMasterData (Manager + Accountant).
+     * Purchase invoice update / delete — Manager (Admin) only.
      */
     public static function mayAdminMutatePurchaseInvoice(?User $user): bool
     {

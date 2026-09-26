@@ -698,6 +698,18 @@ CREATE TABLE valuation_assignments (
     INDEX idx_val_asg_module (module)
 );
 
+-- Mohra sidebar pages per non-Manager user (Manager always has all). See config/gross_pages.php.
+CREATE TABLE gross_user_pages (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    page_key VARCHAR(32) NOT NULL, -- items|categories|attributes|stock|suppliers|purchases|customers|sales|sales_stats|shipping|treasury|expense_types|receipt_purposes
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gross_user_page (user_id, page_key),
+    INDEX idx_gross_user_page_key (page_key),
+    CONSTRAINT fk_gross_user_page_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE valuation_sheets (
     id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id    BIGINT UNSIGNED NOT NULL,

@@ -7,24 +7,23 @@ use App\Models\User;
 use App\Support\GrossAccess;
 
 /**
- * Purchases: create/confirm/returns = Manager + Accountant.
- * Update / delete (any status) = Manager (Admin) only.
+ * Purchases: page `purchases`; update/delete = Manager only.
  */
 class GrossPurchaseInvoicePolicy
 {
     public function viewAny(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'purchases');
     }
 
     public function view(User $user, GrossPurchaseInvoice $invoice): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'purchases');
     }
 
     public function create(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'purchases');
     }
 
     public function update(User $user, GrossPurchaseInvoice $invoice): bool
@@ -39,7 +38,7 @@ class GrossPurchaseInvoicePolicy
 
     public function confirm(User $user, GrossPurchaseInvoice $invoice): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'purchases');
     }
 
     public function cancel(User $user, GrossPurchaseInvoice $invoice): bool
@@ -49,6 +48,6 @@ class GrossPurchaseInvoicePolicy
 
     public function returnLines(User $user, GrossPurchaseInvoice $invoice): bool
     {
-        return GrossAccess::mayManageMasterData($user) && $invoice->isConfirmed();
+        return GrossAccess::mayPage($user, 'purchases') && $invoice->isConfirmed();
     }
 }

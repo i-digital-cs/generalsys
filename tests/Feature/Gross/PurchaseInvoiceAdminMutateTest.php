@@ -11,6 +11,7 @@ use App\Services\Gross\ItemService;
 use App\Services\Gross\PurchaseInvoiceService;
 use App\Services\Gross\PurchaseReturnService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\AssignsGrossPages;
 use Tests\TestCase;
 
 /**
@@ -18,6 +19,7 @@ use Tests\TestCase;
  */
 class PurchaseInvoiceAdminMutateTest extends TestCase
 {
+    use AssignsGrossPages;
     use RefreshDatabase;
 
     private User $manager;
@@ -40,6 +42,7 @@ class PurchaseInvoiceAdminMutateTest extends TestCase
             'assigned_by' => $this->manager->id,
             'module' => 'product',
         ]);
+        $this->assignGrossPages($this->accountant);
 
         $item = app(ItemService::class)->create([
             'name' => 'Fabric',

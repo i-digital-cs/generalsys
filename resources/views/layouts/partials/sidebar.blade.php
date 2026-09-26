@@ -2,9 +2,12 @@
     // Guests never reach this layout (all app routes require auth).
     $role = auth()->user()->role ?? 'EMPLOYEE';
     $appModule = $appModule ?? \App\Support\AppModule::HR;
-    $items = in_array($appModule, [\App\Support\AppModule::SERVICE, \App\Support\AppModule::PRODUCT], true)
+    $rawItems = in_array($appModule, [\App\Support\AppModule::SERVICE, \App\Support\AppModule::PRODUCT], true)
         ? config("module_menu.{$appModule}", [])
         : config("menu.{$role}", config('menu.EMPLOYEE'));
+    $items = $appModule === \App\Support\AppModule::PRODUCT
+        ? \App\Support\GrossMenu::filterForUser(auth()->user(), $rawItems)
+        : $rawItems;
 @endphp
 <div class="offcanvas-lg offcanvas-start bg-body-tertiary border-end flex-shrink-0"
      tabindex="-1" id="sidebarNav" style="width: 210px;">
@@ -17,18 +20,12 @@
         <ul class="nav flex-column py-2">
             @foreach ($items as $item)
                 @if (($item['type'] ?? '') === 'heading')
-                    @if (! empty($item['can']) && ! auth()->user()->can($item['can'][0], $item['can'][1] ?? null))
-                        @continue
-                    @endif
                     <li class="nav-item mt-2 px-3">
                         <span class="d-block small text-uppercase text-body-secondary fw-semibold"
                               style="font-size: .68rem; letter-spacing: .04em;">
                             {{ __($item['key']) }}
                         </span>
                     </li>
-                    @continue
-                @endif
-                @if (! empty($item['can']) && ! auth()->user()->can($item['can'][0], $item['can'][1] ?? null))
                     @continue
                 @endif
                 @php

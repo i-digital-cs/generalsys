@@ -10,21 +10,21 @@ class GrossExpenseTypePolicy
 {
     public function viewAny(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'expense_types');
     }
 
     public function create(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'expense_types');
     }
 
     public function update(User $user, GrossExpenseType $type): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'expense_types');
     }
 
     public function delete(User $user, GrossExpenseType $type): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'expense_types');
     }
 }

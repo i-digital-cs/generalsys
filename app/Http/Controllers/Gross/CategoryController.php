@@ -7,8 +7,8 @@ use App\Http\Requests\Gross\ImportGrossCategoryRequest;
 use App\Http\Requests\Gross\StoreGrossCategoryRequest;
 use App\Http\Requests\Gross\UpdateGrossCategoryRequest;
 use App\Models\Gross\GrossCategory;
-use App\Models\Gross\GrossItem;
 use App\Services\Gross\CategoryService;
+use App\Support\GrossAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -21,7 +21,7 @@ class CategoryController extends Controller
 
     public function index(Request $request): View
     {
-        $this->authorize('viewAny', GrossItem::class);
+        abort_unless(GrossAccess::mayPage($request->user(), 'categories'), 403);
 
         $q = trim((string) $request->query('q', ''));
 
@@ -52,7 +52,7 @@ class CategoryController extends Controller
 
     public function destroy(GrossCategory $category): RedirectResponse
     {
-        $this->authorize('create', GrossItem::class);
+        abort_unless(GrossAccess::mayPage(request()->user(), 'categories'), 403);
         $this->categories->delete($category);
 
         return redirect()
@@ -62,7 +62,7 @@ class CategoryController extends Controller
 
     public function template(): BinaryFileResponse|StreamedResponse
     {
-        $this->authorize('create', GrossItem::class);
+        abort_unless(GrossAccess::mayPage(request()->user(), 'categories'), 403);
 
         $path = storage_path('app/tmp/gross-categories-template.xlsx');
         if (! is_dir(dirname($path))) {

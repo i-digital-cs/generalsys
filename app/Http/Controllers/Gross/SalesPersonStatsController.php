@@ -17,7 +17,7 @@ class SalesPersonStatsController extends Controller
 
     public function index(Request $request): View
     {
-        abort_unless(GrossAccess::maySell($request->user()), 403);
+        abort_unless(GrossAccess::mayPage($request->user(), 'sales_stats'), 403);
 
         $summary = $this->stats->summarize($request->user(), $request->query());
 

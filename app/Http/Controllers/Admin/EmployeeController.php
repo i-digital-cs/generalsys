@@ -63,7 +63,7 @@ class EmployeeController extends Controller
         $this->authorize('update', $employee);
 
         $employee->load([
-            'profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents', 'teamLeaders',
+            'profile', 'activeContract', 'qualifications', 'emergencyContacts', 'documents', 'teamLeaders', 'grossPages', 'valuationAssignments',
         ]);
 
         return view('admin.employees.edit', [

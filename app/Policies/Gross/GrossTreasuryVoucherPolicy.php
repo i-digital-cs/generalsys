@@ -10,16 +10,16 @@ class GrossTreasuryVoucherPolicy
 {
     public function viewAny(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'treasury');
     }
 
     public function view(User $user, GrossTreasuryVoucher $voucher): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'treasury');
     }
 
     public function create(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'treasury');
     }
 }

@@ -10,21 +10,21 @@ class GrossReceiptPurposePolicy
 {
     public function viewAny(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'receipt_purposes');
     }
 
     public function create(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'receipt_purposes');
     }
 
     public function update(User $user, GrossReceiptPurpose $purpose): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'receipt_purposes');
     }
 
     public function delete(User $user, GrossReceiptPurpose $purpose): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'receipt_purposes');
     }
 }

@@ -9,12 +9,14 @@ use App\Models\Gross\GrossTreasuryAccount;
 use App\Models\Gross\GrossTreasuryVoucher;
 use App\Models\User;
 use App\Models\ValuationAssignment;
+use App\Services\Gross\GrossUserPageService;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCollectionStatementService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\StockService;
 use App\Services\Gross\TreasuryService;
+use App\Support\GrossAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\ShipsGrossSalesToCourier;
 use Tests\TestCase;
@@ -127,7 +129,7 @@ class SalesInvoiceCodTreasuryTest extends TestCase
             ->count());
     }
 
-    public function test_sales_cannot_collect_cod(): void
+    public function test_sales_without_pages_cannot_collect_cod_with_pages_can(): void
     {
         $manager = User::factory()->manager()->create();
         $sales = User::factory()->sales()->create();
@@ -138,18 +140,19 @@ class SalesInvoiceCodTreasuryTest extends TestCase
         ]);
 
         $invoice = $this->confirmedInvoice($manager);
-        $cash = GrossTreasuryAccount::query()->where('kind', GrossTreasuryAccount::KIND_CASH)->firstOrFail();
 
         $this->actingAs($sales->fresh())
-            ->post(route('gross.sales.collect-cod', $invoice), [
-                'post_to_treasury' => '1',
-                'treasury_account_id' => $cash->id,
-            ])
+            ->post(route('gross.sales.collect-cod', $invoice))
             ->assertForbidden();
 
-        $invoice->refresh();
-        $this->assertSame(GrossSalesInvoice::COD_PENDING, $invoice->cod_collection_status);
-        $this->assertSame(0, GrossTreasuryVoucher::query()->where('sales_invoice_id', $invoice->id)->count());
+        app(GrossUserPageService::class)->applyRoleDefaults($sales);
+        GrossAccess::clearPageKeyCache($sales);
+
+        $this->actingAs($sales->fresh())
+            ->post(route('gross.sales.collect-cod', $invoice->fresh()))
+            ->assertRedirect();
+
+        $this->assertSame(GrossSalesInvoice::COD_COLLECTED, $invoice->fresh()->cod_collection_status);
     }
 
     public function test_statement_shows_treasury_receipt_instead_of_collection_when_posted(): void

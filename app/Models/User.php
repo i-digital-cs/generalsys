@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Gross\GrossUserPage;
 use App\Services\Attendance\ShiftConfig;
 use App\Services\Employees\TeamMembershipService;
 use Carbon\Carbon;
@@ -703,6 +704,11 @@ class User extends Authenticatable
     public function valuationAssignments(): HasMany
     {
         return $this->hasMany(ValuationAssignment::class);
+    }
+
+    public function grossPages(): HasMany
+    {
+        return $this->hasMany(GrossUserPage::class);
     }
 
     public function valuationSheets(): HasMany

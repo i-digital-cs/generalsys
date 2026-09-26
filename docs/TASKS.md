@@ -1198,6 +1198,21 @@ Isolated from valuation Gross tiles and Gross treasury. Formula: remaining = exp
 2. Sales: create OK; no Edit/Delete.
 3. After Edit on shipped invoice → status CONFIRMED preparing; need packing again.
 
+### T-15.6 — Mohra per-employee page permissions
+- Depends on: T-15.5
+- Unlocks: —
+- Status: `done`
+- Scope:
+  - [x] `gross_user_pages` + `GrossAccess::mayPage` (Manager always all)
+  - [x] Policies + sidebar `page` keys; sales workflow via page `sales`; update/delete Manager-only
+  - [x] Employee form checklist AR+EN; defaults for Sales/Accountant migration seed
+  - [x] PHPUnit
+
+**Manual UI test**
+1. Manager: all Mohra sidebar links; edit employee → Mohra pages checklist.
+2. Sales with Product + pages sales/stock/items: create/confirm invoice, view stock; no Edit/Delete; no treasury.
+3. Sales without pages: Product portal OK but Gross routes 403 / sidebar empty of Gross links.
+
 ## Dependency map
 
 ```text
@@ -1432,3 +1447,5 @@ Example:
 - [x] 2026-09-22 T-15.3 PASS — All sales-invoice mutations Manager-only (create stays maySell). Commands: `php artisan test --filter='SalesInvoiceAdminMutateTest|SalesInvoiceMediaTest|SalesInvoiceFlowTest|SalesInvoiceCodTreasuryTest|CourierCollectionTest|LangParityTest'`; Pint. UI/UX: N/A (policy; `@can` on show).
 - [x] 2026-09-22 T-15.4 PASS — Purchase update/delete any status Manager-only (confirmed stock reverse/re-apply; delete unwinds returns). Commands: `php artisan test --filter='PurchaseInvoiceAdminMutateTest|PurchaseInvoiceFlowTest|PurchaseReturnFlowTest|LangParityTest'`; Pint. UI/UX: AR+EN delete_confirm; Edit/Delete on index+show.
 - [x] 2026-09-22 T-15.5 PASS — Sales update/delete any status Manager-only (unwind courier/delivery/loss + COD voucher). Commands: `php artisan test --filter='SalesInvoiceAdminMutateTest|SalesInvoiceFlowTest|SalesInvoiceFulfillmentPipelineTest|LangParityTest'`; Pint. UI/UX: AR+EN delete_confirm; Edit/Delete index+show.
+- [x] 2026-09-26 T-15.6 PASS — Mohra page permissions (`gross_user_pages`); Manager all; checklist on employee form; sales workflow via page `sales`. Commands: `php artisan migrate --force`; `php artisan test --filter='GrossUserPagePermissionTest|SalesInvoiceAdminMutateTest|SalesInvoiceMediaTest|CourierCollectionTest|SalesInvoiceCodTreasuryTest|SalesInvoiceFlowTest|LangParityTest'`; Pint. UI/UX: AR+EN gross_pages; RTL/LTR checklist.
+- [x] 2026-09-26 follow-up — Employee form Module access: Service/Product valuation checkboxes + Mohra pages (same card); save syncs `valuation_assignments`; auto Product when pages ticked. Tests + vite build.

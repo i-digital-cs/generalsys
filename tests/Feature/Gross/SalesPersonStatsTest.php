@@ -11,10 +11,12 @@ use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
 use App\Services\Gross\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\AssignsGrossPages;
 use Tests\TestCase;
 
 class SalesPersonStatsTest extends TestCase
 {
+    use AssignsGrossPages;
     use RefreshDatabase;
 
     public function test_manager_sees_all_sales_people_and_sales_sees_own_only(): void
@@ -32,6 +34,8 @@ class SalesPersonStatsTest extends TestCase
             'assigned_by' => $manager->id,
             'module' => 'product',
         ]);
+        $this->assignGrossPages($salesA, ['sales', 'sales_stats']);
+        $this->assignGrossPages($salesB, ['sales', 'sales_stats']);
 
         $company = app(ShippingCompanyService::class)->create(['name' => 'Courier', 'status' => 'ACTIVE']);
         $item = app(ItemService::class)->create(['name' => 'Shirt', 'status' => GrossItem::STATUS_ACTIVE]);

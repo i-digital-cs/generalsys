@@ -4,6 +4,9 @@ namespace App\Services\Employees;
 
 use App\Models\EmployeeProfile;
 use App\Models\User;
+use App\Models\ValuationAssignment;
+use App\Services\Gross\GrossUserPageService;
+use App\Services\Valuation\ValuationAssignmentService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -16,7 +19,11 @@ use Illuminate\Support\Str;
  */
 class EmployeeService
 {
-    public function __construct(private readonly TeamMembershipService $membership) {}
+    public function __construct(
+        private readonly TeamMembershipService $membership,
+        private readonly GrossUserPageService $grossPages,
+        private readonly ValuationAssignmentService $valuationAssignments,
+    ) {}
 
     /**
      * Next sequential code: EMP-001, EMP-002, … (skips non-numeric suffixes).
@@ -51,6 +58,8 @@ class EmployeeService
             $this->syncQualifications($user, $data['qualifications'] ?? []);
             $this->syncEmergencyContacts($user, $data['contacts'] ?? []);
             $this->syncTeamLeaders($user, $data, $assignedBy);
+            $this->syncValuationModules($user, $data, $assignedBy);
+            $this->syncGrossPages($user, $data, $assignedBy);
 
             return $user;
         });
@@ -82,6 +91,8 @@ class EmployeeService
             $this->syncQualifications($user, $data['qualifications'] ?? []);
             $this->syncEmergencyContacts($user, $data['contacts'] ?? []);
             $this->syncTeamLeaders($user, $data, $assignedBy);
+            $this->syncValuationModules($user, $data, $assignedBy);
+            $this->syncGrossPages($user, $data, $assignedBy);
 
             return $user->refresh();
         });
@@ -295,5 +306,85 @@ class EmployeeService
         }
 
         return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function syncValuationModules(User $user, array $data, ?User $assignedBy = null): void
+    {
+        if ($user->isManager()) {
+            return;
+        }
+
+        if (! array_key_exists('valuation_modules', $data)) {
+            return;
+        }
+
+        $modules = $data['valuation_modules'] ?? [];
+        $this->valuationAssignments->syncForUser(
+            $assignedBy ?? $user,
+            $user,
+            is_array($modules) ? $modules : [],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function syncGrossPages(User $user, array $data, ?User $assignedBy = null): void
+    {
+        if ($user->isManager()) {
+            $this->grossPages->syncForUser($user, []);
+
+            return;
+        }
+
+        if (array_key_exists('gross_page_keys', $data)) {
+            $keys = $data['gross_page_keys'] ?? [];
+            $this->grossPages->syncForUser($user, is_array($keys) ? $keys : []);
+            $this->ensureProductModuleWhenPagesAssigned($user, is_array($keys) ? $keys : [], $assignedBy);
+
+            return;
+        }
+
+        // Create without checklist: apply role defaults for Sales/Accountant.
+        if (! $user->wasRecentlyCreated) {
+            return;
+        }
+
+        $this->grossPages->applyRoleDefaults($user);
+        $this->ensureProductModuleWhenPagesAssigned(
+            $user,
+            $user->grossPages()->pluck('page_key')->all(),
+            $assignedBy,
+        );
+    }
+
+    /**
+     * Mohra pages require Product module for portal + GrossAccess::mayPage.
+     *
+     * @param  list<string>  $keys
+     */
+    private function ensureProductModuleWhenPagesAssigned(User $user, array $keys, ?User $assignedBy = null): void
+    {
+        if ($keys === []) {
+            return;
+        }
+
+        $exists = ValuationAssignment::query()
+            ->where('user_id', $user->id)
+            ->where('module', ValuationAssignment::MODULE_PRODUCT)
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        ValuationAssignment::query()->create([
+            'user_id' => $user->id,
+            'assigned_by' => $assignedBy?->id ?? $user->id,
+            'module' => ValuationAssignment::MODULE_PRODUCT,
+        ]);
     }
 }

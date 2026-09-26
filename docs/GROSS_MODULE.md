@@ -144,13 +144,15 @@ One DB transaction.
 
 | Action | Who |
 |--------|-----|
-| Browse Gross (Mohra) | Mohra assignment / Manager |
-| Items / shipping / customers / suppliers CRUD | Manager, Accountant (Mohra) |
+| Browse Gross (Mohra) | Product module (`valuation_assignments`) + Mohra pages; Manager always. Saving any Mohra page on the employee form also grants Product. |
+| Items / shipping / customers / suppliers CRUD | Manager always; others with matching page keys |
 | Purchase invoices create/confirm | Manager, Accountant (Mohra) — **not** Team Leader (deferred) |
 | Purchase update / delete (any status) | **Manager (Admin) only** — confirmed update reverses/re-applies stock; delete unwinds returns + stock |
 | Stock adjustment | Manager, Accountant |
-| Create sales invoice (draft) | Manager, Accountant, Sales |
-| Sales update / delete (any status) + confirm / fulfillment / COD / returns / refuse / media | **Manager (Admin) only** — update/delete unwind courier/delivery/loss stock + COD voucher |
+| Create sales invoice (draft) + confirm / fulfillment / COD / refuse / returns / media | Manager always; others with Mohra page `sales` (Admin checklist) |
+| Sales update / delete (any status) | **Manager (Admin) only** |
+| Browse stock / items / … | Manager always; others with matching `gross_user_pages.page_key` |
+| Purchase update / delete | **Manager (Admin) only** |
 | Collect shipping fee / mark delivered | Manager, Accountant, Sales |
 | Client refuse | Manager, Accountant, Sales |
 | Confirm item loss | Capability `gross.loss.confirm` **and** Manager (Admin) for sales-invoice loss action |
@@ -268,7 +270,7 @@ Mark delivered                                    →  only if cod ∈ {NONE, CO
 
 UI: collections queue shows invoice total + COD status (replaces shipping-fee-only queue labels).
 shipping_fee column stays on invoice (part of total math); separate “collect shipping fee” action removed.
-Who: Collect COD — **Manager (Admin) only** (all sales-invoice mutations; see § access matrix).
+Who: Collect COD — Manager, or any user with Mohra page `sales` (Admin checklist).
 ```
 
 **Migration note:** map existing `shipping_fee_status = PENDING` on CONFIRMED invoices → `cod_collection_status = PENDING`; `COLLECTED` → `COLLECTED`; `LOST` → `LOST`; `NONE` → `NONE`. Keep `shipping_fee_status` column for audit but UI/services use `cod_collection_status` after T-12.4.

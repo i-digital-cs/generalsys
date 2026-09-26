@@ -10,26 +10,26 @@ class GrossSupplierPolicy
 {
     public function viewAny(User $user): bool
     {
-        return GrossAccess::mayAccessGross($user);
+        return GrossAccess::mayPage($user, 'suppliers');
     }
 
     public function view(User $user, GrossSupplier $supplier): bool
     {
-        return GrossAccess::mayAccessGross($user);
+        return GrossAccess::mayPage($user, 'suppliers');
     }
 
     public function create(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'suppliers');
     }
 
     public function update(User $user, GrossSupplier $supplier): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'suppliers');
     }
 
     public function delete(User $user, GrossSupplier $supplier): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'suppliers');
     }
 }

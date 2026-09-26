@@ -10,26 +10,26 @@ class GrossShippingCompanyPolicy
 {
     public function viewAny(User $user): bool
     {
-        return GrossAccess::mayAccessGross($user);
+        return GrossAccess::mayPage($user, 'shipping');
     }
 
     public function view(User $user, GrossShippingCompany $company): bool
     {
-        return GrossAccess::mayAccessGross($user);
+        return GrossAccess::mayPage($user, 'shipping');
     }
 
     public function create(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'shipping');
     }
 
     public function update(User $user, GrossShippingCompany $company): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'shipping');
     }
 
     public function delete(User $user, GrossShippingCompany $company): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'shipping');
     }
 }

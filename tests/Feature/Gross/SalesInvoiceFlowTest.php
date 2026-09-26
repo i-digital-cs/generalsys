@@ -11,6 +11,7 @@ use App\Models\Gross\GrossStockMovement;
 use App\Models\User;
 use App\Models\ValuationAssignment;
 use App\Services\Gross\AllocationService;
+use App\Services\Gross\GrossUserPageService;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\SalesInvoiceService;
 use App\Services\Gross\ShippingCompanyService;
@@ -123,9 +124,10 @@ class SalesInvoiceFlowTest extends TestCase
             'assigned_by' => $this->manager->id,
             'module' => 'product',
         ]);
+        app(GrossUserPageService::class)->applyRoleDefaults($sales);
 
         $this->assertFalse($sales->mayConfirmGrossLoss());
-        $this->actingAs($sales)
+        $this->actingAs($sales->fresh())
             ->post(route('gross.sales.loss', $invoice), [
                 'allocation_id' => $alloc->id,
                 'qty_pieces' => 1,
@@ -140,9 +142,12 @@ class SalesInvoiceFlowTest extends TestCase
                 'allocation_id' => $alloc->id,
                 'qty_pieces' => 1,
             ])
-            ->assertForbidden();
+            ->assertRedirect();
 
-        $this->allocations->confirmLoss($alloc->fresh(), 2, $this->manager);
+        $alloc->refresh();
+        $this->assertSame(1, $alloc->qty_lost_pieces);
+
+        $this->allocations->confirmLoss($alloc->fresh(), 1, $this->manager);
         $alloc->refresh();
         $this->assertSame(2, $alloc->qty_lost_pieces);
         $this->assertSame(8, $alloc->qty_with_courier_pieces);

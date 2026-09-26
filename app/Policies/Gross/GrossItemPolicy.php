@@ -10,22 +10,22 @@ class GrossItemPolicy
 {
     public function viewAny(User $user): bool
     {
-        return GrossAccess::mayAccessGross($user);
+        return GrossAccess::mayPage($user, 'items');
     }
 
     public function view(User $user, GrossItem $item): bool
     {
-        return GrossAccess::mayAccessGross($user);
+        return GrossAccess::mayPage($user, 'items');
     }
 
     public function create(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'items');
     }
 
     public function update(User $user, GrossItem $item): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'items');
     }
 
     public function adjustStock(User $user): bool

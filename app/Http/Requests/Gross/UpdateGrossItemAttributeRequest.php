@@ -2,14 +2,14 @@
 
 namespace App\Http\Requests\Gross;
 
-use App\Models\Gross\GrossItem;
+use App\Support\GrossAccess;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateGrossItemAttributeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', GrossItem::class) ?? false;
+        return GrossAccess::mayPage($this->user(), 'attributes');
     }
 
     /** @return array<string, mixed> */

@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Gross\ImportGrossItemAttributeRequest;
 use App\Http\Requests\Gross\StoreGrossItemAttributeRequest;
 use App\Http\Requests\Gross\UpdateGrossItemAttributeRequest;
-use App\Models\Gross\GrossItem;
 use App\Models\Gross\GrossItemAttribute;
 use App\Services\Gross\ItemAttributeService;
+use App\Support\GrossAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -21,7 +21,7 @@ class ItemAttributeController extends Controller
 
     public function index(Request $request): View
     {
-        $this->authorize('viewAny', GrossItem::class);
+        abort_unless(GrossAccess::mayPage($request->user(), 'attributes'), 403);
 
         $tab = strtoupper((string) $request->query('tab', GrossItemAttribute::KIND_COLOR));
         if (! in_array($tab, GrossItemAttribute::KINDS, true)) {
@@ -68,7 +68,7 @@ class ItemAttributeController extends Controller
 
     public function destroy(GrossItemAttribute $attribute): RedirectResponse
     {
-        $this->authorize('create', GrossItem::class);
+        abort_unless(GrossAccess::mayPage(request()->user(), 'attributes'), 403);
         $kind = $attribute->kind;
         $this->attributes->delete($attribute);
 
@@ -79,7 +79,7 @@ class ItemAttributeController extends Controller
 
     public function template(): BinaryFileResponse|StreamedResponse
     {
-        $this->authorize('create', GrossItem::class);
+        abort_unless(GrossAccess::mayPage(request()->user(), 'attributes'), 403);
 
         $path = storage_path('app/tmp/gross-attributes-template.xlsx');
         if (! is_dir(dirname($path))) {

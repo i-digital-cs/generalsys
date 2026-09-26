@@ -10,6 +10,7 @@ use App\Models\Gross\GrossStockMovement;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\PieceLocationService;
 use App\Services\Gross\StockService;
+use App\Support\GrossAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -24,7 +25,7 @@ class StockController extends Controller
 
     public function index(Request $request): View
     {
-        $this->authorize('viewAny', GrossItem::class);
+        abort_unless(GrossAccess::mayPage($request->user(), 'stock'), 403);
 
         $filters = [
             'q' => trim((string) $request->query('q', '')),
@@ -46,7 +47,7 @@ class StockController extends Controller
 
     public function movements(Request $request): View
     {
-        $this->authorize('viewAny', GrossItem::class);
+        abort_unless(GrossAccess::mayPage($request->user(), 'stock'), 403);
 
         $filters = [
             'q' => trim((string) $request->query('q', '')),

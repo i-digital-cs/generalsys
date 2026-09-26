@@ -13,7 +13,7 @@ class ResolveAppModule
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        $user?->loadMissing('valuationAssignments');
+        $user?->loadMissing(['valuationAssignments', 'grossPages']);
 
         $module = AppModule::fromRequest($request);
 

@@ -10,26 +10,26 @@ class GrossCustomerPolicy
 {
     public function viewAny(User $user): bool
     {
-        return GrossAccess::mayAccessGross($user);
+        return GrossAccess::mayPage($user, 'customers');
     }
 
     public function view(User $user, GrossCustomer $customer): bool
     {
-        return GrossAccess::mayAccessGross($user);
+        return GrossAccess::mayPage($user, 'customers');
     }
 
     public function create(User $user): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'customers');
     }
 
     public function update(User $user, GrossCustomer $customer): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'customers');
     }
 
     public function delete(User $user, GrossCustomer $customer): bool
     {
-        return GrossAccess::mayManageMasterData($user);
+        return GrossAccess::mayPage($user, 'customers');
     }
 }

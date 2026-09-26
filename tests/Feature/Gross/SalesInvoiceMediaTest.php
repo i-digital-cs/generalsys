@@ -8,6 +8,7 @@ use App\Models\Gross\GrossSalesInvoiceMedia;
 use App\Models\Gross\GrossStockMovement;
 use App\Models\User;
 use App\Models\ValuationAssignment;
+use App\Services\Gross\GrossUserPageService;
 use App\Services\Gross\ItemService;
 use App\Services\Gross\SalesInvoiceMediaService;
 use App\Services\Gross\SalesInvoiceService;
@@ -86,7 +87,7 @@ class SalesInvoiceMediaTest extends TestCase
         Storage::disk('local')->assertMissing($media->file_path);
     }
 
-    public function test_sales_cannot_upload_media_manager_can(): void
+    public function test_sales_with_page_can_upload_media(): void
     {
         $sales = User::factory()->sales()->create();
         ValuationAssignment::query()->create([
@@ -94,18 +95,11 @@ class SalesInvoiceMediaTest extends TestCase
             'assigned_by' => $this->manager->id,
             'module' => 'product',
         ]);
+        app(GrossUserPageService::class)->applyRoleDefaults($sales);
 
         $confirmed = app(SalesInvoiceService::class)->confirm($this->invoice, $this->manager);
 
-        $this->actingAs($sales)
-            ->post(route('gross.sales.media.store', $confirmed), [
-                'image' => UploadedFile::fake()->image('note.png', 100, 100),
-            ])
-            ->assertForbidden();
-
-        $this->assertSame(0, GrossSalesInvoiceMedia::query()->count());
-
-        $this->actingAs($this->manager)
+        $this->actingAs($sales->fresh())
             ->post(route('gross.sales.media.store', $confirmed), [
                 'image' => UploadedFile::fake()->image('note.png', 100, 100),
             ])
