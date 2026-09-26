@@ -317,13 +317,18 @@ class EmployeeService
             return;
         }
 
+        // Align with ValuationAssignmentPolicy: Manager-only (Assistants manage HR, not modules).
+        if ($assignedBy === null || ! $assignedBy->isManager()) {
+            return;
+        }
+
         if (! array_key_exists('valuation_modules', $data)) {
             return;
         }
 
         $modules = $data['valuation_modules'] ?? [];
         $this->valuationAssignments->syncForUser(
-            $assignedBy ?? $user,
+            $assignedBy,
             $user,
             is_array($modules) ? $modules : [],
         );
@@ -337,6 +342,11 @@ class EmployeeService
         if ($user->isManager()) {
             $this->grossPages->syncForUser($user, []);
 
+            return;
+        }
+
+        // Mohra page ACL is Manager-only (same gate as valuation modules).
+        if ($assignedBy === null || ! $assignedBy->isManager()) {
             return;
         }
 

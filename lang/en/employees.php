@@ -45,6 +45,7 @@ return [
         'title' => 'Module access',
         'help' => 'Grant Service and/or Product on the home dashboard. Mohra Gross pages below need Product.',
         'manager_all' => 'Managers always have Service, Product, and every Mohra page — checklist is not used.',
+        'manager_only' => 'Only Managers can assign Service, Product, and Mohra pages. Ask a Manager if this person needs module access.',
         'modules_label' => 'Valuation modules',
     ],
     'sections' => [

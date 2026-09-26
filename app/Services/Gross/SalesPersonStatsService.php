@@ -116,7 +116,12 @@ class SalesPersonStatsService
 
     public function mayViewAll(?User $viewer): bool
     {
-        return GrossAccess::mayManageMasterData($viewer);
+        if ($viewer === null || ! GrossAccess::mayAccessGross($viewer)) {
+            return false;
+        }
+
+        // Company-wide peer metrics: Manager / Accountant only — not Sales with master-data pages.
+        return $viewer->isManager() || $viewer->isAccountant();
     }
 
     public function assertCanViewSubject(?User $viewer, ?User $subject): void

@@ -168,4 +168,66 @@ class GrossUserPagePermissionTest extends TestCase
                 ->all()
         );
     }
+
+    public function test_assistant_cannot_grant_modules_or_mohra_pages(): void
+    {
+        $assistant = User::factory()->assistant()->create();
+        $employee = User::factory()->employee()->create([
+            'email' => 'field.pages@example.com',
+            'name_ar' => 'موظف',
+            'name_en' => 'Worker',
+        ]);
+        $employee->profile()->create(['employee_code' => 'EMP-AS1']);
+        $employee->contracts()->create([
+            'hire_date' => '2024-01-01',
+            'contract_start' => '2024-01-01',
+            'contract_end' => '2026-01-01',
+            'contract_type' => 'سنة',
+            'is_active' => true,
+        ]);
+
+        $payload = [
+            'name_ar' => $employee->name_ar,
+            'name_en' => $employee->name_en,
+            'email' => $employee->email,
+            'password' => '',
+            'role' => User::ROLE_EMPLOYEE,
+            'currency' => 'EGP',
+            'language_preference' => 'en',
+            'status' => User::STATUS_ACTIVE,
+            'base_salary' => 1000,
+            'default_shifts' => [
+                ['shift_type' => 'FULL_TIME', 'start' => '09:00', 'end' => '17:00'],
+                ['shift_type' => '', 'start' => '', 'end' => ''],
+            ],
+            'profile' => [
+                'national_id' => '29501010101011',
+                'birth_date' => '1995-01-01',
+                'address' => 'Cairo',
+                'phone' => '01000000001',
+                'gender' => 'MALE',
+                'religion' => null,
+                'marital_status' => 'SINGLE',
+            ],
+            'contract' => [
+                'hire_date' => '2024-01-01',
+                'contract_start' => '2024-01-01',
+                'contract_end' => '2026-01-01',
+                'contract_type' => 'سنة',
+            ],
+            'qualifications' => [],
+            'contacts' => [],
+            'can_confirm_gross_loss' => 0,
+            'valuation_modules' => ['product', 'service'],
+            'gross_page_keys' => ['sales', 'treasury', 'items'],
+            'team_leader_ids' => [$this->teamLeader->id],
+        ];
+
+        $this->actingAs($assistant)
+            ->put(route('admin.employees.update', $employee), $payload)
+            ->assertRedirect(route('admin.employees.edit', $employee));
+
+        $this->assertSame(0, GrossUserPage::query()->where('user_id', $employee->id)->count());
+        $this->assertSame(0, ValuationAssignment::query()->where('user_id', $employee->id)->count());
+    }
 }

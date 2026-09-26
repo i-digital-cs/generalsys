@@ -34,8 +34,8 @@ class SalesPersonStatsTest extends TestCase
             'assigned_by' => $manager->id,
             'module' => 'product',
         ]);
-        $this->assignGrossPages($salesA, ['sales', 'sales_stats']);
-        $this->assignGrossPages($salesB, ['sales', 'sales_stats']);
+        $this->assignGrossPages($salesA, ['sales', 'sales_stats', 'items']);
+        $this->assignGrossPages($salesB, ['sales', 'sales_stats', 'items']);
 
         $company = app(ShippingCompanyService::class)->create(['name' => 'Courier', 'status' => 'ACTIVE']);
         $item = app(ItemService::class)->create(['name' => 'Shirt', 'status' => GrossItem::STATUS_ACTIVE]);

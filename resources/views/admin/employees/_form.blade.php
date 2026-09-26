@@ -87,6 +87,9 @@
                 <div class="card border-0 bg-body-tertiary">
                     <div class="card-body py-3">
                         <h2 class="h6 mb-1">{{ __('employees.module_access.title') }}</h2>
+                        @unless (auth()->user()?->isManager())
+                            <p class="small text-body-secondary mb-0">{{ __('employees.module_access.manager_only') }}</p>
+                        @else
                         <p class="small text-body-secondary mb-2" data-gross-pages-manager-hint>{{ __('employees.module_access.manager_all') }}</p>
                         <p class="small text-body-secondary mb-3" data-gross-pages-help>{{ __('employees.module_access.help') }}</p>
 
@@ -163,6 +166,7 @@
                         </div>
                         @error('gross_page_keys') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         @error('gross_page_keys.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        @endunless
                     </div>
                 </div>
             </div>
