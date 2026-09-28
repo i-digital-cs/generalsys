@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Attendance\ShiftConfig;
 use Database\Factories\AttendanceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -155,6 +156,22 @@ class Attendance extends Model
     public function forceClosedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'force_closed_by');
+    }
+
+    /**
+     * Live planned hours (assignment → profile → type default). Prefer this over the cached column.
+     */
+    public function resolvedPlannedHours(?ShiftAssignment $assignment = null): float
+    {
+        return app(ShiftConfig::class)->resolveForAttendance($this, $assignment);
+    }
+
+    /**
+     * Overtime candidate minutes from raw work vs live planned (not the cached column).
+     */
+    public function overtimeDeltaMinutes(?ShiftAssignment $assignment = null): int
+    {
+        return app(ShiftConfig::class)->overtimeDeltaMinutes($this, $assignment);
     }
 
     public function hasOpenSegment(): bool

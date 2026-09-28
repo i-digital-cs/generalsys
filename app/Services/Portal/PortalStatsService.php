@@ -5,6 +5,7 @@ namespace App\Services\Portal;
 use App\Models\Attendance;
 use App\Models\User;
 use App\Services\Attendance\MissingDailyReportService;
+use App\Services\Attendance\ShiftConfig;
 use App\Services\Employees\TeamMembershipService;
 use App\Support\AppModule;
 use Carbon\Carbon;
@@ -21,6 +22,7 @@ class PortalStatsService
     public function __construct(
         private readonly TeamMembershipService $membership,
         private readonly MissingDailyReportService $missingReports,
+        private readonly ShiftConfig $shifts,
     ) {}
 
     /**
@@ -279,16 +281,23 @@ class PortalStatsService
             return ['planned' => 0.0, 'actual' => 0.0];
         }
 
-        $row = Attendance::query()
+        $rows = Attendance::query()
+            ->with('user')
             ->whereIn('user_id', $ids)
             ->whereYear('date', $now->year)
             ->whereMonth('date', $now->month)
-            ->selectRaw('COALESCE(SUM(planned_hours), 0) as planned, COALESCE(SUM(actual_hours), 0) as actual')
-            ->first();
+            ->get(['id', 'user_id', 'date', 'shift_type', 'planned_hours', 'actual_hours']);
+
+        $planned = 0.0;
+        $actual = 0.0;
+        foreach ($rows as $row) {
+            $planned += $this->shifts->resolveForAttendance($row);
+            $actual += (float) $row->actual_hours;
+        }
 
         return [
-            'planned' => round((float) ($row->planned ?? 0), 2),
-            'actual' => round((float) ($row->actual ?? 0), 2),
+            'planned' => round($planned, 2),
+            'actual' => round($actual, 2),
         ];
     }
 }

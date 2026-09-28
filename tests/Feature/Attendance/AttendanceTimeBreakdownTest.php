@@ -146,4 +146,35 @@ class AttendanceTimeBreakdownTest extends TestCase
             ->assertSee(__('attendance_review.overtime_minutes'), false)
             ->assertSee('60', false);
     }
+
+    public function test_summarize_uses_live_profile_planned_hours_for_overtime_delta(): void
+    {
+        $employee = User::factory()->employee()->create([
+            'work_start_time' => '21:00',
+            'work_end_time' => '09:00',
+            'shift_types_default' => [
+                ['type' => Attendance::SHIFT_FULL_TIME, 'start' => '21:00', 'end' => '09:00'],
+            ],
+        ]);
+
+        $service = app(AttendanceService::class);
+        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-09-12 21:09:00'));
+        $final = $service->clockOut($employee, Carbon::parse('2026-09-13 16:18:00'));
+
+        // Stale snapshot as if clock-in froze 8h before profile was set to 12h.
+        $final->update(['planned_hours' => 8, 'actual_hours' => 8]);
+
+        $summary = app(AttendanceTimeCalculator::class)->summarize($final->fresh(['segments', 'gaps', 'user']), $service);
+
+        $this->assertSame(12.0, $summary->plannedHours);
+        // 19.15h raw − 12h planned ≈ 429 extra minutes (not 669 vs stale 8h).
+        $this->assertSame(429, $summary->overtimeDeltaMinutes);
+        $this->assertSame(429, $summary->systemSuggestedOvertimeMinutes);
+        $this->assertSame(12.0, $final->fresh(['user'])->resolvedPlannedHours());
+        $this->assertSame(429, $final->fresh(['user'])->overtimeDeltaMinutes());
+
+        app(AttendanceTimeCalculator::class)->recalculate($final->fresh(['segments', 'user']), $service);
+        $this->assertSame('12.00', $final->fresh()->planned_hours);
+        $this->assertSame('12.00', $final->fresh()->actual_hours);
+    }
 }

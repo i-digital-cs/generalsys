@@ -117,7 +117,7 @@
                         @endif
                     </dd>
                     <dt class="col-sm-4">{{ __('clock.planned_hours') }}</dt>
-                    <dd class="col-sm-8" dir="ltr">{{ $open->planned_hours }}</dd>
+                    <dd class="col-sm-8" dir="ltr">{{ number_format($open->resolvedPlannedHours(), 2) }}</dd>
                     <dt class="col-sm-4">{{ __('clock.elapsed') }}</dt>
                     <dd class="col-sm-8 font-monospace fs-4" dir="ltr" id="clock-elapsed"
                         data-clock-in="{{ $elapsedFrom?->toIso8601String() }}">--:--:--</dd>

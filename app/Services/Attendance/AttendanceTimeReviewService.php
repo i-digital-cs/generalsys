@@ -19,6 +19,7 @@ class AttendanceTimeReviewService
         private readonly AttendanceTimeCalculator $calculator,
         private readonly AttendanceService $attendanceService,
         private readonly AppNotificationService $notifications,
+        private readonly ShiftConfig $shifts,
     ) {}
 
     public function actorMayReview(User $actor, Attendance $attendance): bool
@@ -92,18 +93,41 @@ class AttendanceTimeReviewService
                 ? $query->where('overtime_tl_recommendation', 'RECOMMEND')
                     ->where('overtime_admin_decision', 'PENDING')
                 : $query->where('overtime_tl_recommendation', 'NONE')
-                    ->whereColumn('raw_actual_hours', '>', 'planned_hours'),
+                    ->where('raw_actual_hours', '>', 0),
             'decided' => $query->where(function ($q) {
                 $q->where('overtime_tl_recommendation', 'NO_OVERTIME')
                     ->orWhereIn('overtime_admin_decision', ['APPROVED', 'REJECTED']);
             }),
             default => $query->where(function ($q) {
-                $q->whereColumn('raw_actual_hours', '>', 'planned_hours')
+                $q->where('raw_actual_hours', '>', 0)
                     ->orWhere('overtime_tl_recommendation', '!=', 'NONE');
             }),
         };
 
-        return $query->get()->filter(fn (Attendance $row) => $this->actorMayReview($actor, $row))->values();
+        return $query->limit(500)->get()
+            ->filter(function (Attendance $row) use ($actor, $filter): bool {
+                if (! $this->actorMayReview($actor, $row)) {
+                    return false;
+                }
+
+                if ($filter === 'decided') {
+                    return true;
+                }
+
+                if ($filter === 'pending' && $actor->canManageOperations()) {
+                    return true;
+                }
+
+                $hasLiveOvertime = $this->shifts->overtimeDeltaMinutes($row) > 0;
+
+                if ($filter === 'pending') {
+                    return $hasLiveOvertime && $row->overtime_tl_recommendation === 'NONE';
+                }
+
+                // all
+                return $hasLiveOvertime || $row->overtime_tl_recommendation !== 'NONE';
+            })
+            ->values();
     }
 
     public function tlRecommendOvertime(User $actor, Attendance $attendance, int $minutes, string $recommendation): Attendance

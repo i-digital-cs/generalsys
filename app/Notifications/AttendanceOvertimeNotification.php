@@ -37,7 +37,7 @@ class AttendanceOvertimeNotification extends Notification implements ShouldQueue
             'kind' => $this->kind,
             'attendance_id' => $this->attendance->id,
             'minutes' => (int) $this->attendance->recommended_overtime_minutes,
-            'delta_minutes' => max(0, (int) round(((float) $this->attendance->raw_actual_hours - (float) $this->attendance->planned_hours) * 60)),
+            'delta_minutes' => max(0, $this->attendance->overtimeDeltaMinutes()),
             'employee' => $employee?->localizedName(),
             'employee_name_en' => $employee?->name_en,
             'employee_name_ar' => $employee?->name_ar,

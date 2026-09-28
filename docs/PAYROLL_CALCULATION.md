@@ -160,7 +160,7 @@ All logic lives in services (never controllers) — see `AGENTS.md`:
 
 | Excel formula | PHP implementation | Inputs |
 |---------------|--------------------|--------|
-| D4/G4/J4 planned hours | `ShiftConfig::plannedHours(shiftType, $assignment?)` → assignment `expected_hours` when types match, else 8/4/12 | `shift_type`, optional `shift_assignments` |
+| D4/G4/J4 planned hours | **SSOT** `ShiftConfig::resolvePlannedHours` / `resolveForAttendance` → assignment `expected_hours` when types match, else employee default profile window, else 8/4/12. `attendance.planned_hours` is a write-through cache only (refreshed on recalculate / profile change). OT / payroll / portal / approvals must use live resolve — never the stale column alone. | `shift_type`, `shift_assignments`, `users.shift_types_default` |
 | R/S/T worked time | `AttendanceService::computeWorkedMinutes()` — `clock_out − clock_in` (real datetimes) | `attendance` row |
 | G/J row dispatcher | `AttendanceService::resolveDayStatus()` — punches? day-type? missing-punch flag | row + day type |
 | B5…B8 COUNTIFs | `PayrollAggregator::dayCounts(user, month)` — one grouped query | `attendance.status` |

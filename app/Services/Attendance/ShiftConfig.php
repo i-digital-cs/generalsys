@@ -8,7 +8,10 @@ use App\Models\User;
 
 /**
  * Planned-hours profiles as data (PAYROLL_CALCULATION.md §1 / §7).
- * When a TL assignment exists for the chosen type, use its expected_hours.
+ *
+ * Single source of truth for “how many hours this person owes for a shift”:
+ * TL assignment expected_hours → employee default profile window → type base.
+ * `attendance.planned_hours` is only a write-through cache refreshed by recalculate.
  */
 class ShiftConfig
 {
@@ -50,10 +53,43 @@ class ShiftConfig
     public function resolvePlannedHours(User $user, string $shiftType, ?ShiftAssignment $assignment = null): float
     {
         if ($assignment !== null && $assignment->shift_type === $shiftType) {
-            return (float) $assignment->expected_hours;
+            return round((float) $assignment->expected_hours, 2);
         }
 
-        return $user->plannedHoursFor($shiftType);
+        return round($user->plannedHoursFor($shiftType), 2);
+    }
+
+    /**
+     * Canonical planned hours for an attendance row (never trust a stale column alone).
+     */
+    public function resolveForAttendance(Attendance $attendance, ?ShiftAssignment $assignment = null): float
+    {
+        $user = $attendance->relationLoaded('user') ? $attendance->user : $attendance->user()->first();
+        if ($user === null) {
+            return round((float) ($attendance->getAttributes()['planned_hours'] ?? 0), 2);
+        }
+
+        if ($assignment === null) {
+            $assignment = ShiftAssignment::query()
+                ->where('user_id', $user->id)
+                ->whereDate('date', $attendance->date)
+                ->where('shift_type', $attendance->shift_type)
+                ->where('status', ShiftAssignment::STATUS_SCHEDULED)
+                ->first();
+        }
+
+        return $this->resolvePlannedHours($user, $attendance->shift_type, $assignment);
+    }
+
+    /**
+     * Raw worked minutes minus live planned minutes (positive = overtime candidate).
+     */
+    public function overtimeDeltaMinutes(Attendance $attendance, ?ShiftAssignment $assignment = null): int
+    {
+        $rawHours = (float) ($attendance->raw_actual_hours ?? $attendance->actual_hours ?? 0);
+        $planned = $this->resolveForAttendance($attendance, $assignment);
+
+        return (int) round($rawHours * 60) - (int) round($planned * 60);
     }
 
     /**

@@ -872,7 +872,7 @@ class AttendanceService
     ): CarbonInterface {
         $expectedEnd = $this->expectedEndForAttendance($attendance);
         $closeAt = $expectedEnd ?? $segment->clock_in->copy()->addMinutes(
-            (int) round((float) $attendance->planned_hours * 60),
+            (int) round($this->shifts->resolveForAttendance($attendance) * 60),
         );
 
         if ($closeAt->gt($at)) {

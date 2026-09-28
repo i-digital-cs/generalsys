@@ -19,6 +19,8 @@ use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Models\ValuationAssignment;
 use App\Models\ValuationSheet;
+use App\Observers\ShiftAssignmentPlannedHoursObserver;
+use App\Observers\UserShiftProfileObserver;
 use App\Policies\AdvancePolicy;
 use App\Policies\AttendancePhotoPolicy;
 use App\Policies\EmployeePolicy;
@@ -61,6 +63,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+
+        User::observe(UserShiftProfileObserver::class);
+        ShiftAssignment::observe(ShiftAssignmentPlannedHoursObserver::class);
 
         Gate::policy(User::class, EmployeePolicy::class);
         Gate::policy(ShiftAssignment::class, ShiftAssignmentPolicy::class);

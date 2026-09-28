@@ -7,6 +7,7 @@ use App\Models\Attendance;
 use App\Models\PayrollAdjustment;
 use App\Models\Permission;
 use App\Models\User;
+use App\Services\Attendance\ShiftConfig;
 use App\Services\Employees\RestDayService;
 use App\Services\Permissions\PermissionPenaltyCalculator;
 use Carbon\Carbon;
@@ -27,6 +28,7 @@ class PayrollAggregator
     public function __construct(
         private readonly PermissionPenaltyCalculator $permissions,
         private readonly RestDayService $restDays,
+        private readonly ShiftConfig $shifts,
     ) {}
 
     /**
@@ -61,6 +63,7 @@ class PayrollAggregator
             ->whereYear('date', $year)
             ->whereMonth('date', $month)
             ->get();
+        $rows->each(fn (Attendance $row) => $row->setRelation('user', $user));
 
         $poolRestDates = $this->restDays->datesInMonth($user, $month, $year);
         $counts = $this->dayCounts($rows, $poolRestDates);
@@ -254,7 +257,7 @@ class PayrollAggregator
                 continue;
             }
 
-            $planned += (float) $row->planned_hours;
+            $planned += $this->shifts->resolveForAttendance($row);
             $actual += (float) $row->actual_hours;
         }
 

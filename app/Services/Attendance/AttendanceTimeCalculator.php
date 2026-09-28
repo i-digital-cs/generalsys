@@ -5,12 +5,17 @@ namespace App\Services\Attendance;
 use App\Models\Attendance;
 use App\Models\AttendanceSegment;
 use App\Models\ShiftAssignment;
+use App\Models\User;
 
 /**
  * Aggregate segment hours, late/early, credited cap, and attendance score (T-9.1).
  */
 class AttendanceTimeCalculator
 {
+    public function __construct(
+        private readonly ShiftConfig $shifts,
+    ) {}
+
     public function recalculate(
         Attendance $attendance,
         AttendanceService $attendanceService,
@@ -26,7 +31,7 @@ class AttendanceTimeCalculator
         $openSegment = $segments->first(fn (AttendanceSegment $s) => $s->isOpen());
 
         $rawHours = round($segments->sum(fn (AttendanceSegment $s) => $s->workedMinutes()) / 60, 2);
-        $planned = (float) $attendance->planned_hours;
+        $planned = $this->livePlannedHours($attendance, $user, $assignment);
         $credited = $this->resolveCreditedHours($attendance, $rawHours, $planned);
 
         $first = $segments->first();
@@ -58,6 +63,7 @@ class AttendanceTimeCalculator
             'clock_out_accuracy_m' => $openSegment === null ? $lastClosed?->clock_out_accuracy_m : null,
             'clock_out_distance_m' => $openSegment === null ? $lastClosed?->clock_out_distance_m : null,
             'clock_out_outside_geofence' => $openSegment === null ? (bool) ($lastClosed?->clock_out_outside_geofence ?? false) : false,
+            'planned_hours' => $planned,
             'raw_actual_hours' => $rawHours,
             'actual_hours' => $credited,
             'late_minutes' => (int) ($lateMinutes ?? 0),
@@ -96,7 +102,9 @@ class AttendanceTimeCalculator
         if ($segments->isEmpty() && $attendance->clock_in !== null && $attendance->clock_out !== null) {
             $rawHours = round((float) ($attendance->raw_actual_hours ?? $attendance->actual_hours), 2);
         }
-        $planned = (float) $attendance->planned_hours;
+        $planned = $user !== null
+            ? $this->livePlannedHours($attendance, $user, $assignment)
+            : (float) $attendance->planned_hours;
 
         $first = $segments->first();
         $lastClosed = $segments->filter(fn (AttendanceSegment $s) => ! $s->isOpen())->last();
@@ -216,6 +224,22 @@ class AttendanceTimeCalculator
             clockInWindowPosition: $clockInWindowPosition,
             clockOutWindowPosition: $clockOutWindowPosition,
         );
+    }
+
+    /**
+     * Prefer live profile/assignment expected hours over a stale attendance.planned_hours
+     * (e.g. row created when defaults were still 8h FT while profile is 21:00→09:00 = 12h).
+     */
+    public function livePlannedHours(
+        Attendance $attendance,
+        ?User $user = null,
+        ?ShiftAssignment $assignment = null,
+    ): float {
+        if ($user !== null) {
+            $attendance->setRelation('user', $user);
+        }
+
+        return $this->shifts->resolveForAttendance($attendance, $assignment);
     }
 
     private function systemCreditedHours(Attendance $attendance, float $rawHours, float $planned): float

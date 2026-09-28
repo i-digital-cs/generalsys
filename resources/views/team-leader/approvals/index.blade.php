@@ -348,7 +348,7 @@
                                         <span class="num-ltr">{{ $overtimeRow->date?->translatedFormat('d M Y') }}</span>
                                     </td>
                                     <td>{{ __('clock.shifts.'.$overtimeRow->shift_type) }}</td>
-                                    <td class="col-num num-ltr">{{ number_format((float) $overtimeRow->planned_hours, 2) }}h</td>
+                                    <td class="col-num num-ltr">{{ number_format($overtimeRow->resolvedPlannedHours(), 2) }}h</td>
                                     <td class="col-num num-ltr">{{ number_format((float) $overtimeRow->raw_actual_hours, 2) }}h</td>
                                     <td>
                                         <x-attendance-overtime-status :attendance="$overtimeRow" />
