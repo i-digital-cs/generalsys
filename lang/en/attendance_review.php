@@ -79,6 +79,8 @@ return [
         'admin_hint' => 'Approve :minutes min overtime on top of :planned h planned?',
         'approve' => 'Approve overtime',
         'reject' => 'Reject overtime',
+        'recommend_again' => 'Recommend again',
+        'rereview_hint' => 'Admin rejected this overtime. Recommend again to send it back for admin approval.',
         'empty_pending_tl' => 'No overtime awaiting team leader review.',
         'empty_pending_admin' => 'No overtime awaiting admin decision.',
         'empty_decided' => 'No decided overtime rows in this filter.',
@@ -88,6 +90,7 @@ return [
         'forbidden' => 'You cannot adjust this attendance.',
         'invalid_overtime' => 'Invalid overtime recommendation.',
         'no_tl_overtime' => 'No team leader overtime recommendation yet.',
+        'already_final' => 'This overtime is already approved and locked.',
     ],
     'flash' => [
         'saved' => 'Attendance time updated.',

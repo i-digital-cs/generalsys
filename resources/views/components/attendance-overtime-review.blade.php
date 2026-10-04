@@ -18,6 +18,8 @@
     $defaultMinutes = $attendance->overtime_tl_recommendation === 'NONE'
         ? max((int) $attendance->recommended_overtime_minutes, $summary->systemSuggestedOvertimeMinutes)
         : (int) $attendance->recommended_overtime_minutes;
+    $awaitingTlAfterReject = $attendance->overtime_tl_recommendation === 'RECOMMEND'
+        && $attendance->overtime_admin_decision === 'REJECTED';
     $showTlForm = $actor?->isTeamLeader()
         && ! ($actor?->canManageOperations() ?? false)
         && $summary->needsTlOvertimeReview();
@@ -42,6 +44,9 @@
                 @if ($filter)
                     <input type="hidden" name="filter" value="{{ $filter }}">
                 @endif
+                @if ($awaitingTlAfterReject)
+                    <p class="small text-warning mb-2">{{ __('attendance_review.overtime.rereview_hint') }}</p>
+                @endif
                 <div class="row g-2">
                     <div class="col-12">
                         <label class="form-label" for="ot_minutes_c_{{ $attendance->id }}">{{ __('attendance_review.overtime_minutes') }}</label>
@@ -59,7 +64,9 @@
                     </div>
                 </div>
                 <button type="submit" class="btn btn-sm btn-primary mt-2">
-                    {{ __('attendance_review.recommend_overtime') }}
+                    {{ $awaitingTlAfterReject
+                        ? __('attendance_review.overtime.recommend_again')
+                        : __('attendance_review.recommend_overtime') }}
                 </button>
             </form>
         @elseif ($showAdminForm)
@@ -131,6 +138,9 @@
                 @if ($filter)
                     <input type="hidden" name="filter" value="{{ $filter }}">
                 @endif
+                @if ($awaitingTlAfterReject)
+                    <p class="small text-warning mb-2">{{ __('attendance_review.overtime.rereview_hint') }}</p>
+                @endif
                 <div class="row g-3">
                     <div class="col-12 col-sm-6">
                         <label class="form-label" for="ot_minutes_{{ $attendance->id }}">{{ __('attendance_review.overtime_minutes') }}</label>
@@ -152,7 +162,9 @@
                 </div>
                 <div class="attendance-review-actions">
                     <button type="submit" class="btn btn-sm btn-primary">
-                        {{ __('attendance_review.recommend_overtime') }}
+                        {{ $awaitingTlAfterReject
+                            ? __('attendance_review.overtime.recommend_again')
+                            : __('attendance_review.recommend_overtime') }}
                     </button>
                 </div>
             </form>

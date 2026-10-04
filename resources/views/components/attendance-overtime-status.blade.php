@@ -16,14 +16,11 @@
 @endphp
 
 <div {{ $attributes->merge(['class' => 'd-flex flex-wrap gap-1 align-items-center']) }}>
-    @if ($admin !== 'PENDING' && $tl === 'RECOMMEND')
-        <span @class([
-            'badge',
-            'text-bg-success' => $admin === 'APPROVED',
-            'text-bg-danger' => $admin === 'REJECTED',
-        ])>
-            {{ __('attendance_review.breakdown.ot_admin.'.$admin) }}
-        </span>
+    @if ($admin === 'REJECTED' && $tl === 'RECOMMEND')
+        <span class="badge text-bg-danger">{{ __('attendance_review.breakdown.ot_admin.REJECTED') }}</span>
+        <span class="badge text-bg-warning text-dark">{{ __('attendance_review.overtime.pending_tl') }}</span>
+    @elseif ($admin === 'APPROVED' && $tl === 'RECOMMEND')
+        <span class="badge text-bg-success">{{ __('attendance_review.breakdown.ot_admin.APPROVED') }}</span>
         @if ($summary->approvedOvertimeMinutes > 0)
             <span class="badge text-bg-success">
                 +{{ $summary->approvedOvertimeMinutes }} {{ __('attendance_review.overtime.minutes_abbr') }}

@@ -209,4 +209,54 @@ class AttendanceGapApprovalTest extends TestCase
         NotificationFacade::assertSentTo($this->employee, AttendanceGapNotification::class);
         NotificationFacade::assertSentTo($this->leader, AttendanceGapNotification::class);
     }
+
+    public function test_tl_can_recommend_again_after_admin_reject_then_admin_approves(): void
+    {
+        $gap = $this->createGapFor($this->employee);
+
+        $this->actingAs($this->leader)
+            ->post(route('team-leader.approvals.gaps.recommend', $gap), [
+                'recommendation' => 'APPROVE',
+            ]);
+
+        $this->actingAs($this->manager)
+            ->post(route('team-leader.approvals.gaps.decide', $gap->fresh()), [
+                'decision' => 'REJECTED',
+                'note' => 'Too long',
+            ]);
+
+        $this->assertSame(AttendanceGap::ADMIN_REJECTED, $gap->fresh()->admin_decision);
+
+        $this->actingAs($this->leader)
+            ->get(route('team-leader.approvals', ['filter' => 'pending']))
+            ->assertOk()
+            ->assertSee('Gap Member', false)
+            ->assertSee(__('attendance_gaps.recommend_again'), false);
+
+        $this->actingAs($this->leader)
+            ->post(route('team-leader.approvals.gaps.recommend', $gap->fresh()), [
+                'recommendation' => 'APPROVE',
+                'note' => 'Re-checked',
+                'filter' => 'pending',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $reopened = $gap->fresh();
+        $this->assertSame(AttendanceGap::TL_APPROVE, $reopened->tl_recommendation);
+        $this->assertSame(AttendanceGap::ADMIN_PENDING, $reopened->admin_decision);
+        $this->assertNull($reopened->admin_decided_by);
+        $this->assertSame('Re-checked', $reopened->tl_note);
+
+        $this->actingAs($this->manager)
+            ->post(route('team-leader.approvals.gaps.decide', $reopened), [
+                'decision' => 'APPROVED',
+                'note' => 'OK now',
+                'filter' => 'pending',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame(AttendanceGap::ADMIN_APPROVED, $gap->fresh()->admin_decision);
+    }
 }

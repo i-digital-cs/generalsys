@@ -74,9 +74,18 @@ readonly class AttendanceTimeSummary
 
     public function needsTlOvertimeReview(): bool
     {
-        return ! $this->open
-            && $this->overtimeTlRecommendation === 'NONE'
-            && $this->systemSuggestedOvertimeMinutes > 0;
+        if ($this->open) {
+            return false;
+        }
+
+        // First pass: system detected overtime and TL has not acted.
+        if ($this->overtimeTlRecommendation === 'NONE' && $this->systemSuggestedOvertimeMinutes > 0) {
+            return true;
+        }
+
+        // Two-way: Admin rejected → TL may recommend again.
+        return $this->overtimeTlRecommendation === 'RECOMMEND'
+            && $this->overtimeAdminDecision === 'REJECTED';
     }
 
     public function needsAdminOvertimeReview(): bool
@@ -91,8 +100,9 @@ readonly class AttendanceTimeSummary
             return true;
         }
 
-        return $this->overtimeTlRecommendation !== 'NONE'
-            && $this->overtimeAdminDecision !== 'PENDING';
+        // Admin reject is not final — TL can reopen.
+        return $this->overtimeTlRecommendation === 'RECOMMEND'
+            && $this->overtimeAdminDecision === 'APPROVED';
     }
 
     public function creditedDiffersFromSystem(): bool

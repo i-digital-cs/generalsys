@@ -67,4 +67,16 @@ class AttendanceGap extends Model
         return $this->admin_decision === self::ADMIN_PENDING
             && $this->tl_recommendation !== self::TL_PENDING;
     }
+
+    /** Admin rejected — TL may recommend again (two-way). */
+    public function isAwaitingTlRereview(): bool
+    {
+        return $this->admin_decision === self::ADMIN_REJECTED;
+    }
+
+    public function isPendingForTl(): bool
+    {
+        return $this->tl_recommendation === self::TL_PENDING
+            || $this->isAwaitingTlRereview();
+    }
 }

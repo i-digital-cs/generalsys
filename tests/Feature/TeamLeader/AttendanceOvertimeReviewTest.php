@@ -177,4 +177,48 @@ class AttendanceOvertimeReviewTest extends TestCase
         $this->assertSame(60, $summary->approvedOvertimeMinutes);
         $this->assertEqualsWithDelta(9.0, $summary->creditedCapHours, 0.01);
     }
+
+    public function test_tl_can_recommend_again_after_admin_reject_then_admin_approves(): void
+    {
+        $attendance = $this->createOvertimeAttendanceFor($this->employee);
+        $reviews = app(AttendanceTimeReviewService::class);
+
+        $reviews->tlRecommendOvertime($this->leader, $attendance, 60, 'RECOMMEND');
+        $reviews->adminDecideOvertime($this->manager, $attendance->fresh(), 'REJECTED');
+
+        $this->actingAs($this->leader)
+            ->get(route('team-leader.approvals', ['filter' => 'pending']))
+            ->assertOk()
+            ->assertSee('OT Member', false)
+            ->assertSee(__('attendance_review.overtime.recommend_again'), false);
+
+        $this->actingAs($this->leader)
+            ->post(route('team-leader.attendance.overtime.tl', $attendance->fresh()), [
+                'recommended_overtime_minutes' => 45,
+                'overtime_tl_recommendation' => 'RECOMMEND',
+                'filter' => 'pending',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $reopened = $attendance->fresh();
+        $this->assertSame('RECOMMEND', $reopened->overtime_tl_recommendation);
+        $this->assertSame('PENDING', $reopened->overtime_admin_decision);
+        $this->assertSame(45, $reopened->recommended_overtime_minutes);
+
+        $this->actingAs($this->manager)
+            ->get(route('team-leader.approvals', ['filter' => 'pending']))
+            ->assertOk()
+            ->assertSee(__('attendance_review.overtime.approve'), false);
+
+        $this->actingAs($this->manager)
+            ->post(route('team-leader.attendance.overtime.admin', $reopened), [
+                'overtime_admin_decision' => 'APPROVED',
+                'filter' => 'pending',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('APPROVED', $attendance->fresh()->overtime_admin_decision);
+    }
 }

@@ -65,8 +65,12 @@ class AttendanceGapService
             'pending' => $actor->canManageOperations()
                 ? $query->where('admin_decision', AttendanceGap::ADMIN_PENDING)
                     ->where('tl_recommendation', '!=', AttendanceGap::TL_PENDING)
-                : $query->where('tl_recommendation', AttendanceGap::TL_PENDING),
-            'decided' => $query->where('admin_decision', '!=', AttendanceGap::ADMIN_PENDING),
+                : $query->where(function ($q) {
+                    $q->where('tl_recommendation', AttendanceGap::TL_PENDING)
+                        ->orWhere('admin_decision', AttendanceGap::ADMIN_REJECTED);
+                }),
+            // Admin reject is reopened by TL — only final Admin approve is "decided".
+            'decided' => $query->where('admin_decision', AttendanceGap::ADMIN_APPROVED),
             default => null,
         };
 
@@ -102,11 +106,20 @@ class AttendanceGapService
             throw ValidationException::withMessages(['gap' => __('attendance_gaps.errors.forbidden')]);
         }
 
+        if ($gap->admin_decision === AttendanceGap::ADMIN_APPROVED) {
+            throw ValidationException::withMessages(['gap' => __('attendance_gaps.errors.already_final')]);
+        }
+
         $gap->update([
             'tl_recommendation' => $recommendation,
             'tl_decided_by' => $actor->id,
             'tl_decided_at' => now(),
             'tl_note' => $note,
+            // Reopens Admin queue after a prior reject (two-way TL ↔ Admin).
+            'admin_decision' => AttendanceGap::ADMIN_PENDING,
+            'admin_decided_by' => null,
+            'admin_decided_at' => null,
+            'admin_note' => null,
         ]);
 
         $gap->loadMissing('attendance.user');
@@ -127,6 +140,10 @@ class AttendanceGapService
 
         if ($gap->tl_recommendation === AttendanceGap::TL_PENDING) {
             throw ValidationException::withMessages(['gap' => __('attendance_gaps.errors.await_tl')]);
+        }
+
+        if ($gap->admin_decision === AttendanceGap::ADMIN_APPROVED) {
+            throw ValidationException::withMessages(['gap' => __('attendance_gaps.errors.already_final')]);
         }
 
         $gap->update([

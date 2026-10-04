@@ -10,6 +10,8 @@ return [
     'reject' => 'رفض الاستراحة',
     'recommend_approve' => 'توصية بالاعتماد',
     'recommend_reject' => 'توصية بالرفض',
+    'recommend_again' => 'إعادة التوصية',
+    'rereview_hint' => 'رفضت الإدارة هذه الاستراحة. أعد التوصية لإرسالها مرة أخرى لاعتماد الإدارة.',
     'pending_tl' => 'بانتظار قائد الفريق',
     'pending_admin' => 'بانتظار الإدارة',
     'approved' => 'معتمد',
@@ -33,6 +35,7 @@ return [
         'invalid_recommendation' => 'توصية قائد الفريق غير صالحة.',
         'invalid_decision' => 'قرار الإدارة غير صالح.',
         'await_tl' => 'يجب أن يوصي قائد الفريق أولًا.',
+        'already_final' => 'تم اعتماد فجوة الاستراحة هذه وأصبحت مقفلة.',
     ],
     'notifications' => [
         'pending' => 'فجوة استراحة :minutes د تحتاج مراجعة (:employee).',

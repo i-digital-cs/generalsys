@@ -258,15 +258,20 @@
                                         @endif
                                     </td>
                                     <td class="text-end">
-                                        @if ($gap->tl_recommendation === \App\Models\AttendanceGap::TL_PENDING && auth()->user()?->isTeamLeader() && ! ($canManageOperations ?? false))
+                                        @if ($gap->isPendingForTl() && auth()->user()?->isTeamLeader() && ! ($canManageOperations ?? false))
                                             <form method="POST" action="{{ route('team-leader.approvals.gaps.recommend', $gap) }}" class="text-start">
                                                 @csrf
                                                 <input type="hidden" name="filter" value="{{ $filter }}">
+                                                @if ($gap->isAwaitingTlRereview())
+                                                    <p class="small text-warning mb-2">{{ __('attendance_gaps.rereview_hint') }}</p>
+                                                @endif
                                                 <label class="form-label small mb-1">{{ __('attendance_gaps.note') }}</label>
                                                 <textarea name="note" rows="2" maxlength="500" class="form-control form-control-sm mb-2"></textarea>
                                                 <div class="d-flex flex-wrap gap-2 justify-content-end">
                                                     <button type="submit" name="recommendation" value="APPROVE" class="btn btn-sm btn-success">
-                                                        {{ __('attendance_gaps.recommend_approve') }}
+                                                        {{ $gap->isAwaitingTlRereview()
+                                                            ? __('attendance_gaps.recommend_again')
+                                                            : __('attendance_gaps.recommend_approve') }}
                                                     </button>
                                                     <button type="submit" name="recommendation" value="REJECT" class="btn btn-sm btn-outline-danger">
                                                         {{ __('attendance_gaps.recommend_reject') }}

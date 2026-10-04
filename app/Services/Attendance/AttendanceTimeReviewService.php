@@ -92,11 +92,18 @@ class AttendanceTimeReviewService
             'pending' => $actor->canManageOperations()
                 ? $query->where('overtime_tl_recommendation', 'RECOMMEND')
                     ->where('overtime_admin_decision', 'PENDING')
-                : $query->where('overtime_tl_recommendation', 'NONE')
-                    ->where('raw_actual_hours', '>', 0),
+                : $query->where(function ($q) {
+                    $q->where(function ($first) {
+                        $first->where('overtime_tl_recommendation', 'NONE')
+                            ->where('raw_actual_hours', '>', 0);
+                    })->orWhere(function ($rejected) {
+                        $rejected->where('overtime_tl_recommendation', 'RECOMMEND')
+                            ->where('overtime_admin_decision', 'REJECTED');
+                    });
+                }),
             'decided' => $query->where(function ($q) {
                 $q->where('overtime_tl_recommendation', 'NO_OVERTIME')
-                    ->orWhereIn('overtime_admin_decision', ['APPROVED', 'REJECTED']);
+                    ->orWhere('overtime_admin_decision', 'APPROVED');
             }),
             default => $query->where(function ($q) {
                 $q->where('raw_actual_hours', '>', 0)
@@ -119,13 +126,18 @@ class AttendanceTimeReviewService
                 }
 
                 $hasLiveOvertime = $this->shifts->overtimeDeltaMinutes($row) > 0;
+                $awaitingTlAfterReject = $row->overtime_tl_recommendation === 'RECOMMEND'
+                    && $row->overtime_admin_decision === 'REJECTED';
 
                 if ($filter === 'pending') {
-                    return $hasLiveOvertime && $row->overtime_tl_recommendation === 'NONE';
+                    return $awaitingTlAfterReject
+                        || ($hasLiveOvertime && $row->overtime_tl_recommendation === 'NONE');
                 }
 
                 // all
-                return $hasLiveOvertime || $row->overtime_tl_recommendation !== 'NONE';
+                return $hasLiveOvertime
+                    || $row->overtime_tl_recommendation !== 'NONE'
+                    || $awaitingTlAfterReject;
             })
             ->values();
     }
@@ -140,11 +152,16 @@ class AttendanceTimeReviewService
             throw ValidationException::withMessages(['overtime' => __('attendance_review.errors.invalid_overtime')]);
         }
 
+        if ($attendance->overtime_admin_decision === 'APPROVED') {
+            throw ValidationException::withMessages(['overtime' => __('attendance_review.errors.already_final')]);
+        }
+
         $attendance->update([
             'recommended_overtime_minutes' => max(0, $minutes),
             'overtime_tl_recommendation' => $recommendation,
             'overtime_tl_by' => $actor->id,
             'overtime_tl_at' => now(),
+            // Reopens Admin queue after a prior reject (two-way TL ↔ Admin).
             'overtime_admin_decision' => 'PENDING',
             'overtime_admin_by' => null,
             'overtime_admin_at' => null,
@@ -168,6 +185,10 @@ class AttendanceTimeReviewService
 
         if ($attendance->overtime_tl_recommendation === 'NONE') {
             throw ValidationException::withMessages(['overtime' => __('attendance_review.errors.no_tl_overtime')]);
+        }
+
+        if ($attendance->overtime_admin_decision === 'APPROVED') {
+            throw ValidationException::withMessages(['overtime' => __('attendance_review.errors.already_final')]);
         }
 
         $attendance->update([

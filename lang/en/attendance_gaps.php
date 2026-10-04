@@ -10,6 +10,8 @@ return [
     'reject' => 'Reject break',
     'recommend_approve' => 'Recommend approve',
     'recommend_reject' => 'Recommend reject',
+    'recommend_again' => 'Recommend again',
+    'rereview_hint' => 'Admin rejected this break. Recommend again to send it back for admin approval.',
     'pending_tl' => 'Awaiting team leader',
     'pending_admin' => 'Awaiting admin',
     'approved' => 'Approved',
@@ -33,6 +35,7 @@ return [
         'invalid_recommendation' => 'Invalid team leader recommendation.',
         'invalid_decision' => 'Invalid admin decision.',
         'await_tl' => 'Team leader must recommend first.',
+        'already_final' => 'This break gap is already approved and locked.',
     ],
     'notifications' => [
         'pending' => 'Break gap of :minutes min needs review (:employee).',
