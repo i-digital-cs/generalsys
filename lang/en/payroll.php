@@ -134,6 +134,7 @@ return [
         'overtime_pay' => 'Overtime pay',
         'friday_bonus' => 'Friday bonus',
         'day_off_bonus' => 'Day-off bonus',
+        'rest_day_pay' => 'Rest day pay',
         'official_holiday_bonus' => 'Holiday work bonus',
         'extra_pay' => 'Extra pay',
         'late_penalty' => 'Late penalty',

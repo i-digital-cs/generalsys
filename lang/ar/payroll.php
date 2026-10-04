@@ -134,6 +134,7 @@ return [
         'overtime_pay' => 'أجر الساعات الإضافية',
         'friday_bonus' => 'بدل الجمعة',
         'day_off_bonus' => 'بدل يوم الراحة',
+        'rest_day_pay' => 'أجر أيام الراحة',
         'official_holiday_bonus' => 'بدل العطلة الرسمية',
         'extra_pay' => 'إضافي',
         'late_penalty' => 'جزاء التأخير',

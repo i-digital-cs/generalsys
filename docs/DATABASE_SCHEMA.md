@@ -506,6 +506,7 @@ CREATE TABLE payroll_records (
     overtime_pay                  DECIMAL(12,2) NOT NULL DEFAULT 0,
     friday_bonus                  DECIMAL(12,2) NOT NULL DEFAULT 0,
     day_off_bonus                 DECIMAL(12,2) NOT NULL DEFAULT 0,
+    rest_day_pay                  DECIMAL(12,2) NOT NULL DEFAULT 0,  -- legal rest days not worked × daily rate
     official_holiday_bonus        DECIMAL(12,2) NOT NULL DEFAULT 0,
     extra_pay                     DECIMAL(12,2) NOT NULL DEFAULT 0,  -- Excel إضافي amount (manual / days×rate)
     -- deductions

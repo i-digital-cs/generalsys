@@ -16,6 +16,7 @@ final class PayrollCalculationInput
         public readonly int $fullTimeDays = 0,
         public readonly int $onlineHalfDays = 0,
         public readonly int $onlineFullDays = 0,
+        public readonly int $restDays = 0,
         public readonly int $officialHolidayWorkDays = 0,
         public readonly int $excusedAbsenceDays = 0,
         public readonly int $unexcusedAbsenceDays = 0,

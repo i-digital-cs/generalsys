@@ -38,6 +38,9 @@ class PayrollCalculator
 
         $fridayBonus = $this->fridayBonus($input, $dayRate);
         $dayOffBonus = $this->dayOffBonus($input, $dayRate);
+        // Legal rest days (unused): 1× daily rate. Worked rest days stay in FT/online
+        // pay + day-off bonus — do not double-pay the rest line for those dates.
+        $restDayPay = $this->restDayPay($input, $dayRate);
         $overtimePay = $this->overtimePay($input);
         $extraPay = $this->extraPay($input, $dayRate);
 
@@ -90,6 +93,7 @@ class PayrollCalculator
             + $extraPay
             + $fridayBonus
             + $dayOffBonus
+            + $restDayPay
             + $officialHolidayBonus
             + $commissions
             + $bonuses;
@@ -112,6 +116,7 @@ class PayrollCalculator
             overtimePay: $this->money($overtimePay),
             fridayBonus: $this->money($fridayBonus),
             dayOffBonus: $this->money($dayOffBonus),
+            restDayPay: $this->money($restDayPay),
             officialHolidayBonus: $this->money($officialHolidayBonus),
             extraPay: $this->money($extraPay),
             latePenalty: $this->money($latePenalty),
@@ -198,6 +203,17 @@ class PayrollCalculator
             * $this->settings->multiplier('day_off_online');
 
         return $ft + $online;
+    }
+
+    /**
+     * Paid legal day-off: daily rate × rest days that were not worked.
+     */
+    private function restDayPay(PayrollCalculationInput $input, float $dayRate): float
+    {
+        $workedRest = $input->dayOffFullTimeDays + $input->dayOffOnlineDays;
+        $paidRest = max(0, $input->restDays - $workedRest);
+
+        return $dayRate * $paidRest;
     }
 
     private function overtimePay(PayrollCalculationInput $input): float

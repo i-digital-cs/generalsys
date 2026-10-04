@@ -244,31 +244,48 @@ class PayrollDraftTest extends TestCase
         $this->assertEqualsWithDelta(0.0, (float) $payroll->extra_shift_hours, 0.01);
     }
 
-    public function test_draft_folds_legacy_extra_shift_into_overtime_hours(): void
+    public function test_draft_show_syncs_stale_day_counts_from_attendance(): void
     {
         [$manager, $payroll] = $this->draftPayslip();
         $payroll->update([
-            'overtime_hours' => 0,
-            'extra_shift_hours' => 1,
+            'full_time_days' => 2,
+            'full_time_pay' => 333.33,
+            'hours_deduction' => 8,
+            'gross_pay' => 333.33,
+            'net_pay' => 166.67,
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.show', $payroll))
+            ->assertOk();
+
+        $payroll->refresh();
+        $this->assertSame(30, (int) $payroll->full_time_days);
+        $this->assertEqualsWithDelta(0.0, (float) $payroll->hours_deduction, 0.01);
+        $this->assertEqualsWithDelta(5000.0, (float) $payroll->gross_pay, 0.01);
+    }
+
+    public function test_draft_show_pulls_extra_shift_hours_into_overtime(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+        Attendance::factory()->create([
+            'user_id' => $payroll->user_id,
+            'date' => '2026-06-15',
+            'shift_type' => Attendance::SHIFT_EXTRA,
+            'planned_hours' => 1,
+            'actual_hours' => 1,
+            'status' => Attendance::STATUS_PRESENT,
+            'late_minutes' => 0,
         ]);
 
         $this->actingAs($manager)
             ->get(route('admin.payroll.show', $payroll))
             ->assertOk()
-            ->assertSee('value="1.00"', false)
             ->assertDontSee('name="extra_shift_hours"', false);
-
-        $this->actingAs($manager)
-            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
-                'overtime_hours' => 1,
-                'overtime_multiplier' => 1.0,
-            ]))
-            ->assertRedirect();
 
         $payroll->refresh();
         $this->assertEqualsWithDelta(1.0, (float) $payroll->overtime_hours, 0.01);
         $this->assertEqualsWithDelta(0.0, (float) $payroll->extra_shift_hours, 0.01);
-        $this->assertEqualsWithDelta(20.83, (float) $payroll->overtime_pay, 0.01);
     }
 
     public function test_draft_overtime_multiplier_one_is_straight_time(): void

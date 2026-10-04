@@ -203,8 +203,10 @@ class PayrollGenerateTest extends TestCase
 
         $this->assertSame(26, (int) $draft->full_time_days);
         $this->assertSame(4, (int) $draft->rest_days);
-        // 26 × (5000/30) = 4333.33
-        $this->assertEqualsWithDelta(4333.33, (float) $draft->gross_pay, 0.01);
+        // 26 × (5000/30) FT + 4 × (5000/30) rest = 4333.33 + 666.67 = 5000
+        $this->assertEqualsWithDelta(4333.33, (float) $draft->full_time_pay, 0.01);
+        $this->assertEqualsWithDelta(666.67, (float) $draft->rest_day_pay, 0.01);
+        $this->assertEqualsWithDelta(5000.0, (float) $draft->gross_pay, 0.01);
     }
 
     public function test_generate_by_team_leader_uses_membership_not_a_single_column(): void

@@ -25,6 +25,38 @@ class PayrollCalculatorTest extends TestCase
         $this->calculator = app(PayrollCalculator::class);
     }
 
+    public function test_unused_rest_days_are_paid_at_daily_rate(): void
+    {
+        $result = $this->calculator->calculate(new PayrollCalculationInput(
+            baseSalary: 6000,
+            currency: 'EGP',
+            fullTimeDays: 26,
+            restDays: 4,
+        ));
+
+        // 6000/30 × 26 + 6000/30 × 4 = 5200 + 800 = 6000
+        $this->assertSame(5200.0, $result->fullTimePay);
+        $this->assertSame(800.0, $result->restDayPay);
+        $this->assertSame(6000.0, $result->grossPay);
+        $this->assertSame(6000.0, $result->netPay);
+    }
+
+    public function test_worked_rest_days_are_not_double_paid_on_rest_line(): void
+    {
+        $result = $this->calculator->calculate(new PayrollCalculationInput(
+            baseSalary: 3000,
+            currency: 'EGP',
+            fullTimeDays: 1,
+            restDays: 4,
+            dayOffFullTimeDays: 1,
+        ));
+
+        // Paid rest = 4 − 1 worked = 3 × 100 = 300; FT 100; day-off bonus 2× = 200
+        $this->assertSame(100.0, $result->fullTimePay);
+        $this->assertSame(300.0, $result->restDayPay);
+        $this->assertSame(200.0, $result->dayOffBonus);
+    }
+
     public function test_excel_fixture_net_is_2808(): void
     {
         // §9 sheet practice uses 1× unexcused for this net; spec default is 3× (tested separately).

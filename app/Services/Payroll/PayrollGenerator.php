@@ -295,6 +295,7 @@ class PayrollGenerator
             fullTimeDays: (int) $agg['full_time_days'],
             onlineHalfDays: (int) $agg['online_half_days'],
             onlineFullDays: (int) $agg['online_full_days'],
+            restDays: (int) $agg['rest_days'],
             officialHolidayWorkDays: (int) $agg['official_holiday_work_days'],
             excusedAbsenceDays: (int) $agg['excused_absence_days'],
             unexcusedAbsenceDays: (int) $agg['unexcused_absence_days'],

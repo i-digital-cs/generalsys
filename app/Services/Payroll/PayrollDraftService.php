@@ -66,7 +66,8 @@ class PayrollDraftService
             'late_minutes_total' => (int) ($counts['late_minutes_total'] ?? $record->late_minutes_total),
         ]);
 
-        return $this->recalculate($record->fresh(['adjustments', 'user']));
+        // Keep the just-saved overrides; show()/Generate re-sync from attendance.
+        return $this->recalculate($record->fresh(['adjustments', 'user']), false);
     }
 
     /**
@@ -85,7 +86,7 @@ class PayrollDraftService
                 'created_by' => $actor->id,
             ]);
 
-            $this->recalculate($record->fresh(['adjustments', 'user']));
+            $this->recalculate($record->fresh(['adjustments', 'user']), false);
 
             return $row;
         });
@@ -103,11 +104,16 @@ class PayrollDraftService
 
         DB::transaction(function () use ($record, $adjustment) {
             $adjustment->delete();
-            $this->recalculate($record->fresh(['adjustments', 'user']));
+            $this->recalculate($record->fresh(['adjustments', 'user']), false);
         });
     }
 
-    public function recalculate(PayrollRecord $record): PayrollRecord
+    /**
+     * Recompute draft money. When $syncAttendanceCounts is true (default — show /
+     * generate refresh), day counts and hours shortfall are re-pulled from attendance
+     * so early-month snapshots do not stick. Manual Save Counts passes false.
+     */
+    public function recalculate(PayrollRecord $record, bool $syncAttendanceCounts = true): PayrollRecord
     {
         $this->assertDraft($record);
         $record->loadMissing(['user', 'adjustments']);
@@ -119,9 +125,13 @@ class PayrollDraftService
         $live = $this->aggregator->aggregate($user, (int) $record->month, (int) $record->year);
         $this->syncAdvanceAdjustments($record, $live['adjustments'] ?? [], (int) ($record->created_by ?: $user->id));
 
-        // Rest Days screen is source of truth for rest_days on drafts.
-        $record->rest_days = (int) ($live['rest_days'] ?? $record->rest_days);
-        $record->save();
+        if ($syncAttendanceCounts) {
+            $this->applyAttendanceCounts($record, $live);
+        } else {
+            // Rest Days screen remains source of truth even on manual count saves.
+            $record->rest_days = (int) ($live['rest_days'] ?? $record->rest_days);
+            $record->save();
+        }
 
         $record->load('adjustments');
 
@@ -130,12 +140,23 @@ class PayrollDraftService
             'amount' => (float) $row->amount,
         ])->all();
 
+        $otMult = (float) $record->overtime_multiplier;
+        $fridayFt = $syncAttendanceCounts
+            ? (int) $live['friday_full_time_days']
+            : (int) $record->friday_work_days;
+        $fridayOnline = $syncAttendanceCounts ? (int) $live['friday_online_days'] : 0;
+        $dayOffFt = $syncAttendanceCounts
+            ? (int) $live['day_off_full_time_days']
+            : (int) $record->day_off_work_days;
+        $dayOffOnline = $syncAttendanceCounts ? (int) $live['day_off_online_days'] : 0;
+
         $result = $this->calculator->calculate(new PayrollCalculationInput(
             baseSalary: (float) $user->base_salary,
             currency: $user->currency ?: ($record->currency ?: 'EGP'),
             fullTimeDays: (int) $record->full_time_days,
             onlineHalfDays: (int) $record->online_half_days,
             onlineFullDays: (int) $record->online_full_days,
+            restDays: (int) $record->rest_days,
             officialHolidayWorkDays: (int) $record->official_holiday_work_days,
             excusedAbsenceDays: (int) $record->excused_absence_days,
             unexcusedAbsenceDays: (int) $record->unexcused_absence_days,
@@ -144,15 +165,13 @@ class PayrollDraftService
             leavePermissionMinutes: (int) $live['leave_permission_minutes'],
             latePermissionMinutes: (int) $live['late_permission_minutes'],
             forcedPermissionPenaltyBase: (float) $live['forced_permission_penalty_base'],
-            fridayFullTimeDays: (int) $record->friday_work_days,
-            fridayOnlineDays: 0,
-            dayOffFullTimeDays: (int) $record->day_off_work_days,
-            dayOffOnlineDays: 0,
+            fridayFullTimeDays: $fridayFt,
+            fridayOnlineDays: $fridayOnline,
+            dayOffFullTimeDays: $dayOffFt,
+            dayOffOnlineDays: $dayOffOnline,
             overtimeHours: (float) $record->overtime_hours,
             extraShiftHours: (float) $record->extra_shift_hours,
-            overtimeMultiplier: ((float) $record->overtime_multiplier > 0)
-                ? (float) $record->overtime_multiplier
-                : null,
+            overtimeMultiplier: $otMult > 0 ? $otMult : null,
             extraDays: (int) $record->extra_days,
             extraPay: (float) $record->extra_pay,
             adjustments: $adjustments,
@@ -167,10 +186,44 @@ class PayrollDraftService
                 'excused_absence_days' => (int) $record->excused_absence_days,
                 'unexcused_absence_days' => (int) $record->unexcused_absence_days,
                 'hours_deduction' => (float) $record->hours_deduction,
+                'full_time_days' => (int) $record->full_time_days,
+                'online_half_days' => (int) $record->online_half_days,
+                'online_full_days' => (int) $record->online_full_days,
+                'rest_days' => (int) $record->rest_days,
+                'overtime_hours' => (float) $record->overtime_hours,
+                'extra_shift_hours' => (float) $record->extra_shift_hours,
+                'friday_work_days' => (int) $record->friday_work_days,
+                'day_off_work_days' => (int) $record->day_off_work_days,
+                'official_holiday_work_days' => (int) $record->official_holiday_work_days,
+                'late_minutes_total' => (int) $record->late_minutes_total,
             ],
         ));
 
         return $record->fresh(['adjustments', 'user']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $live
+     */
+    private function applyAttendanceCounts(PayrollRecord $record, array $live): void
+    {
+        $record->full_time_days = (int) ($live['full_time_days'] ?? 0);
+        $record->online_half_days = (int) ($live['online_half_days'] ?? 0);
+        $record->online_full_days = (int) ($live['online_full_days'] ?? 0);
+        $record->rest_days = (int) ($live['rest_days'] ?? 0);
+        $record->excused_absence_days = (int) ($live['excused_absence_days'] ?? 0);
+        $record->unexcused_absence_days = (int) ($live['unexcused_absence_days'] ?? 0);
+        $record->official_holiday_work_days = (int) ($live['official_holiday_work_days'] ?? 0);
+        $record->friday_work_days = (int) ($live['friday_work_days'] ?? 0);
+        $record->day_off_work_days = (int) ($live['day_off_work_days'] ?? 0);
+        $record->hours_deduction = (float) ($live['hours_deduction'] ?? 0);
+        $record->late_minutes_total = (int) ($live['late_minutes_total'] ?? 0);
+        $record->extra_shift_hours = 0;
+        $record->overtime_hours = round(
+            (float) ($live['overtime_hours'] ?? 0) + (float) ($live['extra_shift_hours'] ?? 0),
+            2,
+        );
+        $record->save();
     }
 
     /**

@@ -170,6 +170,7 @@ All logic lives in services (never controllers) — see `AGENTS.md`:
 | J6–J9 + Interest Return avgs | `EvaluationService::monthlyFromDaily()` — `AVG` of daily score columns | `attendance` scores |
 | Total | `EvaluationService` — `array_sum($scores)/5` | 5 scores (Excel J10 was /4) |
 | D39/D41 `base/30×days` | `PayrollCalculator::dayRatePay()` — `base / divisor × days` (divisor from `penalty_rules`/settings, default 30) | counts, base |
+| Legal rest days (paid) | `PayrollCalculator::restDayPay()` — `dayRate × max(0, rest_days − day_off_work)` | rest pool, day-off flags |
 | D40 `base/30/2×days` | online-half rate = `base/divisor/2` (always; no per-employee override) | counts, base |
 | E39 holiday bonus | `dayRate × official_holiday_work_days × 1.0` | counts |
 | G39/H39 absence | `dayRate × days × multiplier` — multiplier from `penalty_rules` (excused 1×, unexcused **3×** per spec §8) | counts, rules |

@@ -508,6 +508,8 @@ vacations.replace_rest_date / replace_rest_day_id  -- swap on submit
 >
 > **Assistant (T-7.5 / T-7.6):** role `ASSISTANT` / مساعد إداري. Reports to Admin (no team-leader membership). Company-wide HR helper: employee data entry **including salary/rates**, shifts, rest days, **attendance history** (photos + GPS), follow all daily reports (view-only — no reply/scores), absences dashboard, missing-report alerts. Self-service clock/report/requests/profile/own salary. May **finalize mid-shift break gaps and overtime** on `/team-leader/approvals` after TL recommendation (same as Manager). **Included in Manager/Assistant ops visibility** (`operationsVisibleRoles`: attendance history, hours board, shifts, rest days, missing-report alerts) because Assistants clock; **not** on TL team lists (no TL membership). **No** payroll generate/review, advances admin, penalties, settings, annual reports, leave/vacation approvals, or evaluations of others.
 >
+> **Payroll draft refresh:** Opening a DRAFT payslip (or Generate month) re-pulls worked-day counts, hours shortfall, late minutes, OT/EXTRA hours, and rest days from live attendance / Rest Days. Manual “Save counts” applies for that save only; the next draft view syncs from attendance again. `extra_days` / `extra_pay` / OT multiplier stay as draft overrides.
+>
 > **Driver (T-7.8):** role `DRIVER` / سائق. Same TL membership as employees (up to 2). Self-service: **clock + daily report** (no leave/vacation/own salary yet). Punch photos **required** on clock-in and clock-out (≥1 each); every photo needs a description. **GPS required on every punch** (any shift). Daily-report gate same as employees. Included in Admin payroll generation like employees. Manager + Assistant may create/edit Drivers.
 
 ---
@@ -525,6 +527,7 @@ Hourly Rate = Daily Rate / Daily Working Hours (8 for fulltime)
 | Component | Formula |
 |-----------|---------|
 | Full Time Pay | Daily Rate × Full Time Days |
+| Rest day pay (أيام راحة) | Daily Rate × (rest days − worked-on-rest days) — legal paid day off |
 | Online ½ Day Pay | `(base÷30÷2)` × Online ½ Days |
 | Online 1 Day Pay | `(base÷30)` × Online 1 Days |
 | Extra Shift Pay | Assigned Hours × `(base÷30÷8)` × Multiplier |

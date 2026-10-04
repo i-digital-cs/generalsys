@@ -12,6 +12,7 @@
             'overtime_pay',
             'friday_bonus',
             'day_off_bonus',
+            'rest_day_pay',
             'official_holiday_bonus',
             'extra_pay',
         ];
