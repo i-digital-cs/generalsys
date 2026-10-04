@@ -32,7 +32,12 @@ class AttendanceHistoryTest extends TestCase
         app()->setLocale('en');
 
         $this->manager = User::factory()->manager()->create();
-        $this->assistant = User::factory()->assistant()->create();
+        $this->assistant = User::factory()->assistant()->create([
+            'name_en' => 'History Assistant',
+            'name_ar' => 'مساعد السجل',
+            'work_start_time' => '10:00',
+            'work_end_time' => '18:00',
+        ]);
         $this->leader = User::factory()->teamLeader()->create([
             'name_en' => 'History Team Lead',
             'name_ar' => 'قائد سجل الحضور',
@@ -75,13 +80,30 @@ class AttendanceHistoryTest extends TestCase
             ->assertSee('History Member', false)
             ->assertSee('History Team Lead', false)
             ->assertSee('History Outsider', false)
+            ->assertSee('History Assistant', false)
             ->assertSee(route('admin.employees.edit', $this->member), false);
 
         $this->actingAs($this->assistant)
             ->get(route('team-leader.attendance', $this->query()))
             ->assertOk()
             ->assertSee('History Member', false)
+            ->assertSee('History Assistant', false)
             ->assertSee(route('admin.employees.edit', $this->member), false);
+    }
+
+    public function test_team_leader_does_not_see_assistant_on_history(): void
+    {
+        $this->actingAs($this->leader)
+            ->get(route('team-leader.attendance', $this->query()))
+            ->assertOk()
+            ->assertSee('History Member', false)
+            ->assertDontSee('History Assistant', false);
+
+        $this->actingAs($this->leader)
+            ->get(route('team-leader.attendance', $this->query([
+                'employee_id' => $this->assistant->id,
+            ])))
+            ->assertForbidden();
     }
 
     public function test_team_leader_name_links_to_attendance_filter_not_edit(): void

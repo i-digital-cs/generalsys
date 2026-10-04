@@ -313,13 +313,18 @@ class User extends Authenticatable
     }
 
     /**
-     * Ops visibility: field staff + team leaders.
+     * Ops visibility: field staff + team leaders + assistants (self-service clockers).
      *
      * @return list<string>
      */
     public static function operationsVisibleRoles(): array
     {
-        return [self::ROLE_EMPLOYEE, self::ROLE_TEAM_LEADER, self::ROLE_DRIVER];
+        return [
+            self::ROLE_EMPLOYEE,
+            self::ROLE_TEAM_LEADER,
+            self::ROLE_DRIVER,
+            self::ROLE_ASSISTANT,
+        ];
     }
 
     public function localizedJobTitle(): ?string
