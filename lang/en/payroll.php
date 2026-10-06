@@ -21,6 +21,8 @@ return [
     'breakdown' => 'Breakdown',
     'counts' => 'Day & hour counts',
     'counts_hint' => 'Change days or hours, then Save & recalculate. Your edits stay until you Generate again or click Refresh from attendance.',
+    'counts_out_of_sync_title' => 'Draft counts differ from live attendance',
+    'counts_out_of_sync_body' => 'Live attendance: FT :ft · Online½ :half · Online full :full · Rest :rest. Refresh to replace this draft’s saved counts.',
     'extra_pay_hint' => 'Extra pay (إضافي): type an amount (e.g. :rate), or set Extra days and leave amount 0 to fill as days × day rate (:rate).',
     'ot_formula_title' => 'Overtime formula',
     'ot_formula_hint' => 'OT pay = hours × hourly rate × multiplier → :hours × :rate × :mult = :pay',

@@ -133,6 +133,28 @@
             <div class="alert alert-secondary py-2">{{ __('payroll.locked_note') }}</div>
         @endunless
 
+        @if ($editable && ($countsOutOfSync ?? false) && is_array($liveCounts ?? null))
+            <div class="alert alert-warning py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div>
+                    <div class="fw-semibold">{{ __('payroll.counts_out_of_sync_title') }}</div>
+                    <div class="small mb-0">
+                        {{ __('payroll.counts_out_of_sync_body', [
+                            'ft' => $liveCounts['full_time_days'],
+                            'half' => $liveCounts['online_half_days'],
+                            'full' => $liveCounts['online_full_days'],
+                            'rest' => $liveCounts['rest_days'],
+                        ]) }}
+                    </div>
+                </div>
+                <form method="POST" action="{{ route('admin.payroll.refresh-attendance', $payroll) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-warning">
+                        <i class="bi bi-cloud-download me-1" aria-hidden="true"></i>{{ __('payroll.refresh_attendance') }}
+                    </button>
+                </form>
+            </div>
+        @endif
+
         {{-- Net hero --}}
         <div class="payroll-review-hero card border-0 shadow-sm mb-3">
             <div class="card-body">

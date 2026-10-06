@@ -93,6 +93,8 @@ class PayrollController extends Controller
         $yearAverage = null;
         $attendanceSummary = null;
         $hoursMonth = null;
+        $liveCounts = null;
+        $countsOutOfSync = false;
 
         if ($payroll->user !== null) {
             $eval = $this->evaluations->summaryForPayslip(
@@ -114,6 +116,28 @@ class PayrollController extends Controller
                 $payroll->user,
                 sprintf('%04d-%02d', $payroll->year, $payroll->month),
             );
+
+            if ($payroll->status === PayrollRecord::STATUS_DRAFT) {
+                $live = $this->aggregator->aggregate(
+                    $payroll->user,
+                    (int) $payroll->month,
+                    (int) $payroll->year,
+                );
+                $liveCounts = [
+                    'full_time_days' => (int) $live['full_time_days'],
+                    'online_half_days' => (int) $live['online_half_days'],
+                    'online_full_days' => (int) $live['online_full_days'],
+                    'rest_days' => (int) $live['rest_days'],
+                    'hours_deduction' => (float) $live['hours_deduction'],
+                    'late_minutes_total' => (int) $live['late_minutes_total'],
+                ];
+                $countsOutOfSync = (int) $payroll->full_time_days !== $liveCounts['full_time_days']
+                    || (int) $payroll->online_half_days !== $liveCounts['online_half_days']
+                    || (int) $payroll->online_full_days !== $liveCounts['online_full_days']
+                    || (int) $payroll->rest_days !== $liveCounts['rest_days']
+                    || abs((float) $payroll->hours_deduction - $liveCounts['hours_deduction']) >= 0.01
+                    || (int) $payroll->late_minutes_total !== $liveCounts['late_minutes_total'];
+            }
         }
 
         return view('admin.payroll.show', [
@@ -126,6 +150,8 @@ class PayrollController extends Controller
             'yearAverage' => $yearAverage,
             'attendanceSummary' => $attendanceSummary,
             'hoursMonth' => $hoursMonth,
+            'liveCounts' => $liveCounts,
+            'countsOutOfSync' => $countsOutOfSync,
         ]);
     }
 

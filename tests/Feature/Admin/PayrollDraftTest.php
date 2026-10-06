@@ -303,7 +303,9 @@ class PayrollDraftTest extends TestCase
 
         $this->actingAs($manager)
             ->get(route('admin.payroll.show', $payroll))
-            ->assertOk();
+            ->assertOk()
+            ->assertSee(__('payroll.counts_out_of_sync_title'), false)
+            ->assertSee(__('payroll.refresh_attendance'), false);
 
         $payroll->refresh();
         $this->assertSame(2, (int) $payroll->full_time_days);
