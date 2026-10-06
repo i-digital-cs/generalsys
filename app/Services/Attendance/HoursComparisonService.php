@@ -41,7 +41,20 @@ class HoursComparisonService
      *         planned_intervals: list<array{label: string, start: ?string, end: ?string, hours: float, source: string}>,
      *         actual_intervals: list<array{label: string, start: ?string, end: ?string, hours: float, open: bool}>
      *     }>,
-     *     totals: array{planned: float, actual: float, pct: ?float}
+     *     totals: array{
+     *         planned: float,
+     *         actual: float,
+     *         raw: float,
+     *         credited: float,
+     *         shortfall_credited: float,
+     *         shortfall_raw: float,
+     *         late_minutes: int,
+     *         early_minutes: int,
+     *         worked_days: int,
+     *         rest_days: int,
+     *         vacation_days: int,
+     *         pct: ?float
+     *     }
      * }
      */
     public function monthForUser(User $user, ?string $ym = null): array
@@ -79,6 +92,12 @@ class HoursComparisonService
         $days = [];
         $totalPlanned = 0.0;
         $totalActual = 0.0;
+        $totalRaw = 0.0;
+        $totalLate = 0;
+        $totalEarly = 0;
+        $workedDays = 0;
+        $restDayCount = 0;
+        $vacationDayCount = 0;
 
         for ($day = $from->copy(); $day->lte($to); $day->addDay()) {
             $date = $day->toDateString();
@@ -94,6 +113,30 @@ class HoursComparisonService
 
             $totalPlanned += $planned['hours'];
             $totalActual += $actual['hours'];
+
+            $dayHadWork = false;
+            foreach ($dayAttendances as $row) {
+                if (! in_array($row->status, [
+                    Attendance::STATUS_PRESENT,
+                    Attendance::STATUS_LATE,
+                    Attendance::STATUS_EARLY_LEAVE,
+                ], true)) {
+                    continue;
+                }
+                $dayHadWork = true;
+                $totalRaw += (float) ($row->raw_actual_hours ?? $row->actual_hours);
+                $totalLate += (int) $row->late_minutes;
+                $totalEarly += (int) $row->early_departure_minutes;
+            }
+            if ($dayHadWork) {
+                $workedDays++;
+            }
+            if ($isRestDay) {
+                $restDayCount++;
+            }
+            if ($isVacation) {
+                $vacationDayCount++;
+            }
 
             $days[] = [
                 'date' => $date,
@@ -111,6 +154,7 @@ class HoursComparisonService
 
         $totalPlanned = round($totalPlanned, 2);
         $totalActual = round($totalActual, 2);
+        $totalRaw = round($totalRaw, 2);
 
         return [
             'ym' => $month->format('Y-m'),
@@ -118,6 +162,15 @@ class HoursComparisonService
             'totals' => [
                 'planned' => $totalPlanned,
                 'actual' => $totalActual,
+                'raw' => $totalRaw,
+                'credited' => $totalActual,
+                'shortfall_credited' => round(max(0, $totalPlanned - $totalActual), 2),
+                'shortfall_raw' => round(max(0, $totalPlanned - $totalRaw), 2),
+                'late_minutes' => $totalLate,
+                'early_minutes' => $totalEarly,
+                'worked_days' => $workedDays,
+                'rest_days' => $restDayCount,
+                'vacation_days' => $vacationDayCount,
                 'pct' => $this->pct($totalActual, $totalPlanned),
             ],
             'shift_breakdown' => $this->aggregateDefaultShiftBreakdown($days, $user),

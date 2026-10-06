@@ -197,6 +197,13 @@
 
     <div class="row g-3 mb-3">
         <div class="col-12">
+            <x-hours-month-stats
+                :totals="$hoursMonth['totals']"
+                :ym="$hoursMonth['ym'] ?? null"
+                :form-action="route('employee.dashboard')"
+            />
+        </div>
+        <div class="col-12">
             <x-hours-day-table
                 :days="$hoursMonth['days']"
                 :totals="$hoursMonth['totals']"

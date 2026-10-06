@@ -198,6 +198,20 @@ class PayrollAggregator
                     $ot += (float) $row->actual_hours;
                 }
 
+                // Admin-approved OT on regular shifts (TL recommend → Admin approve).
+                // Separate OVERTIME/EXTRA clock rows already count via actual_hours above.
+                if (
+                    ! in_array($row->shift_type, [
+                        Attendance::SHIFT_OVERTIME,
+                        Attendance::SHIFT_EXTRA,
+                    ], true)
+                    && $row->overtime_tl_recommendation === 'RECOMMEND'
+                    && $row->overtime_admin_decision === 'APPROVED'
+                    && (int) $row->recommended_overtime_minutes > 0
+                ) {
+                    $ot += round((int) $row->recommended_overtime_minutes / 60, 2);
+                }
+
                 if ($row->is_official_holiday_work) {
                     $holidayDates[$dateKey] = true;
                 }

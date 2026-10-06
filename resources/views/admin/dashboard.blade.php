@@ -271,8 +271,7 @@
                 <div class="card border-0 shadow-sm mb-3">
                     <div class="card-body py-3">
                         <form method="GET" action="{{ route($dashboardRoute) }}" class="row g-2 align-items-end">
-                            <input type="hidden" name="cal" value="{{ $calCursor }}">
-                            <div class="col-12 col-md-8">
+                            <div class="col-12 col-md-5">
                                 <label for="user_id" class="form-label">{{ __('dashboard.hours.focus_employee') }}</label>
                                 <select id="user_id" name="user_id" class="form-select">
                                     @foreach (($focusOptions ?? $teamMembers) as $member)
@@ -286,7 +285,11 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-12 col-md-4 d-grid">
+                            <div class="col-12 col-md-4">
+                                <label for="cal" class="form-label">{{ __('dashboard.hours.select_month') }}</label>
+                                <input id="cal" type="month" name="cal" class="form-control num-ltr" value="{{ $calCursor }}" required>
+                            </div>
+                            <div class="col-12 col-md-3 d-grid">
                                 <button type="submit" class="btn btn-outline-primary">{{ __('dashboard.hours.apply') }}</button>
                             </div>
                         </form>
@@ -308,17 +311,29 @@
         </div>
 
         @if ($hoursMonth !== null)
+            @php
+                $focusHoursName = $focusUser
+                    ? ((int) $focusUser->id === (int) auth()->id()
+                        ? __('dashboard.hours.focus_me')
+                        : (app()->getLocale() === 'ar' ? $focusUser->name_ar : $focusUser->name_en))
+                    : null;
+            @endphp
             <div class="row g-3 mt-1">
+                <div class="col-12">
+                    <x-hours-month-stats
+                        :totals="$hoursMonth['totals']"
+                        :ym="$hoursMonth['ym'] ?? null"
+                        :name="$focusHoursName"
+                        :form-action="route($dashboardRoute)"
+                        :user-id="$focusUser?->id"
+                    />
+                </div>
                 <div class="col-12">
                     <x-hours-day-table
                         :days="$hoursMonth['days']"
                         :totals="$hoursMonth['totals']"
-                        :title="$focusUser
-                            ? __('dashboard.hours.day_list_for', [
-                                'name' => (int) $focusUser->id === (int) auth()->id()
-                                    ? __('dashboard.hours.focus_me')
-                                    : (app()->getLocale() === 'ar' ? $focusUser->name_ar : $focusUser->name_en),
-                            ])
+                        :title="$focusHoursName
+                            ? __('dashboard.hours.day_list_for', ['name' => $focusHoursName])
                             : null"
                     />
                 </div>

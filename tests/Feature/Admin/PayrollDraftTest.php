@@ -334,6 +334,39 @@ class PayrollDraftTest extends TestCase
         $this->assertEqualsWithDelta(0.0, (float) $payroll->extra_shift_hours, 0.01);
     }
 
+    public function test_refresh_from_attendance_pulls_admin_approved_recommended_overtime(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+
+        Attendance::query()
+            ->where('user_id', $payroll->user_id)
+            ->whereDate('date', '2026-06-16')
+            ->update([
+                'raw_actual_hours' => 10,
+                'recommended_overtime_minutes' => 90,
+                'overtime_tl_recommendation' => 'RECOMMEND',
+                'overtime_admin_decision' => 'APPROVED',
+            ]);
+
+        Attendance::query()
+            ->where('user_id', $payroll->user_id)
+            ->whereDate('date', '2026-06-17')
+            ->update([
+                'raw_actual_hours' => 10,
+                'recommended_overtime_minutes' => 60,
+                'overtime_tl_recommendation' => 'RECOMMEND',
+                'overtime_admin_decision' => 'PENDING',
+            ]);
+
+        $this->actingAs($manager)
+            ->post(route('admin.payroll.refresh-attendance', $payroll))
+            ->assertRedirect();
+
+        $payroll->refresh();
+        // Only Admin-APPROVED minutes (90) count — PENDING is ignored.
+        $this->assertEqualsWithDelta(1.5, (float) $payroll->overtime_hours, 0.01);
+    }
+
     public function test_draft_overtime_multiplier_one_is_straight_time(): void
     {
         [$manager, $payroll] = $this->draftPayslip();

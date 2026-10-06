@@ -488,7 +488,7 @@ CREATE TABLE payroll_records (
     online_full_days              SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     rest_days                     SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     extra_shift_hours             DECIMAL(6,2) NOT NULL DEFAULT 0,  -- legacy; folded into overtime_hours (same OT formula)
-    overtime_hours                DECIMAL(6,2) NOT NULL DEFAULT 0,  -- total OT hours (EXTRA + OT attendance)
+    overtime_hours                DECIMAL(6,2) NOT NULL DEFAULT 0,  -- EXTRA + OVERTIME shift hours + Admin-APPROVED recommended OT (minutes/60)
     overtime_multiplier           DECIMAL(5,2) NOT NULL DEFAULT 0,   -- 0 = use config/payroll.php overtime multiplier
     friday_work_days              SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     day_off_work_days             SMALLINT UNSIGNED NOT NULL DEFAULT 0,

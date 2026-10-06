@@ -83,4 +83,44 @@ class HoursComparisonServiceTest extends TestCase
 
         $this->assertFalse(app(HoursComparisonService::class)->actorMayView($leader, $other));
     }
+
+    public function test_month_totals_include_raw_late_and_shortfall(): void
+    {
+        $user = User::factory()->employee()->create([
+            'work_start_time' => '10:00',
+            'work_end_time' => '22:00',
+        ]);
+
+        Attendance::factory()->create([
+            'user_id' => $user->id,
+            'date' => '2026-08-05',
+            'shift_type' => Attendance::SHIFT_FULL_TIME,
+            'status' => Attendance::STATUS_LATE,
+            'clock_in' => '2026-08-05 10:30:00',
+            'clock_out' => '2026-08-05 20:00:00',
+            'actual_hours' => 8.0,
+            'raw_actual_hours' => 9.5,
+            'planned_hours' => 12,
+            'late_minutes' => 30,
+            'early_departure_minutes' => 0,
+        ]);
+
+        $month = app(HoursComparisonService::class)->monthForUser($user, '2026-08');
+        $totals = $month['totals'];
+
+        $this->assertSame(1, $totals['worked_days']);
+        $this->assertSame(9.5, $totals['raw']);
+        $this->assertSame(8.0, $totals['credited']);
+        $this->assertSame(8.0, $totals['actual']);
+        $this->assertSame(30, $totals['late_minutes']);
+        $this->assertGreaterThan(0, $totals['planned']);
+        $this->assertSame(
+            round(max(0, $totals['planned'] - $totals['credited']), 2),
+            $totals['shortfall_credited'],
+        );
+        $this->assertSame(
+            round(max(0, $totals['planned'] - $totals['raw']), 2),
+            $totals['shortfall_raw'],
+        );
+    }
 }

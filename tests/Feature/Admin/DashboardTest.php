@@ -157,4 +157,23 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->employee()->create())
             ->get(route('admin.dashboard'))->assertForbidden();
     }
+
+    public function test_manager_can_select_dashboard_month(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create(['name_en' => 'Month Pick Employee']);
+
+        $this->actingAs($manager)
+            ->get(route('admin.dashboard', [
+                'cal' => '2026-09',
+                'user_id' => $employee->id,
+            ]))
+            ->assertOk()
+            ->assertSee(__('dashboard.hours.select_month'), false)
+            ->assertSee('type="month"', false)
+            ->assertSee('value="2026-09"', false)
+            ->assertSee(__('dashboard.hours.stats.planned'), false)
+            ->assertViewHas('calCursor', '2026-09')
+            ->assertViewHas('hoursMonth', fn (array $hours) => ($hours['ym'] ?? null) === '2026-09');
+    }
 }
