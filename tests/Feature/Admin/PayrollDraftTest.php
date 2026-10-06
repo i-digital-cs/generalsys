@@ -244,7 +244,29 @@ class PayrollDraftTest extends TestCase
         $this->assertEqualsWithDelta(0.0, (float) $payroll->extra_shift_hours, 0.01);
     }
 
-    public function test_draft_show_syncs_stale_day_counts_from_attendance(): void
+    public function test_save_counts_persists_after_reopening_draft(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'full_time_days' => 18,
+                'rest_days' => 6,
+            ]))
+            ->assertRedirect(route('admin.payroll.show', $payroll));
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.show', $payroll))
+            ->assertOk();
+
+        $payroll->refresh();
+        $this->assertSame(18, (int) $payroll->full_time_days);
+        $this->assertSame(6, (int) $payroll->rest_days);
+        $this->assertEqualsWithDelta(3000.0, (float) $payroll->full_time_pay, 0.01); // 5000/30*18
+        $this->assertEqualsWithDelta(1000.0, (float) $payroll->rest_day_pay, 0.01); // 5000/30*6
+    }
+
+    public function test_refresh_from_attendance_overwrites_manual_counts(): void
     {
         [$manager, $payroll] = $this->draftPayslip();
         $payroll->update([
@@ -256,8 +278,9 @@ class PayrollDraftTest extends TestCase
         ]);
 
         $this->actingAs($manager)
-            ->get(route('admin.payroll.show', $payroll))
-            ->assertOk();
+            ->post(route('admin.payroll.refresh-attendance', $payroll))
+            ->assertRedirect(route('admin.payroll.show', $payroll))
+            ->assertSessionHas('success', __('payroll.flash.refreshed_attendance'));
 
         $payroll->refresh();
         $this->assertSame(30, (int) $payroll->full_time_days);
@@ -265,7 +288,29 @@ class PayrollDraftTest extends TestCase
         $this->assertEqualsWithDelta(5000.0, (float) $payroll->gross_pay, 0.01);
     }
 
-    public function test_draft_show_pulls_extra_shift_hours_into_overtime(): void
+    public function test_draft_show_does_not_overwrite_manual_day_counts(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+        $payroll->update([
+            'full_time_days' => 2,
+            'rest_days' => 4,
+            'full_time_pay' => 333.33,
+            'rest_day_pay' => 666.67,
+            'hours_deduction' => 8,
+            'gross_pay' => 1000.0,
+            'net_pay' => 833.33,
+        ]);
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.show', $payroll))
+            ->assertOk();
+
+        $payroll->refresh();
+        $this->assertSame(2, (int) $payroll->full_time_days);
+        $this->assertSame(4, (int) $payroll->rest_days);
+    }
+
+    public function test_refresh_from_attendance_pulls_extra_shift_hours_into_overtime(): void
     {
         [$manager, $payroll] = $this->draftPayslip();
         Attendance::factory()->create([
@@ -279,9 +324,8 @@ class PayrollDraftTest extends TestCase
         ]);
 
         $this->actingAs($manager)
-            ->get(route('admin.payroll.show', $payroll))
-            ->assertOk()
-            ->assertDontSee('name="extra_shift_hours"', false);
+            ->post(route('admin.payroll.refresh-attendance', $payroll))
+            ->assertRedirect();
 
         $payroll->refresh();
         $this->assertEqualsWithDelta(1.0, (float) $payroll->overtime_hours, 0.01);

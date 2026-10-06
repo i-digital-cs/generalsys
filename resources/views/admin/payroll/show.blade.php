@@ -487,11 +487,19 @@
                                             </div>
                                         </div>
 
-                                        <div class="col-12 pt-1">
+                                        <div class="col-12 pt-1 d-flex flex-wrap gap-2">
                                             <button type="submit" class="btn btn-primary">
                                                 <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>{{ __('payroll.save_counts') }}
                                             </button>
                                         </div>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.payroll.refresh-attendance', $payroll) }}" class="mt-2">
+                                        @csrf
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm"
+                                                onclick="return confirm(@json(__('payroll.refresh_attendance_confirm')))">
+                                            <i class="bi bi-cloud-download me-1" aria-hidden="true"></i>{{ __('payroll.refresh_attendance') }}
+                                        </button>
+                                        <div class="form-text">{{ __('payroll.refresh_attendance_hint') }}</div>
                                     </form>
                                 </div>
                             </div>

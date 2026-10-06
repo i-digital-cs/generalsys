@@ -163,4 +163,29 @@ class RestDayTest extends TestCase
             ])
             ->assertForbidden();
     }
+
+    public function test_ops_can_add_rest_day_for_assistant_clocker(): void
+    {
+        $assistant = User::factory()->assistant()->create([
+            'name_en' => 'Ops Assistant Clocker',
+        ]);
+
+        $this->actingAs($this->manager)
+            ->get(route('team-leader.rest-days'))
+            ->assertOk()
+            ->assertSee('Ops Assistant Clocker', false);
+
+        $this->actingAs($this->manager)
+            ->post(route('team-leader.rest-days.store', $assistant), [
+                'dates' => ['2026-08-07'],
+            ])
+            ->assertRedirect(route('team-leader.rest-days'));
+
+        $this->assertTrue(
+            RestDay::query()
+                ->where('user_id', $assistant->id)
+                ->whereDate('date', '2026-08-07')
+                ->exists()
+        );
+    }
 }

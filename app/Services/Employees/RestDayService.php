@@ -151,8 +151,9 @@ class RestDayService
             return false;
         }
 
+        // Manager/Assistant: company-wide ops roles (incl. ASSISTANT clockers).
         if ($actor->canManageOperations()) {
-            return $employee->isFieldStaff() || $employee->isTeamLeader();
+            return in_array($employee->role, User::operationsVisibleRoles(), true);
         }
 
         if ($actor->isTeamLeader()) {

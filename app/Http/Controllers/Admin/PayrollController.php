@@ -78,10 +78,10 @@ class PayrollController extends Controller
     {
         $this->authorize('view', $payroll);
 
-        // Drafts re-pull ACTIVE advances so a salary advance added after Generate
-        // appears without requiring a full re-generate.
+        // Drafts re-pull ACTIVE advances only. Attendance day counts stay as saved
+        // so Admin can edit inputs; use "Refresh from attendance" or Generate to re-pull.
         if ($payroll->status === PayrollRecord::STATUS_DRAFT) {
-            $payroll = $this->drafts->recalculate($payroll);
+            $payroll = $this->drafts->recalculate($payroll, false);
         }
 
         $payroll->load(['user.teamLeaders', 'adjustments']);
@@ -136,6 +136,17 @@ class PayrollController extends Controller
         return redirect()
             ->route('admin.payroll.show', $payroll)
             ->with('success', __('payroll.flash.updated'));
+    }
+
+    public function refreshAttendance(PayrollRecord $payroll): RedirectResponse
+    {
+        $this->authorize('update', $payroll);
+
+        $this->drafts->refreshFromAttendance($payroll);
+
+        return redirect()
+            ->route('admin.payroll.show', $payroll)
+            ->with('success', __('payroll.flash.refreshed_attendance'));
     }
 
     public function storeAdjustment(StorePayrollAdjustmentRequest $request, PayrollRecord $payroll): RedirectResponse

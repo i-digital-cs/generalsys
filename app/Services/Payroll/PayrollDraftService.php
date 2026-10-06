@@ -66,8 +66,18 @@ class PayrollDraftService
             'late_minutes_total' => (int) ($counts['late_minutes_total'] ?? $record->late_minutes_total),
         ]);
 
-        // Keep the just-saved overrides; show()/Generate re-sync from attendance.
+        // Keep the just-saved overrides (including rest_days). Advances still refresh.
         return $this->recalculate($record->fresh(['adjustments', 'user']), false);
+    }
+
+    /**
+     * Re-pull worked days / hours / rest from live attendance into this draft.
+     */
+    public function refreshFromAttendance(PayrollRecord $record): PayrollRecord
+    {
+        $this->assertDraft($record);
+
+        return $this->recalculate($record->fresh(['adjustments', 'user']), true);
     }
 
     /**
@@ -109,9 +119,9 @@ class PayrollDraftService
     }
 
     /**
-     * Recompute draft money. When $syncAttendanceCounts is true (default — show /
-     * generate refresh), day counts and hours shortfall are re-pulled from attendance
-     * so early-month snapshots do not stick. Manual Save Counts passes false.
+     * Recompute draft money. When $syncAttendanceCounts is true (Generate /
+     * Refresh from attendance), day counts and hours shortfall are re-pulled
+     * from attendance. Save Counts and draft show pass false so edits stick.
      */
     public function recalculate(PayrollRecord $record, bool $syncAttendanceCounts = true): PayrollRecord
     {
@@ -127,10 +137,6 @@ class PayrollDraftService
 
         if ($syncAttendanceCounts) {
             $this->applyAttendanceCounts($record, $live);
-        } else {
-            // Rest Days screen remains source of truth even on manual count saves.
-            $record->rest_days = (int) ($live['rest_days'] ?? $record->rest_days);
-            $record->save();
         }
 
         $record->load('adjustments');

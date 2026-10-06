@@ -257,7 +257,7 @@ class PayrollGenerateTest extends TestCase
         );
     }
 
-    public function test_draft_show_refreshes_rest_days_after_pool_change(): void
+    public function test_refresh_attendance_pulls_rest_days_after_pool_change(): void
     {
         $manager = User::factory()->manager()->create();
         $employee = User::factory()->employee()->create(['base_salary' => 5000]);
@@ -285,8 +285,8 @@ class PayrollGenerateTest extends TestCase
         ]);
 
         $this->actingAs($manager)
-            ->get(route('admin.payroll.show', $draft))
-            ->assertOk();
+            ->post(route('admin.payroll.refresh-attendance', $draft))
+            ->assertRedirect(route('admin.payroll.show', $draft));
 
         $this->assertSame(1, (int) $draft->fresh()->rest_days);
     }

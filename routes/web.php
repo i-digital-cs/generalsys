@@ -328,6 +328,8 @@ Route::middleware(['auth', 'role:MANAGER,ACCOUNTANT'])->prefix('admin')->name('a
     Route::get('/payroll/export/download', [PayrollController::class, 'downloadExcel'])->name('payroll.export.download');
     Route::get('/payroll/{payroll}', [PayrollController::class, 'show'])->name('payroll.show');
     Route::put('/payroll/{payroll}', [PayrollController::class, 'update'])->name('payroll.update');
+    Route::post('/payroll/{payroll}/refresh-attendance', [PayrollController::class, 'refreshAttendance'])
+        ->name('payroll.refresh-attendance');
     Route::post('/payroll/{payroll}/adjustments', [PayrollController::class, 'storeAdjustment'])->name('payroll.adjustments.store');
     Route::delete('/payroll/{payroll}/adjustments/{adjustment}', [PayrollController::class, 'destroyAdjustment'])
         ->name('payroll.adjustments.destroy');
