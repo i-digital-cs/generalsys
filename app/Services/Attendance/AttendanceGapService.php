@@ -5,6 +5,7 @@ namespace App\Services\Attendance;
 use App\Models\Attendance;
 use App\Models\AttendanceGap;
 use App\Models\User;
+use App\Services\Approvals\ApprovalsListFilters;
 use App\Services\Employees\TeamMembershipService;
 use App\Services\Notifications\AppNotificationService;
 use Carbon\CarbonInterface;
@@ -41,9 +42,11 @@ class AttendanceGapService
     }
 
     /** @return Collection<int, AttendanceGap> */
-    public function listForActor(User $actor, string $filter = 'pending'): Collection
+    public function listForActor(User $actor, ApprovalsListFilters|string $filters = 'pending'): Collection
     {
-        $filter = in_array($filter, ['pending', 'decided', 'all'], true) ? $filter : 'pending';
+        $filters = $filters instanceof ApprovalsListFilters
+            ? $filters
+            : ApprovalsListFilters::fromStatus($filters);
 
         if (! $actor->isTeamLeader() && ! $actor->canManageOperations()) {
             return collect();
@@ -61,7 +64,7 @@ class AttendanceGapService
             $query->whereHas('attendance', fn ($q) => $q->whereIn('user_id', $employeeIds));
         }
 
-        match ($filter) {
+        match ($filters->status) {
             'pending' => $actor->canManageOperations()
                 ? $query->where('admin_decision', AttendanceGap::ADMIN_PENDING)
                     ->where('tl_recommendation', '!=', AttendanceGap::TL_PENDING)
@@ -69,12 +72,35 @@ class AttendanceGapService
                     $q->where('tl_recommendation', AttendanceGap::TL_PENDING)
                         ->orWhere('admin_decision', AttendanceGap::ADMIN_REJECTED);
                 }),
-            // Admin reject is reopened by TL — only final Admin approve is "decided".
-            'decided' => $query->where('admin_decision', AttendanceGap::ADMIN_APPROVED),
+            'approved', 'decided' => $query->where('admin_decision', AttendanceGap::ADMIN_APPROVED),
+            'rejected' => $query->where('admin_decision', AttendanceGap::ADMIN_REJECTED),
             default => null,
         };
 
-        return $query->get()->filter(fn (AttendanceGap $gap) => $this->actorMayView($actor, $gap))->values();
+        if ($filters->userId !== null) {
+            $query->whereHas('attendance', fn ($q) => $q->where('user_id', $filters->userId));
+        }
+
+        if ($filters->q !== '') {
+            $like = '%'.$filters->q.'%';
+            $query->whereHas('attendance.user', function ($user) use ($like): void {
+                $user->where(function ($inner) use ($like): void {
+                    $inner->where('name_ar', 'like', $like)
+                        ->orWhere('name_en', 'like', $like)
+                        ->orWhere('email', 'like', $like);
+                });
+            });
+        }
+
+        $start = $filters->monthStart();
+        $end = $filters->monthEnd();
+        if ($start !== null && $end !== null) {
+            $query->whereBetween('gap_start', [$start->startOfDay(), $end->endOfDay()]);
+        }
+
+        return $query->limit(200)->get()
+            ->filter(fn (AttendanceGap $gap) => $this->actorMayView($actor, $gap))
+            ->values();
     }
 
     public function actorMayView(User $actor, AttendanceGap $gap): bool

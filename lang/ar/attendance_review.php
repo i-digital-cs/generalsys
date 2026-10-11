@@ -69,6 +69,7 @@ return [
         'pending_tl' => 'بانتظار قائد الفريق',
         'pending_admin' => 'بانتظار الإدارة',
         'minutes_abbr' => 'د',
+        'tl_minutes' => 'طلب القائد (د)',
         'system_suggested' => 'اقتراح النظام (د)',
         'credited_cap' => 'سقف الرواتب',
         'credited_cap_hint' => ':planned س + :minutes د معتمدة',

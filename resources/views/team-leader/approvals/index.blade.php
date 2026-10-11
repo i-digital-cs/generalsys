@@ -14,26 +14,64 @@
         </div>
     </div>
 
+    @php
+        $statusPills = ['pending', 'approved', 'rejected', 'all'];
+        $pillBase = collect($filterQuery ?? [])->except('filter')->all();
+    @endphp
     <ul class="nav nav-pills flex-wrap gap-2 mb-3">
-        <li class="nav-item">
-            <a class="nav-link @if ($filter === 'pending') active @endif"
-               href="{{ route('team-leader.approvals', ['filter' => 'pending']) }}">
-                {{ __('permissions.tl.filters.pending') }}
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link @if ($filter === 'decided') active @endif"
-               href="{{ route('team-leader.approvals', ['filter' => 'decided']) }}">
-                {{ __('permissions.tl.filters.decided') }}
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link @if ($filter === 'all') active @endif"
-               href="{{ route('team-leader.approvals', ['filter' => 'all']) }}">
-                {{ __('permissions.tl.filters.all') }}
-            </a>
-        </li>
+        @foreach ($statusPills as $statusKey)
+            <li class="nav-item">
+                <a class="nav-link @if ($filter === $statusKey) active @endif"
+                   href="{{ route('team-leader.approvals', array_merge($pillBase, ['filter' => $statusKey])) }}">
+                    {{ __('permissions.tl.filters.'.$statusKey) }}
+                </a>
+            </li>
+        @endforeach
+        @if ($filter === 'decided')
+            <li class="nav-item">
+                <a class="nav-link active"
+                   href="{{ route('team-leader.approvals', array_merge($pillBase, ['filter' => 'decided'])) }}">
+                    {{ __('permissions.tl.filters.decided') }}
+                </a>
+            </li>
+        @endif
     </ul>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <form method="GET" action="{{ route('team-leader.approvals') }}" class="row g-2 align-items-end">
+                <input type="hidden" name="filter" value="{{ $filter }}">
+                <div class="col-12 col-md-3">
+                    <label for="approvals_month" class="form-label">{{ __('permissions.tl.filter_month') }}</label>
+                    <input type="month" id="approvals_month" name="month" class="form-control"
+                           value="{{ $filters->month ?? '' }}">
+                </div>
+                <div class="col-12 col-md-3">
+                    <label for="approvals_user_id" class="form-label">{{ __('permissions.tl.filter_user') }}</label>
+                    <select id="approvals_user_id" name="user_id" class="form-select">
+                        <option value="">{{ __('permissions.tl.filter_user_all') }}</option>
+                        @foreach ($filterEmployees ?? [] as $member)
+                            <option value="{{ $member->id }}" @selected((int) ($filters->userId ?? 0) === (int) $member->id)>
+                                {{ $member->localizedName() }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label for="approvals_q" class="form-label">{{ __('permissions.tl.filter_search') }}</label>
+                    <input type="search" id="approvals_q" name="q" class="form-control"
+                           value="{{ $filters->q ?? '' }}"
+                           placeholder="{{ __('permissions.tl.filter_search_placeholder') }}">
+                </div>
+                <div class="col-12 col-md-3 d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary">{{ __('permissions.tl.filter_apply') }}</button>
+                    <a href="{{ route('team-leader.approvals', ['filter' => $filter]) }}" class="btn btn-outline-secondary">
+                        {{ __('permissions.tl.filter_clear') }}
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
 
     @if ($canDecideLeave ?? true)
     <div class="card border-0 shadow-sm mb-4">
@@ -121,7 +159,7 @@
                                                 <form method="POST"
                                                       action="{{ route('team-leader.approvals.permissions.approve', $row) }}">
                                                     @csrf
-                                                    <input type="hidden" name="filter" value="{{ $filter }}">
+                                                    @include('team-leader.approvals._filter-hiddens')
                                                     <button type="submit" class="btn btn-sm btn-success">
                                                         {{ __('permissions.tl.accept') }}
                                                     </button>
@@ -130,7 +168,7 @@
                                                       action="{{ route('team-leader.approvals.permissions.reject', $row) }}"
                                                       onsubmit="return confirm(@json(__('permissions.tl.reject_confirm')))">
                                                     @csrf
-                                                    <input type="hidden" name="filter" value="{{ $filter }}">
+                                                    @include('team-leader.approvals._filter-hiddens')
                                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                                         {{ __('permissions.tl.reject') }}
                                                     </button>
@@ -140,7 +178,7 @@
                                                       action="{{ route('team-leader.approvals.permissions.force', $row) }}"
                                                       onsubmit="return confirm(@json(__('permissions.force_confirm')))">
                                                     @csrf
-                                                    <input type="hidden" name="filter" value="{{ $filter }}">
+                                                    @include('team-leader.approvals._filter-hiddens')
                                                     <button type="submit" class="btn btn-sm btn-outline-dark">
                                                         {{ __('permissions.force') }}
                                                     </button>
@@ -261,7 +299,7 @@
                                         @if ($gap->isPendingForTl() && auth()->user()?->isTeamLeader() && ! ($canManageOperations ?? false))
                                             <form method="POST" action="{{ route('team-leader.approvals.gaps.recommend', $gap) }}" class="text-start">
                                                 @csrf
-                                                <input type="hidden" name="filter" value="{{ $filter }}">
+                                                @include('team-leader.approvals._filter-hiddens')
                                                 @if ($gap->isAwaitingTlRereview())
                                                     <p class="small text-warning mb-2">{{ __('attendance_gaps.rereview_hint') }}</p>
                                                 @endif
@@ -281,7 +319,7 @@
                                         @elseif ($gap->isPendingForAdmin() && ($canManageOperations ?? false))
                                             <form method="POST" action="{{ route('team-leader.approvals.gaps.decide', $gap) }}" class="text-start">
                                                 @csrf
-                                                <input type="hidden" name="filter" value="{{ $filter }}">
+                                                @include('team-leader.approvals._filter-hiddens')
                                                 <label class="form-label small mb-1">{{ __('attendance_gaps.note') }}</label>
                                                 <textarea name="note" rows="2" maxlength="500" class="form-control form-control-sm mb-2"></textarea>
                                                 <div class="d-flex flex-wrap gap-2 justify-content-end">
@@ -315,9 +353,8 @@
                 @php
                     $overtimeEmpty = match (true) {
                         ($canManageOperations ?? false) && $filter === 'pending' => __('attendance_review.overtime.empty_pending_admin'),
-                        ($canManageOperations ?? false) && $filter === 'decided' => __('attendance_review.overtime.empty_decided'),
+                        in_array($filter, ['decided', 'approved', 'rejected'], true) => __('attendance_review.overtime.empty_decided'),
                         ($canManageOperations ?? false) => __('attendance_review.overtime.empty_all'),
-                        $filter === 'decided' => __('attendance_review.overtime.empty_decided'),
                         default => __('attendance_review.overtime.empty_pending_tl'),
                     };
                 @endphp
@@ -331,45 +368,64 @@
                     <table class="table table-hr table-sm table-hover align-middle mb-0">
                         <thead>
                             <tr>
-                                <th scope="col">{{ __('attendance.history.employee') }}</th>
-                                <th scope="col" class="col-num">{{ __('attendance.history.date') }}</th>
-                                <th scope="col">{{ __('attendance_gaps.shift') }}</th>
+                                <th scope="col">{{ __('shifts.employee') }}</th>
+                                <th scope="col" class="col-num">{{ __('permissions.fields.request_date') }}</th>
                                 <th scope="col" class="col-num">{{ __('attendance_review.planned_hours') }}</th>
                                 <th scope="col" class="col-num">{{ __('attendance_review.raw_hours') }}</th>
-                                <th scope="col">{{ __('attendance_review.overtime.recommendation') }}</th>
+                                <th scope="col" class="col-num">{{ __('attendance_review.overtime.tl_minutes') }}</th>
+                                <th scope="col">{{ __('permissions.fields.status') }}</th>
                                 <th scope="col" class="text-end">{{ __('general.actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($overtimeRows as $overtimeRow)
                                 @php
-                                    $employee = $overtimeRow->user;
+                                    $tlMinutes = (int) $overtimeRow->recommended_overtime_minutes;
+                                    $tlRec = (string) $overtimeRow->overtime_tl_recommendation;
                                 @endphp
                                 <tr>
                                     <td>
-                                        <div class="fw-semibold">{{ $employee?->localizedName() }}</div>
+                                        <div class="fw-semibold">{{ $overtimeRow->user?->localizedName() }}</div>
+                                        <div class="small text-body-secondary">
+                                            {{ __('clock.shifts.'.$overtimeRow->shift_type) }}
+                                        </div>
                                     </td>
                                     <td class="col-num text-nowrap">
-                                        <span class="num-ltr">{{ $overtimeRow->date?->translatedFormat('d M Y') }}</span>
+                                        <span class="num-ltr">{{ $overtimeRow->date?->toDateString() }}</span>
                                     </td>
-                                    <td>{{ __('clock.shifts.'.$overtimeRow->shift_type) }}</td>
-                                    <td class="col-num num-ltr">{{ number_format($overtimeRow->resolvedPlannedHours(), 2) }}h</td>
-                                    <td class="col-num num-ltr">{{ number_format((float) $overtimeRow->raw_actual_hours, 2) }}h</td>
+                                    <td class="col-num">
+                                        <span class="num-ltr hp-value">{{ number_format($overtimeRow->resolvedPlannedHours(), 2) }}h</span>
+                                    </td>
+                                    <td class="col-num">
+                                        <span class="num-ltr hp-value">{{ number_format((float) $overtimeRow->raw_actual_hours, 2) }}h</span>
+                                    </td>
+                                    <td class="col-num">
+                                        @if ($tlRec === 'RECOMMEND' && $tlMinutes > 0)
+                                            <span class="num-ltr hp-value">+{{ $tlMinutes }}</span>
+                                        @elseif ($tlRec === 'NO_OVERTIME')
+                                            <span class="text-body-secondary">0</span>
+                                        @else
+                                            <span class="text-body-secondary">—</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <x-attendance-overtime-status :attendance="$overtimeRow" />
                                     </td>
-                                    <td class="text-end">
+                                    <td class="text-end approvals-ot-actions">
                                         <x-attendance-overtime-review
                                             :attendance="$overtimeRow"
                                             :filter="$filter"
+                                            :filter-query="$filterQuery"
                                             compact
-                                            class="text-start d-inline-block"
                                         />
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+                <div class="mt-3">
+                    {{ $overtimeRows->links() }}
                 </div>
             @endif
         </div>
@@ -451,7 +507,7 @@
                                                 <form method="POST"
                                                       action="{{ route('team-leader.approvals.vacations.approve', $row) }}">
                                                     @csrf
-                                                    <input type="hidden" name="filter" value="{{ $filter }}">
+                                                    @include('team-leader.approvals._filter-hiddens')
                                                     <button type="submit" class="btn btn-sm btn-success">
                                                         {{ __('vacations.tl.accept') }}
                                                     </button>
@@ -460,7 +516,7 @@
                                                       action="{{ route('team-leader.approvals.vacations.reject', $row) }}"
                                                       onsubmit="return confirm(@json(__('vacations.tl.reject_confirm')))">
                                                     @csrf
-                                                    <input type="hidden" name="filter" value="{{ $filter }}">
+                                                    @include('team-leader.approvals._filter-hiddens')
                                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                                         {{ __('vacations.tl.reject') }}
                                                     </button>
@@ -470,7 +526,7 @@
                                                       action="{{ route('team-leader.approvals.vacations.force', $row) }}"
                                                       onsubmit="return confirm(@json(__('vacations.force_confirm')))">
                                                     @csrf
-                                                    <input type="hidden" name="filter" value="{{ $filter }}">
+                                                    @include('team-leader.approvals._filter-hiddens')
                                                     <button type="submit" class="btn btn-sm btn-outline-dark">
                                                         {{ __('vacations.force') }}
                                                     </button>

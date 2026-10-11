@@ -69,6 +69,7 @@ return [
         'pending_tl' => 'Awaiting TL',
         'pending_admin' => 'Awaiting admin',
         'minutes_abbr' => 'min',
+        'tl_minutes' => 'TL requested (min)',
         'system_suggested' => 'System suggests (min)',
         'credited_cap' => 'Payroll cap',
         'credited_cap_hint' => ':planned h + :minutes min approved',

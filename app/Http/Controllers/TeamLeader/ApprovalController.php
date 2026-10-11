@@ -8,8 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Models\AttendanceGap;
 use App\Models\Permission;
 use App\Models\Vacation;
+use App\Services\Approvals\ApprovalsListFilters;
 use App\Services\Attendance\AttendanceGapService;
 use App\Services\Attendance\AttendanceTimeReviewService;
+use App\Services\Employees\TeamMembershipService;
 use App\Services\Permissions\PermissionRequestService;
 use App\Services\Vacations\VacationRequestService;
 use Illuminate\Http\RedirectResponse;
@@ -29,29 +31,28 @@ class ApprovalController extends Controller
         private readonly VacationRequestService $vacations,
         private readonly AttendanceGapService $gaps,
         private readonly AttendanceTimeReviewService $overtimeReviews,
+        private readonly TeamMembershipService $membership,
     ) {}
 
     public function index(Request $request): View
     {
-        $filter = $request->string('filter')->toString() ?: 'pending';
-
-        if (! in_array($filter, ['pending', 'decided', 'all'], true)) {
-            $filter = 'pending';
-        }
-
+        $filters = ApprovalsListFilters::fromRequest($request);
         $actor = $request->user();
         $canDecideLeave = $actor->isManager() || $actor->isTeamLeader();
 
         return view('team-leader.approvals.index', [
-            'filter' => $filter,
+            'filter' => $filters->status,
+            'filters' => $filters,
+            'filterQuery' => $filters->queryParams(),
+            'filterEmployees' => $this->membership->visibleEmployees($actor),
             'permissions' => $canDecideLeave
-                ? $this->permissions->listForActor($actor, $filter)
+                ? $this->permissions->listForActor($actor, $filters)
                 : new LengthAwarePaginator([], 0, 25),
             'vacations' => $canDecideLeave
-                ? $this->vacations->listForActor($actor, $filter)
+                ? $this->vacations->listForActor($actor, $filters)
                 : new LengthAwarePaginator([], 0, 25),
-            'gaps' => $this->gaps->listForActor($actor, $filter),
-            'overtimeRows' => $this->overtimeReviews->listOvertimeForActor($actor, $filter),
+            'gaps' => $this->gaps->listForActor($actor, $filters),
+            'overtimeRows' => $this->overtimeReviews->listOvertimeForActor($actor, $filters),
             'canForce' => $canDecideLeave,
             'canDecideLeave' => $canDecideLeave,
             'canManageOperations' => $actor->canManageOperations(),
@@ -70,8 +71,7 @@ class ApprovalController extends Controller
             ]);
         }
 
-        return redirect()
-            ->route('team-leader.approvals', ['filter' => $request->input('filter', 'pending')])
+        return $this->backToApprovals($request)
             ->with('success', __('permissions.tl.flash.accepted'));
     }
 
@@ -87,8 +87,7 @@ class ApprovalController extends Controller
             ]);
         }
 
-        return redirect()
-            ->route('team-leader.approvals', ['filter' => $request->input('filter', 'pending')])
+        return $this->backToApprovals($request)
             ->with('success', __('permissions.tl.flash.rejected'));
     }
 
@@ -104,8 +103,7 @@ class ApprovalController extends Controller
             ]);
         }
 
-        return redirect()
-            ->route('team-leader.approvals', ['filter' => $request->input('filter', 'decided')])
+        return $this->backToApprovals($request, 'decided')
             ->with('success', __('permissions.tl.flash.forced'));
     }
 
@@ -121,8 +119,7 @@ class ApprovalController extends Controller
             ]);
         }
 
-        return redirect()
-            ->route('team-leader.approvals', ['filter' => $request->input('filter', 'pending')])
+        return $this->backToApprovals($request)
             ->with('success', __('vacations.tl.flash.accepted'));
     }
 
@@ -138,8 +135,7 @@ class ApprovalController extends Controller
             ]);
         }
 
-        return redirect()
-            ->route('team-leader.approvals', ['filter' => $request->input('filter', 'pending')])
+        return $this->backToApprovals($request)
             ->with('success', __('vacations.tl.flash.rejected'));
     }
 
@@ -155,8 +151,7 @@ class ApprovalController extends Controller
             ]);
         }
 
-        return redirect()
-            ->route('team-leader.approvals', ['filter' => $request->input('filter', 'decided')])
+        return $this->backToApprovals($request, 'decided')
             ->with('success', __('vacations.tl.flash.forced'));
     }
 
@@ -167,19 +162,14 @@ class ApprovalController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        try {
-            $this->gaps->tlRecommend(
-                $request->user(),
-                $gap,
-                $validated['recommendation'],
-                $validated['note'] ?? null,
-            );
-        } catch (ValidationException $e) {
-            throw $e;
-        }
+        $this->gaps->tlRecommend(
+            $request->user(),
+            $gap,
+            $validated['recommendation'],
+            $validated['note'] ?? null,
+        );
 
-        return redirect()
-            ->route('team-leader.approvals', ['filter' => $request->input('filter', 'pending')])
+        return $this->backToApprovals($request)
             ->with('success', __('attendance_gaps.flash.tl_recommend'));
     }
 
@@ -190,19 +180,24 @@ class ApprovalController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        try {
-            $this->gaps->adminDecide(
-                $request->user(),
-                $gap,
-                $validated['decision'],
-                $validated['note'] ?? null,
-            );
-        } catch (ValidationException $e) {
-            throw $e;
+        $this->gaps->adminDecide(
+            $request->user(),
+            $gap,
+            $validated['decision'],
+            $validated['note'] ?? null,
+        );
+
+        return $this->backToApprovals($request)
+            ->with('success', __('attendance_gaps.flash.admin_decide'));
+    }
+
+    private function backToApprovals(Request $request, ?string $fallbackStatus = null): RedirectResponse
+    {
+        $params = ApprovalsListFilters::fromRequest($request)->queryParams();
+        if ($fallbackStatus !== null && ! $request->filled('filter')) {
+            $params['filter'] = $fallbackStatus;
         }
 
-        return redirect()
-            ->route('team-leader.approvals', ['filter' => $request->input('filter', 'pending')])
-            ->with('success', __('attendance_gaps.flash.admin_decide'));
+        return redirect()->route('team-leader.approvals', $params);
     }
 }

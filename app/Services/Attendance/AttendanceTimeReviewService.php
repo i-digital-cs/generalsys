@@ -4,9 +4,10 @@ namespace App\Services\Attendance;
 
 use App\Models\Attendance;
 use App\Models\User;
+use App\Services\Approvals\ApprovalsListFilters;
 use App\Services\Employees\TeamMembershipService;
 use App\Services\Notifications\AppNotificationService;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -65,13 +66,25 @@ class AttendanceTimeReviewService
         return $this->calculator->recalculate($attendance->fresh(['segments', 'user']), $this->attendanceService);
     }
 
-    /** @return Collection<int, Attendance> */
-    public function listOvertimeForActor(User $actor, string $filter = 'pending'): Collection
-    {
-        $filter = in_array($filter, ['pending', 'decided', 'all'], true) ? $filter : 'pending';
+    /**
+     * @return LengthAwarePaginator<int, Attendance>
+     */
+    public function listOvertimeForActor(
+        User $actor,
+        ApprovalsListFilters|string $filters = 'pending',
+        int $perPage = 25,
+    ): LengthAwarePaginator {
+        $perPage = min(max($perPage, 1), 50);
+        $filters = $filters instanceof ApprovalsListFilters
+            ? $filters
+            : ApprovalsListFilters::fromStatus($filters);
+        $status = $filters->status;
 
         if (! $actor->isTeamLeader() && ! $actor->canManageOperations()) {
-            return collect();
+            return new LengthAwarePaginator([], 0, $perPage, 1, [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                'pageName' => 'ot_page',
+            ]);
         }
 
         $query = Attendance::query()
@@ -83,45 +96,59 @@ class AttendanceTimeReviewService
         if ($actor->isTeamLeader() && ! $actor->canManageOperations()) {
             $employeeIds = $this->membership->visibleEmployeeIds($actor);
             if ($employeeIds === []) {
-                return collect();
+                return new LengthAwarePaginator([], 0, $perPage, 1, [
+                    'path' => LengthAwarePaginator::resolveCurrentPath(),
+                    'pageName' => 'ot_page',
+                ]);
             }
             $query->whereIn('user_id', $employeeIds);
         }
 
-        match ($filter) {
+        match ($status) {
             'pending' => $actor->canManageOperations()
                 ? $query->where('overtime_tl_recommendation', 'RECOMMEND')
                     ->where('overtime_admin_decision', 'PENDING')
                 : $query->where(function ($q) {
                     $q->where(function ($first) {
                         $first->where('overtime_tl_recommendation', 'NONE')
-                            ->where('raw_actual_hours', '>', 0);
+                            ->where('raw_actual_hours', '>', 0)
+                            ->whereRaw('raw_actual_hours > COALESCE(planned_hours, 0)');
                     })->orWhere(function ($rejected) {
                         $rejected->where('overtime_tl_recommendation', 'RECOMMEND')
                             ->where('overtime_admin_decision', 'REJECTED');
                     });
                 }),
+            'approved' => $query->where('overtime_admin_decision', 'APPROVED'),
+            'rejected' => $query->where(function ($q) {
+                $q->where('overtime_admin_decision', 'REJECTED')
+                    ->orWhere('overtime_tl_recommendation', 'NO_OVERTIME');
+            }),
             'decided' => $query->where(function ($q) {
                 $q->where('overtime_tl_recommendation', 'NO_OVERTIME')
                     ->orWhere('overtime_admin_decision', 'APPROVED');
             }),
             default => $query->where(function ($q) {
-                $q->where('raw_actual_hours', '>', 0)
-                    ->orWhere('overtime_tl_recommendation', '!=', 'NONE');
+                $q->where(function ($live) {
+                    $live->where('raw_actual_hours', '>', 0)
+                        ->whereRaw('raw_actual_hours > COALESCE(planned_hours, 0)');
+                })->orWhere('overtime_tl_recommendation', '!=', 'NONE');
             }),
         };
 
-        return $query->limit(500)->get()
-            ->filter(function (Attendance $row) use ($actor, $filter): bool {
+        $filters->applyEmployeeFilters($query);
+        $filters->applyDateMonth($query, 'date');
+
+        $rows = $query->limit(1000)->get()
+            ->filter(function (Attendance $row) use ($actor, $status): bool {
                 if (! $this->actorMayReview($actor, $row)) {
                     return false;
                 }
 
-                if ($filter === 'decided') {
+                if (in_array($status, ['approved', 'rejected', 'decided'], true)) {
                     return true;
                 }
 
-                if ($filter === 'pending' && $actor->canManageOperations()) {
+                if ($status === 'pending' && $actor->canManageOperations()) {
                     return true;
                 }
 
@@ -129,7 +156,7 @@ class AttendanceTimeReviewService
                 $awaitingTlAfterReject = $row->overtime_tl_recommendation === 'RECOMMEND'
                     && $row->overtime_admin_decision === 'REJECTED';
 
-                if ($filter === 'pending') {
+                if ($status === 'pending') {
                     return $awaitingTlAfterReject
                         || ($hasLiveOvertime && $row->overtime_tl_recommendation === 'NONE');
                 }
@@ -140,6 +167,20 @@ class AttendanceTimeReviewService
                     || $awaitingTlAfterReject;
             })
             ->values();
+
+        $page = max(1, (int) request()->input('ot_page', 1));
+
+        return new LengthAwarePaginator(
+            $rows->forPage($page, $perPage)->values(),
+            $rows->count(),
+            $perPage,
+            $page,
+            [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                'query' => request()->query(),
+                'pageName' => 'ot_page',
+            ],
+        );
     }
 
     public function tlRecommendOvertime(User $actor, Attendance $attendance, int $minutes, string $recommendation): Attendance

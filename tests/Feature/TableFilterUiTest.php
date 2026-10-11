@@ -90,12 +90,15 @@ class TableFilterUiTest extends TestCase
             ->assertSee('name="employee_id"', false)
             ->assertDontSee('data-table-filter-root', false);
 
-        // Approvals: status pills (?filter=…) are the single filter.
+        // Approvals: status pills + server-side GET form (month/user/search).
         $this->actingAs($leader)
             ->get(route('team-leader.approvals'))
             ->assertOk()
             ->assertSee('table-hr', false)
             ->assertSee(route('team-leader.approvals', ['filter' => 'pending']), false)
+            ->assertSee('name="month"', false)
+            ->assertSee('name="user_id"', false)
+            ->assertSee('name="q"', false)
             ->assertDontSee('data-table-filter-root', false);
     }
 

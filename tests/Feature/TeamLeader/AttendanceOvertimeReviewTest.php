@@ -112,6 +112,12 @@ class AttendanceOvertimeReviewTest extends TestCase
             ->get(route('team-leader.approvals'))
             ->assertOk()
             ->assertSee(__('attendance_review.overtime.pending_admin'), false)
+            ->assertSee(__('attendance_review.overtime.tl_minutes'), false)
+            ->assertSee('+60', false)
+            ->assertSee(__('attendance_review.overtime.admin_hint', [
+                'minutes' => 60,
+                'planned' => number_format(8, 2),
+            ]), false)
             ->assertSee(__('attendance_review.overtime.approve'), false);
 
         $this->actingAs($this->manager)

@@ -5,6 +5,7 @@ namespace App\Services\Permissions;
 use App\Exceptions\PermissionRequestException;
 use App\Models\Permission;
 use App\Models\User;
+use App\Services\Approvals\ApprovalsListFilters;
 use App\Services\Employees\TeamMembershipService;
 use App\Services\Notifications\AppNotificationService;
 use Carbon\Carbon;
@@ -106,10 +107,15 @@ class PermissionRequestService
     /**
      * @param  'pending'|'decided'|'all'  $filter
      */
-    public function listForActor(User $actor, string $filter = 'pending', int $perPage = 25): LengthAwarePaginator
-    {
+    public function listForActor(
+        User $actor,
+        ApprovalsListFilters|string $filters = 'pending',
+        int $perPage = 25,
+    ): LengthAwarePaginator {
         $perPage = min(max($perPage, 1), 50);
-        $filter = in_array($filter, ['pending', 'decided', 'all'], true) ? $filter : 'pending';
+        $filters = $filters instanceof ApprovalsListFilters
+            ? $filters
+            : ApprovalsListFilters::fromStatus($filters);
 
         $query = Permission::query()->with(['user.teamLeaders', 'decidedBy']);
 
@@ -119,21 +125,31 @@ class PermissionRequestService
             abort(403);
         }
 
-        if ($filter === 'pending') {
-            $query->where('status', Permission::STATUS_PENDING)
+        match ($filters->status) {
+            'pending' => $query->where('status', Permission::STATUS_PENDING)
                 ->orderBy('request_date')
-                ->orderBy('id');
-        } elseif ($filter === 'decided') {
-            $query->whereIn('status', [
+                ->orderBy('id'),
+            'approved' => $query->whereIn('status', [
+                Permission::STATUS_ACCEPTED,
+                Permission::STATUS_FORCED,
+            ])
+                ->orderByDesc('request_date')
+                ->orderByDesc('id'),
+            'rejected' => $query->where('status', Permission::STATUS_REJECTED)
+                ->orderByDesc('request_date')
+                ->orderByDesc('id'),
+            'decided' => $query->whereIn('status', [
                 Permission::STATUS_ACCEPTED,
                 Permission::STATUS_REJECTED,
                 Permission::STATUS_FORCED,
             ])
                 ->orderByDesc('request_date')
-                ->orderByDesc('id');
-        } else {
-            $query->orderByDesc('request_date')->orderByDesc('id');
-        }
+                ->orderByDesc('id'),
+            default => $query->orderByDesc('request_date')->orderByDesc('id'),
+        };
+
+        $filters->applyEmployeeFilters($query);
+        $filters->applyDateMonth($query, 'request_date');
 
         return $query->paginate($perPage, ['*'], 'perm_page')->withQueryString();
     }

@@ -6,6 +6,7 @@ use App\Exceptions\VacationRequestException;
 use App\Models\RestDay;
 use App\Models\User;
 use App\Models\Vacation;
+use App\Services\Approvals\ApprovalsListFilters;
 use App\Services\Employees\RestDayService;
 use App\Services\Employees\TeamMembershipService;
 use App\Services\Notifications\AppNotificationService;
@@ -184,10 +185,15 @@ class VacationRequestService
     /**
      * @param  'pending'|'decided'|'all'  $filter
      */
-    public function listForActor(User $actor, string $filter = 'pending', int $perPage = 25): LengthAwarePaginator
-    {
+    public function listForActor(
+        User $actor,
+        ApprovalsListFilters|string $filters = 'pending',
+        int $perPage = 25,
+    ): LengthAwarePaginator {
         $perPage = min(max($perPage, 1), 50);
-        $filter = in_array($filter, ['pending', 'decided', 'all'], true) ? $filter : 'pending';
+        $filters = $filters instanceof ApprovalsListFilters
+            ? $filters
+            : ApprovalsListFilters::fromStatus($filters);
 
         $query = Vacation::query()->with(['user.teamLeaders', 'decidedBy']);
 
@@ -197,20 +203,35 @@ class VacationRequestService
             abort(403);
         }
 
-        if ($filter === 'pending') {
-            $query->where('status', Vacation::STATUS_PENDING)
+        match ($filters->status) {
+            'pending' => $query->where('status', Vacation::STATUS_PENDING)
                 ->orderBy('start_date')
-                ->orderBy('id');
-        } elseif ($filter === 'decided') {
-            $query->whereIn('status', [
+                ->orderBy('id'),
+            'approved' => $query->whereIn('status', [
+                Vacation::STATUS_APPROVED,
+                Vacation::STATUS_FORCED,
+            ])
+                ->orderByDesc('start_date')
+                ->orderByDesc('id'),
+            'rejected' => $query->where('status', Vacation::STATUS_REJECTED)
+                ->orderByDesc('start_date')
+                ->orderByDesc('id'),
+            'decided' => $query->whereIn('status', [
                 Vacation::STATUS_APPROVED,
                 Vacation::STATUS_REJECTED,
                 Vacation::STATUS_FORCED,
             ])
                 ->orderByDesc('start_date')
-                ->orderByDesc('id');
-        } else {
-            $query->orderByDesc('start_date')->orderByDesc('id');
+                ->orderByDesc('id'),
+            default => $query->orderByDesc('start_date')->orderByDesc('id'),
+        };
+
+        $filters->applyEmployeeFilters($query);
+        $start = $filters->monthStart();
+        $end = $filters->monthEnd();
+        if ($start !== null && $end !== null) {
+            $query->where('start_date', '<=', $end->toDateString())
+                ->where('end_date', '>=', $start->toDateString());
         }
 
         $page = $query->paginate($perPage, ['*'], 'vac_page')->withQueryString();

@@ -22,7 +22,7 @@
     @elseif ($admin === 'APPROVED' && $tl === 'RECOMMEND')
         <span class="badge text-bg-success">{{ __('attendance_review.breakdown.ot_admin.APPROVED') }}</span>
         @if ($summary->approvedOvertimeMinutes > 0)
-            <span class="badge text-bg-success">
+            <span class="badge text-bg-success num-ltr">
                 +{{ $summary->approvedOvertimeMinutes }} {{ __('attendance_review.overtime.minutes_abbr') }}
             </span>
         @endif
@@ -30,7 +30,14 @@
         <span class="badge text-bg-secondary">{{ __('attendance_review.breakdown.ot_status.NO_OVERTIME') }}</span>
     @elseif ($tl === 'RECOMMEND')
         <span class="badge text-bg-info text-dark">{{ __('attendance_review.breakdown.ot_status.RECOMMEND') }}</span>
-        <span class="badge text-bg-secondary">{{ __('attendance_review.overtime.pending_admin') }}</span>
+        @if ($summary->recommendedOvertimeMinutes > 0)
+            <span class="badge text-bg-primary num-ltr">
+                +{{ $summary->recommendedOvertimeMinutes }} {{ __('attendance_review.overtime.minutes_abbr') }}
+            </span>
+        @endif
+        @if ($admin === 'PENDING')
+            <span class="badge text-bg-secondary">{{ __('attendance_review.overtime.pending_admin') }}</span>
+        @endif
     @elseif ($summary->needsTlOvertimeReview())
         <span class="badge text-bg-warning text-dark">{{ __('attendance_review.overtime.pending_tl') }}</span>
         @if ($summary->systemSuggestedOvertimeMinutes > 0)

@@ -6,6 +6,7 @@ use App\Exceptions\AttendanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TeamLeader\ForceClockOutRequest;
 use App\Models\Attendance;
+use App\Services\Approvals\ApprovalsListFilters;
 use App\Services\Attendance\AttendanceService;
 use App\Services\Attendance\AttendanceTimeReviewService;
 use Illuminate\Http\RedirectResponse;
@@ -65,10 +66,9 @@ class AttendanceReviewController extends Controller
             throw $e;
         }
 
-        $filter = $request->input('filter');
-        if (is_string($filter) && in_array($filter, ['pending', 'decided', 'all'], true)) {
+        if ($request->filled('filter')) {
             return redirect()
-                ->route('team-leader.approvals', ['filter' => $filter])
+                ->route('team-leader.approvals', ApprovalsListFilters::fromRequest($request)->queryParams())
                 ->with('success', __('attendance_review.flash.overtime_tl'));
         }
 
@@ -91,10 +91,9 @@ class AttendanceReviewController extends Controller
             throw $e;
         }
 
-        $filter = $request->input('filter');
-        if (is_string($filter) && in_array($filter, ['pending', 'decided', 'all'], true)) {
+        if ($request->filled('filter')) {
             return redirect()
-                ->route('team-leader.approvals', ['filter' => $filter])
+                ->route('team-leader.approvals', ApprovalsListFilters::fromRequest($request)->queryParams())
                 ->with('success', __('attendance_review.flash.overtime_admin'));
         }
 

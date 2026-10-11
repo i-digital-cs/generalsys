@@ -86,7 +86,7 @@
                     icon="bi-calendar-check"
                 />
             @else
-                <div class="table-responsive">
+                <div class="table-responsive border rounded-3">
                     <table class="table table-hr table-attendance-history table-sm table-hover align-middle mb-0">
                         <thead>
                             <tr>

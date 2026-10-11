@@ -2,6 +2,7 @@
     'attendance',
     'summary' => null,
     'filter' => null,
+    'filterQuery' => null,
     'compact' => false,
     'embedded' => false,
 ])
@@ -10,6 +11,7 @@
     use App\Services\Attendance\AttendanceService;
     use App\Services\Attendance\AttendanceTimeCalculator;
 
+    $filterQuery = $filterQuery ?? (filled($filter) ? ['filter' => $filter] : []);
     $summary = $summary ?? app(AttendanceTimeCalculator::class)->summarize(
         $attendance,
         app(AttendanceService::class),
@@ -39,23 +41,23 @@
     {{-- Approvals table cell: actions only --}}
     <div {{ $attributes }}>
         @if ($showTlForm)
-            <form method="POST" action="{{ route('team-leader.attendance.overtime.tl', $attendance) }}">
+            <form method="POST" action="{{ route('team-leader.attendance.overtime.tl', $attendance) }}" class="ot-tl-action">
                 @csrf
-                @if ($filter)
-                    <input type="hidden" name="filter" value="{{ $filter }}">
-                @endif
+                @foreach ($filterQuery as $key => $value)
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                @endforeach
                 @if ($awaitingTlAfterReject)
                     <p class="small text-warning mb-2">{{ __('attendance_review.overtime.rereview_hint') }}</p>
                 @endif
                 <div class="row g-2">
-                    <div class="col-12">
+                    <div class="col-12 col-sm-6">
                         <label class="form-label" for="ot_minutes_c_{{ $attendance->id }}">{{ __('attendance_review.overtime_minutes') }}</label>
                         <input type="number" min="0" max="720" name="recommended_overtime_minutes"
                                id="ot_minutes_c_{{ $attendance->id }}"
                                value="{{ $defaultMinutes }}"
-                               class="form-control form-control-sm">
+                               class="form-control form-control-sm num-ltr">
                     </div>
-                    <div class="col-12">
+                    <div class="col-12 col-sm-6">
                         <label class="form-label" for="ot_rec_c_{{ $attendance->id }}">{{ __('attendance_review.overtime.recommendation') }}</label>
                         <select name="overtime_tl_recommendation" id="ot_rec_c_{{ $attendance->id }}" class="form-select form-select-sm">
                             <option value="RECOMMEND">{{ __('attendance_review.recommend_overtime') }}</option>
@@ -70,11 +72,30 @@
                 </button>
             </form>
         @elseif ($showAdminForm)
-            <form method="POST" action="{{ route('team-leader.attendance.overtime.admin', $attendance) }}">
+            <form method="POST" action="{{ route('team-leader.attendance.overtime.admin', $attendance) }}" class="ot-admin-action">
                 @csrf
-                @if ($filter)
-                    <input type="hidden" name="filter" value="{{ $filter }}">
-                @endif
+                @foreach ($filterQuery as $key => $value)
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                @endforeach
+                <p class="small mb-2 mb-md-3">
+                    <span class="d-block fw-semibold hp-value num-ltr">
+                        +{{ (int) $summary->recommendedOvertimeMinutes }}
+                        {{ __('attendance_review.overtime.minutes_abbr') }}
+                        ({{ number_format(((int) $summary->recommendedOvertimeMinutes) / 60, 2) }}h)
+                    </span>
+                    <span class="text-body-secondary">
+                        {{ __('attendance_review.overtime.admin_hint', [
+                            'minutes' => (int) $summary->recommendedOvertimeMinutes,
+                            'planned' => number_format($summary->plannedHours, 2),
+                        ]) }}
+                    </span>
+                    @if ($attendance->overtimeTlDecider)
+                        <span class="d-block text-body-secondary mt-1">
+                            {{ __('attendance_review.overtime.decided_by_tl') }}:
+                            {{ $attendance->overtimeTlDecider->localizedName() }}
+                        </span>
+                    @endif
+                </p>
                 <div class="d-flex flex-wrap gap-2">
                     <button type="submit" name="overtime_admin_decision" value="APPROVED" class="btn btn-sm btn-success">
                         {{ __('attendance_review.overtime.approve') }}
@@ -135,9 +156,9 @@
         @if ($showTlForm)
             <form method="POST" action="{{ route('team-leader.attendance.overtime.tl', $attendance) }}" class="mt-2">
                 @csrf
-                @if ($filter)
-                    <input type="hidden" name="filter" value="{{ $filter }}">
-                @endif
+                @foreach ($filterQuery as $key => $value)
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                @endforeach
                 @if ($awaitingTlAfterReject)
                     <p class="small text-warning mb-2">{{ __('attendance_review.overtime.rereview_hint') }}</p>
                 @endif
@@ -173,9 +194,9 @@
         @if ($showAdminForm)
             <form method="POST" action="{{ route('team-leader.attendance.overtime.admin', $attendance) }}" class="mt-2">
                 @csrf
-                @if ($filter)
-                    <input type="hidden" name="filter" value="{{ $filter }}">
-                @endif
+                @foreach ($filterQuery as $key => $value)
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                @endforeach
                 <p class="small mb-2">
                     {{ __('attendance_review.overtime.admin_hint', [
                         'minutes' => $summary->recommendedOvertimeMinutes,
