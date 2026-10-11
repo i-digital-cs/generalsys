@@ -595,6 +595,39 @@ class AttendanceServiceTest extends TestCase
         $this->assertSame('2026-08-23', $row->date->toDateString());
     }
 
+    public function test_stale_close_for_night_punch_with_day_profile_credits_elapsed_not_one_minute(): void
+    {
+        // Profile 00:00–12:00 but employee clocks in at night (real driver pattern).
+        $employee = User::factory()->employee()->create([
+            'work_start_time' => '00:00',
+            'work_end_time' => '12:00',
+            'shift_types_default' => [[
+                'type' => Attendance::SHIFT_FULL_TIME,
+                'start' => '00:00',
+                'end' => '12:00',
+                'expected_hours' => 12,
+            ]],
+        ]);
+
+        $this->service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-10-06 23:02:00'));
+
+        $closed = $this->service->closeStaleOpenBeforeShiftStart(
+            $employee,
+            Carbon::parse('2026-10-07 11:01:00'),
+            Attendance::SHIFT_FULL_TIME,
+        );
+
+        $this->assertNotNull($closed);
+        $this->assertTrue((bool) $closed->is_auto_clock_out);
+        $this->assertSame('2026-10-07 11:01:00', $closed->clock_out->format('Y-m-d H:i:s'));
+        $this->assertGreaterThan(10.0, (float) $closed->raw_actual_hours);
+        $this->assertEqualsWithDelta(
+            min(12.0, (float) $closed->raw_actual_hours),
+            (float) $closed->actual_hours,
+            0.01,
+        );
+    }
+
     public function test_stale_cross_day_open_not_closed_more_than_one_hour_before_shift(): void
     {
         $employee = User::factory()->employee()->create([

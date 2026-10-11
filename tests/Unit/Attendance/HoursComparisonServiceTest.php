@@ -112,6 +112,7 @@ class HoursComparisonServiceTest extends TestCase
         $this->assertSame(9.5, $totals['raw']);
         $this->assertSame(8.0, $totals['credited']);
         $this->assertSame(8.0, $totals['actual']);
+        // Exact late from clock 10:30 vs profile 10:00 (stored late_minutes may stay 0).
         $this->assertSame(30, $totals['late_minutes']);
         $this->assertGreaterThan(0, $totals['planned']);
         $this->assertSame(

@@ -266,6 +266,36 @@ class PayrollDraftTest extends TestCase
         $this->assertEqualsWithDelta(1000.0, (float) $payroll->rest_day_pay, 0.01); // 5000/30*6
     }
 
+    public function test_admin_can_edit_late_minutes_and_suggestion_is_shown(): void
+    {
+        [$manager, $payroll] = $this->draftPayslip();
+
+        Attendance::query()
+            ->where('user_id', $payroll->user_id)
+            ->whereDate('date', '2026-06-01')
+            ->update([
+                'clock_in' => '2026-06-01 10:30:00',
+                'clock_out' => '2026-06-01 18:00:00',
+                'late_minutes' => 0,
+                'adjusted_late_minutes' => null,
+            ]);
+
+        $this->actingAs($manager)
+            ->put(route('admin.payroll.update', $payroll), $this->countPayload([
+                'late_minutes_total' => 15,
+            ]))
+            ->assertRedirect(route('admin.payroll.show', $payroll));
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.show', $payroll))
+            ->assertOk()
+            ->assertSee(__('payroll.field_help.late_minutes_apply_suggested'), false)
+            ->assertViewHas('suggestedLateMinutes', fn ($v) => (int) $v >= 30);
+
+        $payroll->refresh();
+        $this->assertSame(15, (int) $payroll->late_minutes_total);
+    }
+
     public function test_refresh_from_attendance_overwrites_manual_counts(): void
     {
         [$manager, $payroll] = $this->draftPayslip();
@@ -463,7 +493,6 @@ class PayrollDraftTest extends TestCase
             'rest_days' => 0,
             'overtime_hours' => 0,
             'overtime_multiplier' => 1.5,
-            'friday_work_days' => 0,
             'day_off_work_days' => 0,
             'official_holiday_work_days' => 0,
             'extra_days' => 0,

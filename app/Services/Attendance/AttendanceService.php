@@ -380,6 +380,16 @@ class AttendanceService
             return null;
         }
 
+        // Valid overnight window still running into "today" — do not force-close yet.
+        $openExpectedEnd = $this->expectedEndForAttendance($attendance);
+        if (
+            $openExpectedEnd !== null
+            && $openExpectedEnd->gt($segment->clock_in)
+            && $at->lt($openExpectedEnd)
+        ) {
+            return null;
+        }
+
         $expectedStart = $this->expectedStartFor($user, $shiftType, $at);
         $leadMinutes = max(0, (int) config('attendance.force_close_before_shift_minutes', 60));
 
@@ -686,8 +696,8 @@ class AttendanceService
 
     /**
      * Minutes late if the employee clocked in at $at (default: now).
-     * Flexible start — employees may clock in anytime; auto late is always 0
-     * (TL/Admin may set adjusted_late_minutes manually).
+     * Flexible start — clock-in never auto-marks LATE status; preview stays 0.
+     * Payroll / month totals use {@see exactLateMinutes()} instead.
      */
     public function previewLateMinutes(
         User $user,
@@ -695,6 +705,39 @@ class AttendanceService
         ?CarbonInterface $at = null,
     ): int {
         return 0;
+    }
+
+    /**
+     * Exact late minutes for payroll/reporting: TL/Admin override when set,
+     * otherwise clock-in vs expected shift start (never negative).
+     */
+    public function exactLateMinutes(Attendance $attendance): int
+    {
+        if ($attendance->adjusted_late_minutes !== null) {
+            return max(0, (int) $attendance->adjusted_late_minutes);
+        }
+
+        $user = $attendance->relationLoaded('user')
+            ? $attendance->user
+            : $attendance->user()->first();
+        $clockIn = $attendance->clock_in;
+        if ($user === null || $clockIn === null) {
+            return 0;
+        }
+
+        $assignment = ShiftAssignment::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $attendance->date->toDateString())
+            ->where('shift_type', $attendance->shift_type)
+            ->where('status', ShiftAssignment::STATUS_SCHEDULED)
+            ->first();
+
+        $expected = $this->expectedStart($user, $attendance, $assignment);
+        if ($expected === null) {
+            return 0;
+        }
+
+        return max(0, (int) $expected->diffInMinutes($clockIn, false));
     }
 
     private function resolveAssignment(User $user, string $shiftType, string $date): ?ShiftAssignment
@@ -871,9 +914,20 @@ class AttendanceService
         CarbonInterface $at,
     ): CarbonInterface {
         $expectedEnd = $this->expectedEndForAttendance($attendance);
-        $closeAt = $expectedEnd ?? $segment->clock_in->copy()->addMinutes(
+        $plannedMinutes = max(
+            1,
             (int) round($this->shifts->resolveForAttendance($attendance) * 60),
         );
+        $fromClockInPlanned = $segment->clock_in->copy()->addMinutes($plannedMinutes);
+
+        // Use profile/assignment end only when it is after clock-in. Night punches with a
+        // daytime profile (end before clock-in) used to collapse to clock_in+1 minute.
+        if ($expectedEnd !== null && $expectedEnd->gt($segment->clock_in)) {
+            $closeAt = $expectedEnd->copy();
+        } else {
+            // Credit elapsed time until now, capped at planned length from clock-in.
+            $closeAt = $at->lt($fromClockInPlanned) ? $at->copy() : $fromClockInPlanned->copy();
+        }
 
         if ($closeAt->gt($at)) {
             $closeAt = $at->copy();

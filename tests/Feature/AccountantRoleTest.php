@@ -112,7 +112,6 @@ class AccountantRoleTest extends TestCase
                 'rest_days' => 0,
                 'overtime_hours' => 0,
                 'overtime_multiplier' => 1.5,
-                'friday_work_days' => 0,
                 'day_off_work_days' => 0,
                 'official_holiday_work_days' => 0,
                 'hours_deduction' => 0,

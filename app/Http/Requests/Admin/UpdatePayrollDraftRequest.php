@@ -25,7 +25,6 @@ class UpdatePayrollDraftRequest extends FormRequest
             'rest_days' => ['required', 'integer', 'min:0', 'max:31'],
             'overtime_hours' => ['required', 'numeric', 'min:0', 'max:744'],
             'overtime_multiplier' => ['required', 'numeric', 'min:0', 'max:10'],
-            'friday_work_days' => ['required', 'integer', 'min:0', 'max:31'],
             'day_off_work_days' => ['required', 'integer', 'min:0', 'max:31'],
             'official_holiday_work_days' => ['required', 'integer', 'min:0', 'max:31'],
             'hours_deduction' => ['required', 'numeric', 'min:0', 'max:744'],

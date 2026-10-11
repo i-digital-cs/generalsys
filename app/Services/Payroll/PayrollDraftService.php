@@ -55,7 +55,6 @@ class PayrollDraftService
             'extra_shift_hours' => 0,
             'overtime_hours' => (float) ($counts['overtime_hours'] ?? $record->overtime_hours),
             'overtime_multiplier' => (float) ($counts['overtime_multiplier'] ?? $record->overtime_multiplier),
-            'friday_work_days' => (int) ($counts['friday_work_days'] ?? $record->friday_work_days),
             'day_off_work_days' => (int) ($counts['day_off_work_days'] ?? $record->day_off_work_days),
             'official_holiday_work_days' => (int) ($counts['official_holiday_work_days'] ?? $record->official_holiday_work_days),
             'extra_days' => $extraDays,
@@ -66,7 +65,7 @@ class PayrollDraftService
             'late_minutes_total' => (int) ($counts['late_minutes_total'] ?? $record->late_minutes_total),
         ]);
 
-        // Keep the just-saved overrides (including rest_days). Advances still refresh.
+        // Keep the just-saved overrides (including rest_days / late minutes). Advances still refresh.
         return $this->recalculate($record->fresh(['adjustments', 'user']), false);
     }
 
@@ -137,6 +136,9 @@ class PayrollDraftService
 
         if ($syncAttendanceCounts) {
             $this->applyAttendanceCounts($record, $live);
+        } else {
+            // Friday bonus still from live punches; late minutes stay as Admin saved.
+            $record->friday_work_days = (int) ($live['friday_work_days'] ?? 0);
         }
 
         $record->load('adjustments');
@@ -147,10 +149,8 @@ class PayrollDraftService
         ])->all();
 
         $otMult = (float) $record->overtime_multiplier;
-        $fridayFt = $syncAttendanceCounts
-            ? (int) $live['friday_full_time_days']
-            : (int) $record->friday_work_days;
-        $fridayOnline = $syncAttendanceCounts ? (int) $live['friday_online_days'] : 0;
+        $fridayFt = (int) $live['friday_full_time_days'];
+        $fridayOnline = (int) $live['friday_online_days'];
         $dayOffFt = $syncAttendanceCounts
             ? (int) $live['day_off_full_time_days']
             : (int) $record->day_off_work_days;

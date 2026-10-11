@@ -35,13 +35,12 @@
             'online_half_days',
             'online_full_days',
             'rest_days',
-            'friday_work_days',
             'day_off_work_days',
             'official_holiday_work_days',
-            'late_minutes_total',
         ];
         $countFieldsReadonly = [
             ...$countFieldsAttendance,
+            'late_minutes_total',
             'excused_absence_days',
             'unexcused_absence_days',
             'hours_deduction',
@@ -373,7 +372,7 @@
                                                         <label for="{{ $field }}" class="form-label">{{ __('payroll.fields.'.$field) }}</label>
                                                         <input
                                                             type="number"
-                                                            step="{{ $field === 'hours_deduction' ? '0.01' : '1' }}"
+                                                            step="1"
                                                             min="0"
                                                             id="{{ $field }}"
                                                             name="{{ $field }}"
@@ -386,6 +385,40 @@
                                                         @enderror
                                                     </div>
                                                 @endforeach
+                                                <div class="col-6 col-md-4">
+                                                    <label for="late_minutes_total" class="form-label">{{ __('payroll.fields.late_minutes_total') }}</label>
+                                                    <input
+                                                        type="number"
+                                                        step="1"
+                                                        min="0"
+                                                        id="late_minutes_total"
+                                                        name="late_minutes_total"
+                                                        class="form-control num-ltr @error('late_minutes_total') is-invalid @enderror"
+                                                        value="{{ old('late_minutes_total', $payroll->late_minutes_total) }}"
+                                                        required
+                                                    >
+                                                    @error('late_minutes_total')
+                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                    @enderror
+                                                    @if ($suggestedLateMinutes !== null)
+                                                        <div class="form-text">
+                                                            {{ __('payroll.field_help.late_minutes_total', [
+                                                                'suggested' => number_format((int) $suggestedLateMinutes),
+                                                                'hours' => number_format(((int) $suggestedLateMinutes) / 60, 2),
+                                                                'shortfall' => number_format((float) ($hoursMonth['totals']['shortfall_credited'] ?? $payroll->hours_deduction), 2),
+                                                            ]) }}
+                                                            @if ((int) $payroll->late_minutes_total !== (int) $suggestedLateMinutes)
+                                                                <button type="button"
+                                                                        class="btn btn-link btn-sm p-0 align-baseline"
+                                                                        data-apply-suggested-late="{{ (int) $suggestedLateMinutes }}">
+                                                                    {{ __('payroll.field_help.late_minutes_apply_suggested') }}
+                                                                </button>
+                                                            @endif
+                                                        </div>
+                                                    @else
+                                                        <div class="form-text">{{ __('payroll.field_help.late_minutes_editable') }}</div>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
 
@@ -677,6 +710,17 @@
 @push('scripts')
 <script>
 (() => {
+    document.querySelectorAll('[data-apply-suggested-late]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const input = document.getElementById('late_minutes_total');
+            if (! input) {
+                return;
+            }
+            input.value = String(btn.getAttribute('data-apply-suggested-late') || '0');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    });
+
     const box = document.querySelector('[data-extra-pay-box]');
     if (box) {
         const daysInput = box.querySelector('[data-extra-days]');

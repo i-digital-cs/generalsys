@@ -25,6 +25,7 @@ class HoursComparisonService
         private readonly ShiftConfig $shifts,
         private readonly RestDayService $restDays,
         private readonly TeamMembershipService $membership,
+        private readonly AttendanceService $attendanceService,
     ) {}
 
     /**
@@ -125,7 +126,7 @@ class HoursComparisonService
                 }
                 $dayHadWork = true;
                 $totalRaw += (float) ($row->raw_actual_hours ?? $row->actual_hours);
-                $totalLate += (int) $row->late_minutes;
+                $totalLate += $this->attendanceService->exactLateMinutes($row);
                 $totalEarly += (int) $row->early_departure_minutes;
             }
             if ($dayHadWork) {

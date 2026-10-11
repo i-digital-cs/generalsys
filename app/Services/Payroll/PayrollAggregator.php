@@ -7,6 +7,7 @@ use App\Models\Attendance;
 use App\Models\PayrollAdjustment;
 use App\Models\Permission;
 use App\Models\User;
+use App\Services\Attendance\AttendanceService;
 use App\Services\Attendance\ShiftConfig;
 use App\Services\Employees\RestDayService;
 use App\Services\Permissions\PermissionPenaltyCalculator;
@@ -29,6 +30,7 @@ class PayrollAggregator
         private readonly PermissionPenaltyCalculator $permissions,
         private readonly RestDayService $restDays,
         private readonly ShiftConfig $shifts,
+        private readonly AttendanceService $attendance,
     ) {}
 
     /**
@@ -72,12 +74,30 @@ class PayrollAggregator
 
         return array_merge($counts, [
             'hours_deduction' => $hours,
-            'late_minutes_total' => (int) $rows->sum('late_minutes'),
+            'late_minutes_total' => $this->exactLateMinutesTotal($rows),
             'leave_permission_minutes' => $permission['leave_minutes'],
             'late_permission_minutes' => $permission['late_minutes'],
             'forced_permission_penalty_base' => $permission['forced_base'],
             'adjustments' => $this->advanceAdjustments($user),
         ]);
+    }
+
+    /**
+     * Sum of exact late minutes (override or clock-in vs expected start).
+     *
+     * @param  Collection<int, Attendance>  $rows
+     */
+    private function exactLateMinutesTotal(Collection $rows): int
+    {
+        $total = 0;
+        foreach ($rows as $row) {
+            if (! in_array($row->status, self::WORKED, true)) {
+                continue;
+            }
+            $total += $this->attendance->exactLateMinutes($row);
+        }
+
+        return $total;
     }
 
     public function classifiedDayCount(User $user, int $month, int $year): int

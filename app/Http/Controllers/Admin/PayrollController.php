@@ -95,6 +95,7 @@ class PayrollController extends Controller
         $hoursMonth = null;
         $liveCounts = null;
         $countsOutOfSync = false;
+        $suggestedLateMinutes = null;
 
         if ($payroll->user !== null) {
             $eval = $this->evaluations->summaryForPayslip(
@@ -123,20 +124,20 @@ class PayrollController extends Controller
                     (int) $payroll->month,
                     (int) $payroll->year,
                 );
+                $suggestedLateMinutes = (int) $live['late_minutes_total'];
                 $liveCounts = [
                     'full_time_days' => (int) $live['full_time_days'],
                     'online_half_days' => (int) $live['online_half_days'],
                     'online_full_days' => (int) $live['online_full_days'],
                     'rest_days' => (int) $live['rest_days'],
                     'hours_deduction' => (float) $live['hours_deduction'],
-                    'late_minutes_total' => (int) $live['late_minutes_total'],
+                    'late_minutes_total' => $suggestedLateMinutes,
                 ];
                 $countsOutOfSync = (int) $payroll->full_time_days !== $liveCounts['full_time_days']
                     || (int) $payroll->online_half_days !== $liveCounts['online_half_days']
                     || (int) $payroll->online_full_days !== $liveCounts['online_full_days']
                     || (int) $payroll->rest_days !== $liveCounts['rest_days']
-                    || abs((float) $payroll->hours_deduction - $liveCounts['hours_deduction']) >= 0.01
-                    || (int) $payroll->late_minutes_total !== $liveCounts['late_minutes_total'];
+                    || abs((float) $payroll->hours_deduction - $liveCounts['hours_deduction']) >= 0.01;
             }
         }
 
@@ -152,6 +153,7 @@ class PayrollController extends Controller
             'hoursMonth' => $hoursMonth,
             'liveCounts' => $liveCounts,
             'countsOutOfSync' => $countsOutOfSync,
+            'suggestedLateMinutes' => $suggestedLateMinutes,
         ]);
     }
 
