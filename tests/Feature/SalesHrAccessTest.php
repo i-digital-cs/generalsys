@@ -9,10 +9,12 @@ use App\Models\ValuationAssignment;
 use App\Services\Attendance\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\AssignsGrossPages;
 use Tests\TestCase;
 
 class SalesHrAccessTest extends TestCase
 {
+    use AssignsGrossPages;
     use RefreshDatabase;
 
     public function test_sales_user_can_open_hr_dashboard_and_gross_when_product_assigned(): void
@@ -37,6 +39,8 @@ class SalesHrAccessTest extends TestCase
             'assigned_by' => $manager->id,
             'module' => 'product',
         ]);
+        // T-15.6: Product module alone is not enough — Mohra page checklist required.
+        $this->assignGrossPages($sales);
 
         $this->actingAs($sales->fresh())
             ->get(route('portal.product'))

@@ -88,7 +88,7 @@ class AttendanceTimeReviewService
         }
 
         $query = Attendance::query()
-            ->with(['user', 'overtimeTlDecider', 'overtimeAdminDecider'])
+            ->with(['user', 'overtimeTlDecider', 'overtimeAdminDecider', 'segments', 'gaps'])
             ->whereNotNull('clock_out')
             ->orderByDesc('date')
             ->orderByDesc('id');

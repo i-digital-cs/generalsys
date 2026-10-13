@@ -6,10 +6,12 @@ use App\Models\User;
 use App\Models\ValuationAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\AssignsGrossPages;
 use Tests\TestCase;
 
 class GrossFoundationTest extends TestCase
 {
+    use AssignsGrossPages;
     use RefreshDatabase;
 
     public function test_gross_tables_and_sales_role_exist(): void
@@ -87,6 +89,8 @@ class GrossFoundationTest extends TestCase
             'assigned_by' => $manager->id,
             'module' => 'product',
         ]);
+        // T-15.6: Product module + page checklist (items). Manager always allowed.
+        $this->assignGrossPages($employee, ['items']);
 
         $this->actingAs($manager)
             ->get(route('gross.items.index'))

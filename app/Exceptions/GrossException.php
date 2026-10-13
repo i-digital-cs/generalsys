@@ -56,6 +56,11 @@ class GrossException extends RuntimeException
         return new self('gross.errors.not_draft');
     }
 
+    public static function currencyImmutable(): self
+    {
+        return new self('gross.errors.currency_immutable');
+    }
+
     public static function purchaseReturnQty(): self
     {
         return new self('gross.errors.purchase_return_qty');

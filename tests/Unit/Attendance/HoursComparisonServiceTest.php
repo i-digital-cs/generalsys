@@ -84,6 +84,17 @@ class HoursComparisonServiceTest extends TestCase
         $this->assertFalse(app(HoursComparisonService::class)->actorMayView($leader, $other));
     }
 
+    public function test_manager_may_view_assistant_listed_in_operations_roles(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $assistant = User::factory()->assistant()->create();
+        $sales = User::factory()->sales()->create();
+
+        $hours = app(HoursComparisonService::class);
+        $this->assertTrue($hours->actorMayView($manager, $assistant));
+        $this->assertFalse($hours->actorMayView($manager, $sales));
+    }
+
     public function test_month_totals_include_raw_late_and_shortfall(): void
     {
         $user = User::factory()->employee()->create([

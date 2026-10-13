@@ -82,6 +82,12 @@ class PurchaseInvoiceService
             }
 
             $supplier = $this->resolveSupplier($data);
+            $nextCurrency = $data['currency'] ?? $locked->currency;
+            if (! $locked->isDraft()
+                && strtoupper((string) $nextCurrency) !== strtoupper((string) $locked->currency)) {
+                throw GrossException::currencyImmutable();
+            }
+
             $locked->update([
                 'supplier_id' => $supplier?->id,
                 'supplier_name' => $data['supplier_name'] ?? $supplier?->name ?? $locked->supplier_name,
@@ -89,7 +95,7 @@ class PurchaseInvoiceService
                 'supplier_address' => array_key_exists('supplier_address', $data)
                     ? $data['supplier_address']
                     : ($supplier?->address ?? $locked->supplier_address),
-                'currency' => $data['currency'] ?? $locked->currency,
+                'currency' => $locked->isDraft() ? $nextCurrency : $locked->currency,
                 'discount_amount' => $data['discount_amount'] ?? $locked->discount_amount,
                 'discount_percent' => $data['discount_percent'] ?? $locked->discount_percent,
                 'notes' => array_key_exists('notes', $data) ? $data['notes'] : $locked->notes,

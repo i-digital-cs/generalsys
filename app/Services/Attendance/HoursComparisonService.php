@@ -3,8 +3,10 @@
 namespace App\Services\Attendance;
 
 use App\Models\Attendance;
+use App\Models\RestDay;
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Models\Vacation;
 use App\Services\Employees\RestDayService;
 use App\Services\Employees\TeamMembershipService;
 use Carbon\Carbon;
@@ -79,7 +81,7 @@ class HoursComparisonService
         $attendances = Attendance::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
-            ->with('photos')
+            ->with(['photos', 'segments', 'gaps'])
             ->orderBy('date')
             ->orderBy('clock_in')
             ->get()
@@ -87,6 +89,12 @@ class HoursComparisonService
 
         $vacationDates = array_fill_keys(
             $this->restDays->approvedVacationDates($user, $from->toDateString(), $to->toDateString()),
+            true,
+        );
+
+        // One rest-day query for the month (avoid per-day isRestDate N+1).
+        $restDates = array_fill_keys(
+            $this->restDays->datesInMonth($user, (int) $month->format('n'), (int) $month->format('Y')),
             true,
         );
 
@@ -104,7 +112,7 @@ class HoursComparisonService
             $date = $day->toDateString();
             $dayAssignments = $assignments->get($date, collect());
             $dayAttendances = $attendances->get($date, collect());
-            $isRestDay = $this->restDays->isRestDate($user, $date);
+            $isRestDay = isset($restDates[$date]);
             $isVacation = isset($vacationDates[$date]);
             $isOff = $isRestDay || $isVacation;
 
@@ -197,6 +205,9 @@ class HoursComparisonService
     }
 
     /**
+     * Team-scoped month planned/actual/pct using the same day rules as monthForUser,
+     * with bounded batch queries (not N × monthForUser).
+     *
      * @return Collection<int, array{
      *     user: User,
      *     planned: float,
@@ -206,14 +217,89 @@ class HoursComparisonService
      */
     public function teamMonthSummary(User $actor, ?string $ym = null): Collection
     {
-        return $this->visibleEmployees($actor)->map(function (User $employee) use ($ym) {
-            $month = $this->monthForUser($employee, $ym);
+        $employees = $this->visibleEmployees($actor);
+        if ($employees->isEmpty()) {
+            return collect();
+        }
+
+        $month = $this->parseMonth($ym);
+        $from = $month->copy()->startOfMonth()->toDateString();
+        $to = $month->copy()->endOfMonth()->toDateString();
+        $ids = $employees->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $assignmentsByUser = ShiftAssignment::query()
+            ->whereIn('user_id', $ids)
+            ->whereBetween('date', [$from, $to])
+            ->whereIn('status', [
+                ShiftAssignment::STATUS_SCHEDULED,
+                ShiftAssignment::STATUS_COMPLETED,
+            ])
+            ->orderBy('date')
+            ->orderBy('expected_start_time')
+            ->get()
+            ->groupBy(fn (ShiftAssignment $row) => (int) $row->user_id);
+
+        // Totals-only: credited/planned hours do not need segments/gaps/photos.
+        $attendancesByUser = Attendance::query()
+            ->whereIn('user_id', $ids)
+            ->whereBetween('date', [$from, $to])
+            ->orderBy('date')
+            ->orderBy('clock_in')
+            ->get()
+            ->groupBy(fn (Attendance $row) => (int) $row->user_id);
+
+        $restByUser = $this->restDatesByUserIds($ids, $from, $to);
+        $vacationByUser = $this->vacationDatesByUserIds($ids, $from, $to);
+
+        $monthDates = $this->dateStringsInclusive($from, $to);
+        $empty = collect();
+
+        return $employees->map(function (User $employee) use (
+            $assignmentsByUser,
+            $attendancesByUser,
+            $restByUser,
+            $vacationByUser,
+            $monthDates,
+            $empty,
+        ) {
+            $userId = (int) $employee->id;
+            $assignmentsByDate = ($assignmentsByUser->get($userId) ?? $empty)
+                ->groupBy(fn (ShiftAssignment $row) => $row->date->toDateString());
+            $attendancesByDate = ($attendancesByUser->get($userId) ?? $empty)
+                ->groupBy(fn (Attendance $row) => $row->date->toDateString());
+            $restDates = $restByUser[$userId] ?? [];
+            $vacationDates = $vacationByUser[$userId] ?? [];
+
+            // Stable for the request: profile planned hours + dual-default count.
+            $profileHours = $this->profilePlannedHours($employee);
+            $defaultTypeCount = count($employee->defaultShiftTypes());
+
+            $totalPlanned = 0.0;
+            $totalActual = 0.0;
+
+            foreach ($monthDates as $date) {
+                $isOff = isset($restDates[$date]) || isset($vacationDates[$date]);
+                $dayAssignments = $assignmentsByDate->get($date) ?? $empty;
+                $dayAttendances = $attendancesByDate->get($date) ?? $empty;
+
+                $totalPlanned += $this->plannedHoursForDay(
+                    $employee,
+                    $dayAssignments,
+                    $isOff,
+                    $profileHours,
+                    $defaultTypeCount,
+                );
+                $totalActual += $this->actualHoursForDay($dayAttendances);
+            }
+
+            $totalPlanned = round($totalPlanned, 2);
+            $totalActual = round($totalActual, 2);
 
             return [
                 'user' => $employee,
-                'planned' => $month['totals']['planned'],
-                'actual' => $month['totals']['actual'],
-                'pct' => $month['totals']['pct'],
+                'planned' => $totalPlanned,
+                'actual' => $totalActual,
+                'pct' => $this->pct($totalActual, $totalPlanned),
             ];
         })->values();
     }
@@ -254,11 +340,14 @@ class HoursComparisonService
             ->get()
             ->groupBy('user_id');
 
-        return $employees->map(function (User $employee) use ($assignments, $attendances, $date) {
+        $restOnDate = $this->restUserIdsOnDate($ids->all(), $date);
+        $vacationOnDate = $this->vacationUserIdsOnDate($ids->all(), $date);
+
+        return $employees->map(function (User $employee) use ($assignments, $attendances, $restOnDate, $vacationOnDate) {
             $dayAssignments = $assignments->get($employee->id, collect());
             $dayAttendances = $attendances->get($employee->id, collect());
-            $isRestDay = $this->restDays->isRestDate($employee, $date);
-            $isVacation = in_array($date, $this->restDays->approvedVacationDates($employee, $date, $date), true);
+            $isRestDay = isset($restOnDate[$employee->id]);
+            $isVacation = isset($vacationOnDate[$employee->id]);
             $isOff = $isRestDay || $isVacation;
             $planned = $this->plannedForDay($employee, $dayAssignments, $isOff);
             $actual = $this->actualForDay($dayAttendances);
@@ -302,7 +391,9 @@ class HoursComparisonService
         }
 
         if ($actor->canManageOperations()) {
-            return $employee->isFieldStaff() || $employee->isTeamLeader();
+            // Must match TeamMembershipService::visibleEmployees / operationsVisibleRoles
+            // (includes ASSISTANT — otherwise calendar focus dropdown 403s for those users).
+            return in_array($employee->role, User::operationsVisibleRoles(), true);
         }
 
         if ($actor->isTeamLeader()) {
@@ -401,6 +492,115 @@ class HoursComparisonService
         }
 
         return $markers;
+    }
+
+    /**
+     * Hours-only planned total for one day — same branching as plannedForDay, no intervals/labels.
+     *
+     * @param  Collection<int, ShiftAssignment>  $assignments
+     */
+    private function plannedHoursForDay(
+        User $user,
+        Collection $assignments,
+        bool $isOff,
+        float $cachedProfileHours,
+        int $defaultTypeCount,
+    ): float {
+        if ($isOff) {
+            return $assignments->isEmpty()
+                ? 0.0
+                : $this->assignmentHours($assignments);
+        }
+
+        if ($assignments->isEmpty()) {
+            return $cachedProfileHours;
+        }
+
+        if ($defaultTypeCount >= 2) {
+            return $this->overlayAssignmentHoursOnDefaults($user, $assignments);
+        }
+
+        return $this->assignmentHours($assignments);
+    }
+
+    /**
+     * Hours-only actual total for one day — same credited-hours rule as actualForDay, no intervals.
+     *
+     * @param  Collection<int, Attendance>  $attendances
+     */
+    private function actualHoursForDay(Collection $attendances): float
+    {
+        if ($attendances->isEmpty()) {
+            return 0.0;
+        }
+
+        $hours = 0.0;
+        foreach ($attendances as $row) {
+            $open = $row->clock_out === null;
+            $credited = $open ? 0.0 : round((float) ($row->credited_hours ?? $row->actual_hours), 2);
+            $hours += $credited;
+        }
+
+        return round($hours, 2);
+    }
+
+    /**
+     * @param  Collection<int, ShiftAssignment>  $assignments
+     */
+    private function assignmentHours(Collection $assignments): float
+    {
+        $hours = 0.0;
+        foreach ($assignments as $assignment) {
+            $hours += round((float) $assignment->expected_hours, 2);
+        }
+
+        return round($hours, 2);
+    }
+
+    /**
+     * Dual defaults + assignment overlay — hours only (mirrors overlayAssignmentsOnDefaults).
+     *
+     * @param  Collection<int, ShiftAssignment>  $assignments
+     */
+    private function overlayAssignmentHoursOnDefaults(User $user, Collection $assignments): float
+    {
+        $byType = [];
+        foreach ($user->defaultShiftProfiles() as $profile) {
+            $type = $profile['type'] ?? null;
+            if (is_string($type) && $type !== '') {
+                $byType[$type] = $this->plannedHoursForProfile($profile);
+            }
+        }
+
+        foreach ($assignments as $assignment) {
+            $type = $assignment->shift_type;
+            if (is_string($type) && $type !== '') {
+                $byType[$type] = round((float) $assignment->expected_hours, 2);
+            }
+        }
+
+        $hours = 0.0;
+        foreach ($byType as $h) {
+            $hours += (float) $h;
+        }
+
+        return round($hours, 2);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function dateStringsInclusive(string $from, string $to): array
+    {
+        $dates = [];
+        $cursor = Carbon::parse($from)->startOfDay();
+        $end = Carbon::parse($to)->startOfDay();
+        while ($cursor->lte($end)) {
+            $dates[] = $cursor->toDateString();
+            $cursor->addDay();
+        }
+
+        return $dates;
     }
 
     /**
@@ -766,5 +966,111 @@ class HoursComparisonService
         }
 
         return now()->startOfMonth();
+    }
+
+    /**
+     * @param  list<int>  $userIds
+     * @return array<int, true>
+     */
+    private function restUserIdsOnDate(array $userIds, string $date): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        $lookup = [];
+        RestDay::query()
+            ->whereIn('user_id', $userIds)
+            ->whereDate('date', $date)
+            ->pluck('user_id')
+            ->each(function ($id) use (&$lookup): void {
+                $lookup[(int) $id] = true;
+            });
+
+        return $lookup;
+    }
+
+    /**
+     * @param  list<int>  $userIds
+     * @return array<int, true>
+     */
+    private function vacationUserIdsOnDate(array $userIds, string $date): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        $lookup = [];
+        Vacation::query()
+            ->whereIn('user_id', $userIds)
+            ->whereIn('status', [Vacation::STATUS_APPROVED, Vacation::STATUS_FORCED])
+            ->whereDate('start_date', '<=', $date)
+            ->whereDate('end_date', '>=', $date)
+            ->pluck('user_id')
+            ->each(function ($id) use (&$lookup): void {
+                $lookup[(int) $id] = true;
+            });
+
+        return $lookup;
+    }
+
+    /**
+     * @param  list<int>  $userIds
+     * @return array<int, array<string, true>>
+     */
+    private function restDatesByUserIds(array $userIds, string $from, string $to): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        $out = [];
+        RestDay::query()
+            ->whereIn('user_id', $userIds)
+            ->whereDate('date', '>=', $from)
+            ->whereDate('date', '<=', $to)
+            ->get(['user_id', 'date'])
+            ->each(function (RestDay $row) use (&$out): void {
+                $uid = (int) $row->user_id;
+                $date = Carbon::parse($row->date)->toDateString();
+                $out[$uid][$date] = true;
+            });
+
+        return $out;
+    }
+
+    /**
+     * Expand approved/forced vacations into per-user date sets (same rules as RestDayService).
+     *
+     * @param  list<int>  $userIds
+     * @return array<int, array<string, true>>
+     */
+    private function vacationDatesByUserIds(array $userIds, string $from, string $to): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        $out = [];
+        Vacation::query()
+            ->whereIn('user_id', $userIds)
+            ->whereIn('status', [Vacation::STATUS_APPROVED, Vacation::STATUS_FORCED])
+            ->whereDate('start_date', '<=', $to)
+            ->whereDate('end_date', '>=', $from)
+            ->get(['user_id', 'start_date', 'end_date'])
+            ->each(function (Vacation $row) use (&$out, $from, $to): void {
+                $uid = (int) $row->user_id;
+                $cursor = Carbon::parse($row->start_date)->startOfDay();
+                $end = Carbon::parse($row->end_date)->startOfDay();
+                while ($cursor->lte($end)) {
+                    $d = $cursor->toDateString();
+                    if ($d >= $from && $d <= $to) {
+                        $out[$uid][$d] = true;
+                    }
+                    $cursor->addDay();
+                }
+            });
+
+        return $out;
     }
 }

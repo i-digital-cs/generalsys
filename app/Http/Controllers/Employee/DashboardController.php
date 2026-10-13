@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Services\Attendance\DailyReportService;
-use App\Services\Employee\EmployeeDashboardService;
+use App\Services\Employees\EmployeeDashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;

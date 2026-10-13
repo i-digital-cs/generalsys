@@ -50,6 +50,8 @@ Do **not** invent rules for money, stock, invoice status, permissions, conversio
 
 Only **`StockService`** may create movements and update balances (inside a DB transaction with `lockForUpdate` on the balance row).
 
+**Ops repair** `gross:repair-returned-with-courier` (RISK-GROSS-001): dry-run by default; `--apply` required to mutate. Transfers ON_HAND → WITH_COURIER only when ON_HAND covers the full pending qty (via `applySaleOut` / `SALE_OUT` + note `repair-returned-with-courier`). Insufficient ON_HAND → skip + warn; never fabricates stock. See `docs/refactoring/RISK_GROSS_001_IMPLEMENTATION_REPORT.md`.
+
 Buckets on balance: `qty_on_hand_pieces`, `qty_with_courier_pieces`, `qty_lost_pieces`.
 
 Low stock: `qty_on_hand_pieces ≤ reorder_level` (`reorder_level` in pieces, default 5). Stock screen: search + low-stock filter.
@@ -113,18 +115,21 @@ Sidebar queues under Sales → مسار الشحنة: preparing / ready / with_c
 Who: Manager, Accountant, Sales (Mohra-assigned).
 
 ```text
-CONFIRMED → REFUSED
-shipping_fee_status = LOST
+CONFIRMED + WITH_COURIER → REFUSED
+cod_collection_status = LOST
+shipping_fee_status = PENDING (fee > 0) or NONE
 ```
 
-For each allocation, `return_to_stock = qty_with_courier_pieces` (computed in service, not from the request). After:
+**Authoritative behavior (code + tests):** refuse is money/status only at refuse time.
 
-- `qty_returned_pieces += return_to_stock`
-- `qty_with_courier_pieces = 0`
-- lost qty unchanged
-- `ON_HAND += return_to_stock` + movement `REFUSE_RETURN`
+For each allocation:
 
-One DB transaction.
+- `qty_returned_pieces` increases by remaining with-courier qty
+- **`qty_with_courier_pieces` stays** (pieces remain with courier)
+- Audit movement `SALE_RETURN_CLIENT` (no balance change)
+- Stock returns to ON_HAND only on **Receive pieces from courier** (`REFUSE_RETURN`)
+
+Do **not** immediately zero with-courier or write `ON_HAND +=` on refuse. See §7.
 
 ---
 

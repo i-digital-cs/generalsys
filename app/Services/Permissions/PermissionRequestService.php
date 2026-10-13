@@ -7,6 +7,7 @@ use App\Models\Permission;
 use App\Models\User;
 use App\Services\Approvals\ApprovalsListFilters;
 use App\Services\Employees\TeamMembershipService;
+use App\Services\Hr\HrRequestWriteGuard;
 use App\Services\Notifications\AppNotificationService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -31,6 +32,7 @@ class PermissionRequestService
         private readonly AppNotificationService $notifications,
         private readonly TeamMembershipService $membership,
         private readonly AbsenceAttendanceApplier $absenceAttendance,
+        private readonly HrRequestWriteGuard $writeGuard,
     ) {}
 
     /**
@@ -157,9 +159,10 @@ class PermissionRequestService
     public function approve(User $actor, Permission $permission): Permission
     {
         $this->assertActorMayDecide($actor, $permission);
-        $this->assertPending($permission);
 
         return DB::transaction(function () use ($permission, $actor) {
+            $permission = $this->writeGuard->lockPendingPermission($permission);
+
             if ($permission->isAbsence()) {
                 $this->absenceAttendance->apply($permission);
             }
@@ -181,11 +184,11 @@ class PermissionRequestService
     public function reject(User $actor, Permission $permission): Permission
     {
         $this->assertActorMayDecide($actor, $permission);
-        $this->assertPending($permission);
 
-        $amount = $this->penalties->amountForRejection($permission);
+        return DB::transaction(function () use ($permission, $actor) {
+            $permission = $this->writeGuard->lockPendingPermission($permission);
+            $amount = $this->penalties->amountForRejection($permission);
 
-        return DB::transaction(function () use ($permission, $amount, $actor) {
             $permission->update([
                 'status' => Permission::STATUS_REJECTED,
                 'penalty_amount' => $amount,
@@ -210,22 +213,20 @@ class PermissionRequestService
             throw PermissionRequestException::cannotForce();
         }
 
-        if ($permission->status !== Permission::STATUS_REJECTED) {
-            throw PermissionRequestException::notRejected();
-        }
+        return DB::transaction(function () use ($permission, $actor) {
+            $permission = $this->writeGuard->lockRejectedPermission($permission);
 
-        $base = (float) $permission->penalty_amount;
-        if ($base <= 0) {
-            $base = $this->penalties->amountForRejection($permission);
-        }
+            $base = (float) $permission->penalty_amount;
+            if ($base <= 0) {
+                $base = $this->penalties->amountForRejection($permission);
+            }
 
-        $permission->loadMissing('user');
-        $multiplier = $permission->user !== null
-            ? $this->penalties->doubleMultiplier($permission->user, $permission->type)
-            : (float) config('penalties.double_penalty_multiplier', 2.0);
-        $amount = round($base * $multiplier, 2);
+            $permission->loadMissing('user');
+            $multiplier = $permission->user !== null
+                ? $this->penalties->doubleMultiplier($permission->user, $permission->type)
+                : (float) config('penalties.double_penalty_multiplier', 2.0);
+            $amount = round($base * $multiplier, 2);
 
-        return DB::transaction(function () use ($permission, $amount, $actor) {
             if ($permission->isAbsence()) {
                 $this->absenceAttendance->apply($permission);
             }
@@ -318,13 +319,6 @@ class PermissionRequestService
     {
         if (! $this->actorMayDecide($actor, $permission)) {
             throw PermissionRequestException::notTeamMember();
-        }
-    }
-
-    private function assertPending(Permission $permission): void
-    {
-        if ($permission->status !== Permission::STATUS_PENDING) {
-            throw PermissionRequestException::notPending();
         }
     }
 

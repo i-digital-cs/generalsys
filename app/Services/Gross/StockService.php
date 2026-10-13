@@ -354,7 +354,8 @@ class StockService
     }
 
     /**
-     * Confirm sale: ON_HAND − pieces; WITH_COURIER + pieces.
+     * Confirm sale / courier handoff: ON_HAND − pieces; WITH_COURIER + pieces.
+     * Canonical conserved transfer (also used by repair — RISK-GROSS-001).
      */
     public function applySaleOut(
         GrossItem $item,
@@ -365,12 +366,13 @@ class StockService
         string $refType,
         int $refId,
         ?User $actor = null,
+        ?string $notes = null,
     ): GrossStockMovement {
         if ($qtyPieces < 1) {
             throw GrossException::invalidQty();
         }
 
-        return DB::transaction(function () use ($item, $qtyPieces, $conversionFactor, $unit, $qty, $refType, $refId, $actor) {
+        return DB::transaction(function () use ($item, $qtyPieces, $conversionFactor, $unit, $qty, $refType, $refId, $actor, $notes) {
             $balance = $this->lockBalance($item);
 
             if ($balance->qty_on_hand_pieces < $qtyPieces) {
@@ -391,6 +393,7 @@ class StockService
                 $refType,
                 $refId,
                 $actor,
+                $notes,
             );
         });
     }
@@ -461,6 +464,11 @@ class StockService
         );
     }
 
+    /**
+     * @deprecated Unused. Refuse restock uses applyReturn(..., TYPE_REFUSE_RETURN)
+     * after receiveReturnedPiecesFromCourier — do not wire refuse() to this without
+     * an owner product decision (would change stock timing).
+     */
     public function applyRefuseReturn(
         GrossItem $item,
         int $qtyPieces,
@@ -668,6 +676,81 @@ class StockService
                 $notes,
             );
         });
+    }
+
+    public const REPAIR_RETURNED_WITH_COURIER_NOTE = 'repair-returned-with-courier';
+
+    /**
+     * Repair transfer ON_HAND → WITH_COURIER (RISK-GROSS-001).
+     *
+     * Strict conservation + SALE_OUT ledger. Same-ref concurrent first writes are serialized by:
+     * 1) lock allocation row when ref is GrossShipmentAllocation (stable existing row)
+     * 2) lock stock balance row
+     * 3) recheck existing repair SALE_OUT
+     * 4) debit/credit + insert movement in the same transaction
+     *
+     * Empty SELECT … FOR UPDATE on movements alone does NOT serialize first writers (no row to lock).
+     *
+     * @throws GrossException
+     */
+    public function repairMoveOnHandToWithCourier(
+        GrossItem $item,
+        int $pieces,
+        string $refType,
+        int $refId,
+        ?User $actor = null,
+    ): GrossStockMovement {
+        if ($pieces < 1) {
+            throw GrossException::invalidQty();
+        }
+
+        return DB::transaction(function () use ($item, $pieces, $refType, $refId, $actor) {
+            // Lock order: allocation (when applicable) → balance → recheck ledger → write.
+            if ($refType === GrossShipmentAllocation::class) {
+                GrossShipmentAllocation::query()
+                    ->whereKey($refId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+            }
+
+            $balance = $this->lockBalance($item);
+
+            $existing = $this->findRepairSaleOut($refType, $refId);
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            if ($balance->qty_on_hand_pieces < $pieces) {
+                throw GrossException::insufficientStock();
+            }
+
+            $balance->qty_on_hand_pieces -= $pieces;
+            $balance->qty_with_courier_pieces += $pieces;
+            $balance->save();
+
+            return $this->createMovement(
+                $item,
+                GrossStockMovement::TYPE_SALE_OUT,
+                $pieces,
+                GrossStockMovement::UNIT_PIECE,
+                1,
+                $pieces,
+                $refType,
+                $refId,
+                $actor,
+                self::REPAIR_RETURNED_WITH_COURIER_NOTE,
+            );
+        });
+    }
+
+    private function findRepairSaleOut(string $refType, int $refId): ?GrossStockMovement
+    {
+        return GrossStockMovement::query()
+            ->where('type', GrossStockMovement::TYPE_SALE_OUT)
+            ->where('ref_type', $refType)
+            ->where('ref_id', $refId)
+            ->where('notes', self::REPAIR_RETURNED_WITH_COURIER_NOTE)
+            ->first();
     }
 
     private function lockBalance(GrossItem $item): GrossStockBalance

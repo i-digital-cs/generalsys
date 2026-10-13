@@ -20,14 +20,14 @@
             </x-stat-card>
         </div>
         <div class="col-6 col-lg-3">
-            <x-stat-card :title="__('valuation.stats.gap')" icon="bi-arrows-collapse" :color="$stats['gap'] >= 0 ? 'warning' : 'success'">
+            <x-stat-card :title="__('valuation.stats.gap')" icon="bi-arrows-collapse" :color="$stats['gap_tone'] ?? ($stats['gap'] >= 0 ? 'warning' : 'success')">
                 <x-money :amount="$stats['gap']" :currency="$currency" />
             </x-stat-card>
         </div>
         <div class="col-6 col-lg-3">
             <x-stat-card
                 :title="__('valuation.stats.kpi_avg')"
-                :value="\App\Services\Valuation\ValuationCalculator::formatPercent($stats['kpi_avg'])"
+                :value="$stats['kpi_avg_display']"
                 icon="bi-flag"
                 color="secondary" />
         </div>
@@ -44,14 +44,14 @@
         <div class="col-6 col-lg-3">
             <x-stat-card
                 :title="__('valuation.stats.b2b_rate')"
-                :value="\App\Services\Valuation\ValuationCalculator::formatPercent($stats['b2b_rate'])"
+                :value="$stats['b2b_rate_display']"
                 icon="bi-percent"
                 color="primary" />
         </div>
         <div class="col-6 col-lg-3">
             <x-stat-card
                 :title="__('valuation.stats.b2c_rate')"
-                :value="\App\Services\Valuation\ValuationCalculator::formatPercent($stats['b2c_rate'])"
+                :value="$stats['b2c_rate_display']"
                 icon="bi-percent"
                 color="primary" />
         </div>

@@ -1452,6 +1452,79 @@ Example:
 - [x] 2026-10-11 UX — Approvals inbox: Pending/Approved/Rejected/All + month/employee/search filters; compact OT table with pagination (25). Commands: `php artisan test --filter='ApprovalsFilterTest|AttendanceOvertimeReviewTest|PermissionApprovalTest|TableFilterUiTest'` PASS; `npm run build`; Pint. UI/UX: AR+EN keys; deploy `public/build`.
 - [x] 2026-10-13 Task 1 PASS WITH CONDITIONS — 15-min arrival/departure grace (threshold, not deduction); policy-adjusted deficit/balanced/surplus; register shortfall/surplus; no historical backfill. Commands: `php artisan test --filter='AttendanceGracePolicyTest|AttendanceTimeSummaryTest|AttendanceHistoryServiceTest|AttendanceTimeBreakdownTest|AttendanceMultiPunchTest|AttendanceServiceTest|PayrollDraftTest'` (82 PASS); Pint. Docs: `docs/attendance/*`. Ready for Task 2: **NO** until owner approves.
 - [x] 2026-10-13 Task 1.6 PASS — Grace effective date **2026-10-01** (workday); pre-Oct read/write freeze of stored derived fields; settled payroll refresh/edit blocked; no historical backfill; no schema. Commands: `php artisan test --filter='AttendanceGracePolicyTest|AttendanceGraceEffectiveDateTest|AttendanceTimeSummaryTest|AttendanceHistoryServiceTest|AttendanceTimeBreakdownTest|AttendanceMultiPunchTest|AttendanceServiceTest|PayrollDraftTest|HoursComparison'` (95 PASS); Pint. Docs: `docs/attendance/ATTENDANCE_BUSINESS_RULES.md`, `TASK_1_6_COMPLETION_REPORT.md`. Ready for Task 2: **NO**.
+- [x] 2026-10-13 Task 2 Phase 0 PASS WITH CONDITIONS — Owner approved architecture audit/plan only. Deliverables: `docs/refactoring/ARCHITECTURE_BASELINE.md`, `REFACTORING_FINDINGS.md`, `BUSINESS_LOGIC_DUPLICATION_MATRIX.md`, `REGRESSION_BASELINE.md`, `REFACTORING_MASTER_PLAN.md`, `PHASE_0_EXIT_REPORT.md`. Commands: protected attendance/payroll filter **95 PASS**; full `php artisan test` **914 PASS / 7 FAIL** (stale Task-1.6 tests + ACL/UI drift — characterized, not fixed). Application code: **unchanged**. DB: **unchanged**. Ready for Phase 1: **YES** pending owner approval.
+- [x] 2026-10-13 Task 2 Phase 1 PASS — Baseline stabilization: reconciled 7 Phase-0 failures (stale Task-1.6/flexible-start/privacy asserts; currency immutable after confirm; GrossAccess static cache isolation). Also fixed 2 false-green Gross page-checklist tests exposed by cache clear. Commands: protected filter **95 PASS**; full `php artisan test` **922 PASS / 0 FAIL**; Pint. Docs: `docs/refactoring/PHASE_1_EXIT_REPORT.md`. DB: **no**. Ready for Phase 2: **YES** pending owner approval.
+- [x] 2026-10-13 Task 2 Phase 2 PASS — Attendance seams: `ShiftWindowResolver` + `ClockPageService`; `AttendanceService` 1009→847 LOC; `ClockController` 302→225; public window APIs preserved as facades; grace/recalculate untouched. Commands: attendance/clock/protected filter **119 PASS**; full `php artisan test` **925 PASS / 0 FAIL**; Pint. Docs: `PHASE_2_EXIT_REPORT.md`. DB: **no**. Ready for Phase 3: **YES** pending owner approval.
+- [x] 2026-10-13 Task 2 Phase 3 PASS — Payroll freeze/privacy: `PayrollWriteGuard`; controller authorize on update/adjustments; approve `lockForUpdate` + idempotent; Aggregator ownership docs; `PayrollImmutabilityTest` (APPROVED/PAID HTTP+service, generate skip, accountant no-approve, TL no export). Formulas unchanged. Commands: payroll packs green; full `php artisan test` **932 PASS / 0 FAIL**; Pint. Docs: `PHASE_3_EXIT_REPORT.md`. DB: **no**. Ready for Phase 4: **YES** pending owner approval.
+- [x] 2026-10-13 Task 2 Phase 4 PASS — HR leave/permission/vacation: lifecycle audit; `PermissionPolicy`/`VacationPolicy` (mirror service decide/force); `$this->authorize` on Approval + employee force; `HrRequestWriteGuard` lock+recheck; vacation balance `lockedBalanceFor`; `HrRequestLifecycleTest` (8). Attendance grace + payroll immutability preserved. Commands: HR packs + protected filter **102 PASS**; full `php artisan test` **940 PASS / 0 FAIL**; Pint. Docs: `PHASE_4_EXIT_REPORT.md`. DB: **no**. Ready for Phase 5: **YES** pending owner approval.
+- [x] 2026-10-13 Task 2 Phase 5 PASS — Gross stock/invoice: `SalesInvoiceFulfillmentService` + `SalesInvoiceCodCollectionService`; façade preserve public API; `StockService::repairMoveOnHandToWithCourier` for repair command SSOT; `GrossStockIntegrityTest` (7). Currency immutability (sales+purchase); confirm≠stock-out; handToCourier idempotent. Commands: Gross filter **217 PASS**; protected **110 PASS**; full `php artisan test` **947 PASS / 0 FAIL**; Pint. Docs: `PHASE_5_EXIT_REPORT.md`. DB: **no**. Ready for Phase 6: **YES** pending owner approval.
+- [x] 2026-10-13 Task 2 Phase 6 PASS WITH CONDITIONS — Cross-cutting: `EmployeeDashboardService` → `Employees`; payroll jobs `$tries=1`/`$timeout=50`; valuation month-stats display prep; AutoClockOut docs; `applyRefuseReturn` deprecated; GROSS_MODULE §6 refuse aligned; RISK-GROSS-001 characterized (zero on_hand inflate) — **formula not changed**. Commands: protected+integrity **119 PASS**; full `php artisan test` **951 PASS / 0 FAIL**; Pint. Docs: `PHASE_6_EXIT_REPORT.md`. DB: **no**. Ready for Phase 7: **YES** pending owner approval.
+- [x] 2026-10-13 Task 2 Phase 7 PASS WITH CONDITIONS — Performance: synthetic query budgets; `HoursComparisonService` month/today rest+vacation batching + segments/gaps eager; Approvals gaps/OT eager loads; `preventLazyLoading` local-only; `QueryBudgetTest` (monthForUser **7** queries, teamToday **5**). RISK-GROSS-001 unchanged; no indexes. Commands: targeted+protected green; full `php artisan test` **953 PASS / 0 FAIL**; Pint. Docs: `PHASE_7_EXIT_REPORT.md`. DB: **no**. Task 2 Phases 0–7 complete (conditions: synthetic metrics + accepted Gross repair debt).
+- [x] 2026-10-13 Task 3 RISK-GROSS-001 INVESTIGATION — Root cause CONFIRMED (`StockService::repairMoveOnHandToWithCourier` unconditional WITH_COURIER +=); normal workflows not exposed; repair command only; characterization `RiskGross001RepairClampTest` (7); design options A/B/C in `docs/refactoring/RISK_GROSS_001_CORRECTIVE_DESIGN.md`. **Correction not implemented** (awaits owner decisions). No repair run on data; no balance mutations outside fixtures.
+- [x] 2026-10-13 Task 3 RISK-GROSS-001 FIX PASS WITH CONDITIONS — Strict ON_HAND→WITH_COURIER via `applySaleOut` (`SALE_OUT` + note `repair-returned-with-courier`); insufficient → skip+warn; command dry-run default + `--apply`; characterization→corrective tests; no schema; no `--apply` on shared data; historical TEST scan **BLOCKED** (`APP_ENV=production`). Commands: targeted filter **25 PASS**; full `php artisan test` **969 PASS / 0 FAIL**; Pint. Docs: `RISK_GROSS_001_IMPLEMENTATION_REPORT.md`, updated `RISK_GROSS_001_CORRECTIVE_DESIGN.md`.
+  ```text
+  DATABASE CHANGES: NO
+  SCHEMA MIGRATIONS CREATED: NOT APPLICABLE
+  DATA MIGRATION OR BACKFILL: NOT APPLICABLE
+  PRODUCTION DEPLOYMENT PROCEDURE: VERIFIED (code only; no prod deploy this task)
+  HARDCODED ID SAFETY: NOT APPLICABLE
+  DATABASE MIGRATION POLICY: PASS
+  ```
+  ```text
+  Task ID: T-3 RISK-GROSS-001
+  Commands: php artisan test --filter='RiskGross001RepairClampTest|GrossStockIntegrityTest|RepairGrossReturnedWithCourierCommandTest'; php artisan test; vendor/bin/pint --dirty; php -l (StockService, Repair command)
+  Automated tests: PASS (969)
+  UI/UX (AR+EN, RTL+LTR, 375/768/1280): N/A
+  Next task allowed: yes (owner)
+  ```
+- [x] 2026-10-13 Task 3.1 RISK-GROSS-001 FINAL INTEGRITY HARDENING PASS WITH CONDITIONS — Confirmed empty movement `FOR UPDATE` first-write race; mitigated by lock order **allocation → balance → recheck → write**; command eligibility recheck under allocation lock; no schema; historical scan **plan READY**, **not executed**; MySQL parallel fork **NOT AVAILABLE** (no isolated test DB). Commands: targeted **31 PASS / 1 SKIP**; full regression + Pint below.
+  ```text
+  DATABASE CHANGES: NO
+  SCHEMA MIGRATIONS CREATED: NOT APPLICABLE
+  DATA MIGRATION OR BACKFILL: NOT APPLICABLE
+  PRODUCTION DEPLOYMENT PROCEDURE: VERIFIED (code only; no prod deploy)
+  HARDCODED ID SAFETY: NOT APPLICABLE
+  DATABASE MIGRATION POLICY: PASS
+  ```
+  ```text
+  Task ID: T-3.1 RISK-GROSS-001
+  Commands: php artisan test --filter='RiskGross001ConcurrencyTest|RiskGross001RepairClampTest|GrossStockIntegrityTest|RepairGrossReturnedWithCourierCommandTest'; php artisan test; vendor/bin/pint --dirty
+  Automated tests: PASS (975 PASS / 1 SKIPPED / 0 FAIL)
+  UI/UX: N/A
+  Next task allowed: yes (owner)
+  ```
+- [x] 2026-10-13 Task 4 TEAM MONTH PERFORMANCE PASS WITH CONDITIONS — `teamMonthSummary` bulk-loads assignments/attendances/rest/vacation (no N×`monthForUser`); parity with `monthForUser` totals; SQLite before 8/71/351 → after **7/7/7** queries (1/10/50); MySQL isolated baseline **NOT AVAILABLE**. No schema/indexes. Docs: `docs/performance/TEAM_MONTH_SUMMARY_OPTIMIZATION.md`.
+  ```text
+  DATABASE CHANGES: NO
+  SCHEMA MIGRATIONS CREATED: NOT APPLICABLE
+  DATA MIGRATION OR BACKFILL: NOT APPLICABLE
+  PRODUCTION DEPLOYMENT PROCEDURE: VERIFIED (code only)
+  HARDCODED ID SAFETY: NOT APPLICABLE
+  DATABASE MIGRATION POLICY: PASS
+  ```
+  ```text
+  Task ID: T-4 TEAM MONTH PERFORMANCE
+  Commands: php artisan test --filter='TeamMonthSummaryPerformanceTest|QueryBudgetTest|HoursComparisonServiceTest|TeamAttendanceDashboardTest'; attendance/payroll/HR packs; php artisan test; vendor/bin/pint --dirty
+  Automated tests: PASS (981 PASS / 1 SKIPPED / 0 FAIL)
+  UI/UX: N/A
+  Next task allowed: yes (owner)
+  ```
+- [x] 2026-10-13 Task 5 ATTENDANCE CPU PROFILING PASS — Read-only: `teamMonthSummary` wall is **~96–98% PHP** on synthetic SQLite (SQL ≤4%); hotspots `plannedForDay` + `actualForDay` (N×31 interval/label work unused by summary totals); peak mem ~42–55 MB. No code/schema changes. Docs: `docs/performance/TEAM_MONTH_SUMMARY_CPU_PROFILE.md`.
+  ```text
+  Task ID: T-5 CPU PROFILING
+  Commands: isolated SQLite profiling script (no shared DB); docs only
+  Automated tests: N/A (investigation)
+  UI/UX: N/A
+  Next task allowed: yes (owner) — optimization not started
+  ```
+- [x] 2026-10-13 FINAL ATTENDANCE PERFORMANCE CLOSED — Totals-only `teamMonthSummary` helpers (same planned/actual rules, no intervals/labels); profile hours cached per employee; segments/gaps eager load dropped for summary; `monthForUser` unchanged. SQLite: queries **7→5**; N=100 **617.6→122.2 ms**. Parity + packs green; full `php artisan test` **981 PASS / 1 SKIPPED**; Pint. Docs updated in place. **No further attendance performance phases.**
+  ```text
+  DATABASE CHANGES: NONE
+  Task ID: FINAL ATTENDANCE PERFORMANCE
+  Automated tests: PASS (981 PASS / 1 SKIPPED / 0 FAIL)
+  UI/UX: N/A
+  Status: CLOSED
+  ```
 - [x] 2026-10-13 Governance — DB migration & production deployment safety locked in `AGENTS.md` §3.0, `docs/DEPLOYMENT.md`, `ENGINEERING_CONSTITUTION.md`, `MASTER_CONTEXT.md` §0.1b. Applies to Task 1.5 / Task 2 / forever. No schema change in this step.
   ```text
   DATABASE CHANGES: NO

@@ -17,6 +17,12 @@ use Illuminate\Support\Collection;
 /**
  * Attendance / permission / advance inputs for one employee-month (T-4.4).
  * Rest-day pool (Rest Days screen) feeds rest_days counts on generate/recalc.
+ *
+ * Late minutes ownership:
+ * - `late_minutes_total` → {@see AttendanceService::exactLateMinutes} (date-aware; Task 1.6)
+ * - `suggested_late_minutes_total` → punch raw (draft UI tip only; never mutates settled payroll)
+ *
+ * Money ownership stays in {@see PayrollCalculator}; this class does not compute net pay.
  */
 class PayrollAggregator
 {

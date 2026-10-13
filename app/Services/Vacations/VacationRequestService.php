@@ -9,6 +9,7 @@ use App\Models\Vacation;
 use App\Services\Approvals\ApprovalsListFilters;
 use App\Services\Employees\RestDayService;
 use App\Services\Employees\TeamMembershipService;
+use App\Services\Hr\HrRequestWriteGuard;
 use App\Services\Notifications\AppNotificationService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -30,6 +31,7 @@ class VacationRequestService
         private readonly RestDayService $restDays,
         private readonly TeamMembershipService $membership,
         private readonly VacationBalanceService $balances,
+        private readonly HrRequestWriteGuard $writeGuard,
     ) {}
 
     /** Inclusive calendar days between two Y-m-d dates. */
@@ -243,9 +245,9 @@ class VacationRequestService
     public function approve(User $actor, Vacation $vacation): Vacation
     {
         $this->assertActorMayDecide($actor, $vacation);
-        $this->assertPending($vacation);
 
         return DB::transaction(function () use ($vacation, $actor) {
+            $vacation = $this->writeGuard->lockPendingVacation($vacation);
             $vacation->loadMissing(['user', 'replaceRestDay']);
 
             if ($vacation->replace_rest_day_id !== null) {
@@ -275,9 +277,10 @@ class VacationRequestService
     public function reject(User $actor, Vacation $vacation): Vacation
     {
         $this->assertActorMayDecide($actor, $vacation);
-        $this->assertPending($vacation);
 
         return DB::transaction(function () use ($vacation, $actor) {
+            $vacation = $this->writeGuard->lockPendingVacation($vacation);
+
             // Keep replace_rest_date for history; clear FK so rest day can be reused.
             $vacation->update([
                 'status' => Vacation::STATUS_REJECTED,
@@ -305,11 +308,8 @@ class VacationRequestService
             throw VacationRequestException::cannotForce();
         }
 
-        if ($vacation->status !== Vacation::STATUS_REJECTED) {
-            throw VacationRequestException::notRejected();
-        }
-
         return DB::transaction(function () use ($vacation, $actor) {
+            $vacation = $this->writeGuard->lockRejectedVacation($vacation);
             $vacation->loadMissing('user');
 
             $vacation->update([
@@ -386,13 +386,6 @@ class VacationRequestService
     {
         if (! $this->actorMayDecide($actor, $vacation)) {
             throw VacationRequestException::notTeamMember();
-        }
-    }
-
-    private function assertPending(Vacation $vacation): void
-    {
-        if ($vacation->status !== Vacation::STATUS_PENDING) {
-            throw VacationRequestException::notPending();
         }
     }
 

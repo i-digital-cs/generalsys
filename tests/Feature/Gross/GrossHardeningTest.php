@@ -156,8 +156,9 @@ class GrossHardeningTest extends TestCase
     {
         $invoice = $this->confirmedInvoice(3);
 
+        // Admin may update confirmed invoices (T-15.5), but currency stays locked (GROSS_MODULE).
         try {
-            $this->invoices->updateDraft($invoice, [
+            $this->invoices->update($invoice, [
                 'customer_name' => $invoice->customer_name,
                 'customer_phone' => $invoice->customer_phone,
                 'currency' => 'AED',
@@ -166,10 +167,10 @@ class GrossHardeningTest extends TestCase
                 'qty' => 3,
                 'unit' => 'PIECE',
                 'unit_price' => 10,
-            ]]);
-            $this->fail('Expected not draft');
+            ]], $this->manager);
+            $this->fail('Expected currency immutable');
         } catch (GrossException $e) {
-            $this->assertSame('gross.errors.not_draft', $e->getMessage());
+            $this->assertSame('gross.errors.currency_immutable', $e->getMessage());
         }
 
         $this->assertSame('EGP', $invoice->fresh()->currency);

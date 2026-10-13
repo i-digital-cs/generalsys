@@ -56,6 +56,13 @@ class ValuationStatsServiceTest extends TestCase
         $this->assertEqualsWithDelta(32.0, $stats['b2c'], 0.01);
         $this->assertEqualsWithDelta(17.0, $stats['b2b_count'], 0.01);
         $this->assertEqualsWithDelta(1306.55 / 2500, $stats['kpi_avg'], 0.0001);
+        $this->assertSame('warning', $stats['gap_tone']);
+        $this->assertSame(
+            ValuationCalculator::formatPercent($stats['kpi_avg']),
+            $stats['kpi_avg_display'],
+        );
+        $this->assertArrayHasKey('b2b_rate_display', $stats);
+        $this->assertArrayHasKey('b2c_rate_display', $stats);
     }
 
     public function test_non_manager_sees_only_own_sheets(): void

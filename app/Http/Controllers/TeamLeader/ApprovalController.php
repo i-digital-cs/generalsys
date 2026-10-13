@@ -61,7 +61,7 @@ class ApprovalController extends Controller
 
     public function approve(Request $request, Permission $permission): RedirectResponse
     {
-        abort_unless($this->permissions->actorMayDecide($request->user(), $permission), 403);
+        $this->authorize('decide', $permission);
 
         try {
             $this->permissions->approve($request->user(), $permission);
@@ -77,7 +77,7 @@ class ApprovalController extends Controller
 
     public function reject(Request $request, Permission $permission): RedirectResponse
     {
-        abort_unless($this->permissions->actorMayDecide($request->user(), $permission), 403);
+        $this->authorize('decide', $permission);
 
         try {
             $this->permissions->reject($request->user(), $permission);
@@ -93,7 +93,7 @@ class ApprovalController extends Controller
 
     public function force(Request $request, Permission $permission): RedirectResponse
     {
-        abort_unless($this->permissions->actorMayForce($request->user(), $permission), 403);
+        $this->authorize('force', $permission);
 
         try {
             $this->permissions->force($request->user(), $permission);
@@ -109,7 +109,7 @@ class ApprovalController extends Controller
 
     public function approveVacation(Request $request, Vacation $vacation): RedirectResponse
     {
-        abort_unless($this->vacations->actorMayDecide($request->user(), $vacation), 403);
+        $this->authorize('decide', $vacation);
 
         try {
             $this->vacations->approve($request->user(), $vacation);
@@ -125,7 +125,7 @@ class ApprovalController extends Controller
 
     public function rejectVacation(Request $request, Vacation $vacation): RedirectResponse
     {
-        abort_unless($this->vacations->actorMayDecide($request->user(), $vacation), 403);
+        $this->authorize('decide', $vacation);
 
         try {
             $this->vacations->reject($request->user(), $vacation);
@@ -141,7 +141,7 @@ class ApprovalController extends Controller
 
     public function forceVacation(Request $request, Vacation $vacation): RedirectResponse
     {
-        abort_unless($this->vacations->actorMayForce($request->user(), $vacation), 403);
+        $this->authorize('force', $vacation);
 
         try {
             $this->vacations->force($request->user(), $vacation);

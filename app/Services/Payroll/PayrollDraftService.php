@@ -11,6 +11,7 @@ use InvalidArgumentException;
 
 /**
  * Draft payslip review / edit / adjustments (T-4.5).
+ * Money mutations require DRAFT ({@see PayrollWriteGuard}).
  */
 class PayrollDraftService
 {
@@ -18,6 +19,7 @@ class PayrollDraftService
         private readonly PayrollAggregator $aggregator,
         private readonly PayrollCalculator $calculator,
         private readonly SettingService $settings,
+        private readonly PayrollWriteGuard $writes,
     ) {}
 
     /**
@@ -260,8 +262,6 @@ class PayrollDraftService
 
     private function assertDraft(PayrollRecord $record): void
     {
-        if ($record->status !== PayrollRecord::STATUS_DRAFT) {
-            throw new InvalidArgumentException('Only DRAFT payroll records can be edited.');
-        }
+        $this->writes->assertDraft($record);
     }
 }

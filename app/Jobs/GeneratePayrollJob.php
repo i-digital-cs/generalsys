@@ -19,6 +19,11 @@ class GeneratePayrollJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Match Hostinger schedule: `queue:work --tries=1 --max-time=50`. */
+    public int $tries = 1;
+
+    public int $timeout = 50;
+
     /**
      * @param  list<int>  $userIds
      */

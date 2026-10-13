@@ -53,7 +53,7 @@ class AttendanceGapService
         }
 
         $query = AttendanceGap::query()
-            ->with(['attendance.user', 'tlDecider', 'adminDecider'])
+            ->with(['attendance.user.teamLeaders', 'tlDecider', 'adminDecider'])
             ->orderByDesc('gap_start');
 
         if ($actor->isTeamLeader() && ! $actor->canManageOperations()) {

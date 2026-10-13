@@ -685,6 +685,7 @@ return [
         'cannot_cancel' => 'Invoice cannot be cancelled while pieces remain with courier. Return or refuse first.',
         'allocation_qty' => 'Quantity exceeds pieces still with courier.',
         'not_draft' => 'Only draft invoices can be edited.',
+        'currency_immutable' => 'Currency cannot be changed after the invoice is confirmed.',
         'not_confirmed' => 'Only confirmed purchase invoices can be returned.',
         'purchase_has_returns' => 'Cannot edit a purchase that has returns. Delete the invoice or reverse returns first.',
         'purchase_return_qty' => 'Return quantity exceeds remaining purchased pieces.',

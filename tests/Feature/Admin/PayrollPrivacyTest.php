@@ -65,20 +65,29 @@ class PayrollPrivacyTest extends TestCase
     {
         $leader = User::factory()->teamLeader()->create();
 
-        $this->actingAs($leader)
+        // Arabic "الرواتب" also appears in attendance/permission copy — assert the menu target, not the word alone.
+        $this->withSession(['locale' => 'en'])
+            ->actingAs($leader)
             ->get(route('team-leader.dashboard'))
             ->assertOk()
-            ->assertDontSee(__('nav.payroll'), false)
-            ->assertDontSee(route('admin.payroll.index'), false);
+            ->assertDontSee(route('admin.payroll.index'), false)
+            ->assertDontSee('bi-cash-stack', false);
+
+        $this->assertFalse(
+            collect(config('menu.TEAM_LEADER'))->contains(fn (array $item) => ($item['route'] ?? '') === 'admin.payroll.index'),
+            'TEAM_LEADER menu config must not include payroll',
+        );
     }
 
     public function test_manager_sidebar_includes_payroll(): void
     {
         $manager = User::factory()->manager()->create();
 
-        $this->actingAs($manager)
+        $this->withSession(['locale' => 'en'])
+            ->actingAs($manager)
             ->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee(__('nav.payroll'), false);
+            ->assertSee(__('nav.payroll'), false)
+            ->assertSee(route('admin.payroll.index'), false);
     }
 }

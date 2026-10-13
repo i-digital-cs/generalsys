@@ -40,6 +40,23 @@ class VacationBalanceService
         );
     }
 
+    /**
+     * Load (or create) the year balance under row lock — call inside a transaction.
+     */
+    public function lockedBalanceFor(User $user, int $year): VacationBalance
+    {
+        $this->balanceFor($user, $year);
+
+        /** @var VacationBalance $balance */
+        $balance = VacationBalance::query()
+            ->where('user_id', $user->id)
+            ->where('year', $year)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        return $balance;
+    }
+
     public function assertCanReserve(User $user, float $days, int $year): void
     {
         $balance = $this->balanceFor($user, $year);
@@ -54,11 +71,15 @@ class VacationBalanceService
             return;
         }
 
+        $user = $vacation->user ?? User::query()->findOrFail($vacation->user_id);
         $year = (int) $vacation->start_date->format('Y');
         $days = round((float) $vacation->days_requested, 1);
-        $this->assertCanReserve($vacation->user ?? User::query()->findOrFail($vacation->user_id), $days, $year);
 
-        $balance = $this->balanceFor($vacation->user, $year);
+        $balance = $this->lockedBalanceFor($user, $year);
+        if ((float) $balance->remaining_days + 0.0001 < $days) {
+            throw VacationRequestException::insufficientBalance();
+        }
+
         $balance->pending_days = round((float) $balance->pending_days + $days, 1);
         $this->syncRemaining($balance);
         $balance->save();
@@ -70,9 +91,10 @@ class VacationBalanceService
             return;
         }
 
+        $user = $vacation->user ?? User::query()->findOrFail($vacation->user_id);
         $year = (int) $vacation->start_date->format('Y');
         $days = round((float) $vacation->days_requested, 1);
-        $balance = $this->balanceFor($vacation->user, $year);
+        $balance = $this->lockedBalanceFor($user, $year);
         $balance->pending_days = round(max(0, (float) $balance->pending_days - $days), 1);
         $this->syncRemaining($balance);
         $balance->save();
@@ -84,9 +106,10 @@ class VacationBalanceService
             return;
         }
 
+        $user = $vacation->user ?? User::query()->findOrFail($vacation->user_id);
         $year = (int) $vacation->start_date->format('Y');
         $days = round((float) $vacation->days_requested, 1);
-        $balance = $this->balanceFor($vacation->user, $year);
+        $balance = $this->lockedBalanceFor($user, $year);
         $balance->pending_days = round(max(0, (float) $balance->pending_days - $days), 1);
         $balance->used_days = round((float) $balance->used_days + $days, 1);
         $this->syncRemaining($balance);
@@ -100,10 +123,13 @@ class VacationBalanceService
             return;
         }
 
+        $user = $vacation->user ?? User::query()->findOrFail($vacation->user_id);
         $year = (int) $vacation->start_date->format('Y');
         $days = round((float) $vacation->days_requested, 1);
-        $balance = $this->balanceFor($vacation->user, $year);
-        $this->assertCanReserve($vacation->user, $days, $year);
+        $balance = $this->lockedBalanceFor($user, $year);
+        if ((float) $balance->remaining_days + 0.0001 < $days) {
+            throw VacationRequestException::insufficientBalance();
+        }
         $balance->used_days = round((float) $balance->used_days + $days, 1);
         $this->syncRemaining($balance);
         $balance->save();
@@ -123,7 +149,7 @@ class VacationBalanceService
         $year ??= (int) now()->format('Y');
 
         return DB::transaction(function () use ($actor, $employee, $amountDays, $reason, $year) {
-            $balance = $this->balanceFor($employee, $year);
+            $balance = $this->lockedBalanceFor($employee, $year);
             $balance->accrued_days = round((float) $balance->accrued_days + $amountDays, 1);
             $balance->last_updated_by = $actor->id;
             $this->syncRemaining($balance);

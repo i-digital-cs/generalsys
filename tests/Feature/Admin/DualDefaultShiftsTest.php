@@ -359,8 +359,11 @@ class DualDefaultShiftsTest extends TestCase
         $this->assertContains(Attendance::SHIFT_FULL_TIME, $service->availableShiftTypes($employee, $lateMorning));
         $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $service->availableShiftTypes($employee, $lateMorning));
         $lateRow = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, $lateMorning);
-        $this->assertSame(Attendance::STATUS_LATE, $lateRow->status);
-        $service->clockOut($employee, Carbon::parse('2026-08-03 18:00:00'));
+        // Flexible start: clock-in never auto-marks LATE while the shift is open / on first punch.
+        $this->assertSame(Attendance::STATUS_PRESENT, $lateRow->status);
+        $closed = $service->clockOut($employee, Carbon::parse('2026-08-03 18:00:00'));
+        // Pre-Oct close: legacy path stores late_minutes 0 unless override (Task 1.6).
+        $this->assertSame(0, (int) $closed->late_minutes);
 
         $afterFullTime = Carbon::parse('2026-08-03 18:01:00');
         $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $service->availableShiftTypes($employee, $afterFullTime));

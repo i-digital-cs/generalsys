@@ -176,4 +176,15 @@ class DashboardTest extends TestCase
             ->assertViewHas('calCursor', '2026-09')
             ->assertViewHas('hoursMonth', fn (array $hours) => ($hours['ym'] ?? null) === '2026-09');
     }
+
+    public function test_manager_can_focus_assistant_on_calendar(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $assistant = User::factory()->assistant()->create(['name_en' => 'hager naser']);
+
+        $this->actingAs($manager)
+            ->get(route('admin.dashboard', ['user_id' => $assistant->id]))
+            ->assertOk()
+            ->assertSee('hager naser', false);
+    }
 }

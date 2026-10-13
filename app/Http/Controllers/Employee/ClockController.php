@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Employee;
 use App\Exceptions\AttendanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Employee\ClockInRequest;
-use App\Http\Requests\Employee\ClockLocationRules;
 use App\Http\Requests\Employee\ClockOutRequest;
 use App\Http\Requests\Employee\StoreFieldPhotoRequest;
 use App\Models\Attendance;
@@ -13,7 +12,7 @@ use App\Models\AttendancePhoto;
 use App\Models\User;
 use App\Services\Attendance\AttendancePhotoService;
 use App\Services\Attendance\AttendanceService;
-use App\Services\Attendance\ClockCtaColorService;
+use App\Services\Attendance\ClockPageService;
 use App\Services\Attendance\DailyReportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,90 +26,14 @@ class ClockController extends Controller
 {
     public function __construct(
         private readonly AttendanceService $attendance,
+        private readonly ClockPageService $clockPage,
         private readonly DailyReportService $reports,
         private readonly AttendancePhotoService $photos,
-        private readonly ClockCtaColorService $ctaColors,
     ) {}
 
     public function show(Request $request): View
     {
-        $user = $request->user();
-        $staleClosed = $this->attendance->closeStaleOpenBeforeShiftStart($user);
-        $open = $this->attendance->openAttendance($user);
-        if ($open !== null) {
-            $open->load(['photos', 'segments', 'gaps']);
-        }
-
-        $shiftTypes = $this->attendance->availableShiftTypes($user);
-        $upcomingShiftTypes = $this->attendance->upcomingUnrecordedShiftTypes($user);
-        $closedShiftTypes = $this->attendance->closedUnrecordedShiftTypes($user);
-        $preferredShift = $this->attendance->preferredShiftType($user);
-        if ($shiftTypes !== [] && ! in_array($preferredShift, $shiftTypes, true)) {
-            $preferredShift = $shiftTypes[0];
-        } elseif ($shiftTypes === [] && $upcomingShiftTypes !== []) {
-            $preferredShift = $upcomingShiftTypes[0];
-        }
-
-        $scheduleShift = $open?->shift_type ?? $preferredShift;
-        $showSchedulePreview = $open !== null || $shiftTypes !== [] || $upcomingShiftTypes !== [];
-        $expectedStart = $showSchedulePreview
-            ? $this->attendance->expectedStartFor($user, $scheduleShift)
-            : null;
-        $expectedEnd = $showSchedulePreview
-            ? $this->attendance->expectedEndFor($user, $scheduleShift)
-            : null;
-
-        $todayAuto = Attendance::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', now()->toDateString())
-            ->where('is_auto_clock_out', true)
-            ->orderByDesc('id')
-            ->first();
-
-        $todayAttendances = Attendance::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', now()->toDateString())
-            ->with(['segments', 'gaps'])
-            ->orderBy('clock_in')
-            ->get();
-
-        return view('employee.clock', [
-            'open' => $open,
-            'openSegment' => $open !== null ? $this->attendance->openSegment($user) : null,
-            'missingReportDate' => $user->mustSubmitDailyReports()
-                ? $this->reports->latestUnreportedClosedDay($user)?->date->toDateString()
-                : null,
-            'shiftTypes' => $shiftTypes,
-            'upcomingShiftTypes' => $upcomingShiftTypes,
-            'closedShiftTypes' => ($shiftTypes === [] && $upcomingShiftTypes === [])
-                ? $closedShiftTypes
-                : [],
-            'preferredShift' => $preferredShift,
-            'scheduleShift' => $scheduleShift,
-            'todaysAssignment' => $this->attendance->todaysPrimaryAssignment($user),
-            'expectedStart' => $expectedStart,
-            'expectedEnd' => $expectedEnd,
-            'previewLateMinutes' => ($open === null && $shiftTypes !== [])
-                ? $this->attendance->previewLateMinutes($user, $preferredShift)
-                : 0,
-            'lateMinutes' => $open !== null ? (int) $open->late_minutes : 0,
-            'todayAutoClockOut' => $todayAuto,
-            'todayForceClockOut' => Attendance::query()
-                ->where('user_id', $user->id)
-                ->whereDate('date', now()->toDateString())
-                ->whereNotNull('force_closed_by')
-                ->orderByDesc('id')
-                ->first(),
-            'todayAttendances' => $todayAttendances,
-            'staleClosed' => $staleClosed,
-            'photoMaxMb' => (int) round(((int) config('attendance.photos.max_kilobytes', 51200)) / 1024),
-            'photosRequired' => $user->requiresPunchPhotos(),
-            'fieldUploadsAllowed' => $user->requiresPunchPhotos() && $open !== null,
-            'locationAlwaysRequired' => $user->requiresPunchLocation(),
-            'locationRequiredShifts' => ClockLocationRules::requiredShiftTypes($user),
-            'cta' => $this->ctaColors->buttonState($user, $open, $preferredShift, $shiftTypes),
-            'ctaWindows' => $this->ctaColors->windows(),
-        ]);
+        return view('employee.clock', $this->clockPage->viewData($request->user()));
     }
 
     public function storeFieldPhotos(StoreFieldPhotoRequest $request): RedirectResponse

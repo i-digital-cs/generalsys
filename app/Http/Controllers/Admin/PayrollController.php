@@ -160,6 +160,8 @@ class PayrollController extends Controller
 
     public function update(UpdatePayrollDraftRequest $request, PayrollRecord $payroll): RedirectResponse
     {
+        $this->authorize('update', $payroll);
+
         $this->drafts->updateCounts($payroll, $request->validated());
 
         return redirect()
@@ -180,6 +182,8 @@ class PayrollController extends Controller
 
     public function storeAdjustment(StorePayrollAdjustmentRequest $request, PayrollRecord $payroll): RedirectResponse
     {
+        $this->authorize('update', $payroll);
+
         $this->drafts->addAdjustment($payroll, $request->validated(), $request->user());
 
         return redirect()

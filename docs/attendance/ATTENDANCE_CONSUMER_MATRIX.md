@@ -5,6 +5,9 @@ All grace consumers must resolve policy via `AttendanceGracePolicy::isActiveForA
 | Consumer | Behavior | Pre-Oct | From 2026-10-01 |
 |---|---|---|---|
 | `AttendanceGracePolicy` | Canonical thresholds + duration balance | inactive (fail-safe) | active |
+| `ShiftWindowResolver` | Expected start/end + planned-hours align (Phase 2) | same for all dates | same |
+| `ShiftConfig` | Planned hours SSOT (assignment → profile → type) | same | same |
+| `ClockPageService` | Clock screen read-model (Phase 2) | — | — |
 | `AttendanceTimeCalculator::recalculate` | Persist counted late/early/status | freeze closed derived fields | grace counted |
 | `AttendanceTimeCalculator::summarize` | Display / classification | stored late/early + historical balance | grace balance |
 | `AttendanceService::exactLateMinutes` | Payroll / month late | stored (override wins) | counted late |

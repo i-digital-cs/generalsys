@@ -249,15 +249,19 @@ class PayrollGenerator
 
     public function approve(PayrollRecord $record): PayrollRecord
     {
-        if ($record->status !== PayrollRecord::STATUS_DRAFT) {
-            return $record;
-        }
-
         return DB::transaction(function () use ($record) {
-            $record->update(['status' => PayrollRecord::STATUS_APPROVED]);
-            $this->advances->applyDeductionsForPayroll($record);
+            /** @var PayrollRecord $locked */
+            $locked = PayrollRecord::query()->whereKey($record->id)->lockForUpdate()->firstOrFail();
 
-            return $record->fresh();
+            // Idempotent: APPROVED/PAID are no-ops (do not re-apply advances).
+            if ($locked->status !== PayrollRecord::STATUS_DRAFT) {
+                return $locked;
+            }
+
+            $locked->update(['status' => PayrollRecord::STATUS_APPROVED]);
+            $this->advances->applyDeductionsForPayroll($locked);
+
+            return $locked->fresh();
         });
     }
 

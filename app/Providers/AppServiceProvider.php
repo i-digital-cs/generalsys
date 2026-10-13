@@ -15,8 +15,10 @@ use App\Models\Gross\GrossSupplier;
 use App\Models\Gross\GrossTreasuryVoucher;
 use App\Models\PayrollRecord;
 use App\Models\PenaltyRule;
+use App\Models\Permission;
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Models\Vacation;
 use App\Models\ValuationAssignment;
 use App\Models\ValuationSheet;
 use App\Observers\ShiftAssignmentPlannedHoursObserver;
@@ -35,12 +37,15 @@ use App\Policies\Gross\GrossSupplierPolicy;
 use App\Policies\Gross\GrossTreasuryVoucherPolicy;
 use App\Policies\PayrollPolicy;
 use App\Policies\PenaltyRulePolicy;
+use App\Policies\PermissionPolicy;
 use App\Policies\ShiftAssignmentPolicy;
+use App\Policies\VacationPolicy;
 use App\Policies\ValuationAssignmentPolicy;
 use App\Policies\ValuationSheetPolicy;
 use App\Services\Auth\ImpersonationService;
 use App\Services\Gross\LowStockAlertService;
 use App\Support\GrossAccess;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
@@ -64,6 +69,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFive();
 
+        // Dev-only N+1 detection (AGENTS §4). Never enable in production.
+        Model::preventLazyLoading($this->app->environment('local'));
+
         User::observe(UserShiftProfileObserver::class);
         ShiftAssignment::observe(ShiftAssignmentPlannedHoursObserver::class);
 
@@ -71,6 +79,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ShiftAssignment::class, ShiftAssignmentPolicy::class);
         Gate::policy(PenaltyRule::class, PenaltyRulePolicy::class);
         Gate::policy(PayrollRecord::class, PayrollPolicy::class);
+        Gate::policy(Permission::class, PermissionPolicy::class);
+        Gate::policy(Vacation::class, VacationPolicy::class);
         Gate::policy(Advance::class, AdvancePolicy::class);
         Gate::policy(AttendancePhoto::class, AttendancePhotoPolicy::class);
         Gate::policy(ValuationSheet::class, ValuationSheetPolicy::class);

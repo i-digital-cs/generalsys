@@ -17,17 +17,23 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
+/**
+ * Sales invoice orchestration façade.
+ * Fulfillment pipeline → {@see SalesInvoiceFulfillmentService}.
+ * COD collection → {@see SalesInvoiceCodCollectionService}.
+ * Stock mutations → {@see StockService} only.
+ */
 class SalesInvoiceService
 {
     public function __construct(
         private readonly StockService $stock,
         private readonly AllocationService $allocations,
         private readonly SalesInvoiceNetService $net,
-        private readonly TreasuryService $treasury,
         private readonly CustomerService $customers,
         private readonly ShippingCompanyService $shippingCompanies,
+        private readonly SalesInvoiceFulfillmentService $fulfillment,
+        private readonly SalesInvoiceCodCollectionService $cod,
     ) {}
 
     public function paginate(int $perPage = 25): LengthAwarePaginator
@@ -44,19 +50,7 @@ class SalesInvoiceService
      */
     public function paginatePendingCollections(array $filters = [], int $perPage = 25): LengthAwarePaginator
     {
-        $q = GrossSalesInvoice::query()
-            ->with(['shippingCompany', 'salesUser', 'customer'])
-            ->where('status', GrossSalesInvoice::STATUS_CONFIRMED)
-            ->where('fulfillment_status', GrossSalesInvoice::FULFILLMENT_WITH_COURIER)
-            ->where('cod_collection_status', GrossSalesInvoice::COD_PENDING)
-            ->orderByDesc('confirmed_at')
-            ->orderByDesc('id');
-
-        if (! empty($filters['shipping_company_id'])) {
-            $q->where('shipping_company_id', (int) $filters['shipping_company_id']);
-        }
-
-        return $q->paginate(min($perPage, 50))->withQueryString();
+        return $this->cod->paginatePendingCollections($filters, $perPage);
     }
 
     /**
@@ -66,23 +60,7 @@ class SalesInvoiceService
      */
     public function paginateFulfillmentQueue(string $queue, int $perPage = 25): LengthAwarePaginator
     {
-        $q = GrossSalesInvoice::query()
-            ->with(['customer', 'shippingCompany', 'salesUser'])
-            ->orderByDesc('id');
-
-        match ($queue) {
-            'preparing' => $q->where('status', GrossSalesInvoice::STATUS_CONFIRMED)
-                ->where('fulfillment_status', GrossSalesInvoice::FULFILLMENT_PREPARING),
-            'ready' => $q->where('status', GrossSalesInvoice::STATUS_CONFIRMED)
-                ->where('fulfillment_status', GrossSalesInvoice::FULFILLMENT_READY_WAREHOUSE),
-            'with_courier' => $q->where('status', GrossSalesInvoice::STATUS_CONFIRMED)
-                ->where('fulfillment_status', GrossSalesInvoice::FULFILLMENT_WITH_COURIER),
-            'delivered' => $q->where('status', GrossSalesInvoice::STATUS_DELIVERED),
-            'returned' => $q->where('status', GrossSalesInvoice::STATUS_REFUSED),
-            default => $q->whereRaw('1 = 0'),
-        };
-
-        return $q->paginate(min($perPage, 50))->withQueryString();
+        return $this->fulfillment->paginateFulfillmentQueue($queue, $perPage);
     }
 
     /**
@@ -90,15 +68,7 @@ class SalesInvoiceService
      */
     public function listCollectedWithoutTreasury(int $limit = 100): Collection
     {
-        return GrossSalesInvoice::query()
-            ->where('cod_collection_status', GrossSalesInvoice::COD_COLLECTED)
-            ->whereNotNull('shipping_company_id')
-            ->whereDoesntHave('courierCodTreasuryVoucher')
-            ->with('shippingCompany')
-            ->orderByDesc('cod_collected_at')
-            ->orderByDesc('id')
-            ->limit(min($limit, 100))
-            ->get();
+        return $this->cod->listCollectedWithoutTreasury($limit);
     }
 
     /**
@@ -180,6 +150,13 @@ class SalesInvoiceService
             $shipping = $this->resolveShipping($data, $locked->shippingCompany);
             $shippingFee = $data['shipping_fee'] ?? $locked->shipping_fee;
 
+            // GROSS_MODULE: currency immutable after CONFIRMED (Admin mutate may edit other fields).
+            $nextCurrency = $data['currency'] ?? $locked->currency;
+            if ($priorStatus !== GrossSalesInvoice::STATUS_DRAFT
+                && strtoupper((string) $nextCurrency) !== strtoupper((string) $locked->currency)) {
+                throw GrossException::currencyImmutable();
+            }
+
             $locked->update(array_merge([
                 'customer_id' => $customer?->id,
                 'customer_name' => $data['customer_name'] ?? $customer?->name ?? $locked->customer_name,
@@ -190,7 +167,9 @@ class SalesInvoiceService
                 'sales_user_id' => $data['sales_user_id'] ?? $locked->sales_user_id,
                 'shipping_company_id' => $shipping?->id,
                 'shipping_company_name' => $shipping?->name,
-                'currency' => $data['currency'] ?? $locked->currency,
+                'currency' => $priorStatus === GrossSalesInvoice::STATUS_DRAFT
+                    ? $nextCurrency
+                    : $locked->currency,
                 'shipping_fee' => $shippingFee,
                 'discount_amount' => $data['discount_amount'] ?? $locked->discount_amount,
                 'discount_percent' => $data['discount_percent'] ?? $locked->discount_percent,
@@ -218,98 +197,17 @@ class SalesInvoiceService
 
     public function confirm(GrossSalesInvoice $invoice, ?User $actor = null): GrossSalesInvoice
     {
-        return DB::transaction(function () use ($invoice) {
-            /** @var GrossSalesInvoice $locked */
-            $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-
-            if ($locked->status === GrossSalesInvoice::STATUS_CONFIRMED
-                || $locked->status === GrossSalesInvoice::STATUS_DELIVERED) {
-                return $locked->fresh(['lines.allocation', 'lines.item']);
-            }
-
-            if ($locked->status !== GrossSalesInvoice::STATUS_DRAFT) {
-                throw GrossException::invalidTransition();
-            }
-
-            $locked->load(['lines.item']);
-
-            if ($locked->lines->isEmpty()) {
-                throw GrossException::invalidQty();
-            }
-
-            // Confirm starts packing (جاري التجهيز). Stock leaves warehouse only on handToCourier.
-            $locked->update([
-                'status' => GrossSalesInvoice::STATUS_CONFIRMED,
-                'fulfillment_status' => GrossSalesInvoice::FULFILLMENT_PREPARING,
-                'confirmed_at' => now(),
-            ]);
-
-            $this->net->recalculateInvoice($locked->fresh(['lines.allocation']));
-
-            return $locked->fresh(['lines.allocation', 'lines.item']);
-        });
+        return $this->fulfillment->confirm($invoice, $actor);
     }
 
     public function storePackingImage(GrossSalesInvoice $invoice, UploadedFile $file, User $actor): GrossSalesInvoice
     {
-        return DB::transaction(function () use ($invoice, $file, $actor) {
-            /** @var GrossSalesInvoice $locked */
-            $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-
-            if ($locked->status !== GrossSalesInvoice::STATUS_CONFIRMED
-                || $locked->fulfillment_status !== GrossSalesInvoice::FULFILLMENT_PREPARING) {
-                throw GrossException::notPreparing();
-            }
-
-            if ($locked->packing_image_path && Storage::disk('local')->exists($locked->packing_image_path)) {
-                Storage::disk('local')->delete($locked->packing_image_path);
-            }
-
-            $ext = strtolower((string) $file->getClientOriginalExtension());
-            if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
-                $ext = 'jpg';
-            }
-
-            $path = $file->storeAs(
-                'gross-sales-packing/'.$locked->id,
-                Str::random(40).'.'.$ext,
-                'local'
-            );
-
-            $locked->update([
-                'packing_image_path' => $path,
-                'packing_image_original_name' => Str::limit((string) $file->getClientOriginalName(), 180, ''),
-                'packing_image_mime' => $file->getMimeType(),
-                'packing_image_size_bytes' => $file->getSize(),
-                'packing_uploaded_at' => now(),
-                'packing_uploaded_by' => $actor->id,
-            ]);
-
-            return $locked->fresh(['lines', 'packingUploadedByUser']);
-        });
+        return $this->fulfillment->storePackingImage($invoice, $file, $actor);
     }
 
     public function markReadyInWarehouse(GrossSalesInvoice $invoice): GrossSalesInvoice
     {
-        return DB::transaction(function () use ($invoice) {
-            /** @var GrossSalesInvoice $locked */
-            $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-
-            if ($locked->status !== GrossSalesInvoice::STATUS_CONFIRMED
-                || $locked->fulfillment_status !== GrossSalesInvoice::FULFILLMENT_PREPARING) {
-                throw GrossException::notPreparing();
-            }
-
-            if (! $locked->hasPackingImage()) {
-                throw GrossException::packingImageRequired();
-            }
-
-            $locked->update([
-                'fulfillment_status' => GrossSalesInvoice::FULFILLMENT_READY_WAREHOUSE,
-            ]);
-
-            return $locked->fresh(['lines.allocation', 'lines.item']);
-        });
+        return $this->fulfillment->markReadyInWarehouse($invoice);
     }
 
     /**
@@ -317,65 +215,7 @@ class SalesInvoiceService
      */
     public function handToCourier(GrossSalesInvoice $invoice, ?User $actor = null): GrossSalesInvoice
     {
-        return DB::transaction(function () use ($invoice, $actor) {
-            /** @var GrossSalesInvoice $locked */
-            $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-
-            if ($locked->fulfillment_status === GrossSalesInvoice::FULFILLMENT_WITH_COURIER
-                && $locked->status === GrossSalesInvoice::STATUS_CONFIRMED) {
-                return $locked->fresh(['lines.allocation', 'lines.item']);
-            }
-
-            if ($locked->status !== GrossSalesInvoice::STATUS_CONFIRMED
-                || $locked->fulfillment_status !== GrossSalesInvoice::FULFILLMENT_READY_WAREHOUSE) {
-                throw GrossException::notReadyWarehouse();
-            }
-
-            $locked->load(['lines.item', 'lines.allocation']);
-
-            foreach ($locked->lines as $line) {
-                if ($line->allocation !== null) {
-                    continue;
-                }
-
-                $item = $line->item;
-                if ($item === null) {
-                    throw GrossException::invalidTransition();
-                }
-
-                $this->stock->applySaleOut(
-                    $item,
-                    (int) $line->qty_pieces,
-                    (int) $line->conversion_factor_snapshot,
-                    $line->unit,
-                    (int) $line->qty,
-                    GrossSalesInvoiceLine::class,
-                    (int) $line->id,
-                    $actor,
-                );
-
-                GrossShipmentAllocation::query()->create([
-                    'sales_invoice_line_id' => $line->id,
-                    'shipping_company_id' => $locked->shipping_company_id,
-                    'conversion_factor_snapshot' => $line->conversion_factor_snapshot,
-                    'qty_shipped_pieces' => $line->qty_pieces,
-                    'qty_delivered_pieces' => 0,
-                    'qty_returned_pieces' => 0,
-                    'qty_with_courier_pieces' => $line->qty_pieces,
-                    'qty_lost_pieces' => 0,
-                ]);
-            }
-
-            $locked->update([
-                'fulfillment_status' => GrossSalesInvoice::FULFILLMENT_WITH_COURIER,
-            ]);
-
-            $this->net->recalculateInvoice($locked->fresh(['lines.allocation']));
-            $locked = $locked->fresh(['lines.allocation']);
-            $locked->update($this->codFieldsOnConfirm($locked));
-
-            return $locked->fresh(['lines.allocation', 'lines.item']);
-        });
+        return $this->fulfillment->handToCourier($invoice, $actor);
     }
 
     public function cancel(GrossSalesInvoice $invoice): GrossSalesInvoice
@@ -561,66 +401,13 @@ class SalesInvoiceService
      */
     public function collectCod(GrossSalesInvoice $invoice, User $actor, array $options = []): GrossSalesInvoice
     {
-        return DB::transaction(function () use ($invoice, $actor, $options) {
-            /** @var GrossSalesInvoice $locked */
-            $locked = GrossSalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-
-            if ($locked->cod_collection_status === GrossSalesInvoice::COD_COLLECTED) {
-                return $locked->fresh(['lines', 'shippingCompany', 'codCollectedByUser', 'courierCodTreasuryVoucher']);
-            }
-
-            if ($locked->status !== GrossSalesInvoice::STATUS_CONFIRMED) {
-                throw GrossException::notConfirmed();
-            }
-
-            if ($locked->fulfillment_status !== GrossSalesInvoice::FULFILLMENT_WITH_COURIER) {
-                throw GrossException::notWithCourier();
-            }
-
-            if ($locked->cod_collection_status !== GrossSalesInvoice::COD_PENDING) {
-                throw GrossException::codNotPending();
-            }
-
-            $locked->load(['lines.allocation']);
-            $this->net->recalculateInvoice($locked);
-            $locked = $locked->fresh(['lines.allocation', 'lines.item']);
-
-            $amount = round($locked->collectibleAmount(), 2);
-
-            $feeUpdate = [];
-            if ($locked->shipping_fee_status === GrossSalesInvoice::SHIPPING_FEE_PENDING) {
-                $feeUpdate = [
-                    'shipping_fee_status' => GrossSalesInvoice::SHIPPING_FEE_COLLECTED,
-                    'shipping_fee_collected_at' => now(),
-                    'shipping_fee_collected_by' => $actor->id,
-                ];
-            }
-
-            $locked->update(array_merge([
-                'cod_collection_status' => GrossSalesInvoice::COD_COLLECTED,
-                'cod_collected_amount' => $amount,
-                'cod_collected_at' => now(),
-                'cod_collected_by' => $actor->id,
-            ], $feeUpdate));
-
-            $locked = $locked->fresh(['lines', 'shippingCompany', 'codCollectedByUser']);
-
-            if (! empty($options['post_to_treasury']) && ! empty($options['treasury_account_id'])) {
-                $this->treasury->createCourierCodReceipt($actor, [
-                    'sales_invoice_id' => $locked->id,
-                    'account_id' => (int) $options['treasury_account_id'],
-                    'voucher_date' => now()->toDateString(),
-                ]);
-            }
-
-            return $locked->fresh(['lines', 'shippingCompany', 'codCollectedByUser', 'courierCodTreasuryVoucher']);
-        });
+        return $this->cod->collectCod($invoice, $actor, $options);
     }
 
     /** @deprecated Use collectCod() — kept for tests migrating from fee-only collection. */
     public function collectShippingFee(GrossSalesInvoice $invoice, User $actor): GrossSalesInvoice
     {
-        return $this->collectCod($invoice, $actor);
+        return $this->cod->collectShippingFee($invoice, $actor);
     }
 
     public function markDelivered(GrossSalesInvoice $invoice, ?User $actor = null): GrossSalesInvoice
@@ -955,24 +742,5 @@ class SalesInvoiceService
         }
 
         return $fallback;
-    }
-
-    /**
-     * @return array{cod_collection_status: string, shipping_fee_status: string}
-     */
-    private function codFieldsOnConfirm(GrossSalesInvoice $invoice): array
-    {
-        $hasCourier = $invoice->shipping_company_id !== null;
-        $total = (float) $invoice->total;
-        $fee = (float) $invoice->shipping_fee;
-
-        return [
-            'cod_collection_status' => ($hasCourier && $total > 0)
-                ? GrossSalesInvoice::COD_PENDING
-                : GrossSalesInvoice::COD_NONE,
-            'shipping_fee_status' => $fee > 0
-                ? GrossSalesInvoice::SHIPPING_FEE_PENDING
-                : GrossSalesInvoice::SHIPPING_FEE_NONE,
-        ];
     }
 }

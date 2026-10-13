@@ -75,7 +75,7 @@ class RequestController extends Controller
 
     public function forcePermission(Request $request, Permission $permission): RedirectResponse
     {
-        abort_unless($this->permissions->actorMayForce($request->user(), $permission), 403);
+        $this->authorize('force', $permission);
 
         try {
             $this->permissions->force($request->user(), $permission);
@@ -107,7 +107,7 @@ class RequestController extends Controller
 
     public function forceVacation(Request $request, Vacation $vacation): RedirectResponse
     {
-        abort_unless($this->vacations->actorMayForce($request->user(), $vacation), 403);
+        $this->authorize('force', $vacation);
 
         try {
             $this->vacations->force($request->user(), $vacation);

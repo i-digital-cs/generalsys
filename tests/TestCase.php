@@ -2,11 +2,20 @@
 
 namespace Tests;
 
+use App\Support\GrossAccess;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Static page-key cache survives RefreshDatabase ID reuse across tests.
+        GrossAccess::clearPageKeyCache();
+    }
+
     /**
      * Default Cairo-ish coordinates for clock HTTP posts (T-7.2 GPS required).
      *
@@ -31,6 +40,7 @@ abstract class TestCase extends BaseTestCase
     protected function tearDown(): void
     {
         Carbon::setTestNow();
+        GrossAccess::clearPageKeyCache();
 
         parent::tearDown();
     }

@@ -25,13 +25,17 @@ class ValuationStatsService
      *     gross: float,
      *     target: float,
      *     gap: float,
+     *     gap_tone: string,
      *     b2b: float,
      *     b2c: float,
      *     b2b_count: float,
      *     b2c_count: float,
      *     kpi_avg: float,
      *     b2b_rate: float,
-     *     b2c_rate: float
+     *     b2c_rate: float,
+     *     kpi_avg_display: string,
+     *     b2b_rate_display: string,
+     *     b2c_rate_display: string
      * }
      */
     public function monthSnapshot(User $actor, string $module, ?CarbonInterface $now = null): array
@@ -45,6 +49,10 @@ class ValuationStatsService
         );
         $gross = round((float) ($row->gross ?? 0), 2);
         $target = round((float) ($row->target ?? 0), 2);
+        $gap = round($target - $gross, 2);
+        $kpiAvg = round((float) ($row->kpi_avg ?? 0), 6);
+        $b2bRate = round((float) ($row->b2b_rate ?? 0), 6);
+        $b2cRate = round((float) ($row->b2c_rate ?? 0), 6);
 
         return [
             'month_label' => $now->translatedFormat('F Y'),
@@ -52,14 +60,18 @@ class ValuationStatsService
             'sheets' => (int) ($row->sheets ?? 0),
             'gross' => $gross,
             'target' => $target,
-            'gap' => round($target - $gross, 2),
+            'gap' => $gap,
+            'gap_tone' => $gap >= 0 ? 'warning' : 'success',
             'b2b' => round((float) ($row->b2b ?? 0), 2),
             'b2c' => round((float) ($row->b2c ?? 0), 2),
             'b2b_count' => round((float) ($row->b2b_count ?? 0), 2),
             'b2c_count' => round((float) ($row->b2c_count ?? 0), 2),
-            'kpi_avg' => round((float) ($row->kpi_avg ?? 0), 6),
-            'b2b_rate' => round((float) ($row->b2b_rate ?? 0), 6),
-            'b2c_rate' => round((float) ($row->b2c_rate ?? 0), 6),
+            'kpi_avg' => $kpiAvg,
+            'b2b_rate' => $b2bRate,
+            'b2c_rate' => $b2cRate,
+            'kpi_avg_display' => ValuationCalculator::formatPercent($kpiAvg),
+            'b2b_rate_display' => ValuationCalculator::formatPercent($b2bRate),
+            'b2c_rate_display' => ValuationCalculator::formatPercent($b2cRate),
         ];
     }
 

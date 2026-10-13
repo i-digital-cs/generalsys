@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Employee;
+namespace App\Services\Employees;
 
 use App\Models\Attendance;
 use App\Models\ShiftAssignment;
@@ -13,6 +13,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Employee home dashboard snapshot (T-2.4).
+ * Namespace: Employees (Phase 6 — consolidated from App\Services\Employee).
  */
 class EmployeeDashboardService
 {
