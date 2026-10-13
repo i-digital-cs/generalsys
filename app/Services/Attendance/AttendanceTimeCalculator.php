@@ -14,6 +14,7 @@ class AttendanceTimeCalculator
 {
     public function __construct(
         private readonly ShiftConfig $shifts,
+        private readonly AttendanceGracePolicy $grace,
     ) {}
 
     public function recalculate(
@@ -37,17 +38,62 @@ class AttendanceTimeCalculator
         $first = $segments->first();
         $lastClosed = $segments->filter(fn (AttendanceSegment $s) => ! $s->isOpen())->last();
 
-        $lateMinutes = $attendance->adjusted_late_minutes;
-        if ($lateMinutes === null) {
-            $lateMinutes = 0;
+        $rawLate = 0;
+        $firstClockIn = $first?->clock_in;
+        if ($firstClockIn !== null) {
+            $expectedStart = $attendanceService->expectedStartFor(
+                $user,
+                $attendance->shift_type,
+                $firstClockIn,
+            );
+            if ($expectedStart !== null) {
+                $rawLate = max(0, (int) $expectedStart->diffInMinutes($firstClockIn, false));
+            }
         }
 
-        $earlyMinutes = 0;
+        // While the shift is still open, do not persist LATE status (flexible start).
+        // Counted late/early are written on clock-out / recalculate when closed.
+        $rawEarly = 0;
         if ($openSegment === null && $lastClosed !== null && $lastClosed->clock_out !== null) {
             $expectedEnd = $attendanceService->expectedEndForAttendance($attendance, $assignment);
             if ($expectedEnd !== null && $lastClosed->clock_out->lt($expectedEnd)) {
-                $earlyMinutes = max(0, (int) $lastClosed->clock_out->diffInMinutes($expectedEnd, false));
+                $rawEarly = max(0, (int) $lastClosed->clock_out->diffInMinutes($expectedEnd, false));
             }
+        }
+
+        $workday = $attendance->date?->toDateString();
+        $graceActive = $this->grace->isActiveForAttendanceDate($workday);
+        // Already persisted closed day — further recalculates must not rewrite historical late/early.
+        $alreadyPersistedClosed = $attendance->getOriginal('clock_out') !== null;
+
+        if ($openSegment !== null) {
+            $lateMinutes = 0;
+            $earlyMinutes = 0;
+            $status = Attendance::STATUS_PRESENT;
+            $preserveHistoricalDerived = false;
+        } elseif (! $graceActive && $alreadyPersistedClosed && $attendance->adjusted_late_minutes === null) {
+            // Task 1.6 — freeze stored derived fields on settled/historical days.
+            $preserveHistoricalDerived = true;
+            $lateMinutes = (int) $attendance->late_minutes;
+            $earlyMinutes = (int) $attendance->early_departure_minutes;
+            $status = (string) $attendance->status;
+        } elseif (! $graceActive) {
+            // First close (or TL late override) before effective date: legacy semantics, no 15-min grace.
+            $preserveHistoricalDerived = false;
+            $lateMinutes = $attendance->adjusted_late_minutes !== null
+                ? max(0, (int) $attendance->adjusted_late_minutes)
+                : 0;
+            $earlyMinutes = $alreadyPersistedClosed && $attendance->adjusted_late_minutes !== null
+                ? (int) $attendance->early_departure_minutes
+                : $rawEarly;
+            $status = $this->resolveStatus($lateMinutes, $earlyMinutes);
+        } else {
+            $preserveHistoricalDerived = false;
+            $lateMinutes = $attendance->adjusted_late_minutes !== null
+                ? max(0, (int) $attendance->adjusted_late_minutes)
+                : $this->grace->countedLateMinutes($rawLate, $workday);
+            $earlyMinutes = $this->grace->countedEarlyMinutes($rawEarly, $workday);
+            $status = $this->resolveStatus($lateMinutes, $earlyMinutes);
         }
 
         $payload = [
@@ -66,13 +112,16 @@ class AttendanceTimeCalculator
             'planned_hours' => $planned,
             'raw_actual_hours' => $rawHours,
             'actual_hours' => $credited,
-            'late_minutes' => (int) ($lateMinutes ?? 0),
-            'early_departure_minutes' => $earlyMinutes,
-            'status' => $this->resolveStatus((int) ($lateMinutes ?? 0), $earlyMinutes),
             'attendance_score' => $openSegment === null
                 ? $this->attendanceScore($credited, $planned)
                 : null,
         ];
+
+        if (! $preserveHistoricalDerived) {
+            $payload['late_minutes'] = $lateMinutes;
+            $payload['early_departure_minutes'] = $earlyMinutes;
+            $payload['status'] = $status;
+        }
 
         if (! $this->hasManualCreditedHours($attendance, $rawHours) && $attendance->credited_hours !== null) {
             $payload['credited_hours'] = null;
@@ -109,7 +158,7 @@ class AttendanceTimeCalculator
         $first = $segments->first();
         $lastClosed = $segments->filter(fn (AttendanceSegment $s) => ! $s->isOpen())->last();
 
-        $systemLate = 0;
+        $rawLate = 0;
         $firstClockIn = $first?->clock_in ?? $attendance->clock_in;
         if ($user !== null && $firstClockIn !== null) {
             $expected = $attendanceService->expectedStartFor(
@@ -117,25 +166,36 @@ class AttendanceTimeCalculator
                 $attendance->shift_type,
                 $firstClockIn,
             );
-            $systemLate = $expected !== null
+            $rawLate = $expected !== null
                 ? max(0, (int) $expected->diffInMinutes($firstClockIn, false))
                 : 0;
         }
+        $workday = $attendance->date?->toDateString();
+        $graceActive = $this->grace->isActiveForAttendanceDate($workday);
+        $lateOverride = $attendance->adjusted_late_minutes !== null;
 
-        $systemEarly = 0;
+        $rawEarly = 0;
         $lastClockOut = $openSegment === null
             ? ($lastClosed?->clock_out ?? $attendance->clock_out)
             : null;
         if (! $isOpen && $lastClockOut !== null) {
             $expectedEnd = $attendanceService->expectedEndForAttendance($attendance, $assignment);
             if ($expectedEnd !== null && $lastClockOut->lt($expectedEnd)) {
-                $systemEarly = max(0, (int) $lastClockOut->diffInMinutes($expectedEnd, false));
+                $rawEarly = max(0, (int) $lastClockOut->diffInMinutes($expectedEnd, false));
             }
+        }
+
+        // Pre-effective-date: use stored derived values (do not reclassify via new grace).
+        if ($graceActive) {
+            $systemLate = $this->grace->countedLateMinutes($rawLate, $workday);
+            $systemEarly = $this->grace->countedEarlyMinutes($rawEarly, $workday);
+        } else {
+            $systemLate = max(0, (int) $attendance->late_minutes);
+            $systemEarly = max(0, (int) $attendance->early_departure_minutes);
         }
 
         $systemCredited = $this->systemCreditedHours($attendance, $rawHours, $planned);
         $creditedOverride = $this->hasManualCreditedHours($attendance, $rawHours);
-        $lateOverride = $attendance->adjusted_late_minutes !== null;
 
         $gaps = $attendance->gaps->sortBy('gap_start')->values()->map(fn ($gap) => [
             'minutes' => (int) $gap->minutes,
@@ -146,8 +206,24 @@ class AttendanceTimeCalculator
         ])->all();
 
         $gapMinutesTotal = (int) array_sum(array_column($gaps, 'minutes'));
-        $overtimeDeltaMinutes = (int) round($rawHours * 60) - (int) round($planned * 60);
+        $plannedMinutes = (int) round($planned * 60);
+        $actualMinutes = (int) round($rawHours * 60);
+        $overtimeDeltaMinutes = $actualMinutes - $plannedMinutes;
         $systemSuggestedOvertimeMinutes = max(0, $overtimeDeltaMinutes);
+        $durationBalance = $graceActive
+            ? $this->grace->durationBalance(
+                $plannedMinutes,
+                $actualMinutes,
+                $rawLate,
+                $rawEarly,
+                $workday,
+            )
+            : $this->historicalDurationBalanceFromStored(
+                $plannedMinutes,
+                $actualMinutes,
+                $systemLate,
+                $systemEarly,
+            );
         $recommendedOvertimeMinutes = (int) $attendance->recommended_overtime_minutes;
         $tlRecommendation = (string) ($attendance->overtime_tl_recommendation ?? 'NONE');
         $adminDecision = (string) ($attendance->overtime_admin_decision ?? 'PENDING');
@@ -223,6 +299,9 @@ class AttendanceTimeCalculator
             clockOutAt: $clockOutAt,
             clockInWindowPosition: $clockInWindowPosition,
             clockOutWindowPosition: $clockOutWindowPosition,
+            rawLateMinutes: $rawLate,
+            rawEarlyMinutes: $rawEarly,
+            durationBalance: $durationBalance,
         );
     }
 
@@ -294,6 +373,47 @@ class AttendanceTimeCalculator
         }
 
         return true;
+    }
+
+    /**
+     * Pre-grace-policy summary balance: physical duration delta + stored late/early labels.
+     * Does not apply 15-minute exemptions (Task 1.6 historical path).
+     *
+     * @return array<string, int|string|bool>
+     */
+    private function historicalDurationBalanceFromStored(
+        int $plannedMinutes,
+        int $actualMinutes,
+        int $storedLate,
+        int $storedEarly,
+    ): array {
+        $planned = max(0, $plannedMinutes);
+        $actual = max(0, $actualMinutes);
+        $rawDiff = $actual - $planned;
+        $countedDeficit = $rawDiff < 0 ? -$rawDiff : 0;
+        $countedSurplus = $rawDiff > 0 ? $rawDiff : 0;
+
+        $classification = match (true) {
+            $countedDeficit > 0 => AttendanceGracePolicy::CLASS_DEFICIT,
+            $countedSurplus > 0 => AttendanceGracePolicy::CLASS_SURPLUS,
+            default => AttendanceGracePolicy::CLASS_BALANCED,
+        };
+
+        return [
+            'classification' => $classification,
+            'planned_minutes' => $planned,
+            'actual_worked_minutes' => $actual,
+            'raw_difference_minutes' => $rawDiff,
+            'raw_late_minutes' => $storedLate,
+            'raw_early_minutes' => $storedEarly,
+            'counted_late_minutes' => $storedLate,
+            'counted_early_minutes' => $storedEarly,
+            'exempt_arrival_minutes' => 0,
+            'exempt_departure_minutes' => 0,
+            'counted_deficit_minutes' => $countedDeficit,
+            'counted_surplus_minutes' => $countedSurplus,
+            'grace_policy_active' => false,
+        ];
     }
 
     private function resolveStatus(int $lateMinutes, int $earlyMinutes): string

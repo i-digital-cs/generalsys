@@ -25,6 +25,12 @@
 - No packages that require extensions not available on Hostinger shared plans (verify `php -m` before adding any package).
 - Every feature must be designed for **low resource usage**: eager loading, pagination everywhere, DB indexes, no N+1.
 
+### 0.1b Database migration & production safety (HARD RULE — Task 1.5 / Task 2 / forever)
+- Schema changes **only** via **new** Laravel migrations (never rewrite already-run migrations).
+- Data fixes / backfills must be version-controlled and reproducible; prefer business keys over hardcoded auto-increment IDs across envs.
+- Large or payroll-sensitive backfills = approved Artisan/queued command, not a silent `migrate` side effect.
+- Standard schema deploy: `php artisan migrate --force` only with authorization + backup. Details: `docs/DEPLOYMENT.md` · `AGENTS.md` §3.0.
+
 ### 0.2 Reference Documents (Source of Truth)
 | Document | Purpose |
 |----------|---------|
@@ -35,6 +41,8 @@
 | `docs/BUILD_AND_TEST_GATES.md` | Per-step build order — test green before next step |
 | `docs/TASKS.md` | All tasks with dependencies + mandatory UI/UX checks |
 | `AGENTS.md` | Engineering + task/test/UI rules for **all** AI tools |
+| `docs/DEPLOYMENT.md` | Deploy sequence + **DB migration / production safety** (mandatory) |
+| `ENGINEERING_CONSTITUTION.md` | Index of protected engineering invariants (points to AGENTS / docs) |
 | `docs/Employee-inputes.xlsx` | Employee profile fields (HR source) |
 | `docs/HR-Data.xlsx` | Attendance & evaluation workbook (source) |
 | `docs/Salaries.xlsx` | Payroll calculation workbook (source) |
@@ -111,7 +119,7 @@
   4. **One attendance row per `(user, date, shift_type)`**; one open punch at a time; overnight `clock_out` uses real next-day datetime.
   5. **Forgot / late clock-out:** employee should clock out themselves. **Team Leader (team), Manager, and Assistant** may **End shift** at **actual now** (no GPS/photos). Then TL recommends overtime (sees actual hours) on Approvals; **Admin/Assistant approve**. If Admin **rejects**, the item returns to the TL pending queue so TL can **recommend again** and Admin can approve (two-way). Admin **approve** locks. Same two-way apply to mid-shift break gaps. Stale cross-day opens still auto-close only ≥1h before next shift start. If the profile end is **before** clock-in (night punch + daytime window), stale close credits elapsed time until now (capped at planned hours) — never `clock_in+1 minute`. Repair: `attendance:repair-stale-one-minute-closes`.
   6. **GPS:** required only for **FULL_TIME** clock-in/out. Online½ / Online full do not require location. Soft geofence for FT unchanged.
-  7. **Early/late:** employees may clock any remaining planned shift anytime that day (including before start or after end). Punches outside the planned window notify the employee + TL(s) + Admin/Assistant. Late minutes / early departure still compute for payroll.
+  7. **Early/late + 15-minute grace (Task 1 / 1.6):** employees may clock any remaining planned shift anytime that day (including before start or after end). Punches outside the planned window notify the employee + TL(s) + Admin/Assistant. The grace policy is **effective from attendance workday 2026-10-01** (`config/attendance.php` → `grace_policy_effective_date`). Pre-October closed rows keep stored late/early/status (no silent rewrite / no backfill). From that date: **Arrival grace** and **departure grace** are independent 15-minute **thresholds** (≤15 → counted 0; >15 → full raw minutes — never `raw−15`). Grace-exempt minutes also remove the matching **working-hours deficit**; actual worked duration is never rewritten. Surplus hours are classified separately and are **not** auto-approved overtime. Canonical: `AttendanceGracePolicy` + `docs/attendance/ATTENDANCE_BUSINESS_RULES.md`.
   8. **Shift windows (R9):** employee default windows may be **1–16h** (planned hours = start→end span, including overnight e.g. ONLINE_FULL `09:00→01:00` = 16h). TL assignments must still match entered `expected_hours` (±1h). Runtime caps expected end via `alignEndWithPlannedHours` only when a legacy window is longer than that row’s planned hours.
   6. **Optional punch photos (T-6.6 / T-6.7):** multi images on clock-in **and** clock-out (jpg/jpeg/png/webp, ≤50MB each, **no count limit**) with optional **per-image description**. Stored on `local` disk; viewable by owner, team TL, and Manager (TL↔Admin **yes**). Shown on `/clock`, employee sessions, TL/Admin attendance boards, and report review.
 - Planned hours: matching assignment’s `expected_hours`, else employee profile window span, else type defaults **8 / 4 / 12** (`ShiftConfig`).
@@ -593,15 +601,13 @@ def calculate_attendance_status(clock_in, clock_out, shift_type, assigned_shift)
 
     # 3. Check for lateness
     shift_start = get_shift_start_time(shift_type)
-    grace_period = 0  # Or admin-configured
-
-    if clock_in > shift_start + grace_period:
-        late_minutes = (clock_in - shift_start).total_minutes
+    # Task 1: 15-min arrival/departure grace thresholds (AttendanceGracePolicy)
+    raw_late = max(0, (clock_in - shift_start).total_minutes)
+    late_minutes = 0 if raw_late <= 15 else raw_late  # threshold, NOT raw-15
+    if late_minutes > 0:
         status = 'LATE'
-    else:
-        late_minutes = 0
 
-    # 4. Check for early departure
+    # 4. Check for early departure (independent 15-min grace)
     shift_end = get_shift_end_time(shift_type)
     if clock_out < shift_end:
         early_minutes = (shift_end - clock_out).total_minutes

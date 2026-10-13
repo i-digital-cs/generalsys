@@ -98,6 +98,13 @@ class PayrollDraftTest extends TestCase
         $payroll->refresh();
         $this->assertSame(1, $payroll->adjustments()->count());
         $this->assertSame($netBefore + 200, (float) $payroll->net_pay);
+        $this->assertSame($netBefore + 200, (float) $payroll->gross_pay - (float) $payroll->total_deductions);
+
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.show', $payroll).'?tab=pay')
+            ->assertOk()
+            ->assertSee(__('payroll.adjustment_types.BONUS'), false)
+            ->assertSee('Spot bonus', false);
 
         $adj = $payroll->adjustments()->first();
 

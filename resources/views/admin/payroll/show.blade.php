@@ -70,6 +70,16 @@
             ?->amount_per_unit ?? 3.0);
         $unexcusedPreview = round($dayRate * (int) $payroll->unexcused_absence_days * $unexcusedRuleMult, 2);
         $hoursDeductionPreview = round($hourlyDeductionRate * (float) $payroll->hours_deduction, 2);
+        $earningAdjustmentTypes = [
+            \App\Models\PayrollAdjustment::TYPE_DEPARTMENT_COMMISSION,
+            \App\Models\PayrollAdjustment::TYPE_SALES_COMMISSION,
+            \App\Models\PayrollAdjustment::TYPE_PROFIT_COMMISSION,
+            \App\Models\PayrollAdjustment::TYPE_BONUS,
+        ];
+        $earningAdjustmentRows = $payroll->adjustments
+            ->whereIn('type', $earningAdjustmentTypes)
+            ->filter(fn ($adj) => abs((float) $adj->amount) >= 0.005)
+            ->values();
         $otherDeductionRows = $payroll->adjustments
             ->where('type', \App\Models\PayrollAdjustment::TYPE_OTHER_DEDUCTION)
             ->filter(fn ($adj) => abs((float) $adj->amount) >= 0.005)
@@ -255,17 +265,38 @@
                                                     </td>
                                                 </tr>
                                             @empty
+                                                @if ($earningAdjustmentRows->isEmpty())
+                                                    <tr>
+                                                        <td colspan="2" class="text-body-secondary text-center py-3">
+                                                            {{ __('payroll.zero_earnings') }}
+                                                        </td>
+                                                    </tr>
+                                                @endif
+                                            @endforelse
+                                            @foreach ($earningAdjustmentRows as $adj)
                                                 <tr>
-                                                    <td colspan="2" class="text-body-secondary text-center py-3">
-                                                        {{ __('payroll.zero_earnings') }}
+                                                    <th scope="row" class="ps-3">
+                                                        {{ __('payroll.adjustment_types.'.$adj->type) }}
+                                                        @if (filled($adj->note))
+                                                            <span class="fw-normal text-body-secondary"> — {{ $adj->note }}</span>
+                                                        @endif
+                                                    </th>
+                                                    <td class="col-num pe-3">
+                                                        <span class="num-ltr"><x-money :amount="$adj->amount" :currency="$payroll->currency" /></span>
                                                     </td>
                                                 </tr>
-                                            @endforelse
+                                            @endforeach
                                             @if ($activeEarnings->isNotEmpty() && $activeEarnings->count() < count($earnings))
                                                 <tr class="small text-body-secondary">
                                                     <td colspan="2" class="ps-3 pe-3 py-2">{{ __('payroll.hidden_zeros') }}</td>
                                                 </tr>
                                             @endif
+                                            <tr class="fw-semibold table-light">
+                                                <th scope="row" class="ps-3">{{ __('payroll.fields.gross') }}</th>
+                                                <td class="col-num pe-3">
+                                                    <span class="num-ltr"><x-money :amount="$payroll->gross_pay" :currency="$payroll->currency" /></span>
+                                                </td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>

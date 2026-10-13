@@ -1450,3 +1450,14 @@ Example:
 - [x] 2026-09-26 T-15.6 PASS — Mohra page permissions (`gross_user_pages`); Manager all; checklist on employee form; sales workflow via page `sales`. Commands: `php artisan migrate --force`; `php artisan test --filter='GrossUserPagePermissionTest|SalesInvoiceAdminMutateTest|SalesInvoiceMediaTest|CourierCollectionTest|SalesInvoiceCodTreasuryTest|SalesInvoiceFlowTest|LangParityTest'`; Pint. UI/UX: AR+EN gross_pages; RTL/LTR checklist.
 - [x] 2026-09-26 follow-up — Employee form Module access: Service/Product valuation checkboxes + Mohra pages (same card); save syncs `valuation_assignments`; auto Product when pages ticked. Tests + vite build.
 - [x] 2026-10-11 UX — Approvals inbox: Pending/Approved/Rejected/All + month/employee/search filters; compact OT table with pagination (25). Commands: `php artisan test --filter='ApprovalsFilterTest|AttendanceOvertimeReviewTest|PermissionApprovalTest|TableFilterUiTest'` PASS; `npm run build`; Pint. UI/UX: AR+EN keys; deploy `public/build`.
+- [x] 2026-10-13 Task 1 PASS WITH CONDITIONS — 15-min arrival/departure grace (threshold, not deduction); policy-adjusted deficit/balanced/surplus; register shortfall/surplus; no historical backfill. Commands: `php artisan test --filter='AttendanceGracePolicyTest|AttendanceTimeSummaryTest|AttendanceHistoryServiceTest|AttendanceTimeBreakdownTest|AttendanceMultiPunchTest|AttendanceServiceTest|PayrollDraftTest'` (82 PASS); Pint. Docs: `docs/attendance/*`. Ready for Task 2: **NO** until owner approves.
+- [x] 2026-10-13 Task 1.6 PASS — Grace effective date **2026-10-01** (workday); pre-Oct read/write freeze of stored derived fields; settled payroll refresh/edit blocked; no historical backfill; no schema. Commands: `php artisan test --filter='AttendanceGracePolicyTest|AttendanceGraceEffectiveDateTest|AttendanceTimeSummaryTest|AttendanceHistoryServiceTest|AttendanceTimeBreakdownTest|AttendanceMultiPunchTest|AttendanceServiceTest|PayrollDraftTest|HoursComparison'` (95 PASS); Pint. Docs: `docs/attendance/ATTENDANCE_BUSINESS_RULES.md`, `TASK_1_6_COMPLETION_REPORT.md`. Ready for Task 2: **NO**.
+- [x] 2026-10-13 Governance — DB migration & production deployment safety locked in `AGENTS.md` §3.0, `docs/DEPLOYMENT.md`, `ENGINEERING_CONSTITUTION.md`, `MASTER_CONTEXT.md` §0.1b. Applies to Task 1.5 / Task 2 / forever. No schema change in this step.
+  ```text
+  DATABASE CHANGES: NO
+  SCHEMA MIGRATIONS CREATED: NOT APPLICABLE
+  DATA MIGRATION OR BACKFILL: NOT APPLICABLE
+  PRODUCTION DEPLOYMENT PROCEDURE: VERIFIED
+  HARDCODED ID SAFETY: NOT APPLICABLE
+  DATABASE MIGRATION POLICY: PASS
+  ```

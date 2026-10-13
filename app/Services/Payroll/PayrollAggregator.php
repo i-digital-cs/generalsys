@@ -75,6 +75,8 @@ class PayrollAggregator
         return array_merge($counts, [
             'hours_deduction' => $hours,
             'late_minutes_total' => $this->exactLateMinutesTotal($rows),
+            // Punch lateness (pre-grace) for Admin draft suggestion only — never used to mutate settled payroll.
+            'suggested_late_minutes_total' => $this->punchLateMinutesTotal($rows),
             'leave_permission_minutes' => $permission['leave_minutes'],
             'late_permission_minutes' => $permission['late_minutes'],
             'forced_permission_penalty_base' => $permission['forced_base'],
@@ -83,7 +85,7 @@ class PayrollAggregator
     }
 
     /**
-     * Sum of exact late minutes (override or clock-in vs expected start).
+     * Sum of exact late minutes (override or date-aware counted late).
      *
      * @param  Collection<int, Attendance>  $rows
      */
@@ -95,6 +97,24 @@ class PayrollAggregator
                 continue;
             }
             $total += $this->attendance->exactLateMinutes($row);
+        }
+
+        return $total;
+    }
+
+    /**
+     * Sum of raw punch lateness (before grace). Used only as a draft UI suggestion.
+     *
+     * @param  Collection<int, Attendance>  $rows
+     */
+    private function punchLateMinutesTotal(Collection $rows): int
+    {
+        $total = 0;
+        foreach ($rows as $row) {
+            if (! in_array($row->status, self::WORKED, true)) {
+                continue;
+            }
+            $total += $this->attendance->rawLateMinutes($row);
         }
 
         return $total;

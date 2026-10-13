@@ -4,11 +4,44 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Grace policy effective date (attendance workday) — Task 1.6
+    |--------------------------------------------------------------------------
+    |
+    | Y-m-d. New 15-minute arrival/departure grace applies only when the
+    | attendance.date is on or after this day. Missing date → historical path.
+    |
+    */
+    'grace_policy_effective_date' => env('ATTENDANCE_GRACE_POLICY_EFFECTIVE_DATE', '2026-10-01'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Late-arrival grace (minutes) — Task 1 invariant (from effective date)
+    |--------------------------------------------------------------------------
+    |
+    | Threshold, not a deduction: ≤ N counted late = 0; > N counted = full raw.
+    | Also exempts the matching working-hours deficit when within grace.
+    |
+    */
+    'arrival_grace_minutes' => (int) env('ATTENDANCE_ARRIVAL_GRACE_MINUTES', 15),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Early-departure grace (minutes) — Task 1 invariant (from effective date)
+    |--------------------------------------------------------------------------
+    |
+    | Independent of arrival grace. Same threshold semantics.
+    |
+    */
+    'departure_grace_minutes' => (int) env('ATTENDANCE_DEPARTURE_GRACE_MINUTES', 15),
+
+    /*
+    |--------------------------------------------------------------------------
     | Auto clock-out grace (minutes after expected end)
     |--------------------------------------------------------------------------
     |
     | Open punches are force-closed at expected_end + this grace.
     | Clock-out time is that moment (option B: grace hour counts as worked).
+    | Unrelated to arrival/departure policy grace above.
     |
     */
     'auto_clock_out_grace_minutes' => (int) env('ATTENDANCE_AUTO_CLOCK_OUT_GRACE_MINUTES', 60),

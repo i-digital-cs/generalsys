@@ -4,11 +4,13 @@ namespace App\Services\Attendance;
 
 /**
  * System-recommended vs payroll-credited time with gaps and overtime (T-7.9 / R2 / R4).
+ * Duration balance uses {@see AttendanceGracePolicy} (Task 1).
  */
 readonly class AttendanceTimeSummary
 {
     /**
      * @param  list<array{minutes: int, start: ?string, end: ?string, tl_recommendation: string, admin_decision: string}>  $gaps
+     * @param  array<string, int|string>|null  $durationBalance  from AttendanceGracePolicy::durationBalance
      */
     public function __construct(
         public bool $open,
@@ -38,21 +40,37 @@ readonly class AttendanceTimeSummary
         public ?string $clockOutAt = null,
         public ?string $clockInWindowPosition = null,
         public ?string $clockOutWindowPosition = null,
+        public int $rawLateMinutes = 0,
+        public int $rawEarlyMinutes = 0,
+        public ?array $durationBalance = null,
     ) {}
 
+    /** Policy-adjusted undertime (grace-exempt minutes removed). */
     public function undertimeMinutes(): int
     {
-        return max(0, -$this->overtimeDeltaMinutes);
+        return (int) ($this->durationBalance['counted_deficit_minutes'] ?? max(0, -$this->overtimeDeltaMinutes));
     }
 
+    /** Raw physical surplus minutes (not auto-approved OT). */
     public function extraWorkedMinutes(): int
     {
-        return max(0, $this->overtimeDeltaMinutes);
+        return (int) ($this->durationBalance['counted_surplus_minutes'] ?? max(0, $this->overtimeDeltaMinutes));
     }
 
     public function hasUndertime(): bool
     {
-        return $this->overtimeDeltaMinutes < 0;
+        return $this->undertimeMinutes() > 0;
+    }
+
+    /** @return AttendanceGracePolicy::CLASS_* */
+    public function hoursBalanceClassification(): string
+    {
+        return (string) ($this->durationBalance['classification']
+            ?? ($this->overtimeDeltaMinutes > 0
+                ? AttendanceGracePolicy::CLASS_SURPLUS
+                : ($this->overtimeDeltaMinutes < 0
+                    ? AttendanceGracePolicy::CLASS_DEFICIT
+                    : AttendanceGracePolicy::CLASS_BALANCED)));
     }
 
     public function hasOverrides(): bool

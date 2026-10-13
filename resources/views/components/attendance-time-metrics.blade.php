@@ -51,11 +51,17 @@
 
     @if ($summary->hasUndertime())
         <span class="badge text-bg-danger">
-            {{ __('attendance_review.hours_balance.short', ['minutes' => $summary->undertimeMinutes()]) }}
+            {{ __('attendance_review.hours_balance.classification.deficit') }}
+            · {{ __('attendance_review.hours_balance.short', ['minutes' => $summary->undertimeMinutes()]) }}
         </span>
     @elseif ($summary->extraWorkedMinutes() > 0)
         <span class="badge text-bg-success">
-            {{ __('attendance_review.hours_balance.extra', ['minutes' => $summary->extraWorkedMinutes()]) }}
+            {{ __('attendance_review.hours_balance.classification.surplus') }}
+            · {{ __('attendance_review.hours_balance.extra', ['minutes' => $summary->extraWorkedMinutes()]) }}
+        </span>
+    @elseif (! $summary->open)
+        <span class="badge text-bg-secondary">
+            {{ __('attendance_review.hours_balance.classification.balanced') }}
         </span>
     @endif
 

@@ -19,12 +19,14 @@ class AttendanceHistoryService
 {
     public const MAX_RANGE_DAYS = 92;
 
-    public const KINDS = ['all', 'present', 'absent', 'shortfall', 'rest', 'vacation'];
+    public const KINDS = ['all', 'present', 'absent', 'shortfall', 'surplus', 'rest', 'vacation'];
 
     public const EVIDENCE = ['all', 'photos', 'location', 'outside'];
 
     public function __construct(
         private readonly HoursComparisonService $hours,
+        private readonly AttendanceService $attendance,
+        private readonly AttendanceGracePolicy $grace,
     ) {}
 
     /**
@@ -165,12 +167,30 @@ class AttendanceHistoryService
         $hasStarted = $attendances->contains(
             fn (Attendance $row): bool => $row->clock_in !== null
         );
+        $rawHours = round((float) $attendances->sum(
+            fn (Attendance $row) => (float) ($row->raw_actual_hours ?? $row->actual_hours)
+        ), 2);
+        $graceActive = $this->grace->isActiveForAttendanceDate($date);
+        $durationBalance = null;
+        if ($graceActive) {
+            $rawLate = (int) $attendances->sum(fn (Attendance $row) => $this->attendance->rawLateMinutes($row));
+            $rawEarly = (int) $attendances->sum(fn (Attendance $row) => $this->attendance->rawEarlyMinutes($row));
+            $durationBalance = $this->grace->durationBalance(
+                (int) round((float) $planned['hours'] * 60),
+                (int) round($rawHours * 60),
+                $rawLate,
+                $rawEarly,
+                $date,
+            );
+        }
         $kind = $this->kind(
             $isVacation,
             $isRest,
             (float) $planned['hours'],
             (float) $actual['hours'],
             $hasStarted,
+            $durationBalance,
+            $graceActive,
         );
 
         return [
@@ -190,19 +210,25 @@ class AttendanceHistoryService
             'attendances' => $attendances,
             'late_minutes' => (int) $attendances->sum('late_minutes'),
             'early_departure_minutes' => (int) $attendances->sum('early_departure_minutes'),
-            'raw_hours' => round((float) $attendances->sum(fn (Attendance $row) => (float) ($row->raw_actual_hours ?? $row->actual_hours)), 2),
+            'raw_hours' => $rawHours,
             'credited_hours' => round((float) $actual['hours'], 2),
             'gap_minutes' => (int) $attendances->sum(fn (Attendance $row) => (int) $row->gaps->sum('minutes')),
             'recommended_overtime_minutes' => (int) $attendances->sum('recommended_overtime_minutes'),
+            'hours_balance' => $durationBalance,
         ];
     }
 
+    /**
+     * @param  array<string, int|string|bool>|null  $durationBalance
+     */
     private function kind(
         bool $isVacation,
         bool $isRest,
         float $planned,
         float $actual,
         bool $hasStarted,
+        ?array $durationBalance,
+        bool $graceActive,
     ): string {
         if ($isVacation && $actual < 0.01 && ! $hasStarted) {
             return 'vacation';
@@ -214,10 +240,22 @@ class AttendanceHistoryService
         if ($planned > 0.01 && ! $hasStarted && $actual < 0.01) {
             return 'absent';
         }
-        // Shortfall = started (incl. still open) but credited hours below planned.
-        if ($planned > 0.01 && ($actual + 0.01) < $planned) {
+
+        if ($graceActive && $durationBalance !== null) {
+            $countedDeficit = (int) ($durationBalance['counted_deficit_minutes'] ?? 0);
+            $countedSurplus = (int) ($durationBalance['counted_surplus_minutes'] ?? 0);
+
+            if ($planned > 0.01 && $hasStarted && $countedDeficit > 0) {
+                return 'shortfall';
+            }
+            if ($hasStarted && $countedSurplus > 0) {
+                return 'surplus';
+            }
+        } elseif ($planned > 0.01 && ($actual + 0.01) < $planned) {
+            // Pre-effective-date: legacy shortfall = credited hours below planned.
             return 'shortfall';
         }
+
         if ($actual > 0.01 || $hasStarted) {
             return 'present';
         }

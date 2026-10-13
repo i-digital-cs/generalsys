@@ -124,14 +124,15 @@ class PayrollController extends Controller
                     (int) $payroll->month,
                     (int) $payroll->year,
                 );
-                $suggestedLateMinutes = (int) $live['late_minutes_total'];
+                // Suggestion = punch lateness (pre-grace). Applied totals still use date-aware exactLateMinutes.
+                $suggestedLateMinutes = (int) $live['suggested_late_minutes_total'];
                 $liveCounts = [
                     'full_time_days' => (int) $live['full_time_days'],
                     'online_half_days' => (int) $live['online_half_days'],
                     'online_full_days' => (int) $live['online_full_days'],
                     'rest_days' => (int) $live['rest_days'],
                     'hours_deduction' => (float) $live['hours_deduction'],
-                    'late_minutes_total' => $suggestedLateMinutes,
+                    'late_minutes_total' => (int) $live['late_minutes_total'],
                 ];
                 $countsOutOfSync = (int) $payroll->full_time_days !== $liveCounts['full_time_days']
                     || (int) $payroll->online_half_days !== $liveCounts['online_half_days']

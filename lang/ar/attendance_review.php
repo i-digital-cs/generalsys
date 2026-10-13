@@ -63,6 +63,11 @@ return [
         'extra' => ':minutes د إضافية',
         'short' => 'ناقص :minutes د عن المخطط',
         'on_plan' => 'يطابق الساعات المخططة',
+        'classification' => [
+            'deficit' => 'نقص',
+            'balanced' => 'متوازن',
+            'surplus' => 'زيادة',
+        ],
     ],
     'overtime' => [
         'section' => 'مراجعة الوقت الإضافي',

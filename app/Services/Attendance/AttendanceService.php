@@ -28,6 +28,7 @@ class AttendanceService
         private readonly GeofenceService $geofence,
         private readonly AttendanceTimeCalculator $timeCalculator,
         private readonly AttendanceGapService $gaps,
+        private readonly AttendanceGracePolicy $grace,
     ) {}
 
     /**
@@ -708,8 +709,9 @@ class AttendanceService
     }
 
     /**
-     * Exact late minutes for payroll/reporting: TL/Admin override when set,
-     * otherwise clock-in vs expected shift start (never negative).
+     * Exact late minutes for payroll/reporting: TL/Admin override when set.
+     * From grace effective date: punch lateness with arrival grace.
+     * Before effective date: stored late_minutes (do not recompute via new policy).
      */
     public function exactLateMinutes(Attendance $attendance): int
     {
@@ -717,6 +719,17 @@ class AttendanceService
             return max(0, (int) $attendance->adjusted_late_minutes);
         }
 
+        $workday = $attendance->date?->toDateString();
+        if (! $this->grace->isActiveForAttendanceDate($workday)) {
+            return max(0, (int) $attendance->late_minutes);
+        }
+
+        return $this->grace->countedLateMinutes($this->rawLateMinutes($attendance), $workday);
+    }
+
+    /** Punch lateness before grace (never negative). */
+    public function rawLateMinutes(Attendance $attendance): int
+    {
         $user = $attendance->relationLoaded('user')
             ? $attendance->user
             : $attendance->user()->first();
@@ -738,6 +751,28 @@ class AttendanceService
         }
 
         return max(0, (int) $expected->diffInMinutes($clockIn, false));
+    }
+
+    /** Early departure before grace (never negative). */
+    public function rawEarlyMinutes(Attendance $attendance, ?ShiftAssignment $assignment = null): int
+    {
+        if ($attendance->clock_out === null) {
+            return 0;
+        }
+
+        $user = $attendance->relationLoaded('user')
+            ? $attendance->user
+            : $attendance->user()->first();
+        if ($user === null) {
+            return 0;
+        }
+
+        $expectedEnd = $this->expectedEndForAttendance($attendance, $assignment);
+        if ($expectedEnd === null || ! $attendance->clock_out->lt($expectedEnd)) {
+            return 0;
+        }
+
+        return max(0, (int) $attendance->clock_out->diffInMinutes($expectedEnd, false));
     }
 
     private function resolveAssignment(User $user, string $shiftType, string $date): ?ShiftAssignment
@@ -780,8 +815,10 @@ class AttendanceService
 
         // Signed minutes from expectedEnd → clockOut; negative means left early.
         $delta = $expectedEnd->diffInMinutes(Carbon::parse($clockOut), false);
+        $rawEarly = (int) max(0, -$delta);
+        $workday = $attendance->date?->toDateString();
 
-        return (int) max(0, -$delta);
+        return $this->grace->countedEarlyMinutes($rawEarly, $workday);
     }
 
     private function expectedStart(

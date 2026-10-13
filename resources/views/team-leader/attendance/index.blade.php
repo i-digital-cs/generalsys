@@ -42,7 +42,7 @@
                 <div class="col-6 col-md-4 col-xl-2">
                     <label for="kind" class="form-label">{{ __('attendance.history.kind') }}</label>
                     <select id="kind" name="kind" class="form-select">
-                        @foreach (['all', 'present', 'absent', 'shortfall', 'rest', 'vacation'] as $option)
+                        @foreach (['all', 'present', 'absent', 'shortfall', 'surplus', 'rest', 'vacation'] as $option)
                             <option value="{{ $option }}" @selected($kind === $option)>
                                 {{ __('attendance.history.kinds.'.$option) }}
                             </option>
@@ -138,6 +138,7 @@
                                             'text-bg-success' => $row['kind'] === 'present',
                                             'text-bg-danger' => $row['kind'] === 'absent',
                                             'text-bg-warning text-dark' => $row['kind'] === 'shortfall' || $row['kind'] === 'rest',
+                                            'text-bg-success' => $row['kind'] === 'surplus',
                                             'text-bg-info' => $row['kind'] === 'vacation',
                                         ])>
                                             {{ __('attendance.history.kinds.'.$row['kind']) }}

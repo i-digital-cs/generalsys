@@ -31,6 +31,7 @@ return [
             'present' => 'حاضر',
             'absent' => 'غائب',
             'shortfall' => 'نقص',
+            'surplus' => 'زيادة',
             'rest' => 'راحة',
             'vacation' => 'إجازة',
         ],

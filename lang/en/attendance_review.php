@@ -63,6 +63,11 @@ return [
         'extra' => ':minutes min extra worked',
         'short' => ':minutes min short of planned',
         'on_plan' => 'Matches planned hours',
+        'classification' => [
+            'deficit' => 'Deficit',
+            'balanced' => 'Balanced',
+            'surplus' => 'Surplus',
+        ],
     ],
     'overtime' => [
         'section' => 'Overtime review',

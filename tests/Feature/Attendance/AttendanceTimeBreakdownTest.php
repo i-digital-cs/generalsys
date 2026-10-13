@@ -28,10 +28,10 @@ class AttendanceTimeBreakdownTest extends TestCase
         ]);
 
         $service = app(AttendanceService::class);
-        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 10:00'));
-        $service->clockOut($employee, Carbon::parse('2026-08-03 11:00'));
-        $attendance = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 12:00'));
-        $final = $service->clockOut($employee, Carbon::parse('2026-08-03 20:00'));
+        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-10-03 10:00'));
+        $service->clockOut($employee, Carbon::parse('2026-10-03 11:00'));
+        $attendance = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-10-03 12:00'));
+        $final = $service->clockOut($employee, Carbon::parse('2026-10-03 20:00'));
 
         app(AttendanceTimeReviewService::class)->tlRecommendOvertime($leader, $final, 60, 'RECOMMEND');
 
@@ -55,8 +55,8 @@ class AttendanceTimeBreakdownTest extends TestCase
         ]);
 
         $service = app(AttendanceService::class);
-        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-04 10:00'));
-        $final = $service->clockOut($employee, Carbon::parse('2026-08-04 17:19'));
+        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-10-04 10:00'));
+        $final = $service->clockOut($employee, Carbon::parse('2026-10-04 17:19'));
 
         $summary = app(AttendanceTimeCalculator::class)->summarize($final->fresh(['segments', 'gaps']), $service);
 
@@ -67,8 +67,8 @@ class AttendanceTimeBreakdownTest extends TestCase
 
         $this->actingAs(User::factory()->manager()->create())
             ->get(route('team-leader.attendance', [
-                'from' => '2026-08-04',
-                'to' => '2026-08-04',
+                'from' => '2026-10-04',
+                'to' => '2026-10-04',
                 'employee_id' => $employee->id,
             ]))
             ->assertOk()
@@ -85,16 +85,18 @@ class AttendanceTimeBreakdownTest extends TestCase
         ]);
 
         $service = app(AttendanceService::class);
-        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 10:15'));
-        $service->clockOut($employee, Carbon::parse('2026-08-03 18:15'));
+        // On/after 2026-10-01: 20 min late exceeds grace → counted late; early leave creates deficit.
+        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-10-03 10:20'));
+        $service->clockOut($employee, Carbon::parse('2026-10-03 18:00'));
 
-        Carbon::setTestNow(Carbon::parse('2026-08-03 20:00'));
+        Carbon::setTestNow(Carbon::parse('2026-10-03 20:00'));
 
         $this->actingAs($employee)
             ->get(route('employee.dashboard'))
             ->assertOk()
             ->assertSee(__('attendance_review.breakdown.raw'), false)
-            ->assertSee(__('attendance_review.late_minutes'), false);
+            ->assertSee(__('attendance_review.late_minutes'), false)
+            ->assertSee(__('attendance_review.hours_balance.classification.deficit'), false);
 
         Carbon::setTestNow();
     }
@@ -107,11 +109,11 @@ class AttendanceTimeBreakdownTest extends TestCase
         ]);
 
         $service = app(AttendanceService::class);
-        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 10:00'));
-        $service->clockOut($employee, Carbon::parse('2026-08-03 18:00'));
+        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-10-03 10:00'));
+        $service->clockOut($employee, Carbon::parse('2026-10-03 18:00'));
 
         $this->actingAs($employee)
-            ->get(route('employee.report', ['date' => '2026-08-03']))
+            ->get(route('employee.report', ['date' => '2026-10-03']))
             ->assertOk()
             ->assertSee(__('attendance_review.comparison.title'), false)
             ->assertSee(__('attendance_review.planned_hours'), false);
@@ -127,17 +129,17 @@ class AttendanceTimeBreakdownTest extends TestCase
         ]);
 
         $service = app(AttendanceService::class);
-        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 10:00'));
-        $service->clockOut($employee, Carbon::parse('2026-08-03 11:00'));
-        $attendance = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-08-03 12:00'));
-        $final = $service->clockOut($employee, Carbon::parse('2026-08-03 18:00'));
+        $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-10-03 10:00'));
+        $service->clockOut($employee, Carbon::parse('2026-10-03 11:00'));
+        $attendance = $service->clockIn($employee, Attendance::SHIFT_FULL_TIME, Carbon::parse('2026-10-03 12:00'));
+        $final = $service->clockOut($employee, Carbon::parse('2026-10-03 18:00'));
 
         app(AttendanceTimeReviewService::class)->tlRecommendOvertime($leader, $final, 30, 'RECOMMEND');
 
         $this->actingAs($leader)
             ->get(route('team-leader.attendance', [
-                'from' => '2026-08-03',
-                'to' => '2026-08-03',
+                'from' => '2026-10-03',
+                'to' => '2026-10-03',
                 'kind' => 'all',
                 'evidence' => 'all',
             ]))

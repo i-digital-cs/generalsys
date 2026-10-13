@@ -5,7 +5,7 @@ These rules are **mandatory** for every contributor — human or **any AI agent*
 
 If a rule blocks your task, stop and ask — do not silently violate it.
 
-- System spec: `MASTER_CONTEXT.md` · Schema: `docs/DATABASE_SCHEMA.md` · API: `docs/API_DOCUMENTATION.md` · UI: `docs/UI_FRAMEWORK.md` · Payroll math: `docs/PAYROLL_CALCULATION.md` · Build gates: `docs/BUILD_AND_TEST_GATES.md` · Tasks: `docs/TASKS.md`
+- System spec: `MASTER_CONTEXT.md` · Schema: `docs/DATABASE_SCHEMA.md` · API: `docs/API_DOCUMENTATION.md` · UI: `docs/UI_FRAMEWORK.md` · Payroll math: `docs/PAYROLL_CALCULATION.md` · Attendance grace (Task 1 invariant): `docs/attendance/ATTENDANCE_BUSINESS_RULES.md` · Deploy / DB safety: `docs/DEPLOYMENT.md` · Constitution index: `ENGINEERING_CONSTITUTION.md` · Build gates: `docs/BUILD_AND_TEST_GATES.md` · Tasks: `docs/TASKS.md`
 - Stack: **PHP 8.2 / Laravel 11 · Blade + Bootstrap 5 (RTL) · MySQL 8 (InnoDB, utf8mb4)**
 - Hosting: **Hostinger shared hosting** — this drives half the rules below.
 
@@ -72,11 +72,35 @@ Details: `MASTER_CONTEXT.md` §1.7d.
 
 ## 3. Database Rules
 
-1. **Schema lives only in migrations.** Every table/column must trace to `docs/DATABASE_SCHEMA.md`. Changing schema = update the doc **and** add a migration in the same change.
-2. **No unused tables or columns.** Before adding one, prove it is read or written by code. Removing a feature = remove its migration/table/column too (new migration dropping it).
-3. Money = `DECIMAL(12,2)`; scores `DECIMAL(5,2)`; never `FLOAT` for money. Enums match the schema doc exactly.
-4. Every FK indexed; composite indexes for monthly queries (`user_id + date`/`month+year`) as defined in the schema doc.
-5. Multi-tenant-style scoping by `team_leader_id` must happen in query scopes/policies, not by trusting request input.
+### 3.0 Migration & production deployment safety — CRITICAL / NON-NEGOTIABLE
+
+Applies to Task 1.5, Task 2, and **all** future schema/data work. Full deploy procedure: `docs/DEPLOYMENT.md`.
+
+1. **Every schema change = a new Laravel migration.** Tables, columns, indexes, FKs, defaults, nullability, renames. Never edit a migration that already ran in a shared environment — always add a **forward** migration.
+2. **Schema doc in the same change:** every table/column must trace to `docs/DATABASE_SCHEMA.md`.
+3. **Data corrections are version-controlled** (even single-row / ID-targeted fixes). Never rely on one-off manual SQL or GUI edits as the only implementation.
+   - Small deterministic deploy-required data → migration or reviewed migration-compatible seeder step (idempotent).
+   - Large or financially sensitive backfills → dedicated Artisan command / queued job; **document the extra deploy command**; **owner approval** before production run. Do not hide expensive/irreversible backfills inside a normal `migrate`.
+4. **Hardcoded IDs are unsafe across environments.** Prefer stable business keys. If an ID must be used: verify the same logical record in each target env; validate identity before update; fail safely if missing/mismatched; never silently update an unrelated row; keep the operation idempotent.
+5. **Production safety checklist:** version-controlled · repeatable · environment-independent where possible · idempotent when applicable · reviewed · tested on realistic data · compatible with deploy sequence · rollback/recovery documented. Protect historical **payroll / money** records. No destructive data ops without explicit approval.
+6. **Before marking any DB-related task `done`:** migration status OK; migrate on clean scratch DB; upgrade path on existing DB; existing rows preserved; FK integrity; app compatible; separate backfill command documented if any; deploy reproducible. Schema deploy command: `php artisan migrate --force` — **never** against production without authorization + backup/recovery.
+7. **Acceptance gate (paste in end-of-step report when schema/data touched):**
+   ```text
+   DATABASE CHANGES: YES | NO
+   SCHEMA MIGRATIONS CREATED: YES | NO | NOT APPLICABLE
+   DATA MIGRATION OR BACKFILL: YES | NO | NOT APPLICABLE
+   PRODUCTION DEPLOYMENT PROCEDURE: VERIFIED | BLOCKED
+   HARDCODED ID SAFETY: VERIFIED | NOT APPLICABLE | FAILED
+   DATABASE MIGRATION POLICY: PASS | FAIL
+   ```
+   No DB-related task is COMPLETE unless required schema/data changes can be reproduced safely in the target environment.
+
+### 3.1 Schema & query conventions
+
+1. **No unused tables or columns.** Before adding one, prove it is read or written by code. Removing a feature = remove its migration/table/column too (new migration dropping it).
+2. Money = `DECIMAL(12,2)`; scores `DECIMAL(5,2)`; never `FLOAT` for money. Enums match the schema doc exactly.
+3. Every FK indexed; composite indexes for monthly queries (`user_id + date`/`month+year`) as defined in the schema doc.
+4. Multi-tenant-style scoping by `team_leader_id` must happen in query scopes/policies, not by trusting request input.
 
 ## 4. Performance Rules
 
@@ -136,7 +160,7 @@ Also: dates via Carbon `translatedFormat()`; money via `<x-money>` — never han
 ## 9. Definition of Done (every task)
 
 - [ ] Logic in Services; controllers thin; Policies enforced
-- [ ] Migration + schema doc updated (if schema touched)
+- [ ] Migration + schema doc updated (if schema touched); §3.0 acceptance gate pasted when DB touched
 - [ ] Current task in `docs/TASKS.md` has dependencies `done`; this task set `done` after tests + UI/UX
 - [ ] Unit + feature tests added/updated and **green**; step report pasted (commands + PASS)
 - [ ] UI/UX checklist PASS (or N/A for backend-only): **AR+EN keys**, **RTL+LTR**, **responsive** (375 / 768 / 1280), **input values not covered**, **titles ≠ labels ≠ body ≠ input-value color**; previous↔next screen flow verified

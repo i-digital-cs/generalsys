@@ -90,19 +90,20 @@
             <dd class="col-6 num-ltr hp-value mb-1 text-end">{{ number_format($summary->plannedHours, 2) }}h</dd>
             <dt class="col-6">{{ __('attendance_review.hours_balance.difference') }}</dt>
             <dd class="col-6 mb-0 text-end">
-                @if ($summary->overtimeDeltaMinutes > 0)
-                    <span class="badge text-bg-success num-ltr">
-                        {{ __('attendance_review.hours_balance.extra', ['minutes' => $summary->extraWorkedMinutes()]) }}
-                    </span>
-                @elseif ($summary->hasUndertime())
-                    <span class="badge text-bg-danger num-ltr">
-                        {{ __('attendance_review.hours_balance.short', ['minutes' => $summary->undertimeMinutes()]) }}
-                    </span>
-                @else
-                    <span class="badge text-bg-success">
-                        {{ __('attendance_review.hours_balance.on_plan') }}
-                    </span>
-                @endif
+                @php $balanceClass = $summary->hoursBalanceClassification(); @endphp
+                <span @class([
+                    'badge',
+                    'text-bg-danger' => $balanceClass === 'deficit',
+                    'text-bg-success' => $balanceClass === 'surplus',
+                    'text-bg-secondary' => $balanceClass === 'balanced',
+                ])>
+                    {{ __('attendance_review.hours_balance.classification.'.$balanceClass) }}
+                    @if ($summary->undertimeMinutes() > 0)
+                        · {{ __('attendance_review.hours_balance.short', ['minutes' => $summary->undertimeMinutes()]) }}
+                    @elseif ($summary->extraWorkedMinutes() > 0)
+                        · {{ __('attendance_review.hours_balance.extra', ['minutes' => $summary->extraWorkedMinutes()]) }}
+                    @endif
+                </span>
             </dd>
         </dl>
     </div>
