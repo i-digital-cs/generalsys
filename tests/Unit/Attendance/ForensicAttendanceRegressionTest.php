@@ -290,11 +290,13 @@ class ForensicAttendanceRegressionTest extends TestCase
         $this->service->clockOut($a, $atOut);
         $this->service->clockOut($b, $atOut);
 
-        $this->assertSame(2, Attendance::query()->where('clock_in', $atIn)->count());
-        $this->assertEquals(
-            Attendance::query()->where('user_id', $a->id)->value('raw_actual_hours'),
-            Attendance::query()->where('user_id', $b->id)->value('raw_actual_hours'),
-        );
+        $rowA = Attendance::query()->where('user_id', $a->id)->sole();
+        $rowB = Attendance::query()->where('user_id', $b->id)->sole();
+        $this->assertTrue($rowA->clock_in->equalTo($atIn));
+        $this->assertTrue($rowB->clock_in->equalTo($atIn));
+        $this->assertTrue($rowA->clock_out->equalTo($atOut));
+        $this->assertTrue($rowB->clock_out->equalTo($atOut));
+        $this->assertEquals((float) $rowA->raw_actual_hours, (float) $rowB->raw_actual_hours);
     }
 
     public function test_header_mirrors_first_and_last_segment_not_sum_as_single_span_hours(): void
