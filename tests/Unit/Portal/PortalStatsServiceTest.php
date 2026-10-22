@@ -74,6 +74,32 @@ class PortalStatsServiceTest extends TestCase
         $this->assertSame(2, $todayBar['value']);
     }
 
+    public function test_late_today_uses_exact_late_when_stored_column_is_zero(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-10 12:00:00', config('app.timezone')));
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->employee()->create([
+            'work_start_time' => '09:00',
+            'work_end_time' => '17:00',
+        ]);
+
+        Attendance::factory()->create([
+            'user_id' => $employee->id,
+            'date' => '2026-10-10',
+            'shift_type' => Attendance::SHIFT_FULL_TIME,
+            'clock_in' => '2026-10-10 09:20:00',
+            'clock_out' => '2026-10-10 17:00:00',
+            'late_minutes' => 0,
+            'status' => Attendance::STATUS_PRESENT,
+            'planned_hours' => 8,
+            'actual_hours' => 7.67,
+            'daily_report' => 'ok',
+        ]);
+
+        $snap = app(PortalStatsService::class)->snapshot($manager);
+        $this->assertSame(1, $snap['cards']['late_today']);
+    }
+
     public function test_company_role_chart_includes_all_roles(): void
     {
         $manager = User::factory()->manager()->create();

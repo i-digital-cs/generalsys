@@ -13,6 +13,7 @@ This file is an **index**, not a second copy of project rules. Agents and humans
 | Testing gates | `AGENTS.md` §6 · `docs/BUILD_AND_TEST_GATES.md` |
 | Localization / UI | `AGENTS.md` §8 · `docs/UI_FRAMEWORK.md` |
 | Attendance 15-min grace (Task 1) | `docs/attendance/ATTENDANCE_BUSINESS_RULES.md` · `MASTER_CONTEXT.md` §1.7 |
+| Attendance calculation SSOT | `docs/attendance/SSOT_CALCULATION_ARCHITECTURE.md` · `AGENTS.md` §1.1b |
 | Payroll math | `docs/PAYROLL_CALCULATION.md` |
 | Task board | `docs/TASKS.md` |
 

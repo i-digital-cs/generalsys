@@ -391,6 +391,14 @@
                                     <p class="small text-body-secondary mb-0">{{ __('payroll.counts_hint') }}</p>
                                 </div>
                                 <div class="card-body">
+                                    {{-- Sibling of the draft update form (not nested) — Apply suggested late. --}}
+                                    <form id="hp-apply-suggested-late-{{ $payroll->id }}"
+                                          method="POST"
+                                          action="{{ route('admin.payroll.apply-suggested-late', $payroll) }}"
+                                          class="d-none"
+                                          aria-hidden="true">
+                                        @csrf
+                                    </form>
                                     <form method="POST" action="{{ route('admin.payroll.update', $payroll) }}" class="row g-3">
                                         @csrf
                                         @method('PUT')
@@ -437,11 +445,13 @@
                                                                 'suggested' => number_format((int) $suggestedLateMinutes),
                                                                 'hours' => number_format(((int) $suggestedLateMinutes) / 60, 2),
                                                                 'shortfall' => number_format((float) ($hoursMonth['totals']['shortfall_credited'] ?? $payroll->hours_deduction), 2),
+                                                                'early' => number_format((int) ($suggestedEarlyMinutes ?? 0)),
                                                             ]) }}
                                                             @if ((int) $payroll->late_minutes_total !== (int) $suggestedLateMinutes)
-                                                                <button type="button"
-                                                                        class="btn btn-link btn-sm p-0 align-baseline"
-                                                                        data-apply-suggested-late="{{ (int) $suggestedLateMinutes }}">
+                                                                {{-- Outside nested <form>: posts to server apply endpoint (SSOT recomputed). --}}
+                                                                <button type="submit"
+                                                                        form="hp-apply-suggested-late-{{ $payroll->id }}"
+                                                                        class="btn btn-link btn-sm p-0 align-baseline">
                                                                     {{ __('payroll.field_help.late_minutes_apply_suggested') }}
                                                                 </button>
                                                             @endif
@@ -741,17 +751,6 @@
 @push('scripts')
 <script>
 (() => {
-    document.querySelectorAll('[data-apply-suggested-late]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const input = document.getElementById('late_minutes_total');
-            if (! input) {
-                return;
-            }
-            input.value = String(btn.getAttribute('data-apply-suggested-late') || '0');
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-    });
-
     const box = document.querySelector('[data-extra-pay-box]');
     if (box) {
         const daysInput = box.querySelector('[data-extra-days]');

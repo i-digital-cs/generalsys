@@ -330,6 +330,8 @@ Route::middleware(['auth', 'role:MANAGER,ACCOUNTANT'])->prefix('admin')->name('a
     Route::put('/payroll/{payroll}', [PayrollController::class, 'update'])->name('payroll.update');
     Route::post('/payroll/{payroll}/refresh-attendance', [PayrollController::class, 'refreshAttendance'])
         ->name('payroll.refresh-attendance');
+    Route::post('/payroll/{payroll}/apply-suggested-late', [PayrollController::class, 'applySuggestedLate'])
+        ->name('payroll.apply-suggested-late');
     Route::post('/payroll/{payroll}/adjustments', [PayrollController::class, 'storeAdjustment'])->name('payroll.adjustments.store');
     Route::delete('/payroll/{payroll}/adjustments/{adjustment}', [PayrollController::class, 'destroyAdjustment'])
         ->name('payroll.adjustments.destroy');

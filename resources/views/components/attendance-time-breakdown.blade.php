@@ -7,13 +7,9 @@
 ])
 
 @php
-    use App\Services\Attendance\AttendanceService;
-    use App\Services\Attendance\AttendanceTimeCalculator;
+    use App\Services\Attendance\AttendanceCalculationEngine;
 
-    $summary = app(AttendanceTimeCalculator::class)->summarize(
-        $attendance,
-        app(AttendanceService::class),
-    );
+    $summary = app(AttendanceCalculationEngine::class)->forAttendance($attendance)->summary;
     $formAction = $formAction ?? ($review ? route('team-leader.attendance.time', $attendance) : null);
 @endphp
 

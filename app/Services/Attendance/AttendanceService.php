@@ -12,6 +12,7 @@ use App\Services\Employees\RestDayService;
 use App\Services\Notifications\AppNotificationService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -746,6 +747,68 @@ class AttendanceService
         return $this->grace->countedLateMinutes($this->rawLateMinutes($attendance), $workday);
     }
 
+    /**
+     * Exact early-departure minutes for payroll/reporting (SSOT with {@see exactLateMinutes}).
+     * From grace effective date: punch early with departure grace.
+     * Before effective date: stored early_departure_minutes (do not recompute).
+     */
+    public function exactEarlyMinutes(Attendance $attendance, ?ShiftAssignment $assignment = null): int
+    {
+        $workday = $attendance->date?->toDateString();
+        if (! $this->grace->isActiveForAttendanceDate($workday)) {
+            return max(0, (int) $attendance->early_departure_minutes);
+        }
+
+        return $this->grace->countedEarlyMinutes($this->rawEarlyMinutes($attendance, $assignment), $workday);
+    }
+
+    /**
+     * Batch-load SCHEDULED assignments for exact/raw late/early (avoids N+1 on month aggregates).
+     *
+     * @param  Collection<int, Attendance>  $rows
+     */
+    public function warmScheduledAssignments(Collection $rows): void
+    {
+        if ($rows->isEmpty()) {
+            return;
+        }
+
+        $userIds = $rows->pluck('user_id')->unique()->all();
+        $dates = $rows->map(fn (Attendance $row) => $row->date?->toDateString())->filter()->unique()->all();
+        if ($userIds === [] || $dates === []) {
+            return;
+        }
+
+        $assignments = ShiftAssignment::query()
+            ->whereIn('user_id', $userIds)
+            ->whereIn('date', $dates)
+            ->where('status', ShiftAssignment::STATUS_SCHEDULED)
+            ->get()
+            ->groupBy(fn (ShiftAssignment $a) => $a->user_id.'|'.$a->date->toDateString().'|'.$a->shift_type);
+
+        foreach ($rows as $row) {
+            $key = $row->user_id.'|'.$row->date?->toDateString().'|'.$row->shift_type;
+            $match = $assignments->get($key)?->first();
+            $row->setRelation('scheduledAssignment', $match);
+        }
+    }
+
+    private function scheduledAssignmentFor(Attendance $attendance): ?ShiftAssignment
+    {
+        if ($attendance->relationLoaded('scheduledAssignment')) {
+            $loaded = $attendance->getRelation('scheduledAssignment');
+
+            return $loaded instanceof ShiftAssignment ? $loaded : null;
+        }
+
+        return ShiftAssignment::query()
+            ->where('user_id', $attendance->user_id)
+            ->whereDate('date', $attendance->date->toDateString())
+            ->where('shift_type', $attendance->shift_type)
+            ->where('status', ShiftAssignment::STATUS_SCHEDULED)
+            ->first();
+    }
+
     /** Punch lateness before grace (never negative). */
     public function rawLateMinutes(Attendance $attendance): int
     {
@@ -757,12 +820,7 @@ class AttendanceService
             return 0;
         }
 
-        $assignment = ShiftAssignment::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', $attendance->date->toDateString())
-            ->where('shift_type', $attendance->shift_type)
-            ->where('status', ShiftAssignment::STATUS_SCHEDULED)
-            ->first();
+        $assignment = $this->scheduledAssignmentFor($attendance);
 
         $expected = $this->windows->expectedStart($user, $attendance, $assignment);
         if ($expected === null) {
@@ -786,6 +844,7 @@ class AttendanceService
             return 0;
         }
 
+        $assignment ??= $this->scheduledAssignmentFor($attendance);
         $expectedEnd = $this->expectedEndForAttendance($attendance, $assignment);
         if ($expectedEnd === null || ! $attendance->clock_out->lt($expectedEnd)) {
             return 0;

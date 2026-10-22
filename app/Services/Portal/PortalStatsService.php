@@ -4,6 +4,7 @@ namespace App\Services\Portal;
 
 use App\Models\Attendance;
 use App\Models\User;
+use App\Services\Attendance\AttendanceCalculationEngine;
 use App\Services\Attendance\MissingDailyReportService;
 use App\Services\Attendance\ShiftConfig;
 use App\Services\Employees\TeamMembershipService;
@@ -23,6 +24,7 @@ class PortalStatsService
         private readonly TeamMembershipService $membership,
         private readonly MissingDailyReportService $missingReports,
         private readonly ShiftConfig $shifts,
+        private readonly AttendanceCalculationEngine $calculations,
     ) {}
 
     /**
@@ -112,6 +114,8 @@ class PortalStatsService
     }
 
     /**
+     * Distinct users late today using SSOT counted late (not stored late_minutes alone).
+     *
      * @param  list<int>  $ids
      */
     private function distinctLate(array $ids, string $today): int
@@ -120,15 +124,22 @@ class PortalStatsService
             return 0;
         }
 
-        return (int) Attendance::query()
+        $rows = Attendance::query()
+            ->with('user')
             ->whereIn('user_id', $ids)
             ->whereDate('date', $today)
-            ->where(function ($query): void {
-                $query->where('late_minutes', '>', 0)
-                    ->orWhere('status', Attendance::STATUS_LATE);
-            })
-            ->selectRaw('COUNT(DISTINCT user_id) as aggregate_count')
-            ->value('aggregate_count');
+            ->get();
+
+        $lateUserIds = [];
+        foreach ($rows as $row) {
+            // Counted late only (grace / override SSOT). Do not OR status —
+            // stale STATUS_LATE with counted 0 must not inflate the KPI.
+            if ($this->calculations->exactLateMinutes($row) > 0) {
+                $lateUserIds[$row->user_id] = true;
+            }
+        }
+
+        return count($lateUserIds);
     }
 
     /**

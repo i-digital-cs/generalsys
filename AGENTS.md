@@ -5,7 +5,7 @@ These rules are **mandatory** for every contributor — human or **any AI agent*
 
 If a rule blocks your task, stop and ask — do not silently violate it.
 
-- System spec: `MASTER_CONTEXT.md` · Schema: `docs/DATABASE_SCHEMA.md` · API: `docs/API_DOCUMENTATION.md` · UI: `docs/UI_FRAMEWORK.md` · Payroll math: `docs/PAYROLL_CALCULATION.md` · Attendance grace (Task 1 invariant): `docs/attendance/ATTENDANCE_BUSINESS_RULES.md` · Deploy / DB safety: `docs/DEPLOYMENT.md` · Constitution index: `ENGINEERING_CONSTITUTION.md` · Build gates: `docs/BUILD_AND_TEST_GATES.md` · Tasks: `docs/TASKS.md`
+- System spec: `MASTER_CONTEXT.md` · Schema: `docs/DATABASE_SCHEMA.md` · API: `docs/API_DOCUMENTATION.md` · UI: `docs/UI_FRAMEWORK.md` · Payroll math: `docs/PAYROLL_CALCULATION.md` · Attendance grace (Task 1 invariant): `docs/attendance/ATTENDANCE_BUSINESS_RULES.md` · Attendance SSOT: `docs/attendance/SSOT_CALCULATION_ARCHITECTURE.md` · Deploy / DB safety: `docs/DEPLOYMENT.md` · Constitution index: `ENGINEERING_CONSTITUTION.md` · Build gates: `docs/BUILD_AND_TEST_GATES.md` · Tasks: `docs/TASKS.md`
 - Stack: **PHP 8.2 / Laravel 11 · Blade + Bootstrap 5 (RTL) · MySQL 8 (InnoDB, utf8mb4)**
 - Hosting: **Hostinger shared hosting** — this drives half the rules below.
 
@@ -53,6 +53,7 @@ Details: `MASTER_CONTEXT.md` §1.7d.
 ## 1. Architecture
 
 1. **Service layer owns all business logic.** Controllers only: validate (Form Request) → authorize (Policy) → call a Service → return view/response. A controller with an `if` that encodes a business rule is a defect.
+1b. **Attendance calculation SSOT (NON-NEGOTIABLE):** All attendance business calculations (late/early, grace, deficit/surplus, worked/credited minutes, overnight windows, checkout provenance) must originate from the authoritative attendance calculation domain (`AttendanceCalculationEngine` → `AttendanceTimeCalculator` / `AttendanceGracePolicy` / `AttendanceService::exactLateMinutes` / `exactEarlyMinutes`). Controllers, Blade, Livewire, dashboards, reports, exports, and APIs are **consumers only** — never independent calculation authorities. Details: `docs/attendance/SSOT_CALCULATION_ARCHITECTURE.md`.
 2. Services live in `app/Services/<Domain>/` (e.g. `app/Services/Payroll/PayrollCalculator.php`). One domain concept per class; constructor dependency injection only — no `new` inside methods, no facades for business deps.
 3. **OOP & SOLID**, concretely:
    - SRP: a class has one reason to change (`PayrollCalculator` calculates; `PayrollGenerator` orchestrates; `PayrollExporter` exports).

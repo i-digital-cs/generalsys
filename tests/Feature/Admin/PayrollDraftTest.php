@@ -293,11 +293,14 @@ class PayrollDraftTest extends TestCase
             ]))
             ->assertRedirect(route('admin.payroll.show', $payroll));
 
+        // Pre-Oct: suggestion = exact = stored late (0 after update), not punch raw.
+        // Draft still holds manual 15 → Apply suggested button visible.
         $this->actingAs($manager)
             ->get(route('admin.payroll.show', $payroll))
             ->assertOk()
             ->assertSee(__('payroll.field_help.late_minutes_apply_suggested'), false)
-            ->assertViewHas('suggestedLateMinutes', fn ($v) => (int) $v >= 30);
+            ->assertViewHas('suggestedLateMinutes', 0)
+            ->assertSee('hp-apply-suggested-late-'.$payroll->id, false);
 
         $payroll->refresh();
         $this->assertSame(15, (int) $payroll->late_minutes_total);

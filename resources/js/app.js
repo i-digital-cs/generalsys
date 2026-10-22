@@ -10,6 +10,20 @@ initTableFilters();
 initThemeToggle();
 initClockCtaColors();
 
+// Attendance / metric help: hover + focus + tap; attach to body to avoid table clipping.
+const initHpTooltips = () => {
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+        bootstrap.Tooltip.getOrCreateInstance(el, {
+            container: 'body',
+            trigger: 'hover focus click',
+            placement: el.getAttribute('data-bs-placement') || 'auto',
+            customClass: el.getAttribute('data-bs-custom-class') || 'hp-tooltip',
+        });
+    });
+};
+initHpTooltips();
+document.addEventListener('shown.bs.modal', initHpTooltips);
+
 // Flash toasts: Blade already renders `.show` so the message is visible before
 // this deferred module loads. Calling toast.show() again would hide→show (flicker).
 document.querySelectorAll('[data-hp-toast]').forEach((el) => {

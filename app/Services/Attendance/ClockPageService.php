@@ -14,6 +14,7 @@ final class ClockPageService
 {
     public function __construct(
         private readonly AttendanceService $attendance,
+        private readonly AttendanceCalculationEngine $calculations,
         private readonly DailyReportService $reports,
         private readonly ClockCtaColorService $ctaColors,
     ) {}
@@ -69,7 +70,7 @@ final class ClockPageService
             'previewLateMinutes' => ($open === null && $shiftTypes !== [])
                 ? $this->attendance->previewLateMinutes($user, $preferredShift)
                 : 0,
-            'lateMinutes' => $open !== null ? (int) $open->late_minutes : 0,
+            'lateMinutes' => $open !== null ? $this->calculations->exactLateMinutes($open) : 0,
             'todayAutoClockOut' => $this->todayFlaggedAttendance($user, $today, auto: true),
             'todayForceClockOut' => $this->todayFlaggedAttendance($user, $today, auto: false),
             'todayAttendances' => $this->todayAttendances($user, $today),

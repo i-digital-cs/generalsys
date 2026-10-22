@@ -280,8 +280,9 @@ class AttendanceTimeCalculator
             systemEarlyMinutes: $systemEarly,
             appliedRawHours: $rawHours,
             appliedCreditedHours: $isOpen ? 0.0 : round((float) $attendance->actual_hours, 2),
-            appliedLateMinutes: (int) $attendance->late_minutes,
-            appliedEarlyMinutes: (int) $attendance->early_departure_minutes,
+            // Counted late/early SSOT (override + date-aware grace) — not raw stored columns alone.
+            appliedLateMinutes: $attendanceService->exactLateMinutes($attendance),
+            appliedEarlyMinutes: $attendanceService->exactEarlyMinutes($attendance, $assignment),
             creditedOverridden: $creditedOverride,
             lateOverridden: $lateOverride,
             gapMinutesTotal: $gapMinutesTotal,

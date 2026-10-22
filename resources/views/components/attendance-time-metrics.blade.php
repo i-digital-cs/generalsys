@@ -4,34 +4,42 @@
 ])
 
 @php
-    use App\Services\Attendance\AttendanceService;
-    use App\Services\Attendance\AttendanceTimeCalculator;
+    use App\Services\Attendance\AttendanceCalculationEngine;
 
-    $summary = $summary ?? app(AttendanceTimeCalculator::class)->summarize(
-        $attendance,
-        app(AttendanceService::class),
-    );
+    $calc = $calc ?? app(AttendanceCalculationEngine::class)->forAttendance($attendance);
+    $summary = $summary ?? $calc->summary;
 @endphp
 
 <div {{ $attributes->merge(['class' => 'd-flex flex-wrap gap-1']) }}>
+    <x-attendance-session-integrity :result="$calc" />
+
     @if ($summary->systemRawHours > 0 || $summary->open)
         <span class="badge text-bg-light border text-dark">
             {{ __('attendance_review.breakdown.raw') }}:
             <span class="num-ltr">{{ number_format($summary->systemRawHours, 2) }}h</span>
+            @if (! $calc->durationVerified() && ! $calc->isOpen())
+                <span class="text-body-secondary">({{ __('attendance.integrity.recorded_hours_unverified') }})</span>
+            @endif
         </span>
     @endif
 
     @if (! $summary->open && $summary->appliedCreditedHours > 0)
         <span class="badge text-bg-secondary">
-            {{ __('attendance_review.breakdown.credited') }}:
+            {{ __('attendance.integrity.credited_hours') }}:
             <span class="num-ltr">{{ number_format($summary->appliedCreditedHours, 2) }}h</span>
         </span>
     @endif
 
-    @if ($summary->appliedLateMinutes > 0)
-        <span class="badge text-bg-warning text-dark">
-            {{ __('attendance_review.late_minutes') }}:
-            <span class="num-ltr">{{ $summary->appliedLateMinutes }}</span>
+    @if ($calc->lateAgainstPlannedWindowMinutes() > 0)
+        <span @class([
+            'badge',
+            'text-bg-warning text-dark' => $calc->lateDisplayTrustworthy(),
+            'text-bg-danger' => ! $calc->lateDisplayTrustworthy(),
+        ])>
+            {{ $calc->lateDisplayTrustworthy()
+                ? __('attendance_review.late_minutes')
+                : __('attendance.integrity.late_vs_planned_window') }}:
+            <span class="num-ltr">{{ $calc->lateAgainstPlannedWindowMinutes() }}</span>
         </span>
     @endif
 

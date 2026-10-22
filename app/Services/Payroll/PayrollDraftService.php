@@ -82,6 +82,27 @@ class PayrollDraftService
     }
 
     /**
+     * Apply authoritative grace-counted late minutes from attendance SSOT into this draft.
+     * Server-side only — never trusts a client-supplied suggestion payload.
+     * Does not change other Admin-edited counts; recalculates money after.
+     */
+    public function applySuggestedLateMinutes(PayrollRecord $record): PayrollRecord
+    {
+        $this->assertDraft($record);
+        $record->loadMissing('user');
+        $user = $record->user;
+        if ($user === null) {
+            throw new InvalidArgumentException('Payroll record has no employee.');
+        }
+
+        $live = $this->aggregator->aggregate($user, (int) $record->month, (int) $record->year);
+        $record->late_minutes_total = (int) ($live['late_minutes_total'] ?? 0);
+        $record->save();
+
+        return $this->recalculate($record->fresh(['adjustments', 'user']), false);
+    }
+
+    /**
      * @param  array{type: string, amount: float|string, note?: string|null}  $data
      */
     public function addAdjustment(PayrollRecord $record, array $data, User $actor): PayrollAdjustment

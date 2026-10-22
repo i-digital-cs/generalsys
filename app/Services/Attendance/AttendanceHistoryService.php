@@ -25,8 +25,9 @@ class AttendanceHistoryService
 
     public function __construct(
         private readonly HoursComparisonService $hours,
-        private readonly AttendanceService $attendance,
+        private readonly AttendanceCalculationEngine $calculations,
         private readonly AttendanceGracePolicy $grace,
+        private readonly AttendanceReviewPresentation $reviewPresentation,
     ) {}
 
     /**
@@ -171,18 +172,11 @@ class AttendanceHistoryService
             fn (Attendance $row) => (float) ($row->raw_actual_hours ?? $row->actual_hours)
         ), 2);
         $graceActive = $this->grace->isActiveForAttendanceDate($date);
-        $durationBalance = null;
-        if ($graceActive) {
-            $rawLate = (int) $attendances->sum(fn (Attendance $row) => $this->attendance->rawLateMinutes($row));
-            $rawEarly = (int) $attendances->sum(fn (Attendance $row) => $this->attendance->rawEarlyMinutes($row));
-            $durationBalance = $this->grace->durationBalance(
-                (int) round((float) $planned['hours'] * 60),
-                (int) round($rawHours * 60),
-                $rawLate,
-                $rawEarly,
-                $date,
-            );
-        }
+        $durationBalance = $this->calculations->dayDurationBalance(
+            $attendances,
+            (float) $planned['hours'],
+            $date,
+        );
         $kind = $this->kind(
             $isVacation,
             $isRest,
@@ -193,10 +187,55 @@ class AttendanceHistoryService
             $graceActive,
         );
 
+        $sessions = $attendances
+            ->filter(fn (Attendance $row): bool => $row->clock_in !== null)
+            ->map(function (Attendance $row): array {
+                $calc = $this->calculations->forAttendance($row);
+
+                return [
+                    'attendance' => $row,
+                    'calculation' => $calc,
+                ];
+            })
+            ->values();
+        $sessionCalcs = $sessions->pluck('calculation');
+        $hasUnverifiedDuration = $sessionCalcs->contains(
+            fn (AttendanceCalculationResult $calc): bool => ! $calc->isOpen() && ! $calc->durationVerified()
+        );
+        $hasShiftReview = $sessionCalcs->contains(
+            fn (AttendanceCalculationResult $calc): bool => $calc->shiftReviewRequired()
+        );
+        $verifiedHours = round((float) $sessionCalcs->sum(
+            fn (AttendanceCalculationResult $calc): float => $calc->verifiedWorkedHours() ?? 0.0
+        ), 2);
+        $recordedHours = round((float) $sessionCalcs->sum(
+            fn (AttendanceCalculationResult $calc): float => $calc->recordedWorkedHours()
+        ), 2);
+        $punctuality = $this->punctualityForSessions($attendances, $sessionCalcs);
+        $overtimeEligible = (int) $sessionCalcs->sum(
+            fn (AttendanceCalculationResult $calc): int => $calc->overtimeEligibleMinutes()
+        );
+        $overtimeApproved = (int) $sessionCalcs->sum(
+            fn (AttendanceCalculationResult $calc): int => $calc->approvedOvertimeMinutes()
+        );
+        $creditedReviewRequired = $sessionCalcs->contains(
+            fn (AttendanceCalculationResult $calc): bool => $calc->creditedReviewRequired()
+        );
+        $creditedProvenance = $sessionCalcs
+            ->map(fn (AttendanceCalculationResult $calc): string => $calc->creditedProvenance())
+            ->filter(fn (string $p): bool => $p !== 'NONE')
+            ->unique()
+            ->values()
+            ->all();
+        $reviewResults = $sessionCalcs->all();
+        $reviewReasonCodes = $this->reviewPresentation->dayReasonCodes($reviewResults);
+        $reviewTooltip = $this->reviewPresentation->dayTooltip($reviewResults);
+
         return [
             'user' => $user,
             'date' => $date,
             'kind' => $kind,
+            'punctuality' => $punctuality,
             'planned_hours' => $planned['hours'],
             'actual_hours' => $actual['hours'],
             'absent_hours' => round(max(0, (float) $planned['hours'] - (float) $actual['hours']), 2),
@@ -208,14 +247,68 @@ class AttendanceHistoryService
             'outside' => $outside,
             'attendance' => $attendances->sortByDesc('id')->first(),
             'attendances' => $attendances,
-            'late_minutes' => (int) $attendances->sum('late_minutes'),
-            'early_departure_minutes' => (int) $attendances->sum('early_departure_minutes'),
+            'sessions' => $sessions,
+            'has_unverified_duration' => $hasUnverifiedDuration,
+            'has_shift_review' => $hasShiftReview,
+            'needs_review' => $reviewReasonCodes !== [],
+            'review_reason_codes' => $reviewReasonCodes,
+            'review_tooltip' => $reviewTooltip,
+            'credited_review_required' => $creditedReviewRequired,
+            'credited_provenance' => $creditedProvenance,
+            'verified_hours' => $verifiedHours,
+            'recorded_hours' => $recordedHours > 0 ? $recordedHours : $rawHours,
+            'late_minutes' => $this->calculations->sumExactLateMinutes($attendances),
+            'early_departure_minutes' => $this->calculations->sumExactEarlyMinutes($attendances),
             'raw_hours' => $rawHours,
             'credited_hours' => round((float) $actual['hours'], 2),
             'gap_minutes' => (int) $attendances->sum(fn (Attendance $row) => (int) $row->gaps->sum('minutes')),
             'recommended_overtime_minutes' => (int) $attendances->sum('recommended_overtime_minutes'),
+            'overtime_eligible_minutes' => $overtimeEligible,
+            'overtime_approved_minutes' => $overtimeApproved,
             'hours_balance' => $durationBalance,
         ];
+    }
+
+    /**
+     * Punctuality is independent of day presence kind (attended ≠ on time).
+     *
+     * @param  Collection<int, Attendance>  $attendances
+     * @param  Collection<int, AttendanceCalculationResult>  $sessionCalcs
+     */
+    private function punctualityForSessions(Collection $attendances, Collection $sessionCalcs): string
+    {
+        if ($attendances->isEmpty() || $sessionCalcs->isEmpty()) {
+            return 'none';
+        }
+
+        $statuses = $attendances
+            ->filter(fn (Attendance $row): bool => $row->clock_in !== null)
+            ->pluck('status')
+            ->filter()
+            ->all();
+
+        if (in_array(Attendance::STATUS_LATE, $statuses, true)) {
+            return 'late';
+        }
+        if (in_array(Attendance::STATUS_EARLY_LEAVE, $statuses, true)) {
+            return 'early_leave';
+        }
+
+        $lateTotal = (int) $sessionCalcs->sum(
+            fn (AttendanceCalculationResult $calc): int => $calc->countedLateMinutes()
+        );
+        if ($lateTotal > 0) {
+            return 'late';
+        }
+
+        $earlyTotal = (int) $sessionCalcs->sum(
+            fn (AttendanceCalculationResult $calc): int => $calc->countedEarlyMinutes()
+        );
+        if ($earlyTotal > 0) {
+            return 'early_leave';
+        }
+
+        return 'on_time';
     }
 
     /**

@@ -10,6 +10,7 @@ use App\Http\Requests\Employee\StoreFieldPhotoRequest;
 use App\Models\Attendance;
 use App\Models\AttendancePhoto;
 use App\Models\User;
+use App\Services\Attendance\AttendanceCalculationEngine;
 use App\Services\Attendance\AttendancePhotoService;
 use App\Services\Attendance\AttendanceService;
 use App\Services\Attendance\ClockPageService;
@@ -26,6 +27,7 @@ class ClockController extends Controller
 {
     public function __construct(
         private readonly AttendanceService $attendance,
+        private readonly AttendanceCalculationEngine $calculations,
         private readonly ClockPageService $clockPage,
         private readonly DailyReportService $reports,
         private readonly AttendancePhotoService $photos,
@@ -196,8 +198,8 @@ class ClockController extends Controller
 
         return [
             'date' => $date,
-            'late_minutes' => (int) $attendance->late_minutes,
-            'early_minutes' => (int) $attendance->early_departure_minutes,
+            'late_minutes' => $this->calculations->exactLateMinutes($attendance),
+            'early_minutes' => $this->calculations->exactEarlyMinutes($attendance),
             'report_missing' => $main === null || blank($main->daily_report),
         ];
     }

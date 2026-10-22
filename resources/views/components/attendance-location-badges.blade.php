@@ -63,11 +63,14 @@
         ]) aria-hidden="true"></i>
     </span>
     @foreach ($punches as $punch)
-        <span @class(['badge', $badgeClass($punch['outside'])])>
+        <span @class(['badge', $badgeClass($punch['outside']), 'd-inline-flex', 'align-items-center', 'gap-1'])>
             {{ __('clock.location.badge_status', [
                 'punch' => $punch['punch'],
                 'status' => $statusLabel($punch['outside']),
             ]) }}
+            @if ($punch['outside'])
+                <x-hp-tooltip :text="__('attendance.tooltips.outside_office')" />
+            @endif
         </span>
     @endforeach
 </div>

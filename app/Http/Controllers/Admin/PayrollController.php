@@ -96,6 +96,7 @@ class PayrollController extends Controller
         $liveCounts = null;
         $countsOutOfSync = false;
         $suggestedLateMinutes = null;
+        $suggestedEarlyMinutes = null;
 
         if ($payroll->user !== null) {
             $eval = $this->evaluations->summaryForPayslip(
@@ -124,8 +125,9 @@ class PayrollController extends Controller
                     (int) $payroll->month,
                     (int) $payroll->year,
                 );
-                // Suggestion = punch lateness (pre-grace). Applied totals still use date-aware exactLateMinutes.
+                // Suggestion = counted late (grace SSOT) — same as late_minutes_total / exactLateMinutes.
                 $suggestedLateMinutes = (int) $live['suggested_late_minutes_total'];
+                $suggestedEarlyMinutes = (int) $live['suggested_early_departure_minutes_total'];
                 $liveCounts = [
                     'full_time_days' => (int) $live['full_time_days'],
                     'online_half_days' => (int) $live['online_half_days'],
@@ -133,6 +135,7 @@ class PayrollController extends Controller
                     'rest_days' => (int) $live['rest_days'],
                     'hours_deduction' => (float) $live['hours_deduction'],
                     'late_minutes_total' => (int) $live['late_minutes_total'],
+                    'early_departure_minutes_total' => $suggestedEarlyMinutes,
                 ];
                 $countsOutOfSync = (int) $payroll->full_time_days !== $liveCounts['full_time_days']
                     || (int) $payroll->online_half_days !== $liveCounts['online_half_days']
@@ -155,6 +158,7 @@ class PayrollController extends Controller
             'liveCounts' => $liveCounts,
             'countsOutOfSync' => $countsOutOfSync,
             'suggestedLateMinutes' => $suggestedLateMinutes,
+            'suggestedEarlyMinutes' => $suggestedEarlyMinutes,
         ]);
     }
 
@@ -178,6 +182,21 @@ class PayrollController extends Controller
         return redirect()
             ->route('admin.payroll.show', $payroll)
             ->with('success', __('payroll.flash.refreshed_attendance'));
+    }
+
+    /**
+     * Apply SSOT counted late minutes (grace-adjusted) into the draft.
+     * Ignores any client-side suggested value — recomputes on the server.
+     */
+    public function applySuggestedLate(PayrollRecord $payroll): RedirectResponse
+    {
+        $this->authorize('update', $payroll);
+
+        $this->drafts->applySuggestedLateMinutes($payroll);
+
+        return redirect()
+            ->route('admin.payroll.show', $payroll)
+            ->with('success', __('payroll.flash.applied_suggested_late'));
     }
 
     public function storeAdjustment(StorePayrollAdjustmentRequest $request, PayrollRecord $payroll): RedirectResponse

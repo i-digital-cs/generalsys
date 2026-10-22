@@ -18,9 +18,11 @@ use Illuminate\Support\Collection;
  * Attendance / permission / advance inputs for one employee-month (T-4.4).
  * Rest-day pool (Rest Days screen) feeds rest_days counts on generate/recalc.
  *
- * Late minutes ownership:
- * - `late_minutes_total` → {@see AttendanceService::exactLateMinutes} (date-aware; Task 1.6)
- * - `suggested_late_minutes_total` → punch raw (draft UI tip only; never mutates settled payroll)
+ * Late / early minutes ownership (grace SSOT):
+ * - `late_minutes_total` → sum {@see AttendanceService::exactLateMinutes} (date-aware counted)
+ * - `suggested_late_minutes_total` → same exact late total (draft “Use suggested” / UI tip)
+ * - `suggested_early_departure_minutes_total` → sum {@see AttendanceService::exactEarlyMinutes}
+ * - `raw_late_minutes_total` → punch raw (diagnostic only; never for draft apply / money)
  *
  * Money ownership stays in {@see PayrollCalculator}; this class does not compute net pay.
  */
@@ -58,6 +60,9 @@ class PayrollAggregator
      *     overtime_hours: float,
      *     hours_deduction: float,
      *     late_minutes_total: int,
+     *     suggested_late_minutes_total: int,
+     *     suggested_early_departure_minutes_total: int,
+     *     raw_late_minutes_total: int,
      *     leave_permission_minutes: int,
      *     late_permission_minutes: int,
      *     forced_permission_penalty_base: float,
@@ -78,11 +83,17 @@ class PayrollAggregator
         $hours = $this->hoursDeduction($rows);
         $permission = $this->permissionTotals($user, $month, $year);
 
+        $exactLate = $this->exactLateMinutesTotal($rows);
+        $exactEarly = $this->exactEarlyMinutesTotal($rows);
+
         return array_merge($counts, [
             'hours_deduction' => $hours,
-            'late_minutes_total' => $this->exactLateMinutesTotal($rows),
-            // Punch lateness (pre-grace) for Admin draft suggestion only — never used to mutate settled payroll.
-            'suggested_late_minutes_total' => $this->punchLateMinutesTotal($rows),
+            'late_minutes_total' => $exactLate,
+            // Draft suggestion = counted (grace) SSOT — never punch raw.
+            'suggested_late_minutes_total' => $exactLate,
+            'suggested_early_departure_minutes_total' => $exactEarly,
+            // Diagnostic only (pre-grace punch sum).
+            'raw_late_minutes_total' => $this->punchLateMinutesTotal($rows),
             'leave_permission_minutes' => $permission['leave_minutes'],
             'late_permission_minutes' => $permission['late_minutes'],
             'forced_permission_penalty_base' => $permission['forced_base'],
@@ -97,6 +108,8 @@ class PayrollAggregator
      */
     private function exactLateMinutesTotal(Collection $rows): int
     {
+        $this->attendance->warmScheduledAssignments($rows);
+
         $total = 0;
         foreach ($rows as $row) {
             if (! in_array($row->status, self::WORKED, true)) {
@@ -109,12 +122,34 @@ class PayrollAggregator
     }
 
     /**
-     * Sum of raw punch lateness (before grace). Used only as a draft UI suggestion.
+     * Sum of date-aware counted early-departure minutes (grace SSOT).
+     *
+     * @param  Collection<int, Attendance>  $rows
+     */
+    private function exactEarlyMinutesTotal(Collection $rows): int
+    {
+        $this->attendance->warmScheduledAssignments($rows);
+
+        $total = 0;
+        foreach ($rows as $row) {
+            if (! in_array($row->status, self::WORKED, true)) {
+                continue;
+            }
+            $total += $this->attendance->exactEarlyMinutes($row);
+        }
+
+        return $total;
+    }
+
+    /**
+     * Sum of raw punch lateness (before grace). Diagnostic only — not for draft apply.
      *
      * @param  Collection<int, Attendance>  $rows
      */
     private function punchLateMinutesTotal(Collection $rows): int
     {
+        $this->attendance->warmScheduledAssignments($rows);
+
         $total = 0;
         foreach ($rows as $row) {
             if (! in_array($row->status, self::WORKED, true)) {

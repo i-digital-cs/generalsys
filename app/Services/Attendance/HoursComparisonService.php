@@ -108,6 +108,8 @@ class HoursComparisonService
         $restDayCount = 0;
         $vacationDayCount = 0;
 
+        $this->attendanceService->warmScheduledAssignments($attendances->flatten(1));
+
         for ($day = $from->copy(); $day->lte($to); $day->addDay()) {
             $date = $day->toDateString();
             $dayAssignments = $assignments->get($date, collect());
@@ -135,7 +137,7 @@ class HoursComparisonService
                 $dayHadWork = true;
                 $totalRaw += (float) ($row->raw_actual_hours ?? $row->actual_hours);
                 $totalLate += $this->attendanceService->exactLateMinutes($row);
-                $totalEarly += (int) $row->early_departure_minutes;
+                $totalEarly += $this->attendanceService->exactEarlyMinutes($row);
             }
             if ($dayHadWork) {
                 $workedDays++;
@@ -908,10 +910,14 @@ class HoursComparisonService
                 'is_official_holiday_work' => (bool) $row->is_official_holiday_work,
                 'photos' => $photos,
                 'attendance' => $row,
-                'late_minutes' => (int) $row->late_minutes,
-                'early_departure_minutes' => (int) $row->early_departure_minutes,
+                'late_minutes' => $this->attendanceService->exactLateMinutes($row),
+                'early_departure_minutes' => $this->attendanceService->exactEarlyMinutes($row),
                 'raw_hours' => round((float) ($row->raw_actual_hours ?? $row->actual_hours), 2),
                 'credited_hours' => $credited,
+                'checkout_provenance' => CheckoutProvenance::forAttendance($row),
+                'duration_verified' => CheckoutProvenance::durationIsVerified(
+                    CheckoutProvenance::forAttendance($row)
+                ) && ! $open,
             ];
 
             if ($row->segments->isNotEmpty()) {
