@@ -30,7 +30,7 @@ Code + tests on TEST are green. LIVE not deployed. No migrations. No historical 
 ## Git
 
 - Branch: `release/attendance-forensic-rc1`  
-- Commit hash: *(filled after commit)*  
+- Commit hash: `41658858451f225fc3da68b94ab6f567b69f802b`  
 - Manifest: see commit `git show --stat`
 
 ---
