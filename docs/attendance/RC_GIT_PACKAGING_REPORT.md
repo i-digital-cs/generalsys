@@ -23,8 +23,8 @@ Product CONDITIONAL factors (Oct stored drift backfill, overnight profiles) rema
 | Top-level | `/home/d14098/generalsys.idigital-cs.com` |
 | Base `main` HEAD (unchanged) | `7bc6c45e0da6d3795b30b297a3bee3238907f5b4` |
 | Release branch | `release/attendance-ssot-grace-payroll-rc-20261022` |
-| RC commit SHA | **`7ed3ed2f61cf27e8c7f8ce3159a13a451e93fe37`** |
-| Packaging-report commit | *(this file — follow-up docs commit on same branch)* |
+| RC feature commit SHA | **`7ed3ed2f61cf27e8c7f8ce3159a13a451e93fe37`** |
+| Docs packaging commit | follows feature commit on the same branch (`docs(attendance): record SSOT grace payroll RC git packaging report`) |
 | Parent of RC | `7bc6c45` (`main`) |
 | Existing branches preserved | `main`, `release/attendance-forensic-rc1`, `backup/main-before-attendance-rc1-merge-20261022113557`, `fixd-hr-system` |
 
