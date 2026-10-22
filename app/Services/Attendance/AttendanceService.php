@@ -402,13 +402,19 @@ class AttendanceService
         }
 
         $closeAt = $this->resolveStaleForceCloseTime($attendance, $segment, $at);
+        if ($closeAt === null) {
+            // Misaligned window (e.g. night punch vs daytime 00:00–12:00 profile):
+            // leave checkout missing — never fabricate a verified employee out time.
+            return null;
+        }
 
         return $this->forceCloseStaleSegment($attendance, $closeAt);
     }
 
     /**
      * Shift types the employee may pick on the clock screen for $at's date.
-     * Early / late / after-end allowed for any remaining planned type that day.
+     * Includes types already closed that day so mid-shift breaks remain possible;
+     * preference for a *new* session uses {@see unusedPlannedTypes()}.
      *
      * @return list<string>
      */
@@ -416,7 +422,7 @@ class AttendanceService
     {
         $at = Carbon::parse($at ?? now());
 
-        return $this->remainingPlannedTypes($user, $at->toDateString());
+        return $this->plannedAllowedTypes($user, $at->toDateString());
     }
 
     /**
@@ -428,7 +434,7 @@ class AttendanceService
     public function closedUnrecordedShiftTypes(User $user, ?CarbonInterface $at = null): array
     {
         $at = Carbon::parse($at ?? now());
-        $remaining = $this->remainingPlannedTypes($user, $at->toDateString());
+        $remaining = $this->unusedPlannedTypes($user, $at->toDateString());
 
         return array_values(array_filter(
             $remaining,
@@ -445,7 +451,7 @@ class AttendanceService
     public function upcomingUnrecordedShiftTypes(User $user, ?CarbonInterface $at = null): array
     {
         $at = Carbon::parse($at ?? now());
-        $remaining = $this->remainingPlannedTypes($user, $at->toDateString());
+        $remaining = $this->unusedPlannedTypes($user, $at->toDateString());
         $upcoming = [];
 
         foreach ($remaining as $type) {
@@ -462,15 +468,24 @@ class AttendanceService
     }
 
     /**
+     * Planned types that do not yet have a closed attendance row for $date.
+     * Mid-shift re-entry on a completed type remains available via {@see availableShiftTypes()}.
+     *
      * @return list<string>
      */
-    private function remainingPlannedTypes(User $user, string $date): array
+    public function unusedPlannedTypes(User $user, string $date): array
     {
-        return $this->plannedAllowedTypes($user, $date);
+        return array_values(array_filter(
+            $this->plannedAllowedTypes($user, $date),
+            fn (string $type) => ! $this->hasClosedAttendanceForShift($user, $date, $type),
+        ));
     }
 
     /**
-     * Preferred clock selection: in-window shift first, else earliest start among remaining.
+     * Preferred clock selection for a *new* session:
+     * unused types first (so a completed morning shift is not reused for evening),
+     * in-window among that pool, else earliest start. Falls back to all available
+     * only when every planned type already has a closed row (mid-shift break).
      */
     public function preferredShiftType(User $user, ?CarbonInterface $at = null): string
     {
@@ -481,8 +496,11 @@ class AttendanceService
             return Attendance::SHIFT_FULL_TIME;
         }
 
+        $unused = $this->unusedPlannedTypes($user, $at->toDateString());
+        $pool = $unused !== [] ? $unused : $available;
+
         $inWindow = [];
-        foreach ($available as $type) {
+        foreach ($pool as $type) {
             if ($this->shiftHasNotStarted($user, $type, $at) || $this->shiftWindowHasEnded($user, $type, $at)) {
                 continue;
             }
@@ -497,7 +515,7 @@ class AttendanceService
         }
 
         $byStart = [];
-        foreach ($available as $type) {
+        foreach ($pool as $type) {
             $start = $this->expectedStartFor($user, $type, $at);
             $byStart[] = ['type' => $type, 'start' => $start ?? $at->copy()->addYears(10)];
         }
@@ -599,6 +617,26 @@ class AttendanceService
             ->whereDate('date', $date)
             ->where('shift_type', $shiftType)
             ->exists();
+    }
+
+    /**
+     * True when a punch session for this type exists and is fully closed (no open segment).
+     * Absence-only placeholders without clock_in do not count as a completed shift.
+     */
+    public function hasClosedAttendanceForShift(User $user, string $date, string $shiftType): bool
+    {
+        $row = Attendance::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->where('shift_type', $shiftType)
+            ->with('segments')
+            ->first();
+
+        if ($row === null || $row->clock_in === null) {
+            return false;
+        }
+
+        return $row->clock_out !== null && ! $row->hasOpenSegment();
     }
 
     public function todaysPrimaryAssignment(User $user, ?CarbonInterface $at = null): ?ShiftAssignment
@@ -783,33 +821,32 @@ class AttendanceService
         return 0;
     }
 
+    /**
+     * Resolve a safe auto-close timestamp, or null when the shift window cannot own this punch.
+     *
+     * Only closes at the configured expected end (capped to "now"). Never fabricates
+     * clock_in+planned / clock_in+1m as a verified employee checkout — that produced
+     * misleading Reda-style records when a daytime window met a night punch.
+     */
     private function resolveStaleForceCloseTime(
         Attendance $attendance,
         AttendanceSegment $segment,
         CarbonInterface $at,
-    ): CarbonInterface {
+    ): ?CarbonInterface {
         $expectedEnd = $this->expectedEndForAttendance($attendance);
-        $plannedMinutes = max(
-            1,
-            (int) round($this->shifts->resolveForAttendance($attendance) * 60),
-        );
-        $fromClockInPlanned = $segment->clock_in->copy()->addMinutes($plannedMinutes);
 
-        // Use profile/assignment end only when it is after clock-in. Night punches with a
-        // daytime profile (end before clock-in) used to collapse to clock_in+1 minute.
-        if ($expectedEnd !== null && $expectedEnd->gt($segment->clock_in)) {
-            $closeAt = $expectedEnd->copy();
-        } else {
-            // Credit elapsed time until now, capped at planned length from clock-in.
-            $closeAt = $at->lt($fromClockInPlanned) ? $at->copy() : $fromClockInPlanned->copy();
+        // Misaligned / missing window (expected end not after clock-in): leave open.
+        if ($expectedEnd === null || ! $expectedEnd->gt($segment->clock_in)) {
+            return null;
         }
 
+        $closeAt = $expectedEnd->copy();
         if ($closeAt->gt($at)) {
             $closeAt = $at->copy();
         }
 
         if ($closeAt->lte($segment->clock_in)) {
-            $closeAt = $segment->clock_in->copy()->addMinute();
+            return null;
         }
 
         return $closeAt;

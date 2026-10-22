@@ -342,6 +342,8 @@ class DualDefaultShiftsTest extends TestCase
         $evening = Carbon::parse('2026-08-03 18:05:00');
         $this->assertContains(Attendance::SHIFT_ONLINE_HALF, $service->availableShiftTypes($employee, $evening));
         $this->assertContains(Attendance::SHIFT_FULL_TIME, $service->availableShiftTypes($employee, $evening));
+        // Completed FULL must not be preferred for the evening session.
+        $this->assertSame(Attendance::SHIFT_ONLINE_HALF, $service->preferredShiftType($employee, $evening));
     }
 
     public function test_late_start_allowed_until_end_then_next_shift_opens(): void

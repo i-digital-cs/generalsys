@@ -290,13 +290,23 @@
                                 <div class="fw-semibold">{{ __('clock.shifts.'.$dayRow->shift_type) }}</div>
                                 <ul class="list-unstyled small mb-2">
                                     @foreach ($dayRow->segments->sortBy('sequence') as $segment)
+                                        @php
+                                            $segIn = $segment->clock_in?->timezone($tz);
+                                            $segOut = $segment->clock_out?->timezone($tz);
+                                            $crossDay = $segIn && $segOut && $segIn->toDateString() !== $segOut->toDateString();
+                                        @endphp
                                         <li class="num-ltr" dir="ltr">
-                                            {{ $segment->clock_in?->timezone($tz)->format('H:i') }}
+                                            {{ $crossDay ? $segIn?->format('Y-m-d H:i') : $segIn?->format('H:i') }}
                                             –
-                                            {{ $segment->clock_out?->timezone($tz)->format('H:i') ?? '…' }}
+                                            @if ($segOut === null)
+                                                {{ __('attendance.punch.open') }}
+                                            @else
+                                                {{ $crossDay ? $segOut->format('Y-m-d H:i') : $segOut->format('H:i') }}
+                                            @endif
                                         </li>
                                     @endforeach
                                 </ul>
+                                <x-attendance-flags :attendance="$dayRow" class="mb-2" />
                                 @foreach ($dayRow->gaps as $gap)
                                     <div class="small text-body-secondary">
                                         {{ __('clock.gap_minutes', ['minutes' => $gap->minutes]) }}

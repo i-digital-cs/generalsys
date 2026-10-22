@@ -154,11 +154,7 @@
                                                 <td>
                                                     <div class="fw-semibold">{{ $shiftLabel }}</div>
                                                     <div class="small text-body-secondary">
-                                                        <span class="num-ltr">
-                                                            {{ $session->clock_in?->format('H:i') ?? '—' }}
-                                                            →
-                                                            {{ $session->clock_out?->format('H:i') ?? __('dashboard.employee.open_session') }}
-                                                        </span>
+                                                        <x-attendance-punch-range :attendance="$session" />
                                                     </div>
                                                     <x-attendance-flags :attendance="$session" class="mt-1" />
                                                     <x-attendance-photos :photos="$session->photos" class="mt-2" compact />

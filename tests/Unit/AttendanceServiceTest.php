@@ -595,9 +595,10 @@ class AttendanceServiceTest extends TestCase
         $this->assertSame('2026-08-23', $row->date->toDateString());
     }
 
-    public function test_stale_close_for_night_punch_with_day_profile_credits_elapsed_not_one_minute(): void
+    public function test_stale_close_for_night_punch_with_day_profile_leaves_checkout_missing(): void
     {
-        // Profile 00:00–12:00 but employee clocks in at night (real driver pattern).
+        // Profile 00:00–12:00 but employee clocks in at night (Reda pattern).
+        // Misaligned window must NOT fabricate a checkout — leave open for real out / supervisor.
         $employee = User::factory()->employee()->create([
             'work_start_time' => '00:00',
             'work_end_time' => '12:00',
@@ -617,15 +618,15 @@ class AttendanceServiceTest extends TestCase
             Attendance::SHIFT_FULL_TIME,
         );
 
-        $this->assertNotNull($closed);
-        $this->assertTrue((bool) $closed->is_auto_clock_out);
-        $this->assertSame('2026-10-07 11:01:00', $closed->clock_out->format('Y-m-d H:i:s'));
-        $this->assertGreaterThan(10.0, (float) $closed->raw_actual_hours);
-        $this->assertEqualsWithDelta(
-            min(12.0, (float) $closed->raw_actual_hours),
-            (float) $closed->actual_hours,
-            0.01,
-        );
+        $this->assertNull($closed);
+        $open = $this->service->openAttendance($employee);
+        $this->assertNotNull($open);
+        $this->assertNull($open->clock_out);
+        $this->assertFalse((bool) $open->is_auto_clock_out);
+
+        $realOut = $this->service->clockOut($employee, Carbon::parse('2026-10-07 11:45:00'));
+        $this->assertSame('2026-10-07 11:45:00', $realOut->clock_out->format('Y-m-d H:i:s'));
+        $this->assertFalse((bool) $realOut->is_auto_clock_out);
     }
 
     public function test_stale_cross_day_open_not_closed_more_than_one_hour_before_shift(): void

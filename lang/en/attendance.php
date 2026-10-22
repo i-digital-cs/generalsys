@@ -1,6 +1,13 @@
 <?php
 
 return [
+    'punch' => [
+        'open' => 'open',
+        'missing_checkout' => 'Missing checkout',
+        'auto_closed' => 'Auto-closed (not employee verified)',
+        'employee_verified' => 'Employee checkout',
+        'segments' => 'Segments',
+    ],
     'history' => [
         'title' => 'Attendance history',
         'subtitle' => 'Follow who attended or was absent, with punch photos and location.',

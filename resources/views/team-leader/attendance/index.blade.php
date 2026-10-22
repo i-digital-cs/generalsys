@@ -148,13 +148,7 @@
                                         <div class="d-flex flex-wrap gap-1 align-items-center">
                                             @foreach ($row['attendances'] ?? [] as $attPunch)
                                                 @if ($attPunch->clock_in !== null)
-                                                    <span class="badge text-bg-light border text-dark num-ltr" dir="ltr">
-                                                        {{ $attPunch->clock_in->timezone(config('app.timezone'))->format('H:i') }}
-                                                        →
-                                                        {{ $attPunch->clock_out
-                                                            ? $attPunch->clock_out->timezone(config('app.timezone'))->format('H:i')
-                                                            : '…' }}
-                                                    </span>
+                                                    <x-attendance-punch-range :attendance="$attPunch" :show-shift="true" />
                                                 @endif
                                             @endforeach
                                             <span class="badge text-bg-light border text-dark">
