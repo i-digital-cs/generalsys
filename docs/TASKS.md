@@ -1247,8 +1247,103 @@ T-0.1 → T-0.2 → T-0.3
 
 ---
 
+## Phase GH — General House Operations, Invoicing & Logistics
+
+**Program docs:** `docs/general-house/*` · **Module:** General house (`service`) — **not** Mohra Gross.  
+**Rule:** Complete Phase 0 approval before any T-GH-1 code. One phase at a time; stop for owner approval between phases.
+
+### T-GH-0.1 — Phase 0 discovery & design pack
+- Depends on: —
+- Unlocks: T-GH-1.1 (after owner approval)
+- Status: `done`
+- [x] Task complete
+  - [x] Audit existing General House / Mohra / Gross / HR
+  - [x] Docs: PHASE_0_AUDIT, BUSINESS_REQUIREMENTS, ARCHITECTURE, DATABASE_DESIGN, STATE_MACHINE, FINANCIAL_RULES, UI_UX_SPECIFICATION, IMPLEMENTATION_PLAN, DECISION_LOG, RISK_REGISTER
+  - [x] Register Phase GH tasks here
+  - [x] Owner approval of Phase 0 (2026-10-25) + Phase 1 authorization
+
+### T-GH-1.1 — Catalog schema (categories, products, treatments, offerings)
+- Depends on: T-GH-0.1 owner approval
+- Unlocks: T-GH-1.2
+- Status: `done`
+- [x] Task complete
+  - [x] Migrations + `docs/DATABASE_SCHEMA.md` §24
+  - [x] Models + factories
+  - [x] Unit/feature tests
+  - [x] UI/UX: N/A
+
+### T-GH-1.2 — Catalog services + policies
+- Depends on: T-GH-1.1
+- Unlocks: T-GH-1.3
+- Status: `done`
+- [x] Task complete
+  - [x] Catalog services + `GhSellableCatalogService`
+  - [x] Policies + Form Requests
+  - [x] Disabled offerings excluded from sellable catalog (contract test; invoices = Phase 5)
+  - [x] UI/UX: N/A
+
+### T-GH-1.3 — Catalog admin UI
+- Depends on: T-GH-1.2
+- Unlocks: T-GH-2.1
+- Status: `done`
+- [x] Task complete
+  - [x] Blade CRUD AR/EN RTL/LTR responsive (`/service/gh/*`)
+  - [x] Feature tests + UI/UX gate (AR+EN keys, logical Bootstrap, responsive tables)
+
+### T-GH-2.* — Customers, zones, B2B contracts (Phase 2)
+- Depends on: T-GH-1.3 + D-GH-004 (min-order policy)
+- Status: `pending`
+- [ ] Expand into numbered subtasks at Phase 2 kickoff
+
+### T-GH-3.* — Order creation & scheduling (Phase 3)
+- Depends on: T-GH-2 complete
+- Status: `pending`
+- [ ] Expand at Phase 3 kickoff
+
+### T-GH-4.* — Logistics state machine + 24h eligibility (Phase 4)
+- Depends on: T-GH-3 + D-GH-011 exceptions
+- Status: `pending`
+- [ ] Expand at Phase 4 kickoff
+
+### T-GH-5.* — Invoice builder + calculation engine (Phase 5)
+- Depends on: T-GH-4 + D-GH-005/006/012/013/014
+- Status: `pending`
+- [ ] Expand at Phase 5 kickoff
+
+### T-GH-6.* — Delivery & payments (Phase 6)
+- Depends on: T-GH-5 + D-GH-008/009
+- Status: `pending`
+- [ ] Expand at Phase 6 kickoff
+
+### T-GH-7.* — Driver workspace (Phase 7)
+- Depends on: T-GH-4 (min) / T-GH-6 preferred
+- Status: `pending`
+- [ ] Expand at Phase 7 kickoff
+
+### T-GH-8.* — Dashboard & reporting (Phase 8)
+- Depends on: T-GH-6
+- Status: `pending`
+- [ ] Expand at Phase 8 kickoff
+
+---
+
 ## Progress log
 
+- [x] 2026-10-25 T-GH-1.1–1.3 PASS — Phase GH-1 Dynamic Services Catalog. Tables `gh_service_categories|gh_treatments|gh_products|gh_product_offerings`; Manager-only CRUD under `/service/gh/*`; DECIMAL AED prices; tax_class metadata; UNIQUE(product,treatment); sellable filter excludes inactive. Tests: 12 GH + Gross CategoryCrud regression green. **No production migrate.** Next: owner authorize Phase 2.
+```text
+Task ID: T-GH-1.1 / T-GH-1.2 / T-GH-1.3
+Commands: php artisan test --filter=GeneralHouse; php artisan test --filter=CategoryCrudTest; vendor/bin/pint --dirty; php artisan route:list --name=gh.
+Automated tests: PASS
+UI/UX (AR+EN, RTL+LTR, 375/768/1280): PASS (keys + logical layout; visual spot-check recommended on deploy)
+Next task allowed: no (await Phase 2 authorization)
+DATABASE CHANGES: YES
+SCHEMA MIGRATIONS CREATED: YES
+DATA MIGRATION OR BACKFILL: NO
+PRODUCTION DEPLOYMENT PROCEDURE: BLOCKED (implementation auth ≠ production deploy)
+HARDCODED ID SAFETY: NOT APPLICABLE
+DATABASE MIGRATION POLICY: PASS
+```
+- [x] 2026-10-25 T-GH-0.1 PASS (docs) — General House Phase 0 discovery only. Existing General house = valuation; laundry ops absent. Mohra Gross reusable as **pattern** not schema. Deliverables under `docs/general-house/`. **No migrations/code.** Next: owner approve Phase 0 + DECISION_LOG before T-GH-1.1.
 - [x] 2026-08-02 T-0.1 PASS — Laravel 11.55 installed (merged into web root without touching existing files), .env (sqlite fallback, queue=database, cache/SESSION=file), Sanctum + Pint, phpunit sqlite :memory:, `artisan about` + migrate OK
 - [x] 2026-08-02 T-0.2 PASS — Vite builds LTR+RTL SCSS + JS (24.6 KB gz); Bootstrap 5.3 + bootstrap-icons self-hosted; Cairo/Tajawal woff2 in public/fonts (no CDN); layouts app/auth + partials; lang ar+en; login shell + /locale/{locale} toggle + SetLocale middleware
 - [x] 2026-08-02 T-0.3 PASS — config/menu.php (MANAGER/TEAM_LEADER/EMPLOYEE; payroll only under MANAGER); MenuConfigTest + SmokeTest green (7 tests, 133 assertions)

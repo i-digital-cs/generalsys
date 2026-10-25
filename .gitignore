@@ -9,6 +9,10 @@ storage/fonts/*
 .env
 .env.backup
 .env.production
+# Local DB dumps — never commit
+/backup.sql
+/storage/backups/
+*.sql.gz
 .phpactor.json
 .phpunit.result.cache
 Homestead.json

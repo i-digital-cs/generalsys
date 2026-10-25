@@ -25,6 +25,10 @@ use App\Http\Controllers\Employee\ProfileController;
 use App\Http\Controllers\Employee\RequestController;
 use App\Http\Controllers\Employee\SalaryController;
 use App\Http\Controllers\EmployeePhotoController;
+use App\Http\Controllers\GeneralHouse\CategoryController as GhCategoryController;
+use App\Http\Controllers\GeneralHouse\OfferingController as GhOfferingController;
+use App\Http\Controllers\GeneralHouse\ProductController as GhProductController;
+use App\Http\Controllers\GeneralHouse\TreatmentController as GhTreatmentController;
 use App\Http\Controllers\Gross\CategoryController as GrossCategoryController;
 use App\Http\Controllers\Gross\CustomerController as GrossCustomerController;
 use App\Http\Controllers\Gross\ExpenseTypeController as GrossExpenseTypeController;
@@ -102,6 +106,32 @@ Route::middleware('auth')->group(function () {
     Route::get('/{module}/valuations/{sheet}', [ValuationSheetController::class, 'show'])
         ->whereIn('module', ['service', 'product'])
         ->name('valuation.sheets.show');
+
+    // General House — Dynamic Services Catalog (Phase 1)
+    Route::prefix('service/gh')->name('gh.')->group(function () {
+        Route::get('/categories', [GhCategoryController::class, 'index'])->name('categories.index');
+        Route::post('/categories', [GhCategoryController::class, 'store'])->name('categories.store');
+        Route::put('/categories/{category}', [GhCategoryController::class, 'update'])->name('categories.update');
+        Route::delete('/categories/{category}', [GhCategoryController::class, 'destroy'])->name('categories.destroy');
+
+        Route::get('/treatments', [GhTreatmentController::class, 'index'])->name('treatments.index');
+        Route::post('/treatments', [GhTreatmentController::class, 'store'])->name('treatments.store');
+        Route::put('/treatments/{treatment}', [GhTreatmentController::class, 'update'])->name('treatments.update');
+        Route::delete('/treatments/{treatment}', [GhTreatmentController::class, 'destroy'])->name('treatments.destroy');
+
+        Route::get('/products', [GhProductController::class, 'index'])->name('products.index');
+        Route::get('/products/create', [GhProductController::class, 'create'])->name('products.create');
+        Route::post('/products', [GhProductController::class, 'store'])->name('products.store');
+        Route::get('/products/{product}/edit', [GhProductController::class, 'edit'])->name('products.edit');
+        Route::put('/products/{product}', [GhProductController::class, 'update'])->name('products.update');
+        Route::delete('/products/{product}', [GhProductController::class, 'destroy'])->name('products.destroy');
+        Route::get('/products/{product}/image', [GhProductController::class, 'image'])->name('products.image');
+
+        Route::get('/offerings', [GhOfferingController::class, 'index'])->name('offerings.index');
+        Route::post('/offerings', [GhOfferingController::class, 'store'])->name('offerings.store');
+        Route::put('/offerings/{offering}', [GhOfferingController::class, 'update'])->name('offerings.update');
+        Route::delete('/offerings/{offering}', [GhOfferingController::class, 'destroy'])->name('offerings.destroy');
+    });
 
     Route::prefix('product/expenses')->name('product.expenses.')->group(function () {
         Route::get('/{expenseType}', [ProductExpenseController::class, 'show'])->name('show');

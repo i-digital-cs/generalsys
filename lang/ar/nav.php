@@ -52,4 +52,9 @@ return [
     'gross_section_purchasing' => 'المشتريات',
     'gross_section_sales' => 'المبيعات والشحن',
     'gross_section_finance' => 'المالية',
+    'gh_section_catalog' => 'كتالوج الخدمات',
+    'gh_categories' => 'فئات الخدمة',
+    'gh_products' => 'المنتجات',
+    'gh_treatments' => 'طرق المعالجة',
+    'gh_offerings' => 'العروض والأسعار',
 ];

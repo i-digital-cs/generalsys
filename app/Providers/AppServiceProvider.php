@@ -4,6 +4,10 @@ namespace App\Providers;
 
 use App\Models\Advance;
 use App\Models\AttendancePhoto;
+use App\Models\GeneralHouse\GhProduct;
+use App\Models\GeneralHouse\GhProductOffering;
+use App\Models\GeneralHouse\GhServiceCategory;
+use App\Models\GeneralHouse\GhTreatment;
 use App\Models\Gross\GrossCustomer;
 use App\Models\Gross\GrossExpenseType;
 use App\Models\Gross\GrossItem;
@@ -26,6 +30,10 @@ use App\Observers\UserShiftProfileObserver;
 use App\Policies\AdvancePolicy;
 use App\Policies\AttendancePhotoPolicy;
 use App\Policies\EmployeePolicy;
+use App\Policies\GeneralHouse\GhProductOfferingPolicy;
+use App\Policies\GeneralHouse\GhProductPolicy;
+use App\Policies\GeneralHouse\GhServiceCategoryPolicy;
+use App\Policies\GeneralHouse\GhTreatmentPolicy;
 use App\Policies\Gross\GrossCustomerPolicy;
 use App\Policies\Gross\GrossExpenseTypePolicy;
 use App\Policies\Gross\GrossItemPolicy;
@@ -94,6 +102,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GrossTreasuryVoucher::class, GrossTreasuryVoucherPolicy::class);
         Gate::policy(GrossExpenseType::class, GrossExpenseTypePolicy::class);
         Gate::policy(GrossReceiptPurpose::class, GrossReceiptPurposePolicy::class);
+        Gate::policy(GhServiceCategory::class, GhServiceCategoryPolicy::class);
+        Gate::policy(GhTreatment::class, GhTreatmentPolicy::class);
+        Gate::policy(GhProduct::class, GhProductPolicy::class);
+        Gate::policy(GhProductOffering::class, GhProductOfferingPolicy::class);
 
         View::composer('layouts.app', function (IlluminateView $view): void {
             $service = app(ImpersonationService::class);

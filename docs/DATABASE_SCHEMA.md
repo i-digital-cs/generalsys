@@ -1219,3 +1219,71 @@ CREATE TABLE product_expense_month_budgets (
 ```
 
 Adding spend from Product expense detail posts the same إذن صرف as `/product/gross/treasury/create?type=PAYMENT&purpose=EXPENSE`. Manager/Accountant write; Product access view. Does **not** feed valuation Gross tiles.
+
+---
+
+## 24. General House catalog (Service module — Phase GH-1)
+
+Independent `gh_*` domain under **General house** (`service`). Does **not** reuse `gross_*` tables. Currency at launch: **AED**. Prices are tax-exclusive; tax classification is metadata only until the invoice engine (Phase 5).
+
+```sql
+CREATE TABLE gh_service_categories (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name_ar VARCHAR(120) NOT NULL,
+    name_en VARCHAR(120) NOT NULL,
+    description_ar VARCHAR(500) NULL,
+    description_en VARCHAR(500) NULL,
+    status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_cat_status_sort (status, sort_order)
+);
+
+CREATE TABLE gh_treatments (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name_ar VARCHAR(120) NOT NULL,
+    name_en VARCHAR(120) NOT NULL,
+    status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_treat_status_sort (status, sort_order)
+);
+
+CREATE TABLE gh_products (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    category_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(40) NOT NULL,
+    name_ar VARCHAR(150) NOT NULL,
+    name_en VARCHAR(150) NOT NULL,
+    image_path VARCHAR(255) NULL,
+    status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_product_code (code),
+    INDEX idx_gh_prod_cat_status_sort (category_id, status, sort_order),
+    CONSTRAINT fk_gh_prod_cat FOREIGN KEY (category_id) REFERENCES gh_service_categories(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE gh_product_offerings (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id BIGINT UNSIGNED NOT NULL,
+    treatment_id BIGINT UNSIGNED NOT NULL,
+    standard_price DECIMAL(12,2) NOT NULL,
+    currency CHAR(3) NOT NULL DEFAULT 'AED',
+    tax_class ENUM('STANDARD_RATED','ZERO_RATED','EXEMPT','OUT_OF_SCOPE') NOT NULL DEFAULT 'STANDARD_RATED',
+    status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_offering_product_treatment (product_id, treatment_id),
+    INDEX idx_gh_offering_status_sort (status, sort_order),
+    INDEX idx_gh_offering_treatment (treatment_id),
+    CONSTRAINT fk_gh_offering_product FOREIGN KEY (product_id) REFERENCES gh_products(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_offering_treatment FOREIGN KEY (treatment_id) REFERENCES gh_treatments(id) ON DELETE RESTRICT
+);
+```
+
+Migration: `2026_10_25_200000_create_gh_catalog_tables.php`. Admin UI: `/service/gh/*` (Manager-only in Phase 1).

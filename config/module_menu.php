@@ -11,6 +11,12 @@ return [
     'service' => [
         ['key' => 'nav.dashboard', 'route' => 'portal.service', 'icon' => 'bi-speedometer2'],
         ['key' => 'nav.valuation', 'route' => 'valuation.sheets.index', 'params' => ['module' => 'service'], 'icon' => 'bi-clipboard-data'],
+
+        ['type' => 'heading', 'key' => 'nav.gh_section_catalog'],
+        ['key' => 'nav.gh_categories', 'route' => 'gh.categories.index', 'icon' => 'bi-tags'],
+        ['key' => 'nav.gh_products', 'route' => 'gh.products.index', 'icon' => 'bi-box-seam'],
+        ['key' => 'nav.gh_treatments', 'route' => 'gh.treatments.index', 'icon' => 'bi-droplet'],
+        ['key' => 'nav.gh_offerings', 'route' => 'gh.offerings.index', 'icon' => 'bi-tag'],
     ],
     'product' => [
         ['key' => 'nav.dashboard', 'route' => 'portal.product', 'icon' => 'bi-speedometer2'],

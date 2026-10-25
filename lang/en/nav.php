@@ -52,4 +52,9 @@ return [
     'gross_section_purchasing' => 'Purchasing',
     'gross_section_sales' => 'Sales & shipping',
     'gross_section_finance' => 'Finance',
+    'gh_section_catalog' => 'Services catalog',
+    'gh_categories' => 'Service categories',
+    'gh_products' => 'Products',
+    'gh_treatments' => 'Treatments',
+    'gh_offerings' => 'Offerings & prices',
 ];

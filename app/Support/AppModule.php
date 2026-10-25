@@ -80,7 +80,8 @@ final class AppModule
             return self::HOME;
         }
 
-        if ($name === 'portal.service' || str_starts_with($name, 'service.')) {
+        if ($name === 'portal.service' || str_starts_with($name, 'service.')
+            || str_starts_with($name, 'gh.')) {
             return self::SERVICE;
         }
 
