@@ -1290,10 +1290,16 @@ T-0.1 → T-0.2 → T-0.3
   - [x] Blade CRUD AR/EN RTL/LTR responsive (`/service/gh/*`)
   - [x] Feature tests + UI/UX gate (AR+EN keys, logical Bootstrap, responsive tables)
 
-### T-GH-2.* — Customers, zones, B2B contracts (Phase 2)
-- Depends on: T-GH-1.3 + D-GH-004 (min-order policy)
-- Status: `pending`
-- [ ] Expand into numbered subtasks at Phase 2 kickoff
+### T-GH-2.1 — Customers, addresses, zones, B2B contracts
+- Depends on: T-GH-1.3
+- Unlocks: T-GH-3.*
+- Status: `done`
+- [x] Task complete
+  - [x] Migrations `gh_zones|gh_customers|gh_customer_addresses|gh_b2b_contracts|gh_b2b_contract_offerings`
+  - [x] Services + `GhPricingResolver` + policies + Form Requests
+  - [x] Blade admin UI AR/EN under `/service/gh/*`
+  - [x] Automated tests + TEST migrate (d14098_general)
+  - [x] No invoice/min-order surcharge calculation (Phase 5)
 
 ### T-GH-3.* — Order creation & scheduling (Phase 3)
 - Depends on: T-GH-2 complete
@@ -1329,6 +1335,20 @@ T-0.1 → T-0.2 → T-0.3
 
 ## Progress log
 
+- [x] 2026-10-25 T-GH-2.1 PASS — Customers/zones/B2B contracts on TEST. Gate 0: GH-1 committed `c8d2938` (attendance preserved; backups gitignored). Tables zones/customers/addresses/contracts/contract_offerings; default address uniqueness; active contract overlap blocked; `GhPricingResolver` contract>standard + inactive exclusion. Backup `storage/backups/d14098_general_pre_gh2_*.sql`. Tests: 19 GH + Gross/Valuation regression. LIVE untouched. Next: owner authorize Phase 3.
+```text
+Task ID: T-GH-2.1
+Commands: php artisan test --filter=GeneralHouse; migrate --path=...210000...; CategoryCrudTest; ValuationModuleTest
+Automated tests: PASS
+UI/UX (AR+EN): PASS (keys + screens); browser spot-check recommended
+Next task allowed: no (await Phase 3 authorization)
+DATABASE CHANGES: YES
+SCHEMA MIGRATIONS CREATED: YES
+DATA MIGRATION OR BACKFILL: NO
+PRODUCTION DEPLOYMENT PROCEDURE: BLOCKED (TEST only)
+HARDCODED ID SAFETY: NOT APPLICABLE
+DATABASE MIGRATION POLICY: PASS
+```
 - [x] 2026-10-25 T-GH-1.1–1.3 PASS — Phase GH-1 Dynamic Services Catalog. Tables `gh_service_categories|gh_treatments|gh_products|gh_product_offerings`; Manager-only CRUD under `/service/gh/*`; DECIMAL AED prices; tax_class metadata; UNIQUE(product,treatment); sellable filter excludes inactive. Tests: 12 GH + Gross CategoryCrud regression green. **No production migrate.** Next: owner authorize Phase 2.
 ```text
 Task ID: T-GH-1.1 / T-GH-1.2 / T-GH-1.3

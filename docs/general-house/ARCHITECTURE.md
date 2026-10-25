@@ -59,9 +59,11 @@ Controllers: validate, authorize, call service, return view/redirect.
 
 ## 4. Catalog & orders
 
-**Phase 1 shipped:** Categories → Products → Treatments → Offerings (`UNIQUE` product×treatment), standard AED DECIMAL prices, tax_class metadata, ACTIVE/INACTIVE, sort_order, AR/EN names. Sellable query: `GhSellableCatalogService` (excludes inactive offering/product/treatment/category).
+**Phase 1 shipped:** Categories → Products → Treatments → Offerings (`UNIQUE` product×treatment), standard AED DECIMAL prices, tax_class metadata, ACTIVE/INACTIVE, sort_order, AR/EN names. Sellable query: `GhSellableCatalogService`.
 
-**Later phases:** B2B contract prices; orders with multi-category lines; invoice freeze on ISSUE.
+**Phase 2 shipped:** Zones (min-order amount/policy metadata), customers B2C/B2B, addresses (one default via `default_for_customer_id` unique), B2B contracts + contract offerings (DECIMAL prices; do not mutate standard prices). `GhPricingResolver`: B2C=standard sellable set; B2B=active contract offerings only; inactive catalog chain excluded.
+
+**Later phases:** Orders; logistics; invoice VAT / min-order surcharge math; payments.
 
 ## 5. Logistics & drivers (APPROVED revision)
 

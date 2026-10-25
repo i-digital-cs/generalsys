@@ -57,4 +57,8 @@ return [
     'gh_products' => 'Products',
     'gh_treatments' => 'Treatments',
     'gh_offerings' => 'Offerings & prices',
+    'gh_section_customers' => 'Customers & zones',
+    'gh_customers' => 'Customers',
+    'gh_zones' => 'Delivery zones',
+    'gh_contracts' => 'B2B contracts',
 ];

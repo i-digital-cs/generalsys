@@ -4,10 +4,13 @@ namespace App\Providers;
 
 use App\Models\Advance;
 use App\Models\AttendancePhoto;
+use App\Models\GeneralHouse\GhB2bContract;
+use App\Models\GeneralHouse\GhCustomer;
 use App\Models\GeneralHouse\GhProduct;
 use App\Models\GeneralHouse\GhProductOffering;
 use App\Models\GeneralHouse\GhServiceCategory;
 use App\Models\GeneralHouse\GhTreatment;
+use App\Models\GeneralHouse\GhZone;
 use App\Models\Gross\GrossCustomer;
 use App\Models\Gross\GrossExpenseType;
 use App\Models\Gross\GrossItem;
@@ -30,10 +33,13 @@ use App\Observers\UserShiftProfileObserver;
 use App\Policies\AdvancePolicy;
 use App\Policies\AttendancePhotoPolicy;
 use App\Policies\EmployeePolicy;
+use App\Policies\GeneralHouse\GhB2bContractPolicy;
+use App\Policies\GeneralHouse\GhCustomerPolicy;
 use App\Policies\GeneralHouse\GhProductOfferingPolicy;
 use App\Policies\GeneralHouse\GhProductPolicy;
 use App\Policies\GeneralHouse\GhServiceCategoryPolicy;
 use App\Policies\GeneralHouse\GhTreatmentPolicy;
+use App\Policies\GeneralHouse\GhZonePolicy;
 use App\Policies\Gross\GrossCustomerPolicy;
 use App\Policies\Gross\GrossExpenseTypePolicy;
 use App\Policies\Gross\GrossItemPolicy;
@@ -106,6 +112,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GhTreatment::class, GhTreatmentPolicy::class);
         Gate::policy(GhProduct::class, GhProductPolicy::class);
         Gate::policy(GhProductOffering::class, GhProductOfferingPolicy::class);
+        Gate::policy(GhZone::class, GhZonePolicy::class);
+        Gate::policy(GhCustomer::class, GhCustomerPolicy::class);
+        Gate::policy(GhB2bContract::class, GhB2bContractPolicy::class);
 
         View::composer('layouts.app', function (IlluminateView $view): void {
             $service = app(ImpersonationService::class);

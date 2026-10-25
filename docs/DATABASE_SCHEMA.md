@@ -1287,3 +1287,95 @@ CREATE TABLE gh_product_offerings (
 ```
 
 Migration: `2026_10_25_200000_create_gh_catalog_tables.php`. Admin UI: `/service/gh/*` (Manager-only in Phase 1).
+
+---
+
+## 25. General House customers, zones & B2B contracts (Phase GH-2)
+
+```sql
+CREATE TABLE gh_zones (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name_ar VARCHAR(120) NOT NULL,
+    name_en VARCHAR(120) NOT NULL,
+    min_order_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    min_order_policy ENUM('VALIDATION_ONLY','SURCHARGE') NOT NULL DEFAULT 'SURCHARGE',
+    status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_zone_status_sort (status, sort_order)
+);
+
+CREATE TABLE gh_customers (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    type ENUM('B2C','B2B') NOT NULL DEFAULT 'B2C',
+    name_ar VARCHAR(150) NOT NULL,
+    name_en VARCHAR(150) NULL,
+    phone VARCHAR(40) NULL,
+    email VARCHAR(190) NULL,
+    billing_name VARCHAR(190) NULL,
+    billing_address VARCHAR(500) NULL,
+    tax_registration_number VARCHAR(80) NULL,
+    status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    notes TEXT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_customer_type_status (type, status),
+    INDEX idx_gh_customer_phone (phone),
+    INDEX idx_gh_customer_email (email)
+);
+
+CREATE TABLE gh_customer_addresses (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    customer_id BIGINT UNSIGNED NOT NULL,
+    zone_id BIGINT UNSIGNED NOT NULL,
+    label VARCHAR(80) NOT NULL,
+    building VARCHAR(120) NULL,
+    street VARCHAR(190) NULL,
+    area VARCHAR(120) NULL,
+    directions VARCHAR(500) NULL,
+    latitude DECIMAL(10,7) NULL,
+    longitude DECIMAL(10,7) NULL,
+    is_default TINYINT(1) NOT NULL DEFAULT 0,
+    default_for_customer_id BIGINT UNSIGNED NULL, -- UNIQUE: at most one default per customer
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_address_default_customer (default_for_customer_id),
+    INDEX idx_gh_address_customer_default (customer_id, is_default),
+    INDEX idx_gh_address_zone (zone_id),
+    CONSTRAINT fk_gh_address_customer FOREIGN KEY (customer_id) REFERENCES gh_customers(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_address_zone FOREIGN KEY (zone_id) REFERENCES gh_zones(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE gh_b2b_contracts (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    customer_id BIGINT UNSIGNED NOT NULL,
+    reference VARCHAR(60) NOT NULL,
+    effective_from DATE NOT NULL,
+    effective_to DATE NULL,
+    status ENUM('DRAFT','ACTIVE','EXPIRED','CANCELLED') NOT NULL DEFAULT 'DRAFT',
+    notes TEXT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_contract_reference (reference),
+    INDEX idx_gh_contract_customer_validity (customer_id, status, effective_from, effective_to),
+    CONSTRAINT fk_gh_contract_customer FOREIGN KEY (customer_id) REFERENCES gh_customers(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE gh_b2b_contract_offerings (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    contract_id BIGINT UNSIGNED NOT NULL,
+    offering_id BIGINT UNSIGNED NOT NULL,
+    contract_price DECIMAL(12,2) NOT NULL,
+    currency CHAR(3) NOT NULL DEFAULT 'AED',
+    status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_contract_offering (contract_id, offering_id),
+    INDEX idx_gh_contract_offering_offering (offering_id),
+    CONSTRAINT fk_gh_co_contract FOREIGN KEY (contract_id) REFERENCES gh_b2b_contracts(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_co_offering FOREIGN KEY (offering_id) REFERENCES gh_product_offerings(id) ON DELETE RESTRICT
+);
+```
+
+Migration: `2026_10_25_210000_create_gh_customers_zones_contracts_tables.php`. Pricing resolution: `GhPricingResolver` (contract overrides standard; inactive catalog chain excluded). Invoice surcharge math deferred to Phase 5.

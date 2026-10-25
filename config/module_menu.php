@@ -17,6 +17,11 @@ return [
         ['key' => 'nav.gh_products', 'route' => 'gh.products.index', 'icon' => 'bi-box-seam'],
         ['key' => 'nav.gh_treatments', 'route' => 'gh.treatments.index', 'icon' => 'bi-droplet'],
         ['key' => 'nav.gh_offerings', 'route' => 'gh.offerings.index', 'icon' => 'bi-tag'],
+
+        ['type' => 'heading', 'key' => 'nav.gh_section_customers'],
+        ['key' => 'nav.gh_customers', 'route' => 'gh.customers.index', 'icon' => 'bi-people'],
+        ['key' => 'nav.gh_zones', 'route' => 'gh.zones.index', 'icon' => 'bi-geo-alt'],
+        ['key' => 'nav.gh_contracts', 'route' => 'gh.contracts.index', 'icon' => 'bi-file-earmark-text'],
     ],
     'product' => [
         ['key' => 'nav.dashboard', 'route' => 'portal.product', 'icon' => 'bi-speedometer2'],

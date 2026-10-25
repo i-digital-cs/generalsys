@@ -26,9 +26,13 @@ use App\Http\Controllers\Employee\RequestController;
 use App\Http\Controllers\Employee\SalaryController;
 use App\Http\Controllers\EmployeePhotoController;
 use App\Http\Controllers\GeneralHouse\CategoryController as GhCategoryController;
+use App\Http\Controllers\GeneralHouse\ContractController as GhContractController;
+use App\Http\Controllers\GeneralHouse\CustomerAddressController as GhCustomerAddressController;
+use App\Http\Controllers\GeneralHouse\CustomerController as GhCustomerController;
 use App\Http\Controllers\GeneralHouse\OfferingController as GhOfferingController;
 use App\Http\Controllers\GeneralHouse\ProductController as GhProductController;
 use App\Http\Controllers\GeneralHouse\TreatmentController as GhTreatmentController;
+use App\Http\Controllers\GeneralHouse\ZoneController as GhZoneController;
 use App\Http\Controllers\Gross\CategoryController as GrossCategoryController;
 use App\Http\Controllers\Gross\CustomerController as GrossCustomerController;
 use App\Http\Controllers\Gross\ExpenseTypeController as GrossExpenseTypeController;
@@ -131,6 +135,36 @@ Route::middleware('auth')->group(function () {
         Route::post('/offerings', [GhOfferingController::class, 'store'])->name('offerings.store');
         Route::put('/offerings/{offering}', [GhOfferingController::class, 'update'])->name('offerings.update');
         Route::delete('/offerings/{offering}', [GhOfferingController::class, 'destroy'])->name('offerings.destroy');
+
+        // Phase GH-2 — customers, zones, B2B contracts
+        Route::get('/zones', [GhZoneController::class, 'index'])->name('zones.index');
+        Route::post('/zones', [GhZoneController::class, 'store'])->name('zones.store');
+        Route::put('/zones/{zone}', [GhZoneController::class, 'update'])->name('zones.update');
+        Route::delete('/zones/{zone}', [GhZoneController::class, 'destroy'])->name('zones.destroy');
+
+        Route::get('/customers', [GhCustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/create', [GhCustomerController::class, 'create'])->name('customers.create');
+        Route::post('/customers', [GhCustomerController::class, 'store'])->name('customers.store');
+        Route::get('/customers/{customer}', [GhCustomerController::class, 'show'])->name('customers.show');
+        Route::get('/customers/{customer}/edit', [GhCustomerController::class, 'edit'])->name('customers.edit');
+        Route::put('/customers/{customer}', [GhCustomerController::class, 'update'])->name('customers.update');
+        Route::delete('/customers/{customer}', [GhCustomerController::class, 'destroy'])->name('customers.destroy');
+
+        Route::post('/customers/{customer}/addresses', [GhCustomerAddressController::class, 'store'])->name('customers.addresses.store');
+        Route::put('/customers/{customer}/addresses/{address}', [GhCustomerAddressController::class, 'update'])->name('customers.addresses.update');
+        Route::delete('/customers/{customer}/addresses/{address}', [GhCustomerAddressController::class, 'destroy'])->name('customers.addresses.destroy');
+        Route::post('/customers/{customer}/addresses/{address}/default', [GhCustomerAddressController::class, 'makeDefault'])->name('customers.addresses.default');
+
+        Route::get('/contracts', [GhContractController::class, 'index'])->name('contracts.index');
+        Route::get('/contracts/create', [GhContractController::class, 'create'])->name('contracts.create');
+        Route::post('/contracts', [GhContractController::class, 'store'])->name('contracts.store');
+        Route::get('/contracts/{contract}', [GhContractController::class, 'show'])->name('contracts.show');
+        Route::get('/contracts/{contract}/edit', [GhContractController::class, 'edit'])->name('contracts.edit');
+        Route::put('/contracts/{contract}', [GhContractController::class, 'update'])->name('contracts.update');
+        Route::delete('/contracts/{contract}', [GhContractController::class, 'destroy'])->name('contracts.destroy');
+        Route::post('/contracts/{contract}/offerings', [GhContractController::class, 'storeOffering'])->name('contracts.offerings.store');
+        Route::put('/contracts/{contract}/offerings/{contractOffering}', [GhContractController::class, 'updateOffering'])->name('contracts.offerings.update');
+        Route::delete('/contracts/{contract}/offerings/{contractOffering}', [GhContractController::class, 'destroyOffering'])->name('contracts.offerings.destroy');
     });
 
     Route::prefix('product/expenses')->name('product.expenses.')->group(function () {

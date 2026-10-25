@@ -57,4 +57,8 @@ return [
     'gh_products' => 'المنتجات',
     'gh_treatments' => 'طرق المعالجة',
     'gh_offerings' => 'العروض والأسعار',
+    'gh_section_customers' => 'العملاء والمناطق',
+    'gh_customers' => 'العملاء',
+    'gh_zones' => 'مناطق التوصيل',
+    'gh_contracts' => 'عقود الشركات',
 ];
