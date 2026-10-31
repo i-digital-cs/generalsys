@@ -29,6 +29,7 @@ use App\Http\Controllers\GeneralHouse\CategoryController as GhCategoryController
 use App\Http\Controllers\GeneralHouse\ContractController as GhContractController;
 use App\Http\Controllers\GeneralHouse\CustomerAddressController as GhCustomerAddressController;
 use App\Http\Controllers\GeneralHouse\CustomerController as GhCustomerController;
+use App\Http\Controllers\GeneralHouse\DriverWorkspaceController as GhDriverWorkspaceController;
 use App\Http\Controllers\GeneralHouse\InvoiceController as GhInvoiceController;
 use App\Http\Controllers\GeneralHouse\OfferingController as GhOfferingController;
 use App\Http\Controllers\GeneralHouse\OrderController as GhOrderController;
@@ -202,6 +203,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/invoices/{invoice}/payments/cash', [GhPaymentController::class, 'storeCash'])->name('payments.cash');
         Route::post('/invoices/{invoice}/payments/online', [GhPaymentController::class, 'storeOnline'])->name('payments.online');
         Route::post('/payments/{payment}/cancel', [GhPaymentController::class, 'cancel'])->name('payments.cancel');
+
+        // Phase GH-7 — driver workspace (existing DRIVER auth; logistics via GH-4 services)
+        Route::get('/driver', [GhDriverWorkspaceController::class, 'dashboard'])->name('driver.dashboard');
+        Route::get('/driver/history', [GhDriverWorkspaceController::class, 'history'])->name('driver.history');
+        Route::get('/driver/pickup/{order}', [GhDriverWorkspaceController::class, 'pickup'])->name('driver.pickup');
+        Route::get('/driver/delivery/{order}', [GhDriverWorkspaceController::class, 'delivery'])->name('driver.delivery');
     });
 
     Route::prefix('product/expenses')->name('product.expenses.')->group(function () {

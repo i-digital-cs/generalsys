@@ -51,7 +51,7 @@ class MenuConfigTest extends TestCase
             $this->assertStringNotContainsString('advances', $item['route']);
         }
 
-        $this->assertSame(['employee.clock', 'employee.report', 'employee.media'], array_column(config('menu.DRIVER'), 'route'));
+        $this->assertSame(['gh.driver.dashboard', 'employee.clock', 'employee.report', 'employee.media'], array_column(config('menu.DRIVER'), 'route'));
 
         foreach (config('menu.ASSISTANT') as $item) {
             $this->assertStringNotContainsString('payroll', $item['route']);

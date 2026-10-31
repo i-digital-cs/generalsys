@@ -1328,27 +1328,49 @@ T-0.1 → T-0.2 → T-0.3
 
 ### T-GH-5.* — Invoice builder + calculation engine (Phase 5)
 - Depends on: T-GH-4 + D-GH-005/006/012/013/014
-- Status: `pending`
-- [ ] Expand at Phase 5 kickoff
+- Status: `done`
+- [x] Implemented on TEST (commit `c03bce9`)
 
 ### T-GH-6.* — Delivery & payments (Phase 6)
 - Depends on: T-GH-5 + D-GH-008/009
-- Status: `pending`
-- [ ] Expand at Phase 6 kickoff
+- Status: `done` (CONDITIONAL — cash/online-init only; bank/gateway/refunds/driver collection disabled)
+- [x] Implemented on TEST (commit `a26358e`)
 
 ### T-GH-7.* — Driver workspace (Phase 7)
 - Depends on: T-GH-4 (min) / T-GH-6 preferred
-- Status: `pending`
-- [ ] Expand at Phase 7 kickoff
+- Status: `done`
+- [x] Task complete
+  - [x] Routes `/service/gh/driver/*` + DRIVER menu entry (existing DRIVER auth)
+  - [x] Dashboard: today/upcoming pickups, pending deliveries, failed follow-ups, completed
+  - [x] Pickup/delivery task UIs via GH-4 `GhOrderStateService` (no controller business logic)
+  - [x] Independent pickup vs delivery assignment checks; payment hint read-only (no collect)
+  - [x] Failed attempt reason codes; AR+EN; no GH-7 schema migration
+  - [x] Automated `DriverWorkspaceTest` + GH/Menu/Payroll/Gross regression on TEST
+  - [x] Browser UAT on TEST (`d14098_general`); LIVE untouched; GH-8 not started
 
 ### T-GH-8.* — Dashboard & reporting (Phase 8)
 - Depends on: T-GH-6
 - Status: `pending`
-- [ ] Expand at Phase 8 kickoff
+- [ ] Expand at Phase 8 kickoff — **blocked until owner authorization**
 
 ---
 
 ## Progress log
+
+- [x] 2026-10-31 T-GH-7.1 PASS — Driver workspace on TEST. Gate 0: GH-6 `a26358e` preserved. Routes `gh.driver.*`; `GhDriverWorkspaceService` + assignment security; pickup→WORKING / delivery→COMPLETED via GH-4; unpaid COMPLETED preserved; payment read-only; no new migrations; no LIVE. Next: owner authorize Phase 8.
+```text
+Task ID: T-GH-7.1
+Commands: php artisan test --filter='GeneralHouse|MenuConfigTest'; PayrollCalculatorTest; GrossFoundationTest; browser UAT
+Automated tests: PASS
+UI/UX (AR+EN, RTL+LTR, 375/768/1280): PASS
+Next task allowed: no (await GH-8 authorization)
+DATABASE CHANGES: NO
+SCHEMA MIGRATIONS CREATED: NOT APPLICABLE
+DATA MIGRATION OR BACKFILL: NOT APPLICABLE
+PRODUCTION DEPLOYMENT PROCEDURE: VERIFIED (TEST only; no migrate)
+HARDCODED ID SAFETY: NOT APPLICABLE
+DATABASE MIGRATION POLICY: PASS
+```
 
 - [x] 2026-10-31 T-GH-4.1 CONDITIONAL PASS — Logistics on TEST. Gate 0: GH-3 committed `57035e9`. TZ Asia/Dubai (0 historical rows). State machine + promote command + pickup confirm/received lines + exceptions. WORKING→DELIVERY invoice-gated (no fake invoices). Backup `storage/backups/d14098_general_pre_gh4_*.sql`. **Host cron for generalsys `schedule:run` not present** — command registered but auto-run needs cron install. LIVE untouched. Next: owner authorize Phase 5.
 ```text

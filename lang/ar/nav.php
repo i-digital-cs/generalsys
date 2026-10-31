@@ -67,4 +67,5 @@ return [
     'gh_section_finance' => 'المالية',
     'gh_invoices' => 'الفواتير',
     'gh_payments' => 'المدفوعات',
+    'gh_driver_workspace' => 'مهام السائق',
 ];

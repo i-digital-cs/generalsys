@@ -52,4 +52,22 @@ final class GhOrderAccess
     {
         return self::mayConfirmDelivery($user, $order);
     }
+
+    /** Assigned pickup or delivery driver (not finance / not unassigned). */
+    public static function mayViewAssignedTask(?User $user, GhOrder $order): bool
+    {
+        if ($user === null || ! $user->isDriver() || ! $user->isActive()) {
+            return false;
+        }
+
+        $uid = (int) $user->id;
+
+        return (int) $order->pickup_driver_id === $uid
+            || (int) $order->delivery_driver_id === $uid;
+    }
+
+    public static function mayUseDriverWorkspace(?User $user): bool
+    {
+        return $user !== null && $user->isDriver() && $user->isActive();
+    }
 }

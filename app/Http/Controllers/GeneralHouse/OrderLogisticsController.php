@@ -16,6 +16,7 @@ use App\Services\GeneralHouse\Orders\GhOrderStateService;
 use App\Support\GeneralHouse\GhAssignmentResponsibility;
 use App\Support\GeneralHouse\GhOrderAccess;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class OrderLogisticsController extends Controller
 {
@@ -29,8 +30,7 @@ class OrderLogisticsController extends Controller
     {
         $this->states->confirmPickup($order, $request->user(), $request->validated());
 
-        return redirect()
-            ->route('gh.orders.show', $order)
+        return $this->redirectAfterDriverAction($request, $order, 'pickup')
             ->with('success', __('gh.flash.pickup_confirmed'));
     }
 
@@ -38,8 +38,7 @@ class OrderLogisticsController extends Controller
     {
         $this->states->confirmDelivery($order, $request->user(), $request->validated());
 
-        return redirect()
-            ->route('gh.orders.show', $order)
+        return $this->redirectAfterDriverAction($request, $order, 'delivery')
             ->with('success', __('gh.flash.delivery_confirmed'));
     }
 
@@ -73,8 +72,7 @@ class OrderLogisticsController extends Controller
         }
         $this->states->recordFailedPickup($order, $request->user(), $request->validated());
 
-        return redirect()
-            ->route('gh.orders.show', $order)
+        return $this->redirectAfterDriverAction($request, $order, 'pickup')
             ->with('success', __('gh.flash.pickup_failed_recorded'));
     }
 
@@ -85,9 +83,20 @@ class OrderLogisticsController extends Controller
         }
         $this->states->recordFailedDelivery($order, $request->user(), $request->validated());
 
-        return redirect()
-            ->route('gh.orders.show', $order)
+        return $this->redirectAfterDriverAction($request, $order, 'delivery')
             ->with('success', __('gh.flash.delivery_failed_recorded'));
+    }
+
+    private function redirectAfterDriverAction(Request $request, GhOrder $order, string $taskType): RedirectResponse
+    {
+        $user = $request->user();
+        if ($user !== null && $user->isDriver()) {
+            $route = $taskType === 'delivery' ? 'gh.driver.delivery' : 'gh.driver.pickup';
+
+            return redirect()->route($route, $order);
+        }
+
+        return redirect()->route('gh.orders.show', $order);
     }
 
     public function reassignDriver(ReassignGhDriverRequest $request, GhOrder $order): RedirectResponse

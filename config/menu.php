@@ -85,8 +85,9 @@ return [
         ['key' => 'nav.evaluation', 'route' => 'employee.evaluation', 'icon' => 'bi-star'],
     ],
 
-    /** Clock + daily report + media history (leave/salary still closed for now). */
+    /** Clock + daily report + media history + GH driver workspace. */
     'DRIVER' => [
+        ['key' => 'nav.gh_driver_workspace', 'route' => 'gh.driver.dashboard', 'icon' => 'bi-truck'],
         ['key' => 'nav.clock', 'route' => 'employee.clock', 'icon' => 'bi-clock'],
         ['key' => 'nav.daily_report', 'route' => 'employee.report', 'icon' => 'bi-journal-text'],
         ['key' => 'nav.media', 'route' => 'employee.media', 'icon' => 'bi-images'],

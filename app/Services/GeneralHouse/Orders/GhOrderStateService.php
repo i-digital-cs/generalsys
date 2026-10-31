@@ -376,7 +376,7 @@ class GhOrderStateService
     }
 
     /**
-     * @param  array{occurred_at?: string|null, notes?: string|null}  $data
+     * @param  array{occurred_at?: string|null, notes?: string|null, reason_code?: string|null}  $data
      */
     public function recordFailedPickup(GhOrder $order, User $actor, array $data = []): GhOrderAttempt
     {
@@ -396,6 +396,7 @@ class GhOrderStateService
 
             $occurredAt = $this->parseOccurredAt($data['occurred_at'] ?? null, $locked);
             $notes = $data['notes'] ?? null;
+            $reason = isset($data['reason_code']) ? (string) $data['reason_code'] : null;
 
             $attempt = GhOrderAttempt::query()->create([
                 'order_id' => $locked->id,
@@ -403,9 +404,9 @@ class GhOrderStateService
                 'outcome' => 'FAILED',
                 'actor_id' => $actor->id,
                 'occurred_at' => $occurredAt,
-                'recorded_at' => Carbon::now(),
+                'recorded_at' => Carbon::now('UTC'),
                 'notes' => $notes,
-                'payload' => null,
+                'payload' => $reason !== null && $reason !== '' ? ['reason_code' => $reason] : null,
             ]);
 
             $this->events->record(
@@ -414,7 +415,7 @@ class GhOrderStateService
                 $actor,
                 $locked->status,
                 $locked->status,
-                ['attempt_id' => $attempt->id, 'notes' => $notes],
+                ['attempt_id' => $attempt->id, 'notes' => $notes, 'reason_code' => $reason],
                 $occurredAt,
             );
 
@@ -423,7 +424,7 @@ class GhOrderStateService
     }
 
     /**
-     * @param  array{occurred_at?: string|null, notes?: string|null}  $data
+     * @param  array{occurred_at?: string|null, notes?: string|null, reason_code?: string|null}  $data
      */
     public function recordFailedDelivery(GhOrder $order, User $actor, array $data = []): GhOrderAttempt
     {
@@ -443,6 +444,7 @@ class GhOrderStateService
 
             $occurredAt = $this->parseOccurredAt($data['occurred_at'] ?? null, $locked);
             $notes = $data['notes'] ?? null;
+            $reason = isset($data['reason_code']) ? (string) $data['reason_code'] : null;
 
             $attempt = GhOrderAttempt::query()->create([
                 'order_id' => $locked->id,
@@ -450,9 +452,9 @@ class GhOrderStateService
                 'outcome' => 'FAILED',
                 'actor_id' => $actor->id,
                 'occurred_at' => $occurredAt,
-                'recorded_at' => Carbon::now(),
+                'recorded_at' => Carbon::now('UTC'),
                 'notes' => $notes,
-                'payload' => null,
+                'payload' => $reason !== null && $reason !== '' ? ['reason_code' => $reason] : null,
             ]);
 
             $this->events->record(
@@ -461,7 +463,7 @@ class GhOrderStateService
                 $actor,
                 $locked->status,
                 $locked->status,
-                ['attempt_id' => $attempt->id, 'notes' => $notes],
+                ['attempt_id' => $attempt->id, 'notes' => $notes, 'reason_code' => $reason],
                 $occurredAt,
             );
 
