@@ -1760,3 +1760,20 @@ CREATE TABLE gh_payment_events (
 ```
 
 Migration: `2026_10_31_150000_create_gh_payment_tables.php`.
+
+### GH-8 reporting indexes (additive)
+
+Migration: `2026_10_31_160000_add_gh_reporting_indexes.php` — no new tables/columns.
+
+| Table | Index |
+|-------|--------|
+| `gh_payments` | `idx_gh_payment_status_confirmed (status, confirmed_at)` |
+| `gh_payments` | `idx_gh_payment_status_method_confirmed (status, method, confirmed_at)` |
+| `gh_invoices` | `idx_gh_invoice_status_payment (status, payment_status)` |
+| `gh_invoices` | `idx_gh_invoice_type_status_issued (customer_type, status, issued_at)` |
+| `gh_orders` | `idx_gh_order_created (created_at)` |
+| `gh_orders` | `idx_gh_order_delivered (delivered_at)` |
+| `gh_orders` | `idx_gh_order_picked_up (picked_up_at)` |
+| `gh_orders` | `idx_gh_order_status_pickup_ends (status, pickup_ends_at)` |
+
+KPI definitions: `docs/general-house/REPORTING_KPIS.md`.

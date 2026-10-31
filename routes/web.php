@@ -29,6 +29,7 @@ use App\Http\Controllers\GeneralHouse\CategoryController as GhCategoryController
 use App\Http\Controllers\GeneralHouse\ContractController as GhContractController;
 use App\Http\Controllers\GeneralHouse\CustomerAddressController as GhCustomerAddressController;
 use App\Http\Controllers\GeneralHouse\CustomerController as GhCustomerController;
+use App\Http\Controllers\GeneralHouse\DashboardController as GhDashboardController;
 use App\Http\Controllers\GeneralHouse\DriverWorkspaceController as GhDriverWorkspaceController;
 use App\Http\Controllers\GeneralHouse\InvoiceController as GhInvoiceController;
 use App\Http\Controllers\GeneralHouse\OfferingController as GhOfferingController;
@@ -36,6 +37,7 @@ use App\Http\Controllers\GeneralHouse\OrderController as GhOrderController;
 use App\Http\Controllers\GeneralHouse\OrderLogisticsController as GhOrderLogisticsController;
 use App\Http\Controllers\GeneralHouse\PaymentController as GhPaymentController;
 use App\Http\Controllers\GeneralHouse\ProductController as GhProductController;
+use App\Http\Controllers\GeneralHouse\ReportController as GhReportController;
 use App\Http\Controllers\GeneralHouse\TreatmentController as GhTreatmentController;
 use App\Http\Controllers\GeneralHouse\ZoneController as GhZoneController;
 use App\Http\Controllers\Gross\CategoryController as GrossCategoryController;
@@ -118,6 +120,17 @@ Route::middleware('auth')->group(function () {
 
     // General House — Dynamic Services Catalog (Phase 1)
     Route::prefix('service/gh')->name('gh.')->group(function () {
+        // Phase GH-8 — manager dashboard & reports (Manager-only)
+        Route::get('/dashboard', GhDashboardController::class)->name('dashboard');
+        Route::get('/reports', [GhReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/invoices', [GhReportController::class, 'invoices'])->name('reports.invoices');
+        Route::get('/reports/collections', [GhReportController::class, 'collections'])->name('reports.collections');
+        Route::get('/reports/outstanding', [GhReportController::class, 'outstanding'])->name('reports.outstanding');
+        Route::get('/reports/b2b', [GhReportController::class, 'b2b'])->name('reports.b2b');
+        Route::get('/reports/orders', [GhReportController::class, 'orders'])->name('reports.orders');
+        Route::get('/reports/pickup-performance', [GhReportController::class, 'pickupPerformance'])->name('reports.pickup-performance');
+        Route::get('/reports/delivery-performance', [GhReportController::class, 'deliveryPerformance'])->name('reports.delivery-performance');
+
         Route::get('/categories', [GhCategoryController::class, 'index'])->name('categories.index');
         Route::post('/categories', [GhCategoryController::class, 'store'])->name('categories.store');
         Route::put('/categories/{category}', [GhCategoryController::class, 'update'])->name('categories.update');

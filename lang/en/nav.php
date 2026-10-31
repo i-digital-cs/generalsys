@@ -67,5 +67,9 @@ return [
     'gh_section_finance' => 'Finance',
     'gh_invoices' => 'Invoices',
     'gh_payments' => 'Payments',
+    'gh_dashboard' => 'GH dashboard',
+    'gh_section_reports' => 'Reports',
+    'gh_reports' => 'All reports',
+    'gh_reports_outstanding' => 'Outstanding',
     'gh_driver_workspace' => 'Driver tasks',
 ];

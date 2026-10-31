@@ -1,0 +1,44 @@
+@extends('layouts.app')
+@section('title', __('gh.reports.outstanding'))
+@section('content')
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+        <h1 class="h4 mb-0">{{ __('gh.reports.outstanding') }}</h1>
+        <a href="{{ route('gh.reports.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('gh.reports.back') }}</a>
+    </div>
+    @include('gh.reports.partials.filters', ['exportRoute' => 'gh.reports.outstanding'])
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                <tr>
+                    <th>{{ __('gh.reports.customer') }}</th>
+                    <th>{{ __('gh.invoices.number') }}</th>
+                    <th>{{ __('gh.invoices.total') }}</th>
+                    <th>{{ __('gh.reports.confirmed') }}</th>
+                    <th>{{ __('gh.reports.remaining') }}</th>
+                    <th>{{ __('gh.reports.days_outstanding') }}</th>
+                </tr>
+                </thead>
+                <tbody>
+                @forelse ($rows as $inv)
+                    <tr>
+                        <td>{{ app()->getLocale()==='ar' ? $inv->customer_name_ar : ($inv->customer_name_en ?: $inv->customer_name_ar) }}</td>
+                        <td><a class="num-ltr" href="{{ route('gh.invoices.show', $inv) }}">{{ $inv->number }}</a></td>
+                        <td class="num-ltr"><x-money :amount="$inv->total_payable" currency="AED" /></td>
+                        <td class="num-ltr"><x-money :amount="$reports->confirmedForInvoice($inv)" currency="AED" /></td>
+                        <td class="num-ltr"><x-money :amount="$reports->remainingForInvoice($inv)" currency="AED" /></td>
+                        <td class="num-ltr hp-value">{{ $reports->daysOutstanding($inv, $displayTz) ?? '—' }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6" class="text-body-secondary">{{ __('gh.reports.empty') }}</td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if ($rows->hasPages())
+            <div class="card-body">{{ $rows->links() }}</div>
+        @endif
+    </div>
+</div>
+@endsection

@@ -10,6 +10,7 @@
 return [
     'service' => [
         ['key' => 'nav.dashboard', 'route' => 'portal.service', 'icon' => 'bi-speedometer2'],
+        ['key' => 'nav.gh_dashboard', 'route' => 'gh.dashboard', 'icon' => 'bi-graph-up'],
         ['key' => 'nav.valuation', 'route' => 'valuation.sheets.index', 'params' => ['module' => 'service'], 'icon' => 'bi-clipboard-data'],
 
         ['type' => 'heading', 'key' => 'nav.gh_section_catalog'],
@@ -30,6 +31,10 @@ return [
         ['type' => 'heading', 'key' => 'nav.gh_section_finance'],
         ['key' => 'nav.gh_invoices', 'route' => 'gh.invoices.index', 'icon' => 'bi-receipt'],
         ['key' => 'nav.gh_payments', 'route' => 'gh.payments.index', 'icon' => 'bi-cash-coin'],
+
+        ['type' => 'heading', 'key' => 'nav.gh_section_reports'],
+        ['key' => 'nav.gh_reports', 'route' => 'gh.reports.index', 'icon' => 'bi-file-earmark-bar-graph'],
+        ['key' => 'nav.gh_reports_outstanding', 'route' => 'gh.reports.outstanding', 'icon' => 'bi-exclamation-circle'],
     ],
     'product' => [
         ['key' => 'nav.dashboard', 'route' => 'portal.product', 'icon' => 'bi-speedometer2'],

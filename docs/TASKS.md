@@ -1350,12 +1350,35 @@ T-0.1 → T-0.2 → T-0.3
 
 ### T-GH-8.* — Dashboard & reporting (Phase 8)
 - Depends on: T-GH-6
-- Status: `pending`
-- [ ] Expand at Phase 8 kickoff — **blocked until owner authorization**
+- Status: `done`
+- [x] Task complete
+  - [x] Manager dashboard `/service/gh/dashboard` + reports hub
+  - [x] Operational / financial / driver KPIs documented in `docs/general-house/REPORTING_KPIS.md`
+  - [x] Financial SSOT via issued invoices + CONFIRMED payments (`GhPaymentBalanceService`)
+  - [x] Invoice / collections / outstanding / B2B / orders / pickup & delivery performance reports
+  - [x] Dubai period presets + CSV export (UTF-8 BOM, formula injection guard)
+  - [x] Reporting indexes migration `2026_10_31_160000`; TEST backup + migrate
+  - [x] Driver financial access denied; GH-1–7 + Payroll/Gross regression green
+  - [x] LIVE untouched
 
 ---
 
 ## Progress log
+
+- [x] 2026-10-31 T-GH-8.1 PASS — Dashboard & reporting on TEST. Gate 0: GH-7 `7ae2819` preserved. Manager KPIs + reports; overdue deliveries UNAVAILABLE (documented); financial reconcile GH-INV-000001 111.30 / confirmed 100.00 / remaining 11.30. Backup `storage/backups/d14098_general_pre_gh8_*.sql`. LIVE untouched.
+```text
+Task ID: T-GH-8.1
+Commands: php artisan test --filter='GeneralHouse|MenuConfigTest'; migrate --path=...160000...; browser/curl UAT
+Automated tests: PASS
+UI/UX (AR+EN, RTL+LTR, 375/768/1280): PASS
+Next task allowed: no (await LIVE / next phase authorization)
+DATABASE CHANGES: YES (indexes only)
+SCHEMA MIGRATIONS CREATED: YES
+DATA MIGRATION OR BACKFILL: NO
+PRODUCTION DEPLOYMENT PROCEDURE: VERIFIED (TEST only)
+HARDCODED ID SAFETY: NOT APPLICABLE
+DATABASE MIGRATION POLICY: PASS
+```
 
 - [x] 2026-10-31 T-GH-7.1 PASS — Driver workspace on TEST. Gate 0: GH-6 `a26358e` preserved. Routes `gh.driver.*`; `GhDriverWorkspaceService` + assignment security; pickup→WORKING / delivery→COMPLETED via GH-4; unpaid COMPLETED preserved; payment read-only; no new migrations; no LIVE. Next: owner authorize Phase 8.
 ```text

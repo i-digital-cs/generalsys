@@ -67,5 +67,9 @@ return [
     'gh_section_finance' => 'المالية',
     'gh_invoices' => 'الفواتير',
     'gh_payments' => 'المدفوعات',
+    'gh_dashboard' => 'لوحة جنرال هاوس',
+    'gh_section_reports' => 'التقارير',
+    'gh_reports' => 'كل التقارير',
+    'gh_reports_outstanding' => 'المستحقات',
     'gh_driver_workspace' => 'مهام السائق',
 ];
