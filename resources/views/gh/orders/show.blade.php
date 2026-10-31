@@ -15,6 +15,22 @@
             @can('update', $order)
                 <a href="{{ route('gh.orders.edit', $order) }}" class="btn btn-outline-primary btn-sm">{{ __('general.edit') }}</a>
             @endcan
+            @if ($order->status === \App\Support\GeneralHouse\GhOrderStatus::WORKING)
+                @can('create', \App\Models\GeneralHouse\GhInvoice::class)
+                    @if ($order->invoice)
+                        <a href="{{ route('gh.invoices.builder', $order->invoice) }}" class="btn btn-primary btn-sm">{{ __('gh.invoices.builder') }}</a>
+                    @else
+                        <form method="post" action="{{ route('gh.invoices.create-from-order', $order) }}" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-primary btn-sm">{{ __('gh.invoices.create_draft') }}</button>
+                        </form>
+                    @endif
+                @endcan
+            @elseif ($order->invoice)
+                @can('view', $order->invoice)
+                    <a href="{{ route('gh.invoices.show', $order->invoice) }}" class="btn btn-outline-primary btn-sm">{{ __('gh.invoices.view') }}</a>
+                @endcan
+            @endif
             <a href="{{ route('gh.orders.history', $order) }}" class="btn btn-outline-secondary btn-sm">{{ __('gh.orders.history') }}</a>
             <a href="{{ route('gh.orders.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('gh.orders.back') }}</a>
         </div>

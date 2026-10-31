@@ -2,10 +2,6 @@
 
 namespace App\Support\GeneralHouse;
 
-/**
- * Offering tax classification metadata (Phase 1).
- * Invoice VAT engine is Phase 5 — these values are stored and validated only.
- */
 final class GhTaxClass
 {
     public const STANDARD_RATED = 'STANDARD_RATED';
@@ -23,4 +19,9 @@ final class GhTaxClass
         self::EXEMPT,
         self::OUT_OF_SCOPE,
     ];
+
+    public static function isVatApplicable(string $taxClass): bool
+    {
+        return $taxClass === self::STANDARD_RATED;
+    }
 }

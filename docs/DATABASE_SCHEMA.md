@@ -1572,3 +1572,139 @@ CREATE TABLE gh_order_attempts (
 ```
 
 Migration: `2026_10_31_110000_create_gh_logistics_tables.php`. WORKING→DELIVERY requires issued `gh_invoices` row (GH-5); no simulation path.
+
+### GH-5 Invoice domain
+
+Invoice numbering: `GH-INV-######` via locked `gh_sequences.name = 'invoices'`. One primary invoice per order (`UNIQUE order_id`). ISSUED rows are immutable at application level; correction workflows are deferred (schema supports future non-destructive documents). Min-order surcharge `tax_class` may be NULL until C-GH-TAX-MIN is approved — ISSUE blocked when surcharge > 0 and tax unresolved. Payment collection is GH-6 (`payment_status` defaults UNPAID).
+
+```sql
+CREATE TABLE gh_invoices (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL,
+    number VARCHAR(32) NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT', -- DRAFT|ISSUED
+    payment_status VARCHAR(20) NOT NULL DEFAULT 'UNPAID', -- UNPAID|PARTIAL|PAID
+    currency CHAR(3) NOT NULL DEFAULT 'AED',
+    customer_id BIGINT UNSIGNED NOT NULL,
+    customer_type VARCHAR(10) NOT NULL,
+    customer_name_ar VARCHAR(191) NOT NULL,
+    customer_name_en VARCHAR(191) NULL,
+    customer_phone VARCHAR(40) NULL,
+    billing_name VARCHAR(191) NULL,
+    billing_address TEXT NULL,
+    tax_registration_number VARCHAR(64) NULL,
+    order_reference VARCHAR(32) NOT NULL,
+    zone_id BIGINT UNSIGNED NULL,
+    zone_name_ar VARCHAR(191) NULL,
+    zone_name_en VARCHAR(191) NULL,
+    contract_id BIGINT UNSIGNED NULL,
+    contract_reference VARCHAR(64) NULL,
+    lines_gross DECIMAL(12,2) NOT NULL DEFAULT 0,
+    item_discount_total DECIMAL(12,2) NOT NULL DEFAULT 0,
+    invoice_discount_type VARCHAR(20) NOT NULL DEFAULT 'NONE',
+    invoice_discount_value DECIMAL(12,2) NOT NULL DEFAULT 0,
+    invoice_discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    lines_after_discounts DECIMAL(12,2) NOT NULL DEFAULT 0,
+    min_order_original_amount DECIMAL(12,2) NULL,
+    min_order_effective_amount DECIMAL(12,2) NULL,
+    min_order_policy VARCHAR(32) NULL,
+    min_order_override_type VARCHAR(32) NOT NULL DEFAULT 'APPLY_DEFAULT',
+    min_order_adjustment_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    min_order_tax_class VARCHAR(32) NULL,
+    taxable_base DECIMAL(12,2) NOT NULL DEFAULT 0,
+    vat_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    total_payable DECIMAL(12,2) NOT NULL DEFAULT 0,
+    standard_vat_rate DECIMAL(5,2) NOT NULL DEFAULT 5.00,
+    draft_version INT UNSIGNED NOT NULL DEFAULT 1,
+    issued_at TIMESTAMP NULL,
+    issued_by BIGINT UNSIGNED NULL,
+    created_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_invoice_order (order_id),
+    UNIQUE KEY uq_gh_invoice_number (number),
+    INDEX idx_gh_invoice_status_issued (status, issued_at),
+    CONSTRAINT fk_gh_inv_order FOREIGN KEY (order_id) REFERENCES gh_orders(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_inv_customer FOREIGN KEY (customer_id) REFERENCES gh_customers(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE gh_invoice_lines (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    invoice_id BIGINT UNSIGNED NOT NULL,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    received_line_id BIGINT UNSIGNED NULL,
+    offering_id BIGINT UNSIGNED NOT NULL,
+    category_id BIGINT UNSIGNED NULL,
+    product_id BIGINT UNSIGNED NULL,
+    treatment_id BIGINT UNSIGNED NULL,
+    quantity INT UNSIGNED NOT NULL,
+    quantity_received INT UNSIGNED NULL,
+    qty_differs_from_received TINYINT(1) NOT NULL DEFAULT 0,
+    unit_price DECIMAL(12,2) NOT NULL,
+    currency CHAR(3) NOT NULL DEFAULT 'AED',
+    price_source VARCHAR(20) NOT NULL,
+    contract_id BIGINT UNSIGNED NULL,
+    tax_class VARCHAR(32) NOT NULL,
+    tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+    item_discount_type VARCHAR(20) NOT NULL DEFAULT 'NONE',
+    item_discount_value DECIMAL(12,2) NOT NULL DEFAULT 0,
+    item_discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    line_gross DECIMAL(12,2) NOT NULL,
+    line_after_item_discount DECIMAL(12,2) NOT NULL,
+    allocated_invoice_discount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    taxable_base DECIMAL(12,2) NOT NULL DEFAULT 0,
+    tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    line_total DECIMAL(12,2) NOT NULL DEFAULT 0,
+    product_name_ar VARCHAR(191) NOT NULL,
+    product_name_en VARCHAR(191) NULL,
+    treatment_name_ar VARCHAR(191) NOT NULL,
+    treatment_name_en VARCHAR(191) NULL,
+    category_name_ar VARCHAR(191) NULL,
+    category_name_en VARCHAR(191) NULL,
+    notes TEXT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_inv_line_sort (invoice_id, sort_order),
+    CONSTRAINT fk_gh_inv_line_invoice FOREIGN KEY (invoice_id) REFERENCES gh_invoices(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gh_inv_line_recv FOREIGN KEY (received_line_id) REFERENCES gh_order_received_lines(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gh_inv_line_offering FOREIGN KEY (offering_id) REFERENCES gh_product_offerings(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE gh_invoice_adjustments (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    invoice_id BIGINT UNSIGNED NOT NULL,
+    adjustment_type VARCHAR(40) NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    tax_class VARCHAR(32) NULL,
+    tax_rate DECIMAL(5,2) NULL,
+    tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    label_ar VARCHAR(191) NULL,
+    label_en VARCHAR(191) NULL,
+    payload JSON NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_inv_adj_type (invoice_id, adjustment_type),
+    CONSTRAINT fk_gh_inv_adj_invoice FOREIGN KEY (invoice_id) REFERENCES gh_invoices(id) ON DELETE CASCADE
+);
+
+CREATE TABLE gh_min_order_overrides (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    invoice_id BIGINT UNSIGNED NOT NULL,
+    order_id BIGINT UNSIGNED NOT NULL,
+    override_type VARCHAR(32) NOT NULL,
+    original_minimum DECIMAL(12,2) NOT NULL,
+    effective_minimum DECIMAL(12,2) NOT NULL,
+    adjustment_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    reason VARCHAR(500) NOT NULL,
+    actor_id BIGINT UNSIGNED NULL,
+    recorded_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_min_override_order (order_id, recorded_at),
+    CONSTRAINT fk_gh_min_ov_invoice FOREIGN KEY (invoice_id) REFERENCES gh_invoices(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gh_min_ov_order FOREIGN KEY (order_id) REFERENCES gh_orders(id) ON DELETE RESTRICT
+);
+```
+
+Migration: `2026_10_31_140000_create_gh_invoice_tables.php`.

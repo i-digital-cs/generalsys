@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 class GhOrder extends Model
@@ -111,6 +112,11 @@ class GhOrder extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(GhOrderLine::class, 'order_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(GhInvoice::class, 'order_id');
     }
 
     public function assignments(): HasMany

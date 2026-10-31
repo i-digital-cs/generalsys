@@ -112,6 +112,7 @@ class OrderController extends Controller
             'contract',
             'lines',
             'receivedLines',
+            'invoice',
             'attempts.actor',
             'pickupDriver',
             'deliveryDriver',

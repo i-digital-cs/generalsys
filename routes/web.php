@@ -29,6 +29,7 @@ use App\Http\Controllers\GeneralHouse\CategoryController as GhCategoryController
 use App\Http\Controllers\GeneralHouse\ContractController as GhContractController;
 use App\Http\Controllers\GeneralHouse\CustomerAddressController as GhCustomerAddressController;
 use App\Http\Controllers\GeneralHouse\CustomerController as GhCustomerController;
+use App\Http\Controllers\GeneralHouse\InvoiceController as GhInvoiceController;
 use App\Http\Controllers\GeneralHouse\OfferingController as GhOfferingController;
 use App\Http\Controllers\GeneralHouse\OrderController as GhOrderController;
 use App\Http\Controllers\GeneralHouse\OrderLogisticsController as GhOrderLogisticsController;
@@ -185,6 +186,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/orders/{order}/failed-pickup', [GhOrderLogisticsController::class, 'failedPickup'])->name('orders.failed-pickup');
         Route::post('/orders/{order}/failed-delivery', [GhOrderLogisticsController::class, 'failedDelivery'])->name('orders.failed-delivery');
         Route::post('/orders/{order}/reassign-driver', [GhOrderLogisticsController::class, 'reassignDriver'])->name('orders.reassign-driver');
+
+        // Phase GH-5 — invoices (Manager-only via policies)
+        Route::get('/invoices', [GhInvoiceController::class, 'index'])->name('invoices.index');
+        Route::post('/orders/{order}/invoices', [GhInvoiceController::class, 'createFromOrder'])->name('invoices.create-from-order');
+        Route::get('/invoices/{invoice}/builder', [GhInvoiceController::class, 'builder'])->name('invoices.builder');
+        Route::put('/invoices/{invoice}', [GhInvoiceController::class, 'update'])->name('invoices.update');
+        Route::post('/invoices/{invoice}/issue', [GhInvoiceController::class, 'issue'])->name('invoices.issue');
+        Route::get('/invoices/{invoice}', [GhInvoiceController::class, 'show'])->name('invoices.show');
+        Route::get('/invoices/{invoice}/print', [GhInvoiceController::class, 'print'])->name('invoices.print');
     });
 
     Route::prefix('product/expenses')->name('product.expenses.')->group(function () {

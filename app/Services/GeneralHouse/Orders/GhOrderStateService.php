@@ -190,9 +190,14 @@ class GhOrderStateService
 
             $this->assertCanTransition($locked->status, GhOrderStatus::DELIVERY);
 
-            $issuedAt = isset($invoiceProof['issued_at'])
-                ? Carbon::parse($invoiceProof['issued_at'])
-                : Carbon::now();
+            // GH timestamps are canonical UTC (GhUtcDateTime). Never parse proof strings in app.timezone.
+            if (isset($invoiceProof['issued_at']) && $invoiceProof['issued_at'] instanceof Carbon) {
+                $issuedAt = $invoiceProof['issued_at']->copy()->utc();
+            } elseif (isset($invoiceProof['issued_at']) && is_string($invoiceProof['issued_at']) && $invoiceProof['issued_at'] !== '') {
+                $issuedAt = Carbon::parse($invoiceProof['issued_at'], 'UTC');
+            } else {
+                $issuedAt = Carbon::now('UTC');
+            }
 
             $locked->update([
                 'invoice_issued_at' => $issuedAt,

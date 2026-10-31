@@ -64,4 +64,6 @@ return [
     'gh_section_orders' => 'Orders',
     'gh_orders' => 'Orders',
     'gh_orders_create' => 'New order',
+    'gh_section_finance' => 'Finance',
+    'gh_invoices' => 'Invoices',
 ];

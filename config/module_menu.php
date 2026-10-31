@@ -26,6 +26,9 @@ return [
         ['type' => 'heading', 'key' => 'nav.gh_section_orders'],
         ['key' => 'nav.gh_orders', 'route' => 'gh.orders.index', 'icon' => 'bi-clipboard-check'],
         ['key' => 'nav.gh_orders_create', 'route' => 'gh.orders.create', 'icon' => 'bi-plus-circle'],
+
+        ['type' => 'heading', 'key' => 'nav.gh_section_finance'],
+        ['key' => 'nav.gh_invoices', 'route' => 'gh.invoices.index', 'icon' => 'bi-receipt'],
     ],
     'product' => [
         ['key' => 'nav.dashboard', 'route' => 'portal.product', 'icon' => 'bi-speedometer2'],
