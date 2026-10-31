@@ -53,3 +53,7 @@ Verified via `GhLaunchConfig` on TEST:
 | refunds | false |
 | min-order surcharge | false |
 | default policy | VALIDATION_ONLY |
+
+| Working tip after GH-9.4 | `c469d5e` |
+| Isolated RC tip after GH-9.4 | `e067323` |
+| Attendance SSOT `7ed3ed2` in RC? | **no** |
