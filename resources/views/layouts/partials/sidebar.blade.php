@@ -5,9 +5,11 @@
     $rawItems = in_array($appModule, [\App\Support\AppModule::SERVICE, \App\Support\AppModule::PRODUCT], true)
         ? config("module_menu.{$appModule}", [])
         : config("menu.{$role}", config('menu.EMPLOYEE'));
-    $items = $appModule === \App\Support\AppModule::PRODUCT
-        ? \App\Support\GrossMenu::filterForUser(auth()->user(), $rawItems)
-        : $rawItems;
+    $items = match ($appModule) {
+        \App\Support\AppModule::PRODUCT => \App\Support\GrossMenu::filterForUser(auth()->user(), $rawItems),
+        \App\Support\AppModule::SERVICE => \App\Support\GeneralHouse\GhServiceMenu::filterForUser(auth()->user(), $rawItems),
+        default => $rawItems,
+    };
 @endphp
 <div class="offcanvas-lg offcanvas-start bg-body-tertiary border-end flex-shrink-0"
      tabindex="-1" id="sidebarNav" style="width: 210px;">
