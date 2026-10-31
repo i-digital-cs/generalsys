@@ -29,6 +29,7 @@ return [
 
         ['type' => 'heading', 'key' => 'nav.gh_section_finance'],
         ['key' => 'nav.gh_invoices', 'route' => 'gh.invoices.index', 'icon' => 'bi-receipt'],
+        ['key' => 'nav.gh_payments', 'route' => 'gh.payments.index', 'icon' => 'bi-cash-coin'],
     ],
     'product' => [
         ['key' => 'nav.dashboard', 'route' => 'portal.product', 'icon' => 'bi-speedometer2'],

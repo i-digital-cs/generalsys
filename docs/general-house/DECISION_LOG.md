@@ -26,6 +26,7 @@ Cross-ref: `DESIGN_CHANGE_SUMMARY.md` (owner CONDITIONAL APPROVAL 2026-10-25).
 | D-GH-018 | Happy-path states | `LATER → PICKUP → WORKING → DELIVERY → COMPLETED` with approved triggers | **APPROVED** | — |
 | D-GH-019 | Invoice v1 | One primary invoice per order; txn-safe unique ISSUE | **APPROVED** | — |
 | D-GH-020 | Catalog offering | Unique product×treatment; standard + B2B contract prices | **APPROVED** | — |
+| D-GH-021 | GH-6 payments scope | Cash confirmed by Manager; ONLINE initiation=PENDING only; partial OK; overpay rejected; bank/gateway/refunds/driver collection **disabled** | **APPROVED** (gate doc) | Full bank/gateway → owner |
 
 ## Blocking confirmations (owner)
 

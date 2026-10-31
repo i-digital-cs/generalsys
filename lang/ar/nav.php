@@ -66,4 +66,5 @@ return [
     'gh_orders_create' => 'طلب جديد',
     'gh_section_finance' => 'المالية',
     'gh_invoices' => 'الفواتير',
+    'gh_payments' => 'المدفوعات',
 ];

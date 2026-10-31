@@ -8,6 +8,7 @@ use App\Models\GeneralHouse\GhB2bContract;
 use App\Models\GeneralHouse\GhCustomer;
 use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhOrder;
+use App\Models\GeneralHouse\GhPayment;
 use App\Models\GeneralHouse\GhProduct;
 use App\Models\GeneralHouse\GhProductOffering;
 use App\Models\GeneralHouse\GhServiceCategory;
@@ -39,6 +40,7 @@ use App\Policies\GeneralHouse\GhB2bContractPolicy;
 use App\Policies\GeneralHouse\GhCustomerPolicy;
 use App\Policies\GeneralHouse\GhInvoicePolicy;
 use App\Policies\GeneralHouse\GhOrderPolicy;
+use App\Policies\GeneralHouse\GhPaymentPolicy;
 use App\Policies\GeneralHouse\GhProductOfferingPolicy;
 use App\Policies\GeneralHouse\GhProductPolicy;
 use App\Policies\GeneralHouse\GhServiceCategoryPolicy;
@@ -121,6 +123,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GhB2bContract::class, GhB2bContractPolicy::class);
         Gate::policy(GhOrder::class, GhOrderPolicy::class);
         Gate::policy(GhInvoice::class, GhInvoicePolicy::class);
+        Gate::policy(GhPayment::class, GhPaymentPolicy::class);
 
         View::composer('layouts.app', function (IlluminateView $view): void {
             $service = app(ImpersonationService::class);

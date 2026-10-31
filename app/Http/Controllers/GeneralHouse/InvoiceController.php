@@ -10,6 +10,7 @@ use App\Models\GeneralHouse\GhServiceCategory;
 use App\Services\GeneralHouse\Catalog\GhPricingResolver;
 use App\Services\GeneralHouse\Invoices\GhInvoiceIssuanceService;
 use App\Services\GeneralHouse\Invoices\GhInvoiceService;
+use App\Services\GeneralHouse\Payments\GhPaymentBalanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -20,6 +21,7 @@ class InvoiceController extends Controller
         private readonly GhInvoiceService $invoices,
         private readonly GhInvoiceIssuanceService $issuance,
         private readonly GhPricingResolver $pricing,
+        private readonly GhPaymentBalanceService $paymentBalances,
     ) {}
 
     public function index(Request $request): View
@@ -98,9 +100,10 @@ class InvoiceController extends Controller
     public function show(GhInvoice $invoice): View
     {
         $this->authorize('view', $invoice);
-        $invoice->load(['lines', 'adjustments', 'order', 'issuer']);
+        $invoice->load(['lines', 'adjustments', 'order', 'issuer', 'payments.collector', 'payments.recorder']);
+        $balance = $this->paymentBalances->forInvoice($invoice);
 
-        return view('gh.invoices.show', compact('invoice'));
+        return view('gh.invoices.show', compact('invoice', 'balance'));
     }
 
     public function print(GhInvoice $invoice): View

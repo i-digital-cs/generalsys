@@ -32,4 +32,20 @@ return [
     | Set only after owner/tax-advisor confirmation (e.g. STANDARD_RATED).
     */
     'min_order_surcharge_tax_class' => env('GH_MIN_ORDER_SURCHARGE_TAX_CLASS'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payments (GH-6) — see docs/general-house/GH6_BUSINESS_DECISION_GATE.md
+    |--------------------------------------------------------------------------
+    */
+    'payments' => [
+        'cash_enabled' => true,
+        'online_initiation_enabled' => true,
+        'online_gateway_confirm_enabled' => false,
+        'bank_transfer_enabled' => false,
+        'partial_payments_enabled' => true,
+        'overpayment_allowed' => false,
+        'refunds_enabled' => false,
+        'driver_collection_enabled' => false,
+    ],
 ];

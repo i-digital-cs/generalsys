@@ -23,6 +23,9 @@
 
     <div class="row g-3">
         <div class="col-lg-8">
+            @if ($invoice->isIssued())
+                @include('gh.invoices.partials.payment-panel', ['invoice' => $invoice, 'balance' => $balance])
+            @endif
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.invoices.lines') }}</h2></div>
                 <div class="table-responsive">

@@ -1708,3 +1708,55 @@ CREATE TABLE gh_min_order_overrides (
 ```
 
 Migration: `2026_10_31_140000_create_gh_invoice_tables.php`.
+
+### GH-6 Payment ledger
+
+See `docs/general-house/GH6_BUSINESS_DECISION_GATE.md`. Approved methods: `CASH`, `ONLINE`. Bank transfer / gateway capture / refunds disabled at application layer. Only `CONFIRMED` payments affect balance. Payment numbering: `GH-PAY-######` via `gh_sequences.name = 'payments'`.
+
+```sql
+CREATE TABLE gh_payments (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    invoice_id BIGINT UNSIGNED NOT NULL,
+    reference VARCHAR(32) NOT NULL,
+    method VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    currency CHAR(3) NOT NULL DEFAULT 'AED',
+    external_ref VARCHAR(191) NULL,
+    idempotency_key VARCHAR(64) NOT NULL,
+    notes TEXT NULL,
+    collector_user_id BIGINT UNSIGNED NULL,
+    recorded_by BIGINT UNSIGNED NULL,
+    confirmed_by BIGINT UNSIGNED NULL,
+    cancelled_by BIGINT UNSIGNED NULL,
+    occurred_at TIMESTAMP NOT NULL,
+    recorded_at TIMESTAMP NOT NULL,
+    confirmed_at TIMESTAMP NULL,
+    cancelled_at TIMESTAMP NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_payment_reference (reference),
+    UNIQUE KEY uq_gh_payment_idempotency (idempotency_key),
+    UNIQUE KEY uq_gh_payment_invoice_ext_ref (invoice_id, external_ref),
+    INDEX idx_gh_payment_invoice_status (invoice_id, status),
+    CONSTRAINT fk_gh_pay_invoice FOREIGN KEY (invoice_id) REFERENCES gh_invoices(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE gh_payment_events (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    payment_id BIGINT UNSIGNED NOT NULL,
+    invoice_id BIGINT UNSIGNED NOT NULL,
+    event_type VARCHAR(40) NOT NULL,
+    from_status VARCHAR(20) NULL,
+    to_status VARCHAR(20) NULL,
+    actor_id BIGINT UNSIGNED NULL,
+    occurred_at TIMESTAMP NOT NULL,
+    payload JSON NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_pay_event_invoice (invoice_id, occurred_at),
+    CONSTRAINT fk_gh_pay_event_payment FOREIGN KEY (payment_id) REFERENCES gh_payments(id) ON DELETE RESTRICT
+);
+```
+
+Migration: `2026_10_31_150000_create_gh_payment_tables.php`.

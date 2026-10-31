@@ -74,6 +74,11 @@ class GhInvoice extends Model
         return $this->belongsTo(User::class, 'issued_by');
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(GhPayment::class, 'invoice_id')->orderByDesc('id');
+    }
+
     public function isDraft(): bool
     {
         return $this->status === GhInvoiceStatus::DRAFT;

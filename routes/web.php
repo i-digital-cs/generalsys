@@ -33,6 +33,7 @@ use App\Http\Controllers\GeneralHouse\InvoiceController as GhInvoiceController;
 use App\Http\Controllers\GeneralHouse\OfferingController as GhOfferingController;
 use App\Http\Controllers\GeneralHouse\OrderController as GhOrderController;
 use App\Http\Controllers\GeneralHouse\OrderLogisticsController as GhOrderLogisticsController;
+use App\Http\Controllers\GeneralHouse\PaymentController as GhPaymentController;
 use App\Http\Controllers\GeneralHouse\ProductController as GhProductController;
 use App\Http\Controllers\GeneralHouse\TreatmentController as GhTreatmentController;
 use App\Http\Controllers\GeneralHouse\ZoneController as GhZoneController;
@@ -195,6 +196,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/invoices/{invoice}/issue', [GhInvoiceController::class, 'issue'])->name('invoices.issue');
         Route::get('/invoices/{invoice}', [GhInvoiceController::class, 'show'])->name('invoices.show');
         Route::get('/invoices/{invoice}/print', [GhInvoiceController::class, 'print'])->name('invoices.print');
+
+        // Phase GH-6 — payments (Manager-only; no Gross treasury; no driver finance)
+        Route::get('/payments', [GhPaymentController::class, 'index'])->name('payments.index');
+        Route::post('/invoices/{invoice}/payments/cash', [GhPaymentController::class, 'storeCash'])->name('payments.cash');
+        Route::post('/invoices/{invoice}/payments/online', [GhPaymentController::class, 'storeOnline'])->name('payments.online');
+        Route::post('/payments/{payment}/cancel', [GhPaymentController::class, 'cancel'])->name('payments.cancel');
     });
 
     Route::prefix('product/expenses')->name('product.expenses.')->group(function () {
