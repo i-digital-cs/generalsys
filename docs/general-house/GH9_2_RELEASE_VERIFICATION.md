@@ -61,3 +61,7 @@
 | Viewport 375/768/1280 | Not fully instrumented — layout uses existing Bootstrap responsive shells |
 
 Full end-to-end create-order→pay on shared TEST data **not** force-mutated beyond viewing; cash partial/full proven in isolated automated HTTP UAT.
+
+| Tip after GH-9.2 cherry-pick | `4ce3db4` |
+| Cherry-pick source | `3781a22` on Attendance branch |
+| Attendance SSOT `7ed3ed2` in RC? | **no** |
