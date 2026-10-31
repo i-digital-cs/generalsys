@@ -1301,10 +1301,18 @@ T-0.1 → T-0.2 → T-0.3
   - [x] Automated tests + TEST migrate (d14098_general)
   - [x] No invoice/min-order surcharge calculation (Phase 5)
 
-### T-GH-3.* — Order creation & scheduling (Phase 3)
-- Depends on: T-GH-2 complete
-- Status: `pending`
-- [ ] Expand at Phase 3 kickoff
+### T-GH-3.1 — Order management foundation (create/list/edit/history)
+- Depends on: T-GH-2.1
+- Unlocks: T-GH-4.*
+- Status: `done`
+- [x] Task complete
+  - [x] Migrations `gh_sequences|gh_orders|gh_order_lines|gh_order_assignments|gh_order_events` + schema §26
+  - [x] Services: reference, eligibility (±24h), create/update, assignments, events, state interface
+  - [x] Server-side `GhPricingResolver` estimates only (not invoices); B2C sellable / B2B contract offerings
+  - [x] Independent pickup/delivery driver assignment + history (DRIVER role)
+  - [x] Blade UI under `/service/gh/orders*` (AR+EN)
+  - [x] Automated tests + TEST migrate (`d14098_general`)
+  - [x] Exclusions held: scheduler job, pickup/delivery confirm, invoice engine, driver workspace
 
 ### T-GH-4.* — Logistics state machine + 24h eligibility (Phase 4)
 - Depends on: T-GH-3 + D-GH-011 exceptions
@@ -1334,6 +1342,21 @@ T-0.1 → T-0.2 → T-0.3
 ---
 
 ## Progress log
+
+- [x] 2026-10-25 T-GH-3.1 PASS — Order management on TEST. Gate 0: GH-2 committed `6ed4b38`. Tables sequences/orders/lines/assignments/events; refs `GH-ORD-######`; initial LATER/PICKUP via ±24h eligibility; estimate-only pricing; independent drivers; edit locks via `picked_up_at`/`invoice_issued_at`. Backup `storage/backups/d14098_general_pre_gh3_*.sql`. Tests: 30 GH + Gross/Valuation regression. LIVE untouched. Next: owner authorize Phase 4.
+```text
+Task ID: T-GH-3.1
+Commands: php artisan test --filter=GeneralHouse; migrate --path=...220000...; Gross/Valuation filters
+Automated tests: PASS
+UI/UX (AR+EN, RTL+LTR, 375/768/1280): PASS (keys + responsive tables/forms); browser spot-check recommended
+Next task allowed: no (await Phase 4 authorization)
+DATABASE CHANGES: YES
+SCHEMA MIGRATIONS CREATED: YES
+DATA MIGRATION OR BACKFILL: NO
+PRODUCTION DEPLOYMENT PROCEDURE: VERIFIED (TEST only)
+HARDCODED ID SAFETY: NOT APPLICABLE
+DATABASE MIGRATION POLICY: PASS
+```
 
 - [x] 2026-10-25 T-GH-2.1 PASS — Customers/zones/B2B contracts on TEST. Gate 0: GH-1 committed `c8d2938` (attendance preserved; backups gitignored). Tables zones/customers/addresses/contracts/contract_offerings; default address uniqueness; active contract overlap blocked; `GhPricingResolver` contract>standard + inactive exclusion. Backup `storage/backups/d14098_general_pre_gh2_*.sql`. Tests: 19 GH + Gross/Valuation regression. LIVE untouched. Next: owner authorize Phase 3.
 ```text

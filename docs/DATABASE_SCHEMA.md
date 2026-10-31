@@ -1379,3 +1379,132 @@ CREATE TABLE gh_b2b_contract_offerings (
 ```
 
 Migration: `2026_10_25_210000_create_gh_customers_zones_contracts_tables.php`. Pricing resolution: `GhPricingResolver` (contract overrides standard; inactive catalog chain excluded). Invoice surcharge math deferred to Phase 5.
+
+---
+
+## 26. General House orders (Phase GH-3)
+
+Operational service requests — **not** issued invoices. Estimated line amounts are provisional labels only.
+
+**Order reference format:** `GH-ORD-######` (zero-padded, grows beyond 6 digits if needed). Allocated via locked `gh_sequences.name = 'orders'` — never `COUNT(*)` on `gh_orders`. Independent from Mohra Gross numbering.
+
+**Timezone policy:** Pickup window date + `HH:MM` interpreted in `config('app.timezone')` (Africa/Cairo). Stored as absolute timestamps; original window not silently rewritten.
+
+**Initial status:** `GhPickupEligibilityService` — if `now >= pickup_starts_at − 24h` → `PICKUP`, else `LATER`. Same rule GH-4 scheduler will use (job not implemented in GH-3).
+
+```sql
+CREATE TABLE gh_sequences (
+    name VARCHAR(60) PRIMARY KEY,
+    next_value BIGINT UNSIGNED NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
+
+CREATE TABLE gh_orders (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    reference VARCHAR(40) NOT NULL,
+    customer_id BIGINT UNSIGNED NOT NULL,
+    address_id BIGINT UNSIGNED NOT NULL,
+    zone_id BIGINT UNSIGNED NOT NULL,
+    contract_id BIGINT UNSIGNED NULL,
+    status ENUM('LATER','PICKUP','WORKING','DELIVERY','COMPLETED','CANCELLED') NOT NULL DEFAULT 'LATER',
+    pickup_starts_at TIMESTAMP NOT NULL,
+    pickup_ends_at TIMESTAMP NOT NULL,
+    timezone VARCHAR(64) NOT NULL DEFAULT 'Africa/Cairo',
+    notes TEXT NULL,
+    scheduling_notes TEXT NULL,
+    pickup_driver_id BIGINT UNSIGNED NULL,
+    delivery_driver_id BIGINT UNSIGNED NULL,
+    estimated_subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
+    currency CHAR(3) NOT NULL DEFAULT 'AED',
+    picked_up_at TIMESTAMP NULL,          -- future physical pickup gate
+    invoice_issued_at TIMESTAMP NULL,     -- future financial lock
+    created_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_order_reference (reference),
+    INDEX idx_gh_order_status_pickup (status, pickup_starts_at),
+    INDEX idx_gh_order_customer_status (customer_id, status),
+    INDEX idx_gh_order_pickup_driver (pickup_driver_id, status),
+    INDEX idx_gh_order_delivery_driver (delivery_driver_id, status),
+    INDEX idx_gh_order_zone (zone_id),
+    CONSTRAINT fk_gh_order_customer FOREIGN KEY (customer_id) REFERENCES gh_customers(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_order_address FOREIGN KEY (address_id) REFERENCES gh_customer_addresses(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_order_zone FOREIGN KEY (zone_id) REFERENCES gh_zones(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_order_contract FOREIGN KEY (contract_id) REFERENCES gh_b2b_contracts(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gh_order_pickup_driver FOREIGN KEY (pickup_driver_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gh_order_delivery_driver FOREIGN KEY (delivery_driver_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gh_order_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gh_order_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gh_order_lines (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL,
+    offering_id BIGINT UNSIGNED NOT NULL,
+    category_id BIGINT UNSIGNED NULL,
+    product_id BIGINT UNSIGNED NULL,
+    treatment_id BIGINT UNSIGNED NULL,
+    quantity INT UNSIGNED NOT NULL,
+    unit_price_estimate DECIMAL(12,2) NOT NULL,
+    currency CHAR(3) NOT NULL DEFAULT 'AED',
+    price_source ENUM('STANDARD','CONTRACT') NOT NULL DEFAULT 'STANDARD',
+    contract_id BIGINT UNSIGNED NULL,
+    product_name_ar VARCHAR(150) NOT NULL,
+    product_name_en VARCHAR(150) NOT NULL,
+    treatment_name_ar VARCHAR(120) NOT NULL,
+    treatment_name_en VARCHAR(120) NOT NULL,
+    category_name_ar VARCHAR(120) NULL,
+    category_name_en VARCHAR(120) NULL,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_order_line_order_sort (order_id, sort_order),
+    INDEX idx_gh_order_line_offering (offering_id),
+    CONSTRAINT fk_gh_ol_order FOREIGN KEY (order_id) REFERENCES gh_orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gh_ol_offering FOREIGN KEY (offering_id) REFERENCES gh_product_offerings(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_ol_category FOREIGN KEY (category_id) REFERENCES gh_service_categories(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gh_ol_product FOREIGN KEY (product_id) REFERENCES gh_products(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gh_ol_treatment FOREIGN KEY (treatment_id) REFERENCES gh_treatments(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gh_ol_contract FOREIGN KEY (contract_id) REFERENCES gh_b2b_contracts(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gh_order_assignments (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL,
+    driver_user_id BIGINT UNSIGNED NOT NULL,
+    responsibility ENUM('PICKUP','DELIVERY') NOT NULL,
+    assigned_by BIGINT UNSIGNED NULL,
+    assigned_at TIMESTAMP NOT NULL,
+    unassigned_at TIMESTAMP NULL,
+    is_current TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_assign_order_resp_current (order_id, responsibility, is_current),
+    INDEX idx_gh_assign_driver_resp (driver_user_id, responsibility, is_current),
+    CONSTRAINT fk_gh_oa_order FOREIGN KEY (order_id) REFERENCES gh_orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gh_oa_driver FOREIGN KEY (driver_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_oa_assigned_by FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gh_order_events (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL,
+    event_type VARCHAR(60) NOT NULL,
+    from_status VARCHAR(20) NULL,
+    to_status VARCHAR(20) NULL,
+    actor_id BIGINT UNSIGNED NULL,
+    occurred_at TIMESTAMP NOT NULL,
+    recorded_at TIMESTAMP NOT NULL,
+    payload JSON NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_event_order_occurred (order_id, occurred_at),
+    INDEX idx_gh_event_type (event_type),
+    CONSTRAINT fk_gh_oe_order FOREIGN KEY (order_id) REFERENCES gh_orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gh_oe_actor FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL
+);
+```
+
+Migration: `2026_10_25_220000_create_gh_orders_tables.php`. Controllers must not overwrite `status` directly — `GhOrderStateService` is the transition interface (GH-4+ implements confirmations/scheduler).

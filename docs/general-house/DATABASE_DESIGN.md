@@ -1,6 +1,6 @@
 # General House — Database Design (Phase 0, revised)
 
-**Status:** Phase 1 catalog tables **implemented** (`2026_10_25_200000_create_gh_catalog_tables.php`). Later sections remain design-only.  
+**Status:** Phase 1 catalog + Phase 2 customers/zones/contracts + Phase 3 orders **implemented** (`2026_10_25_200000` / `210000` / `220000`). Invoice/payment/driver-UI sections remain design-only.  
 **Prefix:** `gh_`  
 **Policy:** Forward-only Laravel migrations; `docs/DATABASE_SCHEMA.md` §24.  
 **Alignment:** Owner CONDITIONAL APPROVAL 2026-10-25 — see `DESIGN_CHANGE_SUMMARY.md`.

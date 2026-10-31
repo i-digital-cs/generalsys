@@ -20,7 +20,7 @@ Cross-ref: `DESIGN_CHANGE_SUMMARY.md` (owner CONDITIONAL APPROVAL 2026-10-25).
 | D-GH-012 | Invoice corrections | ISSUED immutable; VOID / CREDIT_NOTE / REFUND designed; **implement only after detailed rules** | Design **APPROVED**; rules **OPEN** → **C-GH-CORR** | Correction workflows |
 | D-GH-013 | Multi-currency | Launch AED-only vs later EGP | **OPEN** → **C-GH-MULTI-CUR** | Phase 1/5 defaults |
 | D-GH-014 | Rounding | HALF_UP to 2 dp | **APPROVED** | — |
-| D-GH-015 | Order ref format | `GH-ORD-000001` (global sequence) | **PROPOSED** | Phase 3 |
+| D-GH-015 | Order ref format | `GH-ORD-######` via locked `gh_sequences.orders` (never COUNT) | **APPROVED** (GH-3) | — |
 | D-GH-016 | Invoice number | `GH-INV-YYYYMM-####` month sequence | **PROPOSED** | Phase 5 |
 | D-GH-017 | Pickup eligibility | Eligible from **24h before** pickup window start | **APPROVED** | — |
 | D-GH-018 | Happy-path states | `LATER → PICKUP → WORKING → DELIVERY → COMPLETED` with approved triggers | **APPROVED** | — |

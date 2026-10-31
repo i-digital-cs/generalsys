@@ -61,4 +61,7 @@ return [
     'gh_customers' => 'العملاء',
     'gh_zones' => 'مناطق التوصيل',
     'gh_contracts' => 'عقود الشركات',
+    'gh_section_orders' => 'الطلبات',
+    'gh_orders' => 'الطلبات',
+    'gh_orders_create' => 'طلب جديد',
 ];

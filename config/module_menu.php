@@ -22,6 +22,10 @@ return [
         ['key' => 'nav.gh_customers', 'route' => 'gh.customers.index', 'icon' => 'bi-people'],
         ['key' => 'nav.gh_zones', 'route' => 'gh.zones.index', 'icon' => 'bi-geo-alt'],
         ['key' => 'nav.gh_contracts', 'route' => 'gh.contracts.index', 'icon' => 'bi-file-earmark-text'],
+
+        ['type' => 'heading', 'key' => 'nav.gh_section_orders'],
+        ['key' => 'nav.gh_orders', 'route' => 'gh.orders.index', 'icon' => 'bi-clipboard-check'],
+        ['key' => 'nav.gh_orders_create', 'route' => 'gh.orders.create', 'icon' => 'bi-plus-circle'],
     ],
     'product' => [
         ['key' => 'nav.dashboard', 'route' => 'portal.product', 'icon' => 'bi-speedometer2'],

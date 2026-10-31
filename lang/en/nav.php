@@ -61,4 +61,7 @@ return [
     'gh_customers' => 'Customers',
     'gh_zones' => 'Delivery zones',
     'gh_contracts' => 'B2B contracts',
+    'gh_section_orders' => 'Orders',
+    'gh_orders' => 'Orders',
+    'gh_orders_create' => 'New order',
 ];

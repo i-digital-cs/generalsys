@@ -30,6 +30,7 @@ use App\Http\Controllers\GeneralHouse\ContractController as GhContractController
 use App\Http\Controllers\GeneralHouse\CustomerAddressController as GhCustomerAddressController;
 use App\Http\Controllers\GeneralHouse\CustomerController as GhCustomerController;
 use App\Http\Controllers\GeneralHouse\OfferingController as GhOfferingController;
+use App\Http\Controllers\GeneralHouse\OrderController as GhOrderController;
 use App\Http\Controllers\GeneralHouse\ProductController as GhProductController;
 use App\Http\Controllers\GeneralHouse\TreatmentController as GhTreatmentController;
 use App\Http\Controllers\GeneralHouse\ZoneController as GhZoneController;
@@ -165,6 +166,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/contracts/{contract}/offerings', [GhContractController::class, 'storeOffering'])->name('contracts.offerings.store');
         Route::put('/contracts/{contract}/offerings/{contractOffering}', [GhContractController::class, 'updateOffering'])->name('contracts.offerings.update');
         Route::delete('/contracts/{contract}/offerings/{contractOffering}', [GhContractController::class, 'destroyOffering'])->name('contracts.offerings.destroy');
+
+        // Phase GH-3 — order management (operational; not invoices)
+        Route::get('/orders', [GhOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/create', [GhOrderController::class, 'create'])->name('orders.create');
+        Route::post('/orders', [GhOrderController::class, 'store'])->name('orders.store');
+        Route::get('/orders/{order}', [GhOrderController::class, 'show'])->name('orders.show');
+        Route::get('/orders/{order}/edit', [GhOrderController::class, 'edit'])->name('orders.edit');
+        Route::put('/orders/{order}', [GhOrderController::class, 'update'])->name('orders.update');
+        Route::get('/orders/{order}/history', [GhOrderController::class, 'history'])->name('orders.history');
     });
 
     Route::prefix('product/expenses')->name('product.expenses.')->group(function () {
