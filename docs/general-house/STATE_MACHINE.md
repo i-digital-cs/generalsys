@@ -1,7 +1,7 @@
 # General House — State Machine (Phase 0, revised)
 
-**Status:** Design only. All transitions: authorized + idempotent + audited (`occurred_at` vs `recorded_at`).  
-**Alignment:** Owner CONDITIONAL APPROVAL 2026-10-25.
+**Status:** GH-4 **implemented** on TEST (transitions via `GhOrderStateService` only).  
+**Alignment:** Owner CONDITIONAL APPROVAL 2026-10-25 · GH-4 authorization 2026-10-31.
 
 ## 1. Primary logistics lifecycle (APPROVED)
 

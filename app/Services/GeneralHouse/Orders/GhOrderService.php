@@ -31,6 +31,7 @@ class GhOrderService
         private readonly GhOrderAssignmentService $assignments,
         private readonly GhOrderEventService $events,
         private readonly GhDriverEligibilityService $drivers,
+        private readonly GhOrderStateService $states,
     ) {}
 
     /**
@@ -230,18 +231,14 @@ class GhOrderService
 
             $builtLines = $this->buildLines($customer, $linesInput, $window['starts_at'], $contract?->id);
             $estimated = $this->sumEstimates($builtLines);
-            $newStatus = $this->eligibility->initialStatus($window['starts_at']);
-            $oldStatus = $order->status;
             $windowChanged = ! $order->pickup_starts_at->equalTo($window['starts_at'])
                 || ! $order->pickup_ends_at->equalTo($window['ends_at']);
 
+            // Status is never written here — reevaluatePrePickupStatus owns LATER/PICKUP flips.
             $order->update([
                 'address_id' => $address->id,
                 'zone_id' => $address->zone_id,
                 'contract_id' => $contract?->id,
-                'status' => in_array($oldStatus, [GhOrderStatus::LATER, GhOrderStatus::PICKUP], true)
-                    ? $newStatus
-                    : $oldStatus,
                 'pickup_starts_at' => $window['starts_at'],
                 'pickup_ends_at' => $window['ends_at'],
                 'timezone' => $window['timezone'],
@@ -274,17 +271,7 @@ class GhOrderService
                 ]);
             }
 
-            if ($oldStatus !== $order->fresh()->status) {
-                $this->events->record(
-                    $order,
-                    GhOrderEventType::STATUS_CHANGED,
-                    $actor,
-                    $oldStatus,
-                    $order->status,
-                    ['source' => 'edit_reevaluation'],
-                );
-            }
-
+            $this->states->reevaluatePrePickupStatus($order->fresh(), $actor);
             $this->assignments->assignPickup($order, $pickupDriverId, $actor);
             $this->assignments->assignDelivery($order, $deliveryDriverId, $actor);
 

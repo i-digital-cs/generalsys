@@ -17,4 +17,20 @@ final class GhOrderEventType
     public const STATUS_CHANGED = 'STATUS_CHANGED';
 
     public const PICKUP_WINDOW_CHANGED = 'PICKUP_WINDOW_CHANGED';
+
+    public const PICKUP_PROMOTED = 'PICKUP_PROMOTED';
+
+    public const PICKUP_CONFIRMED = 'PICKUP_CONFIRMED';
+
+    public const DELIVERY_READY = 'DELIVERY_READY';
+
+    public const DELIVERY_CONFIRMED = 'DELIVERY_CONFIRMED';
+
+    public const ORDER_CANCELLED = 'ORDER_CANCELLED';
+
+    public const PICKUP_FAILED = 'PICKUP_FAILED';
+
+    public const DELIVERY_FAILED = 'DELIVERY_FAILED';
+
+    public const PICKUP_RESCHEDULED = 'PICKUP_RESCHEDULED';
 }

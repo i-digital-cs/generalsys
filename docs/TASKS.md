@@ -1314,10 +1314,17 @@ T-0.1 → T-0.2 → T-0.3
   - [x] Automated tests + TEST migrate (`d14098_general`)
   - [x] Exclusions held: scheduler job, pickup/delivery confirm, invoice engine, driver workspace
 
-### T-GH-4.* — Logistics state machine + 24h eligibility (Phase 4)
-- Depends on: T-GH-3 + D-GH-011 exceptions
-- Status: `pending`
-- [ ] Expand at Phase 4 kickoff
+### T-GH-4.1 — Logistics engine (eligibility, pickup confirm, exceptions)
+- Depends on: T-GH-3.1
+- Unlocks: T-GH-5.*
+- Status: `done`
+- [x] Task complete
+  - [x] GH business TZ `Asia/Dubai` (`config/general_house.php`) without changing app TZ
+  - [x] Sole status authority `GhOrderStateService` (promote / confirm pickup / invoice-gated delivery / complete / cancel / reschedule / attempts)
+  - [x] Scheduler command `gh:promote-pickup-eligible` + schedule entry
+  - [x] Received-item reconciliation (`gh_order_received_lines`); requested lines immutable
+  - [x] Attempts table; driver reassignment; admin logistics UI
+  - [x] Tests + TEST migrate; WORKING→DELIVERY blocked until GH-5 invoices
 
 ### T-GH-5.* — Invoice builder + calculation engine (Phase 5)
 - Depends on: T-GH-4 + D-GH-005/006/012/013/014
@@ -1342,6 +1349,21 @@ T-0.1 → T-0.2 → T-0.3
 ---
 
 ## Progress log
+
+- [x] 2026-10-31 T-GH-4.1 CONDITIONAL PASS — Logistics on TEST. Gate 0: GH-3 committed `57035e9`. TZ Asia/Dubai (0 historical rows). State machine + promote command + pickup confirm/received lines + exceptions. WORKING→DELIVERY invoice-gated (no fake invoices). Backup `storage/backups/d14098_general_pre_gh4_*.sql`. **Host cron for generalsys `schedule:run` not present** — command registered but auto-run needs cron install. LIVE untouched. Next: owner authorize Phase 5.
+```text
+Task ID: T-GH-4.1
+Commands: php artisan test --filter=GeneralHouse; migrate --path=...110000...; ValuationModuleTest
+Automated tests: PASS
+UI/UX (AR+EN): PASS (keys + logistics partials)
+Next task allowed: no (await Phase 5 authorization)
+DATABASE CHANGES: YES
+SCHEMA MIGRATIONS CREATED: YES
+DATA MIGRATION OR BACKFILL: NO (migration-record repair only)
+PRODUCTION DEPLOYMENT PROCEDURE: VERIFIED (TEST only)
+HARDCODED ID SAFETY: NOT APPLICABLE
+DATABASE MIGRATION POLICY: PASS
+```
 
 - [x] 2026-10-25 T-GH-3.1 PASS — Order management on TEST. Gate 0: GH-2 committed `6ed4b38`. Tables sequences/orders/lines/assignments/events; refs `GH-ORD-######`; initial LATER/PICKUP via ±24h eligibility; estimate-only pricing; independent drivers; edit locks via `picked_up_at`/`invoice_issued_at`. Backup `storage/backups/d14098_general_pre_gh3_*.sql`. Tests: 30 GH + Gross/Valuation regression. LIVE untouched. Next: owner authorize Phase 4.
 ```text

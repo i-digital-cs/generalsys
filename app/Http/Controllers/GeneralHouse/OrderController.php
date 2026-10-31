@@ -11,8 +11,10 @@ use App\Models\GeneralHouse\GhZone;
 use App\Services\GeneralHouse\Catalog\GhPricingResolver;
 use App\Services\GeneralHouse\Orders\GhDriverEligibilityService;
 use App\Services\GeneralHouse\Orders\GhOrderService;
+use App\Services\GeneralHouse\Orders\GhPickupEligibilityService;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use App\Support\GeneralHouse\GhCustomerType;
+use App\Support\GeneralHouse\GhOrderAccess;
 use App\Support\GeneralHouse\GhOrderStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +26,7 @@ class OrderController extends Controller
         private readonly GhOrderService $orders,
         private readonly GhDriverEligibilityService $drivers,
         private readonly GhPricingResolver $pricing,
+        private readonly GhPickupEligibilityService $eligibility,
     ) {}
 
     public function index(Request $request): View
@@ -108,14 +111,30 @@ class OrderController extends Controller
             'zone',
             'contract',
             'lines',
+            'receivedLines',
+            'attempts.actor',
             'pickupDriver',
             'deliveryDriver',
+            'pickupConfirmedByUser',
+            'deliveredByUser',
             'assignments.driver',
             'assignments.assignedByUser',
             'events.actor',
         ]);
 
-        return view('gh.orders.show', ['order' => $order]);
+        $user = request()->user();
+
+        return view('gh.orders.show', [
+            'order' => $order,
+            'drivers' => $this->drivers->eligibleDrivers(),
+            'eligibility' => $this->eligibility,
+            'offerings' => $this->pricing->availableOfferingsForCustomer($order->customer),
+            'canConfirmPickup' => GhOrderAccess::mayConfirmPickup($user, $order),
+            'canConfirmDelivery' => GhOrderAccess::mayConfirmDelivery($user, $order)
+                && $order->status === GhOrderStatus::DELIVERY,
+            'canManageLogistics' => GhOrderAccess::mayManage($user),
+            'displayTz' => $this->eligibility->displayTimezone($order->timezone),
+        ]);
     }
 
     public function history(GhOrder $order): View

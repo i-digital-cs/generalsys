@@ -338,11 +338,12 @@ class OrdersTest extends TestCase
     public function test_eligibility_service_shared_rule(): void
     {
         $svc = app(GhPickupEligibilityService::class);
-        $now = Carbon::parse('2026-10-25 12:00:00', $svc->timezone());
-        $this->assertTrue($svc->isEligibleForPickup(Carbon::parse('2026-10-26 11:00:00', $svc->timezone()), $now));
-        $this->assertFalse($svc->isEligibleForPickup(Carbon::parse('2026-10-27 12:01:00', $svc->timezone()), $now));
-        $this->assertSame(GhOrderStatus::PICKUP, $svc->initialStatus(Carbon::parse('2026-10-26 10:00:00', $svc->timezone()), $now));
-        $this->assertSame(GhOrderStatus::LATER, $svc->initialStatus(Carbon::parse('2026-10-28 10:00:00', $svc->timezone()), $now));
+        $now = Carbon::parse('2026-10-25 12:00:00');
+        $this->assertTrue($svc->isEligibleForPickup(Carbon::parse('2026-10-26 11:00:00'), $now));
+        $this->assertFalse($svc->isEligibleForPickup(Carbon::parse('2026-10-27 12:01:00'), $now));
+        $this->assertSame(GhOrderStatus::PICKUP, $svc->initialStatus(Carbon::parse('2026-10-26 10:00:00'), $now));
+        $this->assertSame(GhOrderStatus::LATER, $svc->initialStatus(Carbon::parse('2026-10-28 10:00:00'), $now));
+        $this->assertSame('Asia/Dubai', $svc->timezone());
     }
 
     /**

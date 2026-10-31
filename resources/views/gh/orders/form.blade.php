@@ -3,7 +3,7 @@
 @php
     $isEdit = $order !== null;
     $title = $isEdit ? __('gh.orders.edit') : __('gh.orders.create');
-    $tz = config('app.timezone', 'Africa/Cairo');
+    $tz = config('general_house.timezone', 'Asia/Dubai');
     $selectedLines = old('lines', $isEdit ? $order->lines->map(fn ($l) => [
         'offering_id' => $l->offering_id,
         'quantity' => $l->quantity,

@@ -21,3 +21,8 @@ Schedule::command('reports:warn-missing 0')
 Schedule::command('reports:warn-missing 1')
     ->dailyAt('08:00')
     ->withoutOverlapping();
+
+// General House: promote LATER → PICKUP within 24h of pickup_starts_at (GH business TZ).
+Schedule::command('gh:promote-pickup-eligible')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();

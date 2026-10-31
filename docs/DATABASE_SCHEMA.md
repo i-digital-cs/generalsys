@@ -1507,4 +1507,68 @@ CREATE TABLE gh_order_events (
 );
 ```
 
-Migration: `2026_10_25_220000_create_gh_orders_tables.php`. Controllers must not overwrite `status` directly — `GhOrderStateService` is the transition interface (GH-4+ implements confirmations/scheduler).
+Migration: `2026_10_25_220000_create_gh_orders_tables.php`. Controllers must not overwrite `status` directly — `GhOrderStateService` is the sole status authority.
+
+---
+
+## 27. General House logistics (Phase GH-4)
+
+**Business timezone:** `Asia/Dubai` via `config('general_house.timezone')` — does not change `config('app.timezone')`. See `docs/general-house/TIMEZONE.md`.
+
+**Scheduler:** `gh:promote-pickup-eligible` every 5 minutes (requires host cron `schedule:run` for this app).
+
+```sql
+-- Additive columns on gh_orders:
+-- pickup_confirmed_by, pickup_confirmation_notes,
+-- delivered_at, delivered_by, delivery_notes,
+-- cancelled_at, cancelled_by, cancel_reason
+-- timezone default for NEW rows: Asia/Dubai (existing values untouched)
+
+CREATE TABLE gh_order_received_lines (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL,
+    order_line_id BIGINT UNSIGNED NULL,
+    offering_id BIGINT UNSIGNED NOT NULL,
+    quantity INT UNSIGNED NOT NULL,
+    discrepancy_type ENUM('MATCH','SHORT','OVER','ADDITIONAL','MISSING') NOT NULL DEFAULT 'MATCH',
+    unit_price_estimate DECIMAL(12,2) NOT NULL,
+    currency CHAR(3) NOT NULL DEFAULT 'AED',
+    price_source ENUM('STANDARD','CONTRACT') NOT NULL DEFAULT 'STANDARD',
+    contract_id BIGINT UNSIGNED NULL,
+    product_name_ar VARCHAR(150) NOT NULL,
+    product_name_en VARCHAR(150) NOT NULL,
+    treatment_name_ar VARCHAR(120) NOT NULL,
+    treatment_name_en VARCHAR(120) NOT NULL,
+    category_name_ar VARCHAR(120) NULL,
+    category_name_en VARCHAR(120) NULL,
+    notes TEXT NULL,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_recv_order_sort (order_id, sort_order),
+    INDEX idx_gh_recv_offering (offering_id),
+    CONSTRAINT fk_gh_recv_order FOREIGN KEY (order_id) REFERENCES gh_orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gh_recv_line FOREIGN KEY (order_line_id) REFERENCES gh_order_lines(id) ON DELETE SET NULL,
+    CONSTRAINT fk_gh_recv_offering FOREIGN KEY (offering_id) REFERENCES gh_product_offerings(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_recv_contract FOREIGN KEY (contract_id) REFERENCES gh_b2b_contracts(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gh_order_attempts (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL,
+    attempt_type ENUM('PICKUP','DELIVERY') NOT NULL,
+    outcome ENUM('FAILED','PARTIAL') NOT NULL DEFAULT 'FAILED',
+    actor_id BIGINT UNSIGNED NULL,
+    occurred_at TIMESTAMP NOT NULL,
+    recorded_at TIMESTAMP NOT NULL,
+    notes TEXT NULL,
+    payload JSON NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_attempt_order_type_occurred (order_id, attempt_type, occurred_at),
+    CONSTRAINT fk_gh_attempt_order FOREIGN KEY (order_id) REFERENCES gh_orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gh_attempt_actor FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL
+);
+```
+
+Migration: `2026_10_31_110000_create_gh_logistics_tables.php`. WORKING→DELIVERY requires issued `gh_invoices` row (GH-5); no simulation path.

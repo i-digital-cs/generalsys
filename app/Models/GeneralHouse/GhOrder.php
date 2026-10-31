@@ -3,12 +3,14 @@
 namespace App\Models\GeneralHouse;
 
 use App\Models\User;
+use App\Services\GeneralHouse\Orders\GhPickupEligibilityService;
 use App\Support\GeneralHouse\GhOrderStatus;
 use Database\Factories\GeneralHouse\GhOrderFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class GhOrder extends Model
 {
@@ -34,7 +36,15 @@ class GhOrder extends Model
         'estimated_subtotal',
         'currency',
         'picked_up_at',
+        'pickup_confirmed_by',
+        'pickup_confirmation_notes',
         'invoice_issued_at',
+        'delivered_at',
+        'delivered_by',
+        'delivery_notes',
+        'cancelled_at',
+        'cancelled_by',
+        'cancel_reason',
         'created_by',
         'updated_by',
     ];
@@ -46,6 +56,8 @@ class GhOrder extends Model
             'pickup_ends_at' => 'datetime',
             'picked_up_at' => 'datetime',
             'invoice_issued_at' => 'datetime',
+            'delivered_at' => 'datetime',
+            'cancelled_at' => 'datetime',
             'estimated_subtotal' => 'decimal:2',
             'customer_id' => 'integer',
             'address_id' => 'integer',
@@ -53,6 +65,9 @@ class GhOrder extends Model
             'contract_id' => 'integer',
             'pickup_driver_id' => 'integer',
             'delivery_driver_id' => 'integer',
+            'pickup_confirmed_by' => 'integer',
+            'delivered_by' => 'integer',
+            'cancelled_by' => 'integer',
         ];
     }
 
@@ -106,12 +121,47 @@ class GhOrder extends Model
         return $this->hasMany(GhOrderEvent::class, 'order_id')->orderByDesc('occurred_at')->orderByDesc('id');
     }
 
+    public function receivedLines(): HasMany
+    {
+        return $this->hasMany(GhOrderReceivedLine::class, 'order_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function attempts(): HasMany
+    {
+        return $this->hasMany(GhOrderAttempt::class, 'order_id')->orderByDesc('occurred_at')->orderByDesc('id');
+    }
+
+    public function pickupConfirmedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pickup_confirmed_by');
+    }
+
+    public function deliveredByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'delivered_by');
+    }
+
+    public function cancelledByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
     public function isEditableOperationally(): bool
     {
         if ($this->invoice_issued_at !== null || $this->picked_up_at !== null) {
             return false;
         }
 
+        if ($this->status === GhOrderStatus::CANCELLED) {
+            return false;
+        }
+
         return GhOrderStatus::isPrePickup($this->status);
+    }
+
+    public function isPickupEligible(?Carbon $now = null): bool
+    {
+        return app(GhPickupEligibilityService::class)
+            ->isEligibleForPickup($this->pickup_starts_at, $now);
     }
 }

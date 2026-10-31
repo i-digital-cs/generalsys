@@ -31,6 +31,7 @@ use App\Http\Controllers\GeneralHouse\CustomerAddressController as GhCustomerAdd
 use App\Http\Controllers\GeneralHouse\CustomerController as GhCustomerController;
 use App\Http\Controllers\GeneralHouse\OfferingController as GhOfferingController;
 use App\Http\Controllers\GeneralHouse\OrderController as GhOrderController;
+use App\Http\Controllers\GeneralHouse\OrderLogisticsController as GhOrderLogisticsController;
 use App\Http\Controllers\GeneralHouse\ProductController as GhProductController;
 use App\Http\Controllers\GeneralHouse\TreatmentController as GhTreatmentController;
 use App\Http\Controllers\GeneralHouse\ZoneController as GhZoneController;
@@ -175,6 +176,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/orders/{order}/edit', [GhOrderController::class, 'edit'])->name('orders.edit');
         Route::put('/orders/{order}', [GhOrderController::class, 'update'])->name('orders.update');
         Route::get('/orders/{order}/history', [GhOrderController::class, 'history'])->name('orders.history');
+
+        // Phase GH-4 — logistics transitions (status only via GhOrderStateService)
+        Route::post('/orders/{order}/confirm-pickup', [GhOrderLogisticsController::class, 'confirmPickup'])->name('orders.confirm-pickup');
+        Route::post('/orders/{order}/confirm-delivery', [GhOrderLogisticsController::class, 'confirmDelivery'])->name('orders.confirm-delivery');
+        Route::post('/orders/{order}/cancel', [GhOrderLogisticsController::class, 'cancel'])->name('orders.cancel');
+        Route::post('/orders/{order}/reschedule', [GhOrderLogisticsController::class, 'reschedule'])->name('orders.reschedule');
+        Route::post('/orders/{order}/failed-pickup', [GhOrderLogisticsController::class, 'failedPickup'])->name('orders.failed-pickup');
+        Route::post('/orders/{order}/failed-delivery', [GhOrderLogisticsController::class, 'failedDelivery'])->name('orders.failed-delivery');
+        Route::post('/orders/{order}/reassign-driver', [GhOrderLogisticsController::class, 'reassignDriver'])->name('orders.reassign-driver');
     });
 
     Route::prefix('product/expenses')->name('product.expenses.')->group(function () {

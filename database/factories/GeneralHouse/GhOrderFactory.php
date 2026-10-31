@@ -18,7 +18,7 @@ class GhOrderFactory extends Factory
 
     public function definition(): array
     {
-        $tz = config('app.timezone', 'Africa/Cairo');
+        $tz = config('general_house.timezone', 'Asia/Dubai');
         $starts = Carbon::now($tz)->addDays(2)->setTime(10, 0);
         $ends = $starts->copy()->setTime(12, 0);
         $customer = GhCustomer::factory();
