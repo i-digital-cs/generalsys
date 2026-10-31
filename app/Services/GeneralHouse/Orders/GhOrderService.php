@@ -100,12 +100,20 @@ class GhOrderService
 
         $from = trim((string) ($filters['pickup_from'] ?? ''));
         if ($from !== '') {
-            $q->where('pickup_starts_at', '>=', Carbon::parse($from, $this->eligibility->timezone())->startOfDay());
+            $q->where(
+                'pickup_starts_at',
+                '>=',
+                $this->eligibility->toUtcSql(Carbon::parse($from, $this->eligibility->timezone())->startOfDay())
+            );
         }
 
         $to = trim((string) ($filters['pickup_to'] ?? ''));
         if ($to !== '') {
-            $q->where('pickup_starts_at', '<=', Carbon::parse($to, $this->eligibility->timezone())->endOfDay());
+            $q->where(
+                'pickup_starts_at',
+                '<=',
+                $this->eligibility->toUtcSql(Carbon::parse($to, $this->eligibility->timezone())->endOfDay())
+            );
         }
 
         return $q->paginate($perPage)->withQueryString();

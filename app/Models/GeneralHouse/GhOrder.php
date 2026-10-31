@@ -2,6 +2,7 @@
 
 namespace App\Models\GeneralHouse;
 
+use App\Casts\GhUtcDateTime;
 use App\Models\User;
 use App\Services\GeneralHouse\Orders\GhPickupEligibilityService;
 use App\Support\GeneralHouse\GhOrderStatus;
@@ -52,12 +53,13 @@ class GhOrder extends Model
     protected function casts(): array
     {
         return [
-            'pickup_starts_at' => 'datetime',
-            'pickup_ends_at' => 'datetime',
-            'picked_up_at' => 'datetime',
-            'invoice_issued_at' => 'datetime',
-            'delivered_at' => 'datetime',
-            'cancelled_at' => 'datetime',
+            // Operational instants: UTC via GhUtcDateTime (not app.timezone).
+            'pickup_starts_at' => GhUtcDateTime::class,
+            'pickup_ends_at' => GhUtcDateTime::class,
+            'picked_up_at' => GhUtcDateTime::class,
+            'invoice_issued_at' => GhUtcDateTime::class,
+            'delivered_at' => GhUtcDateTime::class,
+            'cancelled_at' => GhUtcDateTime::class,
             'estimated_subtotal' => 'decimal:2',
             'customer_id' => 'integer',
             'address_id' => 'integer',

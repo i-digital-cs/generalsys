@@ -60,9 +60,11 @@ class GhOrderStateService
     public function promoteEligibleLaterOrders(?Carbon $now = null, int $chunk = 100): int
     {
         $now ??= $this->eligibility->now();
-        // Wide SQL window (lead + 1 day buffer), then authoritative eligibility in PHP
-        // so driver TZ serialization cannot miss edge rows.
-        $sqlCutoff = $now->copy()->addHours($this->eligibility->leadHours() + 24);
+        // Wide SQL window (lead + 1 day buffer), then authoritative eligibility in PHP.
+        // Bind UTC string so app.timezone cannot skew TIMESTAMP comparisons.
+        $sqlCutoff = $this->eligibility->toUtcSql(
+            $now->copy()->addHours($this->eligibility->leadHours() + 24)
+        );
         $promoted = 0;
 
         GhOrder::query()

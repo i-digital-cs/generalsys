@@ -2,6 +2,7 @@
 
 namespace App\Models\GeneralHouse;
 
+use App\Casts\GhUtcDateTime;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,8 +24,8 @@ class GhOrderAssignment extends Model
     protected function casts(): array
     {
         return [
-            'assigned_at' => 'datetime',
-            'unassigned_at' => 'datetime',
+            'assigned_at' => GhUtcDateTime::class,
+            'unassigned_at' => GhUtcDateTime::class,
             'is_current' => 'boolean',
         ];
     }

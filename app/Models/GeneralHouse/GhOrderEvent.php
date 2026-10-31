@@ -2,6 +2,7 @@
 
 namespace App\Models\GeneralHouse;
 
+use App\Casts\GhUtcDateTime;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,8 +25,8 @@ class GhOrderEvent extends Model
     protected function casts(): array
     {
         return [
-            'occurred_at' => 'datetime',
-            'recorded_at' => 'datetime',
+            'occurred_at' => GhUtcDateTime::class,
+            'recorded_at' => GhUtcDateTime::class,
             'payload' => 'array',
         ];
     }

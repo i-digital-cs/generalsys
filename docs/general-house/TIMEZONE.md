@@ -1,37 +1,44 @@
 # General House — Timezone Policy (GH-4)
 
-**Business timezone:** `Asia/Dubai` (`config('general_house.timezone')`).  
+**Business timezone:** `Asia/Dubai` (`config('general_house.timezone')`, overridable via `GH_TIMEZONE`).  
 **Global Laravel / Attendance / Payroll / Gross:** unchanged (`config('app.timezone')`, currently `Africa/Cairo` on this host).
 
-## Conversion policy
+## Canonical representation (UTC)
 
-1. **Input (create/reschedule):** Calendar date + `HH:MM` pickup window fields are interpreted in the **GH business timezone** (`Asia/Dubai`) for new operations.
-2. **Storage:** Eloquent datetime columns persist absolute instants (MySQL `TIMESTAMP` / app casting). Do not store ambiguous local strings without a zone.
-3. **Display:** Format using the order’s stored `gh_orders.timezone` column (the zone used when the window was captured). Never rewrite historical windows by applying today’s GH zone.
-4. **Eligibility / scheduler “now”:** Compare absolute `pickup_starts_at` against `Carbon::now(config('general_house.timezone'))` with the −24h lead rule.
-5. **No silent reinterpretation:** Changing `GH_TIMEZONE` must not mutate existing `pickup_starts_at` / `pickup_ends_at` values. Rows keep their `timezone` label for display.
-
-## GH-3 → GH-4 audit (TEST `d14098_general`, 2026-10-31)
-
-| Check | Result |
+| Layer | Rule |
 |---|---|
-| Existing `gh_orders` rows | **0** — no historical conversion required |
-| Ambiguous data | **None** |
-| Action taken | Default for **new** rows → `Asia/Dubai`; eligibility service reads `config('general_house.timezone')` |
+| Form input | Date + `HH:MM` interpreted in GH business timezone |
+| Service parse | `GhOrderService::parsePickupWindow` builds timezone-aware Carbon in GH zone |
+| Eloquent | `App\Casts\GhUtcDateTime` — **set** writes `Y-m-d H:i:s` in **UTC**; **get** hydrates Carbon in **UTC** |
+| MySQL | `TIMESTAMP` columns; connection `SYSTEM`/`UTC` on TEST — stored string is UTC |
+| Display | `->timezone($order->timezone \|\| GH zone)` in Blade (create/edit/show/index) |
+| Scheduler SQL | Bind UTC strings via `GhPickupEligibilityService::toUtcSql()` |
+| Instant math | Absolute Carbon comparisons (eligibility lead hours) |
 
-If a future environment has GH-3 rows with `timezone = Africa/Cairo`, leave timestamps and the column as-is; only display and eligibility use absolute instants + per-row zone for UI.
+**Never** change `app.timezone`. **Never** add/subtract fixed hour offsets.
 
-## Closure verification finding (2026-10-31) — DISPLAY SHIFT
+## Conversion chain (defect → repair)
 
-Observed on TEST for browser-created `GH-ORD-000010`:
+**Bug (pre-repair):**
 
-| Layer | Value |
-|---|---|
-| Form input | `2026-11-05` + `14:00`–`15:00` (UI help: Asia/Dubai) |
-| `parsePickupWindow` | Builds Carbon in `Asia/Dubai` |
-| MySQL `DATETIME` | `2026-11-05 14:00:00` / `15:00:00`, `timezone=Asia/Dubai` |
-| Show / reschedule UI | **`16:00`–`17:00 (Asia/Dubai)`** (+2h) |
+1. Parse: Dubai `14:00` → Carbon `+04:00`.
+2. Default Eloquent `datetime` cast formatted in the Carbon’s own zone → wrote `14:00:00` digits.
+3. MySQL `TIMESTAMP` + session UTC stored those digits as **14:00 UTC** (wrong; true Dubai 14:00 is **10:00 UTC**).
+4. On read, Eloquent parsed digits as `app.timezone` (`Africa/Cairo`) → instant `14:00+02`.
+5. Blade `->timezone('Asia/Dubai')` → **16:00** (+2h display shift).
 
-**Cause:** columns are `DATETIME` (wall-clock). Eloquent reads them as `app.timezone` (`Africa/Cairo`). Blade then calls `->timezone($displayTz)` (`Asia/Dubai`), shifting Cairo→Dubai by +2h. Scheduler eligibility compares Carbon instants under the same cast rules, so promotion math stays internally consistent with the stored wall clock **as interpreted by app timezone** — UI label “(Asia/Dubai)” is misleading for the shifted digits.
+**Fix:** `GhUtcDateTime` + idempotent data repair `utc_timestamp_repair_v1` (see `GhUtcTimestampRepairService`).
 
-**Not fixed in this closure** (no `app.timezone` change; Attendance/Payroll untouched). Fix requires an approved GH-only datetime serialization approach (e.g. store UTC `TIMESTAMP`, or format without re-zone when values are already Dubai wall-clock).
+## Existing TEST data repair
+
+- Pickup windows / logistics actor times written as **order timezone** wall-clock → reinterpret as that zone → UTC.
+- Event `recorded_at`, most `occurred_at`, assignments → reinterpret as **Africa/Cairo** wall-clock → UTC.
+- `PICKUP_CONFIRMED` (and similar) `occurred_at` → order timezone (evidence: +2h vs `recorded_at`).
+- Laravel `created_at` / `updated_at` **not** rewritten (remain app-timezone cast).
+
+Marker: `gh_sequences.name = utc_timestamp_repair_v1`.  
+Command: `php artisan gh:repair-utc-timestamps` (dry-run) / `--apply`.
+
+## Migration history
+
+GH-1..GH-4 bookkeeping anomaly remains documented in `MIGRATION_INTEGRITY_AUDIT.md`. This repair adds only a **forward data migration** (`2026_10_31_120000_repair_gh_utc_timestamps`); it does not reorder batches or recreate tables.

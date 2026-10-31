@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
  * Shared eligibility: pickup eligible when now >= pickup_starts_at − lead hours.
  *
  * Wall-clock inputs/displays use GH business timezone (Asia/Dubai).
- * Instant comparisons use absolute Carbon values (do not depend on tz label).
+ * Canonical storage is UTC (GhUtcDateTime). Instant comparisons use absolute Carbon values.
  * Does not change config('app.timezone').
  */
 class GhPickupEligibilityService
@@ -42,6 +42,15 @@ class GhPickupEligibilityService
     public function now(): Carbon
     {
         return Carbon::now();
+    }
+
+    /**
+     * Format an instant for SQL comparison against UTC-stored TIMESTAMP columns.
+     * Avoids Query Builder formatting in app.timezone (Africa/Cairo).
+     */
+    public function toUtcSql(Carbon $instant): string
+    {
+        return $instant->copy()->utc()->format('Y-m-d H:i:s');
     }
 
     public function isEligibleForPickup(Carbon $pickupStartsAt, ?Carbon $now = null): bool
