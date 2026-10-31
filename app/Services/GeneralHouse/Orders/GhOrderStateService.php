@@ -141,12 +141,12 @@ class GhOrderStateService
             $occurredAt = $this->parseOccurredAt($data['occurred_at'] ?? null, $locked);
             $notes = $data['notes'] ?? $data['evidence_note'] ?? null;
 
-            $locked->update([
+            $locked->forceFill([
                 'picked_up_at' => $occurredAt,
                 'pickup_confirmed_by' => $actor->id,
                 'pickup_confirmation_notes' => $notes,
                 'updated_by' => $actor->id,
-            ]);
+            ])->save();
 
             $this->applyStatus($locked, GhOrderStatus::WORKING, $actor, GhOrderEventType::PICKUP_CONFIRMED, [
                 'received_count' => count($snapshots),
@@ -199,10 +199,10 @@ class GhOrderStateService
                 $issuedAt = Carbon::now('UTC');
             }
 
-            $locked->update([
+            $locked->forceFill([
                 'invoice_issued_at' => $issuedAt,
                 'updated_by' => $actor->id,
-            ]);
+            ])->save();
 
             $this->applyStatus($locked, GhOrderStatus::DELIVERY, $actor, GhOrderEventType::DELIVERY_READY, [
                 'invoice_id' => $invoiceId,
@@ -245,12 +245,12 @@ class GhOrderStateService
             $occurredAt = $this->parseOccurredAt($data['occurred_at'] ?? null, $locked);
             $notes = $data['notes'] ?? null;
 
-            $locked->update([
+            $locked->forceFill([
                 'delivered_at' => $occurredAt,
                 'delivered_by' => $actor->id,
                 'delivery_notes' => $notes,
                 'updated_by' => $actor->id,
-            ]);
+            ])->save();
 
             $this->applyStatus($locked, GhOrderStatus::COMPLETED, $actor, GhOrderEventType::DELIVERY_CONFIRMED, [
                 'notes' => $notes,
@@ -296,12 +296,12 @@ class GhOrderStateService
             $this->assertCanTransition($locked->status, GhOrderStatus::CANCELLED);
 
             $now = Carbon::now();
-            $locked->update([
+            $locked->forceFill([
                 'cancelled_at' => $now,
                 'cancelled_by' => $actor->id,
                 'cancel_reason' => $reason,
                 'updated_by' => $actor->id,
-            ]);
+            ])->save();
 
             $this->applyStatus($locked, GhOrderStatus::CANCELLED, $actor, GhOrderEventType::ORDER_CANCELLED, [
                 'reason' => $reason,
@@ -341,7 +341,7 @@ class GhOrderStateService
             $newStatus = $this->eligibility->initialStatus($window['starts_at']);
             $from = $locked->status;
 
-            $locked->update([
+            $locked->forceFill([
                 'pickup_starts_at' => $window['starts_at'],
                 'pickup_ends_at' => $window['ends_at'],
                 'timezone' => $window['timezone'],
@@ -349,7 +349,7 @@ class GhOrderStateService
                     ? $window['scheduling_notes']
                     : $locked->scheduling_notes,
                 'updated_by' => $actor->id,
-            ]);
+            ])->save();
 
             $this->events->record(
                 $locked,
@@ -509,7 +509,7 @@ class GhOrderStateService
             return;
         }
 
-        $order->update(['status' => $toStatus]);
+        $order->forceFill(['status' => $toStatus])->save();
         $this->events->record(
             $order,
             $eventType,

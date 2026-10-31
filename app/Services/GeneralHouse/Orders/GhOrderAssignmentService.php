@@ -65,10 +65,10 @@ class GhOrderAssignmentService
 
             $wasReassign = $current !== null;
             if ($current !== null) {
-                $current->update([
+                $current->forceFill([
                     'is_current' => false,
                     'unassigned_at' => $now,
-                ]);
+                ])->save();
             }
 
             GhOrderAssignment::query()->create([
@@ -81,7 +81,7 @@ class GhOrderAssignmentService
                 'is_current' => true,
             ]);
 
-            $order->update([$column => $driver->id, 'updated_by' => $actor->id]);
+            $order->forceFill([$column => $driver->id, 'updated_by' => $actor->id])->save();
 
             $this->events->record(
                 $order,
@@ -117,16 +117,16 @@ class GhOrderAssignmentService
             }
 
             $now = Carbon::now();
-            $current->update([
+            $current->forceFill([
                 'is_current' => false,
                 'unassigned_at' => $now,
-            ]);
+            ])->save();
 
             $column = $responsibility === GhAssignmentResponsibility::PICKUP
                 ? 'pickup_driver_id'
                 : 'delivery_driver_id';
 
-            $order->update([$column => null, 'updated_by' => $actor->id]);
+            $order->forceFill([$column => null, 'updated_by' => $actor->id])->save();
 
             $this->events->record(
                 $order,

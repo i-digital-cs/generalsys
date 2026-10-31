@@ -21,34 +21,15 @@ class GhOrder extends Model
 
     protected $table = 'gh_orders';
 
+    /**
+     * Status, drivers, and transition timestamps are service-authored (forceFill).
+     * Notes/scheduling remain fillable for non-authoritative updates.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
-        'reference',
-        'customer_id',
-        'address_id',
-        'zone_id',
-        'contract_id',
-        'status',
-        'pickup_starts_at',
-        'pickup_ends_at',
-        'timezone',
         'notes',
         'scheduling_notes',
-        'pickup_driver_id',
-        'delivery_driver_id',
-        'estimated_subtotal',
-        'currency',
-        'picked_up_at',
-        'pickup_confirmed_by',
-        'pickup_confirmation_notes',
-        'invoice_issued_at',
-        'delivered_at',
-        'delivered_by',
-        'delivery_notes',
-        'cancelled_at',
-        'cancelled_by',
-        'cancel_reason',
-        'created_by',
-        'updated_by',
     ];
 
     protected function casts(): array

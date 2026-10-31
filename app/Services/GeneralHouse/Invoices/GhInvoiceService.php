@@ -232,7 +232,7 @@ class GhInvoiceService
         $zone = $order->zone;
         $contract = $order->contract;
 
-        $invoice = GhInvoice::query()->create([
+        $invoice = GhInvoice::query()->forceCreate([
             'order_id' => $order->id,
             'number' => null,
             'status' => GhInvoiceStatus::DRAFT,
@@ -271,7 +271,7 @@ class GhInvoiceService
     private function applyCalcToInvoice(GhInvoice $invoice, array $calc, array $header, User $actor, bool $bumpVersion): void
     {
         $min = $calc['min_order'];
-        $invoice->fill([
+        $invoice->forceFill([
             'lines_gross' => $calc['lines_gross'],
             'item_discount_total' => $calc['item_discount_total'],
             'invoice_discount_type' => $calc['invoice_discount_type'],

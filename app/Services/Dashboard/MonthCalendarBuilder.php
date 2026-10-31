@@ -2,6 +2,7 @@
 
 namespace App\Services\Dashboard;
 
+use App\Support\YearMonth;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 
@@ -62,7 +63,7 @@ class MonthCalendarBuilder
     public function parseMonthParam(?string $cal): Carbon
     {
         if ($cal !== null && preg_match('/^\d{4}-\d{2}$/', $cal) === 1) {
-            return Carbon::createFromFormat('Y-m', $cal)->startOfMonth();
+            return YearMonth::start($cal);
         }
 
         return now()->startOfMonth();

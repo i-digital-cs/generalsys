@@ -9,16 +9,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Payment ledger rows are written only by GhPaymentService (forceFill/forceCreate).
+ */
 class GhPayment extends Model
 {
     protected $table = 'gh_payments';
 
-    protected $fillable = [
-        'invoice_id', 'reference', 'method', 'status', 'amount', 'currency',
-        'external_ref', 'idempotency_key', 'notes',
-        'collector_user_id', 'recorded_by', 'confirmed_by', 'cancelled_by',
-        'occurred_at', 'recorded_at', 'confirmed_at', 'cancelled_at',
-    ];
+    /** @var list<string> */
+    protected $fillable = [];
 
     protected function casts(): array
     {

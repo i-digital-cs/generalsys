@@ -102,7 +102,7 @@ class GhPaymentService
 
             $from = $locked->status;
             $now = Carbon::now('UTC');
-            $locked->fill([
+            $locked->forceFill([
                 'status' => GhPaymentStatus::CANCELLED,
                 'cancelled_by' => $actor->id,
                 'cancelled_at' => $now,
@@ -222,7 +222,7 @@ class GhPaymentService
             $recordedAt = Carbon::now('UTC');
             $status = $confirmNow ? GhPaymentStatus::CONFIRMED : GhPaymentStatus::PENDING;
 
-            $payment = GhPayment::query()->create([
+            $payment = GhPayment::query()->forceCreate([
                 'invoice_id' => $lockedInvoice->id,
                 'reference' => $this->numbers->nextReference(),
                 'method' => $method,

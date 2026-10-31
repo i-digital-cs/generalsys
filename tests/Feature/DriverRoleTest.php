@@ -130,7 +130,13 @@ class DriverRoleTest extends TestCase
     public function test_driver_menu_has_clock_and_report_and_hr_lands_on_clock(): void
     {
         $routes = array_column(config('menu.DRIVER'), 'route');
-        $this->assertSame(['employee.clock', 'employee.report', 'employee.media'], $routes);
+        // GH-7 adds driver workspace; HR clock/report/media remain. Post-login still lands on clock.
+        $this->assertSame([
+            'gh.driver.dashboard',
+            'employee.clock',
+            'employee.report',
+            'employee.media',
+        ], $routes);
 
         $this->assertSame(
             'employee.clock',

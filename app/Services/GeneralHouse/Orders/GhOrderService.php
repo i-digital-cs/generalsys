@@ -13,6 +13,7 @@ use App\Services\GeneralHouse\Customers\GhCustomerAddressService;
 use App\Services\GeneralHouse\Customers\GhCustomerService;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use App\Support\GeneralHouse\GhCustomerType;
+use App\Support\GeneralHouse\GhMoney;
 use App\Support\GeneralHouse\GhOrderEventType;
 use App\Support\GeneralHouse\GhOrderStatus;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -152,7 +153,7 @@ class GhOrderService
             $status = $this->eligibility->initialStatus($window['starts_at']);
             $reference = $this->references->nextReference();
 
-            $order = GhOrder::query()->create([
+            $order = GhOrder::query()->forceCreate([
                 'reference' => $reference,
                 'customer_id' => $customer->id,
                 'address_id' => $address->id,
@@ -243,7 +244,7 @@ class GhOrderService
                 || ! $order->pickup_ends_at->equalTo($window['ends_at']);
 
             // Status is never written here — reevaluatePrePickupStatus owns LATER/PICKUP flips.
-            $order->update([
+            $order->forceFill([
                 'address_id' => $address->id,
                 'zone_id' => $address->zone_id,
                 'contract_id' => $contract?->id,
@@ -254,7 +255,7 @@ class GhOrderService
                 'scheduling_notes' => $data['scheduling_notes'] ?? null,
                 'estimated_subtotal' => $estimated,
                 'updated_by' => $actor->id,
-            ]);
+            ])->save();
 
             $order->lines()->delete();
             foreach ($builtLines as $i => $line) {
@@ -309,13 +310,13 @@ class GhOrderService
         return DB::transaction(function () use ($order, $data, $actor) {
             $order = GhOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            $order->update([
+            $order->forceFill([
                 'notes' => array_key_exists('notes', $data) ? $data['notes'] : $order->notes,
                 'scheduling_notes' => array_key_exists('scheduling_notes', $data)
                     ? $data['scheduling_notes']
                     : $order->scheduling_notes,
                 'updated_by' => $actor->id,
-            ]);
+            ])->save();
 
             if (array_key_exists('delivery_driver_id', $data)) {
                 $deliveryDriverId = $data['delivery_driver_id'] !== '' && $data['delivery_driver_id'] !== null
@@ -602,11 +603,15 @@ class GhOrderService
      */
     private function sumEstimates(array $lines): string
     {
-        $sum = 0.0;
+        $sum = '0';
         foreach ($lines as $line) {
-            $sum += (float) $line['unit_price_estimate'] * (int) $line['quantity'];
+            $lineTotal = GhMoney::mul(
+                GhMoney::of((string) $line['unit_price_estimate']),
+                (string) (int) $line['quantity'],
+            );
+            $sum = GhMoney::add($sum, $lineTotal);
         }
 
-        return number_format($sum, 2, '.', '');
+        return GhMoney::roundHalfUp($sum);
     }
 }

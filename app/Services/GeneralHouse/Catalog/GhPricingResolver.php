@@ -9,6 +9,7 @@ use App\Models\GeneralHouse\GhProductOffering;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use App\Support\GeneralHouse\GhContractStatus;
 use App\Support\GeneralHouse\GhCustomerType;
+use App\Support\GeneralHouse\GhMoney;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -35,7 +36,7 @@ class GhPricingResolver
         if ($customer->type === GhCustomerType::B2C) {
             return $this->sellable->activeOfferings()->map(fn (GhProductOffering $o) => [
                 'offering' => $o,
-                'unit_price' => number_format((float) $o->standard_price, 2, '.', ''),
+                'unit_price' => GhMoney::of((string) $o->standard_price),
                 'currency' => $o->currency ?: 'AED',
                 'source' => 'STANDARD',
             ]);
@@ -60,7 +61,7 @@ class GhPricingResolver
             })
             ->map(fn (GhB2bContractOffering $row) => [
                 'offering' => $row->offering,
-                'unit_price' => number_format((float) $row->contract_price, 2, '.', ''),
+                'unit_price' => GhMoney::of((string) $row->contract_price),
                 'currency' => $row->currency ?: 'AED',
                 'source' => 'CONTRACT',
             ])
@@ -82,7 +83,7 @@ class GhPricingResolver
 
         if ($customer->type === GhCustomerType::B2C) {
             return [
-                'unit_price' => number_format((float) $offering->standard_price, 2, '.', ''),
+                'unit_price' => GhMoney::of((string) $offering->standard_price),
                 'currency' => $offering->currency ?: 'AED',
                 'source' => 'STANDARD',
             ];
@@ -108,7 +109,7 @@ class GhPricingResolver
         }
 
         return [
-            'unit_price' => number_format((float) $row->contract_price, 2, '.', ''),
+            'unit_price' => GhMoney::of((string) $row->contract_price),
             'currency' => $row->currency ?: 'AED',
             'source' => 'CONTRACT',
         ];

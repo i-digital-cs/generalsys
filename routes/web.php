@@ -213,9 +213,15 @@ Route::middleware('auth')->group(function () {
 
         // Phase GH-6 — payments (Manager-only; no Gross treasury; no driver finance)
         Route::get('/payments', [GhPaymentController::class, 'index'])->name('payments.index');
-        Route::post('/invoices/{invoice}/payments/cash', [GhPaymentController::class, 'storeCash'])->name('payments.cash');
-        Route::post('/invoices/{invoice}/payments/online', [GhPaymentController::class, 'storeOnline'])->name('payments.online');
-        Route::post('/payments/{payment}/cancel', [GhPaymentController::class, 'cancel'])->name('payments.cancel');
+        Route::post('/invoices/{invoice}/payments/cash', [GhPaymentController::class, 'storeCash'])
+            ->middleware('throttle:30,1')
+            ->name('payments.cash');
+        Route::post('/invoices/{invoice}/payments/online', [GhPaymentController::class, 'storeOnline'])
+            ->middleware('throttle:30,1')
+            ->name('payments.online');
+        Route::post('/payments/{payment}/cancel', [GhPaymentController::class, 'cancel'])
+            ->middleware('throttle:30,1')
+            ->name('payments.cancel');
 
         // Phase GH-7 — driver workspace (existing DRIVER auth; logistics via GH-4 services)
         Route::get('/driver', [GhDriverWorkspaceController::class, 'dashboard'])->name('driver.dashboard');

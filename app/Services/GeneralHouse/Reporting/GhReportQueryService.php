@@ -27,6 +27,7 @@ class GhReportQueryService
     public function invoices(GhReportFilters $filters, int $perPage = 25): LengthAwarePaginator
     {
         return $this->invoiceBase($filters)
+            ->withSum($this->confirmedPaymentsSumRelation(), 'amount')
             ->orderByDesc('issued_at')
             ->paginate($perPage)
             ->withQueryString();
@@ -60,6 +61,7 @@ class GhReportQueryService
     public function outstanding(GhReportFilters $filters, int $perPage = 25): LengthAwarePaginator
     {
         return $this->outstandingBase($filters)
+            ->withSum($this->confirmedPaymentsSumRelation(), 'amount')
             ->orderBy('issued_at')
             ->paginate($perPage)
             ->withQueryString();
@@ -233,12 +235,9 @@ class GhReportQueryService
         ];
     }
 
-    public function remainingForInvoice(GhInvoice $invoice): string
+    public function remainingForInvoice(GhInvoice $invoice, ?string $confirmed = null): string
     {
-        $confirmed = GhMoney::of((string) GhPayment::query()
-            ->where('invoice_id', $invoice->id)
-            ->where('status', GhPaymentStatus::CONFIRMED)
-            ->sum('amount'));
+        $confirmed ??= $this->confirmedForInvoice($invoice);
         $remaining = GhMoney::roundHalfUp(GhMoney::sub(GhMoney::of((string) $invoice->total_payable), $confirmed));
 
         return GhMoney::cmp($remaining, '0') < 0 ? '0.00' : $remaining;
@@ -246,10 +245,49 @@ class GhReportQueryService
 
     public function confirmedForInvoice(GhInvoice $invoice): string
     {
+        if (array_key_exists('payments_sum_amount', $invoice->getAttributes())) {
+            return GhMoney::of((string) ($invoice->payments_sum_amount ?? '0'));
+        }
+
         return GhMoney::of((string) GhPayment::query()
             ->where('invoice_id', $invoice->id)
             ->where('status', GhPaymentStatus::CONFIRMED)
             ->sum('amount'));
+    }
+
+    /**
+     * @return array<string, \Closure>
+     */
+    private function confirmedPaymentsSumRelation(): array
+    {
+        return [
+            'payments as payments_sum_amount' => fn ($q) => $q->where('status', GhPaymentStatus::CONFIRMED),
+        ];
+    }
+
+    /**
+     * @param  list<int>  $invoiceIds
+     * @return array<int, string> invoice_id => confirmed total
+     */
+    private function confirmedTotalsByInvoiceIds(array $invoiceIds): array
+    {
+        if ($invoiceIds === []) {
+            return [];
+        }
+
+        $rows = GhPayment::query()
+            ->selectRaw('invoice_id, SUM(amount) as confirmed_total')
+            ->whereIn('invoice_id', $invoiceIds)
+            ->where('status', GhPaymentStatus::CONFIRMED)
+            ->groupBy('invoice_id')
+            ->pluck('confirmed_total', 'invoice_id');
+
+        $out = [];
+        foreach ($invoiceIds as $id) {
+            $out[(int) $id] = GhMoney::of((string) ($rows[$id] ?? '0'));
+        }
+
+        return $out;
     }
 
     public function daysOutstanding(GhInvoice $invoice, string $tz): ?int
@@ -412,8 +450,10 @@ class GhReportQueryService
      */
     private function mapInvoiceRows(Collection $invoices): Collection
     {
-        return $invoices->map(function (GhInvoice $inv) {
-            $confirmed = $this->confirmedForInvoice($inv);
+        $totals = $this->confirmedTotalsByInvoiceIds($invoices->pluck('id')->all());
+
+        return $invoices->map(function (GhInvoice $inv) use ($totals) {
+            $confirmed = $totals[(int) $inv->id] ?? '0.00';
 
             return [
                 'number' => $inv->number,
@@ -422,7 +462,7 @@ class GhReportQueryService
                 'issued_at' => $inv->issued_at,
                 'total_payable' => GhMoney::of((string) $inv->total_payable),
                 'confirmed' => $confirmed,
-                'remaining' => $this->remainingForInvoice($inv),
+                'remaining' => $this->remainingForInvoice($inv, $confirmed),
                 'payment_status' => $inv->payment_status,
             ];
         });
@@ -435,16 +475,17 @@ class GhReportQueryService
     private function mapOutstandingRows(Collection $invoices): Collection
     {
         $tz = (string) config('general_house.timezone', 'Asia/Dubai');
+        $totals = $this->confirmedTotalsByInvoiceIds($invoices->pluck('id')->all());
 
-        return $invoices->map(function (GhInvoice $inv) use ($tz) {
-            $confirmed = $this->confirmedForInvoice($inv);
+        return $invoices->map(function (GhInvoice $inv) use ($tz, $totals) {
+            $confirmed = $totals[(int) $inv->id] ?? '0.00';
 
             return [
                 'customer' => $inv->customer_name_en ?: $inv->customer_name_ar,
                 'number' => $inv->number,
                 'total_payable' => GhMoney::of((string) $inv->total_payable),
                 'confirmed' => $confirmed,
-                'remaining' => $this->remainingForInvoice($inv),
+                'remaining' => $this->remainingForInvoice($inv, $confirmed),
                 'days_outstanding' => $this->daysOutstanding($inv, $tz),
                 'payment_status' => $inv->payment_status,
             ];

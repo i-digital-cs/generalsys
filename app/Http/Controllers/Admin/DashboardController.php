@@ -8,7 +8,7 @@ use App\Services\Admin\DashboardStatsService;
 use App\Services\Attendance\HoursComparisonService;
 use App\Services\Attendance\MissingDailyReportService;
 use App\Services\Dashboard\DashboardCalendarService;
-use Carbon\Carbon;
+use App\Support\YearMonth;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -35,7 +35,7 @@ class DashboardController extends Controller
             $request->string('cal')->toString() ?: null,
             $focusUserId,
         );
-        $cursor = Carbon::createFromFormat('Y-m', $calData['calendar']['cursor'])->startOfMonth();
+        $cursor = YearMonth::start($calData['calendar']['cursor']);
         $queryBase = [];
         $focusId = $calData['focusUser']->id ?? $focusUserId;
         if ($focusId !== null) {

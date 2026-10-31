@@ -10,24 +10,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * Invoice writes go through invoice/payment services via forceFill/forceCreate.
+ * Empty $fillable blocks HTTP/mass-assignment of status, totals, and payment_status.
+ */
 class GhInvoice extends Model
 {
     protected $table = 'gh_invoices';
 
-    protected $fillable = [
-        'order_id', 'number', 'status', 'payment_status', 'currency',
-        'customer_id', 'customer_type', 'customer_name_ar', 'customer_name_en', 'customer_phone',
-        'billing_name', 'billing_address', 'tax_registration_number',
-        'order_reference', 'zone_id', 'zone_name_ar', 'zone_name_en',
-        'contract_id', 'contract_reference',
-        'lines_gross', 'item_discount_total',
-        'invoice_discount_type', 'invoice_discount_value', 'invoice_discount_amount',
-        'lines_after_discounts',
-        'min_order_original_amount', 'min_order_effective_amount', 'min_order_policy',
-        'min_order_override_type', 'min_order_adjustment_amount', 'min_order_tax_class',
-        'taxable_base', 'vat_amount', 'total_payable', 'standard_vat_rate',
-        'draft_version', 'issued_at', 'issued_by', 'created_by', 'updated_by',
-    ];
+    /** @var list<string> */
+    protected $fillable = [];
 
     protected function casts(): array
     {

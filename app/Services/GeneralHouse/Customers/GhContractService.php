@@ -9,6 +9,7 @@ use App\Models\GeneralHouse\GhProductOffering;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use App\Support\GeneralHouse\GhContractStatus;
 use App\Support\GeneralHouse\GhCustomerType;
+use App\Support\GeneralHouse\GhMoney;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
@@ -286,12 +287,12 @@ class GhContractService
 
     private function normalizePrice(mixed $raw): string
     {
-        if ($raw === null || $raw === '' || ! is_numeric($raw) || (float) $raw < 0) {
+        if ($raw === null || $raw === '' || ! is_numeric($raw) || GhMoney::cmp(GhMoney::of((string) $raw), '0') < 0) {
             throw ValidationException::withMessages([
                 'contract_price' => [__('gh.errors.price_invalid')],
             ]);
         }
 
-        return number_format(round((float) $raw, 2), 2, '.', '');
+        return GhMoney::of((string) $raw);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Approvals;
 
+use App\Support\YearMonth;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -82,7 +83,7 @@ final class ApprovalsListFilters
             return null;
         }
 
-        return Carbon::createFromFormat('Y-m', $this->month)->startOfMonth();
+        return YearMonth::start($this->month);
     }
 
     public function monthEnd(): ?Carbon

@@ -5,6 +5,7 @@ namespace App\Services\GeneralHouse\Customers;
 use App\Models\GeneralHouse\GhZone;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use App\Support\GeneralHouse\GhMinOrderPolicy;
+use App\Support\GeneralHouse\GhMoney;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -97,13 +98,13 @@ class GhZoneService
 
     private function normalizeAmount(mixed $raw): string
     {
-        if (! is_numeric($raw) || (float) $raw < 0) {
+        if (! is_numeric($raw) || GhMoney::cmp(GhMoney::of((string) $raw), '0') < 0) {
             throw ValidationException::withMessages([
                 'min_order_amount' => [__('gh.errors.min_order_amount_invalid')],
             ]);
         }
 
-        return number_format(round((float) $raw, 2), 2, '.', '');
+        return GhMoney::of((string) $raw);
     }
 
     private function normalizePolicy(string $policy): string

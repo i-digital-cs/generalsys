@@ -38,6 +38,12 @@ return [
     | Payments (GH-6) — see docs/general-house/GH6_BUSINESS_DECISION_GATE.md
     |--------------------------------------------------------------------------
     */
+    /*
+    | Current TEST runtime flags (unchanged by GH-9.1 without owner approval).
+    | Proposed LIVE launch matrix is documented in
+    | docs/general-house/GH9_1_FINANCIAL_LAUNCH_MATRIX.md — do not activate here
+    | until the owner explicitly approves (notably online_initiation_enabled → false).
+    */
     'payments' => [
         'cash_enabled' => true,
         'online_initiation_enabled' => true,

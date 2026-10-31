@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Vacation;
 use App\Services\Employees\RestDayService;
 use App\Services\Employees\TeamMembershipService;
+use App\Support\YearMonth;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -968,7 +969,7 @@ class HoursComparisonService
     private function parseMonth(?string $ym): Carbon
     {
         if ($ym !== null && preg_match('/^\d{4}-\d{2}$/', $ym) === 1) {
-            return Carbon::createFromFormat('Y-m', $ym)->startOfMonth();
+            return YearMonth::start($ym);
         }
 
         return now()->startOfMonth();

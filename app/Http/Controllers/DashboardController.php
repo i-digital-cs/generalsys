@@ -7,7 +7,7 @@ use App\Services\Attendance\HoursComparisonService;
 use App\Services\Attendance\MissingDailyReportService;
 use App\Services\Dashboard\DashboardCalendarService;
 use App\Services\Dashboard\DashboardService;
-use Carbon\Carbon;
+use App\Support\YearMonth;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -42,7 +42,7 @@ class DashboardController extends Controller
             $calData = $this->calendar->holidaysOnly($cal);
         }
 
-        $cursor = Carbon::createFromFormat('Y-m', $calData['calendar']['cursor'])->startOfMonth();
+        $cursor = YearMonth::start($calData['calendar']['cursor']);
         $queryBase = [];
         $focusId = $calData['focusUser']->id ?? $focusUserId;
         if ($focusId !== null) {

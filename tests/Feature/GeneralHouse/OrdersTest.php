@@ -285,10 +285,10 @@ class OrdersTest extends TestCase
         ])->assertRedirect();
 
         $order = GhOrder::query()->firstOrFail();
-        $order->update([
+        $order->forceFill([
             'picked_up_at' => now(),
             'status' => GhOrderStatus::WORKING,
-        ]);
+        ])->save();
 
         $this->actingAs($manager)->put(route('gh.orders.update', $order), [
             'notes' => 'after pickup',

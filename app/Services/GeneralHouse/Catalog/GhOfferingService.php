@@ -6,6 +6,7 @@ use App\Models\GeneralHouse\GhProduct;
 use App\Models\GeneralHouse\GhProductOffering;
 use App\Models\GeneralHouse\GhTreatment;
 use App\Support\GeneralHouse\GhCatalogStatus;
+use App\Support\GeneralHouse\GhMoney;
 use App\Support\GeneralHouse\GhTaxClass;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\QueryException;
@@ -169,14 +170,14 @@ class GhOfferingService
             ]);
         }
 
-        $value = round((float) $raw, 2);
-        if ($value < 0) {
+        $value = GhMoney::of((string) $raw);
+        if (GhMoney::cmp($value, '0') < 0) {
             throw ValidationException::withMessages([
                 'standard_price' => [__('gh.errors.price_negative')],
             ]);
         }
 
-        return number_format($value, 2, '.', '');
+        return $value;
     }
 
     private function normalizeTaxClass(string $taxClass): string

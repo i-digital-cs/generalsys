@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Services\Attendance\DailyReportService;
 use App\Services\Employees\EmployeeDashboardService;
-use Carbon\Carbon;
+use App\Support\YearMonth;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -27,7 +27,7 @@ class DashboardController extends Controller
             $request->string('cal')->toString() ?: null,
         );
 
-        $cursor = Carbon::createFromFormat('Y-m', $snapshot['calendar']['cursor'])->startOfMonth();
+        $cursor = YearMonth::start($snapshot['calendar']['cursor']);
 
         return view('employee.dashboard', [
             'open' => $snapshot['open'],

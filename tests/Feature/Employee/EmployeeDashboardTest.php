@@ -119,15 +119,19 @@ class EmployeeDashboardTest extends TestCase
         $leader = User::factory()->teamLeader()->create();
         $this->employee->update(['team_leader_id' => $leader->id]);
 
+        // Keep both assignments inside the current calendar month (addDay() fails on month-end).
+        $dayA = now()->startOfMonth()->addDays(2)->toDateString();
+        $dayB = now()->startOfMonth()->addDays(5)->toDateString();
+
         ShiftAssignment::factory()->fullTime()->create([
             'user_id' => $this->employee->id,
             'assigned_by_tl_id' => $leader->id,
-            'date' => now()->toDateString(),
+            'date' => $dayA,
         ]);
         ShiftAssignment::factory()->onlineHalf()->create([
             'user_id' => $this->employee->id,
             'assigned_by_tl_id' => $leader->id,
-            'date' => now()->addDay()->toDateString(),
+            'date' => $dayB,
         ]);
 
         $this->actingAs($this->employee)

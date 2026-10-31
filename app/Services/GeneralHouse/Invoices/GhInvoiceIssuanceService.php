@@ -151,7 +151,7 @@ class GhInvoiceIssuanceService
             $number = $this->numbers->nextNumber();
             $issuedAt = Carbon::now('UTC');
 
-            $locked->fill([
+            $locked->forceFill([
                 'number' => $number,
                 'status' => GhInvoiceStatus::ISSUED,
                 'payment_status' => 'UNPAID',
