@@ -18,7 +18,7 @@ class GhZoneFactory extends Factory
             'name_ar' => 'منطقة '.fake()->unique()->numerify('###'),
             'name_en' => 'Zone '.fake()->unique()->numerify('###'),
             'min_order_amount' => '30.00',
-            'min_order_policy' => GhMinOrderPolicy::SURCHARGE,
+            'min_order_policy' => GhMinOrderPolicy::VALIDATION_ONLY,
             'status' => GhCatalogStatus::ACTIVE,
             'sort_order' => 0,
         ];

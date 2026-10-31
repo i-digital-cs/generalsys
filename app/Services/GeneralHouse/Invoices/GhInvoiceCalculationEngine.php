@@ -4,6 +4,7 @@ namespace App\Services\GeneralHouse\Invoices;
 
 use App\Support\GeneralHouse\GhDiscountType;
 use App\Support\GeneralHouse\GhInvoiceAdjustmentType;
+use App\Support\GeneralHouse\GhLaunchConfig;
 use App\Support\GeneralHouse\GhMinOrderOverrideType;
 use App\Support\GeneralHouse\GhMinOrderPolicy;
 use App\Support\GeneralHouse\GhMoney;
@@ -63,7 +64,7 @@ class GhInvoiceCalculationEngine
         $vatRate = GhMoney::of($header['standard_vat_rate'] ?? config('general_house.standard_vat_rate', '5.00'));
         $invoiceDiscountType = (string) ($header['invoice_discount_type'] ?? GhDiscountType::NONE);
         $invoiceDiscountValue = GhMoney::of($header['invoice_discount_value'] ?? '0');
-        $minPolicy = (string) ($header['min_order_policy'] ?? GhMinOrderPolicy::SURCHARGE);
+        $minPolicy = (string) ($header['min_order_policy'] ?? GhLaunchConfig::defaultMinOrderPolicy());
         $minOverride = (string) ($header['min_order_override_type'] ?? GhMinOrderOverrideType::APPLY_DEFAULT);
         $zoneMin = $header['min_order_amount'] ?? null;
         $overrideAmount = $header['min_order_override_amount'] ?? null;
@@ -406,12 +407,20 @@ class GhInvoiceCalculationEngine
         }
 
         $adjustment = '0.00';
+        $surchargeEnabled = GhLaunchConfig::minOrderSurchargeEnabled();
+        $effectivePolicy = $policy;
+
+        // GH-9.2 launch: surcharge disabled → SURCHARGE zones enforce like VALIDATION_ONLY (no adjustment).
+        if ($policy === GhMinOrderPolicy::SURCHARGE && ! $surchargeEnabled) {
+            $effectivePolicy = GhMinOrderPolicy::VALIDATION_ONLY;
+        }
+
         if ($effective !== null && GhMoney::cmp($effective, '0') > 0) {
-            if ($policy === GhMinOrderPolicy::VALIDATION_ONLY) {
+            if ($effectivePolicy === GhMinOrderPolicy::VALIDATION_ONLY) {
                 if (GhMoney::cmp($serviceAfterDiscounts, $effective) < 0) {
                     $blockReasons[] = 'min_order_validation';
                 }
-            } elseif ($policy === GhMinOrderPolicy::SURCHARGE) {
+            } elseif ($effectivePolicy === GhMinOrderPolicy::SURCHARGE) {
                 if (GhMoney::cmp($serviceAfterDiscounts, $effective) < 0) {
                     $adjustment = GhMoney::roundHalfUp(GhMoney::sub($effective, $serviceAfterDiscounts));
                 }
@@ -420,6 +429,7 @@ class GhInvoiceCalculationEngine
 
         $taxClass = null;
         if (GhMoney::cmp($adjustment, '0') > 0) {
+            // Fail-closed: never issue a surcharge without an approved tax class (C-GH-TAX-MIN).
             if ($minTaxClass === null || $minTaxClass === '' || ! in_array($minTaxClass, GhTaxClass::ALL, true)) {
                 $blockReasons[] = 'min_order_tax_unresolved';
                 $taxClass = null;
@@ -431,7 +441,7 @@ class GhInvoiceCalculationEngine
         return [
             'original_minimum' => $original,
             'effective_minimum' => $effective,
-            'policy' => $policy,
+            'policy' => $effectivePolicy,
             'override_type' => $override,
             'adjustment_amount' => $adjustment,
             'tax_class' => $taxClass,

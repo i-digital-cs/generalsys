@@ -48,10 +48,12 @@ class PaymentTest extends TestCase
                 ]);
             }
         }
+        // GH-9.2 launch defaults (fail-closed online).
         config([
             'general_house.min_order_surcharge_tax_class' => null,
+            'general_house.min_order.surcharge_enabled' => false,
             'general_house.payments.cash_enabled' => true,
-            'general_house.payments.online_initiation_enabled' => true,
+            'general_house.payments.online_initiation_enabled' => false,
             'general_house.payments.online_gateway_confirm_enabled' => false,
             'general_house.payments.bank_transfer_enabled' => false,
             'general_house.payments.partial_payments_enabled' => true,
@@ -121,25 +123,61 @@ class PaymentTest extends TestCase
         ]);
     }
 
-    public function test_online_pending_does_not_affect_balance_and_gateway_confirm_blocked(): void
+    public function test_online_initiation_blocked_under_launch_config(): void
     {
         $manager = User::factory()->manager()->create();
         $invoice = $this->issueInvoice($manager, unitPrice: '50.00', qty: 2);
         $svc = app(GhPaymentService::class);
 
-        $pending = $svc->initiateOnline($invoice, $manager, [
+        $this->expectException(ValidationException::class);
+        $svc->initiateOnline($invoice, $manager, [
             'amount' => '105.00',
             'external_ref' => 'GW-1',
             'idempotency_key' => 'online-1',
         ]);
-        $this->assertSame(GhPaymentStatus::PENDING, $pending->status);
+    }
+
+    public function test_http_online_initiation_rejected_and_cannot_bypass(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $invoice = $this->issueInvoice($manager, unitPrice: '50.00', qty: 2);
+
+        // Policy deny (403) when online initiation is launch-disabled — before service runs.
+        $this->actingAs($manager)
+            ->post(route('gh.payments.online', $invoice), [
+                'amount' => '10.00',
+                'idempotency_key' => (string) Str::uuid(),
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(0, GhPayment::query()->where('invoice_id', $invoice->id)->where('method', GhPaymentMethod::ONLINE)->count());
+    }
+
+    public function test_legacy_pending_online_does_not_affect_balance_and_gateway_confirm_blocked(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $invoice = $this->issueInvoice($manager, unitPrice: '50.00', qty: 2);
+
+        $pending = GhPayment::query()->forceCreate([
+            'invoice_id' => $invoice->id,
+            'reference' => 'PAY-LEGACY-ONLINE',
+            'method' => GhPaymentMethod::ONLINE,
+            'status' => GhPaymentStatus::PENDING,
+            'amount' => '105.00',
+            'currency' => 'AED',
+            'idempotency_key' => 'legacy-online-1',
+            'recorded_by' => $manager->id,
+            'occurred_at' => now('UTC'),
+            'recorded_at' => now('UTC'),
+        ]);
+
         $balance = app(GhPaymentBalanceService::class)->forInvoice($invoice->fresh());
         $this->assertSame('0.00', $balance['confirmed_total']);
         $this->assertSame('105.00', $balance['pending_total']);
         $this->assertSame(GhInvoicePaymentStatus::UNPAID, $balance['payment_status']);
 
         $this->expectException(ValidationException::class);
-        $svc->confirmOnlineGateway($pending, $manager);
+        app(GhPaymentService::class)->confirmOnlineGateway($pending, $manager);
     }
 
     public function test_driver_forbidden_and_bank_method_blocked(): void
@@ -181,15 +219,18 @@ class PaymentTest extends TestCase
 
         $this->assertSame(GhInvoicePaymentStatus::PARTIAL, $invoice->fresh()->payment_status);
 
-        $this->actingAs($manager)
-            ->post(route('gh.payments.online', $invoice), [
-                'amount' => '55.00',
-                'external_ref' => 'INIT-9',
-                'idempotency_key' => 'http-online',
-            ])
-            ->assertRedirect();
-
-        $pending = GhPayment::query()->where('status', GhPaymentStatus::PENDING)->firstOrFail();
+        $pending = GhPayment::query()->forceCreate([
+            'invoice_id' => $invoice->id,
+            'reference' => 'PAY-PEND-CANCEL',
+            'method' => GhPaymentMethod::ONLINE,
+            'status' => GhPaymentStatus::PENDING,
+            'amount' => '55.00',
+            'currency' => 'AED',
+            'idempotency_key' => 'http-online-legacy',
+            'recorded_by' => $manager->id,
+            'occurred_at' => now('UTC'),
+            'recorded_at' => now('UTC'),
+        ]);
         $this->actingAs($manager)
             ->post(route('gh.payments.cancel', $pending))
             ->assertRedirect();

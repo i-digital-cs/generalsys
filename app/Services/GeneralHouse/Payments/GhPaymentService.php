@@ -7,6 +7,7 @@ use App\Models\GeneralHouse\GhPayment;
 use App\Models\GeneralHouse\GhPaymentEvent;
 use App\Models\User;
 use App\Support\GeneralHouse\GhInvoiceStatus;
+use App\Support\GeneralHouse\GhLaunchConfig;
 use App\Support\GeneralHouse\GhMoney;
 use App\Support\GeneralHouse\GhPaymentMethod;
 use App\Support\GeneralHouse\GhPaymentStatus;
@@ -36,7 +37,7 @@ class GhPaymentService
      */
     public function recordConfirmedCash(GhInvoice $invoice, User $actor, array $data): GhPayment
     {
-        if (! config('general_house.payments.cash_enabled', true)) {
+        if (! GhLaunchConfig::cashEnabled()) {
             throw ValidationException::withMessages([
                 'method' => [__('gh.errors.payment_cash_disabled')],
             ]);
@@ -67,7 +68,7 @@ class GhPaymentService
      */
     public function initiateOnline(GhInvoice $invoice, User $actor, array $data): GhPayment
     {
-        if (! config('general_house.payments.online_initiation_enabled', true)) {
+        if (! GhLaunchConfig::onlineInitiationEnabled()) {
             throw ValidationException::withMessages([
                 'method' => [__('gh.errors.payment_online_disabled')],
             ]);
@@ -123,7 +124,7 @@ class GhPaymentService
      */
     public function confirmOnlineGateway(GhPayment $payment, User $actor): never
     {
-        if (! config('general_house.payments.online_gateway_confirm_enabled', false)) {
+        if (! GhLaunchConfig::onlineGatewayConfirmEnabled()) {
             throw ValidationException::withMessages([
                 'payment' => [__('gh.errors.payment_gateway_not_configured')],
             ]);
@@ -146,7 +147,7 @@ class GhPaymentService
             ]);
         }
 
-        if (! config('general_house.payments.bank_transfer_enabled', false) && $method === GhPaymentMethod::BANK) {
+        if (! GhLaunchConfig::bankTransferEnabled() && $method === GhPaymentMethod::BANK) {
             throw ValidationException::withMessages([
                 'method' => [__('gh.errors.payment_bank_disabled')],
             ]);
@@ -183,7 +184,7 @@ class GhPaymentService
             $confirmNow = (bool) ($data['confirm_immediately'] ?? false);
 
             if ($confirmNow) {
-                if (! config('general_house.payments.partial_payments_enabled', true)
+                if (! GhLaunchConfig::partialPaymentsEnabled()
                     && GhMoney::cmp($balance['confirmed_total'], '0') > 0) {
                     throw ValidationException::withMessages([
                         'amount' => [__('gh.errors.payment_partial_disabled')],
@@ -192,7 +193,7 @@ class GhPaymentService
 
                 $projected = GhMoney::roundHalfUp(GhMoney::add($balance['confirmed_total'], $amount));
                 if (GhMoney::cmp($projected, $balance['invoice_total']) > 0
-                    && ! config('general_house.payments.overpayment_allowed', false)) {
+                    && ! GhLaunchConfig::overpaymentAllowed()) {
                     throw ValidationException::withMessages([
                         'amount' => [__('gh.errors.payment_exceeds_remaining', [
                             'remaining' => $balance['remaining'],
@@ -250,7 +251,7 @@ class GhPaymentService
                 $lockedInvoice = GhInvoice::query()->whereKey($lockedInvoice->id)->lockForUpdate()->firstOrFail();
                 $after = $this->balances->forInvoice($lockedInvoice);
                 if (GhMoney::cmp($after['confirmed_total'], $after['invoice_total']) > 0
-                    && ! config('general_house.payments.overpayment_allowed', false)) {
+                    && ! GhLaunchConfig::overpaymentAllowed()) {
                     throw ValidationException::withMessages([
                         'amount' => [__('gh.errors.payment_concurrent_overpay')],
                     ]);

@@ -19,7 +19,7 @@
             <div class="d-flex justify-content-between fw-bold"><span>{{ __('gh.payments.remaining') }}</span><span class="hp-value num-ltr"><x-money :amount="$balance['remaining']" currency="AED" /></span></div>
         </div>
 
-        @if ($invoice->isIssued() && config('general_house.payments.cash_enabled') && \App\Support\GeneralHouse\GhMoney::cmp($balance['remaining'], '0') > 0)
+        @if ($invoice->isIssued() && \App\Support\GeneralHouse\GhLaunchConfig::cashEnabled() && \App\Support\GeneralHouse\GhMoney::cmp($balance['remaining'], '0') > 0)
             @can('recordCash', [\App\Models\GeneralHouse\GhPayment::class, $invoice])
                 <form method="post" action="{{ route('gh.payments.cash', $invoice) }}" class="mb-3">
                     @csrf
@@ -47,29 +47,7 @@
             @endcan
         @endif
 
-        @if ($invoice->isIssued() && config('general_house.payments.online_initiation_enabled'))
-            @can('initiateOnline', [\App\Models\GeneralHouse\GhPayment::class, $invoice])
-                <form method="post" action="{{ route('gh.payments.online', $invoice) }}" class="mb-3">
-                    @csrf
-                    <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
-                    <h3 class="h6">{{ __('gh.payments.initiate_online') }}</h3>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label" for="online_amount">{{ __('gh.payments.amount') }}</label>
-                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="amount" id="online_amount" value="{{ old('amount', $balance['remaining']) }}" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="online_ext">{{ __('gh.payments.external_ref') }}</label>
-                            <input type="text" class="form-control form-control-sm" name="external_ref" id="online_ext" value="{{ old('external_ref') }}">
-                        </div>
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-outline-primary btn-sm w-100">{{ __('gh.payments.initiate_online_btn') }}</button>
-                        </div>
-                    </div>
-                    <p class="small text-body-secondary mb-0 mt-1">{{ __('gh.payments.online_hint') }}</p>
-                </form>
-            @endcan
-        @endif
+        {{-- GH-9.2: online initiation disabled for launch — UI omitted; server still rejects. --}}
 
         <h3 class="h6">{{ __('gh.payments.history') }}</h3>
         <div class="table-responsive">
@@ -107,7 +85,7 @@
                 </tbody>
             </table>
         </div>
-        @unless (config('general_house.payments.bank_transfer_enabled'))
+        @unless (\App\Support\GeneralHouse\GhLaunchConfig::bankTransferEnabled())
             <p class="small text-body-secondary mb-0 mt-2">{{ __('gh.payments.bank_disabled_note') }}</p>
         @endunless
     </div>

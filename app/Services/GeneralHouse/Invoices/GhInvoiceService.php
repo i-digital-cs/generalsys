@@ -13,8 +13,8 @@ use App\Models\User;
 use App\Services\GeneralHouse\Catalog\GhPricingResolver;
 use App\Support\GeneralHouse\GhDiscountType;
 use App\Support\GeneralHouse\GhInvoiceStatus;
+use App\Support\GeneralHouse\GhLaunchConfig;
 use App\Support\GeneralHouse\GhMinOrderOverrideType;
-use App\Support\GeneralHouse\GhMinOrderPolicy;
 use App\Support\GeneralHouse\GhMoney;
 use App\Support\GeneralHouse\GhOrderStatus;
 use App\Support\GeneralHouse\GhTaxClass;
@@ -212,7 +212,7 @@ class GhInvoiceService
             'invoice_discount_type' => (string) ($options['invoice_discount_type'] ?? GhDiscountType::NONE),
             'invoice_discount_value' => $options['invoice_discount_value'] ?? '0',
             'min_order_amount' => $zone?->min_order_amount,
-            'min_order_policy' => $zone?->min_order_policy ?? GhMinOrderPolicy::DEFAULT,
+            'min_order_policy' => $zone?->min_order_policy ?? GhLaunchConfig::defaultMinOrderPolicy(),
             'min_order_override_type' => (string) ($options['min_order_override_type'] ?? GhMinOrderOverrideType::APPLY_DEFAULT),
             'min_order_override_amount' => $options['min_order_override_amount'] ?? null,
             'min_order_tax_class' => $options['min_order_tax_class'] ?? config('general_house.min_order_surcharge_tax_class'),

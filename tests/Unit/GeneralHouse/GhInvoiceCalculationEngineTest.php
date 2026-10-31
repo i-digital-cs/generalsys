@@ -24,6 +24,8 @@ class GhInvoiceCalculationEngineTest extends TestCase
         $this->engine = app(GhInvoiceCalculationEngine::class);
         config(['general_house.standard_vat_rate' => '5.00']);
         config(['general_house.min_order_surcharge_tax_class' => null]);
+        // Unit fixtures for surcharge arithmetic explicitly enable the capability.
+        config(['general_house.min_order.surcharge_enabled' => true]);
     }
 
     public function test_standard_line_vat_and_total(): void

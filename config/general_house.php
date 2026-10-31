@@ -3,6 +3,10 @@
 /**
  * General House (service/gh) operational configuration.
  * Does NOT change config('app.timezone') — Attendance/Payroll/Gross keep app TZ.
+ *
+ * GH-9.2 owner-approved initial launch matrix (TEST implementation):
+ * cash + partial ON; online/bank/driver/refunds/overpay OFF; min-order VALIDATION_ONLY;
+ * surcharge DISABLED. See docs/general-house/GH9_2_APPROVED_LAUNCH_POLICY.md.
  */
 return [
 
@@ -28,30 +32,38 @@ return [
 
     /*
     | Tax class for minimum-order SURCHARGE adjustments (C-GH-TAX-MIN).
-    | Null = unresolved → ISSUE blocked when surcharge amount > 0.
-    | Set only after owner/tax-advisor confirmation (e.g. STANDARD_RATED).
+    | Null = unresolved → ISSUE blocked when surcharge amount > 0 (fail-closed).
+    | Launch keeps surcharge disabled; do not set without accountant approval.
     */
     'min_order_surcharge_tax_class' => env('GH_MIN_ORDER_SURCHARGE_TAX_CLASS'),
 
     /*
     |--------------------------------------------------------------------------
-    | Payments (GH-6) — see docs/general-house/GH6_BUSINESS_DECISION_GATE.md
+    | Minimum order (GH-9.2 approved launch)
     |--------------------------------------------------------------------------
     */
+    'min_order' => [
+        'default_policy' => env('GH_MIN_ORDER_DEFAULT_POLICY', 'VALIDATION_ONLY'),
+        // Owner-approved: no automatic surcharge for initial launch.
+        'surcharge_enabled' => filter_var(
+            env('GH_MIN_ORDER_SURCHARGE_ENABLED', false),
+            FILTER_VALIDATE_BOOL
+        ),
+    ],
+
     /*
-    | Current TEST runtime flags (unchanged by GH-9.1 without owner approval).
-    | Proposed LIVE launch matrix is documented in
-    | docs/general-house/GH9_1_FINANCIAL_LAUNCH_MATRIX.md — do not activate here
-    | until the owner explicitly approves (notably online_initiation_enabled → false).
+    |--------------------------------------------------------------------------
+    | Payments — GH-9.2 approved launch (fail closed when unset)
+    |--------------------------------------------------------------------------
     */
     'payments' => [
-        'cash_enabled' => true,
-        'online_initiation_enabled' => true,
-        'online_gateway_confirm_enabled' => false,
-        'bank_transfer_enabled' => false,
-        'partial_payments_enabled' => true,
-        'overpayment_allowed' => false,
-        'refunds_enabled' => false,
-        'driver_collection_enabled' => false,
+        'cash_enabled' => filter_var(env('GH_PAY_CASH_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'online_initiation_enabled' => filter_var(env('GH_PAY_ONLINE_INIT_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'online_gateway_confirm_enabled' => filter_var(env('GH_PAY_ONLINE_GATEWAY_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'bank_transfer_enabled' => filter_var(env('GH_PAY_BANK_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'partial_payments_enabled' => filter_var(env('GH_PAY_PARTIAL_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'overpayment_allowed' => filter_var(env('GH_PAY_OVERPAYMENT_ALLOWED', false), FILTER_VALIDATE_BOOL),
+        'refunds_enabled' => filter_var(env('GH_PAY_REFUNDS_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'driver_collection_enabled' => filter_var(env('GH_PAY_DRIVER_COLLECTION_ENABLED', false), FILTER_VALIDATE_BOOL),
     ],
 ];

@@ -78,9 +78,18 @@ class DashboardReportingTest extends TestCase
             'amount' => '40.00',
             'occurred_at' => Carbon::now('UTC')->toDateTimeString(),
         ]);
-        $payments->initiateOnline($invoice->fresh(), $manager, [
+        // Launch disables online initiation — seed a legacy PENDING row for report math.
+        GhPayment::query()->forceCreate([
+            'invoice_id' => $invoice->id,
+            'reference' => 'PAY-PEND-RPT',
+            'method' => 'ONLINE',
+            'status' => 'PENDING',
             'amount' => '20.00',
-            'external_ref' => 'PEND-1',
+            'currency' => 'AED',
+            'idempotency_key' => 'pend-rpt-1',
+            'recorded_by' => $manager->id,
+            'occurred_at' => Carbon::now('UTC'),
+            'recorded_at' => Carbon::now('UTC'),
         ]);
 
         $filters = GhReportFilters::fromValidated([
@@ -196,9 +205,17 @@ class DashboardReportingTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-10-12 12:00:00', 'Asia/Dubai'));
         $manager = User::factory()->manager()->create();
         $invoice = $this->issueInvoice($manager, '80.00', 1);
-        app(GhPaymentService::class)->initiateOnline($invoice, $manager, [
+        GhPayment::query()->forceCreate([
+            'invoice_id' => $invoice->id,
+            'reference' => 'PAY-ONL-X',
+            'method' => 'ONLINE',
+            'status' => GhPaymentStatus::PENDING,
             'amount' => '80.00',
-            'external_ref' => 'ONL-X',
+            'currency' => 'AED',
+            'idempotency_key' => 'onl-x',
+            'recorded_by' => $manager->id,
+            'occurred_at' => now('UTC'),
+            'recorded_at' => now('UTC'),
         ]);
         $this->assertSame(GhPaymentStatus::PENDING, GhPayment::query()->first()->status);
 

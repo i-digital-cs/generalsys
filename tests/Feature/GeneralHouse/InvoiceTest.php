@@ -147,8 +147,9 @@ class InvoiceTest extends TestCase
 
     public function test_surcharge_without_tax_class_blocks_issue(): void
     {
+        config(['general_house.min_order.surcharge_enabled' => true]);
         $manager = User::factory()->manager()->create();
-        $ctx = $this->workingOrderWithReceived(requested: 1, received: 1, unitPrice: '10.00', minAmount: '30.00');
+        $ctx = $this->workingOrderWithReceived(requested: 1, received: 1, unitPrice: '10.00', minAmount: '30.00', policy: GhMinOrderPolicy::SURCHARGE);
         $invoice = app(GhInvoiceService::class)->createDraftFromOrder($ctx['order'], $manager);
 
         $this->expectException(ValidationException::class);
@@ -157,8 +158,9 @@ class InvoiceTest extends TestCase
 
     public function test_surcharge_with_tax_class_allows_issue(): void
     {
+        config(['general_house.min_order.surcharge_enabled' => true]);
         $manager = User::factory()->manager()->create();
-        $ctx = $this->workingOrderWithReceived(requested: 1, received: 1, unitPrice: '10.00', minAmount: '30.00');
+        $ctx = $this->workingOrderWithReceived(requested: 1, received: 1, unitPrice: '10.00', minAmount: '30.00', policy: GhMinOrderPolicy::SURCHARGE);
         $invoice = app(GhInvoiceService::class)->createDraftFromOrder($ctx['order'], $manager, [
             'min_order_tax_class' => GhTaxClass::STANDARD_RATED,
         ]);
@@ -226,11 +228,12 @@ class InvoiceTest extends TestCase
         int $received,
         string $unitPrice,
         string $minAmount = '0.00',
+        string $policy = GhMinOrderPolicy::VALIDATION_ONLY,
     ): array {
         $tz = config('general_house.timezone', 'Asia/Dubai');
         $zone = GhZone::factory()->create([
             'min_order_amount' => $minAmount,
-            'min_order_policy' => GhMinOrderPolicy::SURCHARGE,
+            'min_order_policy' => $policy,
         ]);
         $customer = GhCustomer::factory()->create(['type' => GhCustomerType::B2C]);
         $address = GhCustomerAddress::factory()->create([
