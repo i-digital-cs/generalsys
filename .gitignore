@@ -25,3 +25,23 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/error_log
+error_log
+
+# Capacitor / Android local tooling (keep sources; ignore caches & secrets)
+/mobile/node_modules/
+/mobile/android/.gradle/
+/mobile/android/app/build/
+/mobile/android/build/
+/mobile/android/local.properties
+/mobile/android/captures/
+/mobile/android/*.keystore
+/mobile/android/*.jks
+/mobile/*.keystore
+/mobile/*.jks
+/mobile/.capacitor-env
+/mobile/capacitor.config.json
+/mobile/dist/
+/mobile/android/gradle/wrapper/*.zip
+
+

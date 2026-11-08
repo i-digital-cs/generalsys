@@ -95,7 +95,7 @@ class GhPaymentService
                 return $locked->fresh();
             }
 
-            if ($locked->status !== GhPaymentStatus::PENDING) {
+            if (! in_array($locked->status, [GhPaymentStatus::PENDING, GhPaymentStatus::PENDING_REVIEW], true)) {
                 throw ValidationException::withMessages([
                     'payment' => [__('gh.errors.payment_cancel_not_pending')],
                 ]);
@@ -133,6 +133,136 @@ class GhPaymentService
         throw ValidationException::withMessages([
             'payment' => [__('gh.errors.payment_gateway_not_configured')],
         ]);
+    }
+
+    /**
+     * Driver one-step delivery collection — CONFIRMED immediately (idempotent).
+     * ONLINE is operator-recorded, not gateway-verified (no fake provider refs).
+     *
+     * @param  array{
+     *   method: string,
+     *   amount: string|float|int,
+     *   occurred_at?: string|null,
+     *   notes?: string|null,
+     *   idempotency_key?: string|null,
+     * }  $data
+     */
+    public function recordDriverDeliveryPayment(GhInvoice $invoice, User $driver, array $data): GhPayment
+    {
+        if (! GhLaunchConfig::driverDeliveryPaymentEnabled()) {
+            throw ValidationException::withMessages([
+                'method' => [__('gh.errors.driver_payment_declaration_disabled')],
+            ]);
+        }
+
+        $method = strtoupper(trim((string) ($data['method'] ?? '')));
+        if (! in_array($method, [GhPaymentMethod::CASH, GhPaymentMethod::ONLINE], true)) {
+            throw ValidationException::withMessages([
+                'method' => [__('gh.errors.driver_payment_method_required')],
+            ]);
+        }
+
+        if ($method === GhPaymentMethod::CASH && ! GhLaunchConfig::cashEnabled()) {
+            throw ValidationException::withMessages([
+                'method' => [__('gh.errors.payment_cash_disabled')],
+            ]);
+        }
+
+        $notes = trim((string) ($data['notes'] ?? ''));
+        $eventPayload = [
+            'source' => 'driver_delivery',
+            'collector_user_id' => $driver->id,
+        ];
+
+        if ($method === GhPaymentMethod::ONLINE) {
+            $eventPayload['verification_source'] = 'OPERATOR_RECORDED';
+            $eventPayload['gateway_verified'] = false;
+            $marker = __('gh.payments.online_operator_recorded_note');
+            $notes = trim(($notes !== '' ? $notes."\n" : '').$marker);
+        } else {
+            $eventPayload['verification_source'] = 'DRIVER_CASH';
+            $eventPayload['gateway_verified'] = false;
+        }
+
+        // One driver-delivery payment per invoice — retries reuse this key.
+        return $this->recordPayment($invoice, $driver, [
+            'method' => $method,
+            'amount' => $data['amount'],
+            'occurred_at' => $data['occurred_at'] ?? null,
+            'notes' => $notes !== '' ? $notes : null,
+            'idempotency_key' => 'gh-driver-delivery-pay-'.$invoice->id,
+            'collector_user_id' => $driver->id,
+            'confirm_immediately' => true,
+            'event_payload' => $eventPayload,
+        ]);
+    }
+
+    /**
+     * Legacy cleanup: manager may still confirm historical PENDING_REVIEW cash rows.
+     */
+    public function confirmCashDeclaration(GhPayment $payment, User $manager): GhPayment
+    {
+        if (! GhLaunchConfig::cashEnabled()) {
+            throw ValidationException::withMessages([
+                'method' => [__('gh.errors.payment_cash_disabled')],
+            ]);
+        }
+
+        return DB::transaction(function () use ($payment, $manager) {
+            /** @var GhPayment $locked */
+            $locked = GhPayment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->status === GhPaymentStatus::CONFIRMED) {
+                return $locked->fresh(['events']);
+            }
+
+            if ($locked->method !== GhPaymentMethod::CASH
+                || $locked->status !== GhPaymentStatus::PENDING_REVIEW) {
+                throw ValidationException::withMessages([
+                    'payment' => [__('gh.errors.payment_declaration_not_confirmable')],
+                ]);
+            }
+
+            /** @var GhInvoice $lockedInvoice */
+            $lockedInvoice = GhInvoice::query()->whereKey($locked->invoice_id)->lockForUpdate()->firstOrFail();
+            $balance = $this->balances->forInvoice($lockedInvoice);
+            $amount = GhMoney::of((string) $locked->amount);
+
+            if (GhMoney::cmp($amount, $balance['remaining_due']) > 0
+                && ! GhLaunchConfig::overpaymentAllowed()) {
+                throw ValidationException::withMessages([
+                    'amount' => [__('gh.errors.payment_exceeds_remaining', [
+                        'remaining' => $balance['remaining_due'],
+                    ])],
+                ]);
+            }
+
+            $from = $locked->status;
+            $now = Carbon::now('UTC');
+            $locked->forceFill([
+                'status' => GhPaymentStatus::CONFIRMED,
+                'confirmed_by' => $manager->id,
+                'confirmed_at' => $now,
+            ]);
+            $locked->save();
+
+            $this->appendEvent($locked, 'CONFIRMED', $from, GhPaymentStatus::CONFIRMED, $manager, [
+                'amount' => $amount,
+                'source' => 'legacy_driver_declaration',
+            ]);
+
+            $after = $this->balances->forInvoice($lockedInvoice->fresh());
+            if (GhMoney::cmp($after['cash_net'], $after['net_invoiced']) > 0
+                && ! GhLaunchConfig::overpaymentAllowed()) {
+                throw ValidationException::withMessages([
+                    'amount' => [__('gh.errors.payment_concurrent_overpay')],
+                ]);
+            }
+
+            $this->balances->syncInvoicePaymentStatus($lockedInvoice);
+
+            return $locked->fresh(['events']);
+        });
     }
 
     /**
@@ -182,6 +312,7 @@ class GhPaymentService
 
             $balance = $this->balances->forInvoice($lockedInvoice);
             $confirmNow = (bool) ($data['confirm_immediately'] ?? false);
+            $explicitStatus = isset($data['status']) ? (string) $data['status'] : null;
 
             if ($confirmNow) {
                 if (! GhLaunchConfig::partialPaymentsEnabled()
@@ -191,15 +322,23 @@ class GhPaymentService
                     ]);
                 }
 
-                $projected = GhMoney::roundHalfUp(GhMoney::add($balance['confirmed_total'], $amount));
-                if (GhMoney::cmp($projected, $balance['invoice_total']) > 0
+                // Cap against remaining_due (net invoiced − cash net), not gross invoice alone.
+                if (GhMoney::cmp($amount, $balance['remaining_due']) > 0
                     && ! GhLaunchConfig::overpaymentAllowed()) {
                     throw ValidationException::withMessages([
                         'amount' => [__('gh.errors.payment_exceeds_remaining', [
-                            'remaining' => $balance['remaining'],
+                            'remaining' => $balance['remaining_due'],
                         ])],
                     ]);
                 }
+            } elseif (GhMoney::cmp($amount, $balance['remaining_due']) > 0
+                && ! GhLaunchConfig::overpaymentAllowed()) {
+                // Declarations / pending online also must not exceed remaining.
+                throw ValidationException::withMessages([
+                    'amount' => [__('gh.errors.payment_exceeds_remaining', [
+                        'remaining' => $balance['remaining_due'],
+                    ])],
+                ]);
             }
 
             $externalRef = isset($data['external_ref']) ? trim((string) $data['external_ref']) : null;
@@ -221,7 +360,13 @@ class GhPaymentService
 
             $occurredAt = $this->parseOccurredAt($data['occurred_at'] ?? null);
             $recordedAt = Carbon::now('UTC');
-            $status = $confirmNow ? GhPaymentStatus::CONFIRMED : GhPaymentStatus::PENDING;
+            if ($confirmNow) {
+                $status = GhPaymentStatus::CONFIRMED;
+            } elseif ($explicitStatus !== null && in_array($explicitStatus, GhPaymentStatus::ALL, true)) {
+                $status = $explicitStatus;
+            } else {
+                $status = GhPaymentStatus::PENDING;
+            }
 
             $payment = GhPayment::query()->forceCreate([
                 'invoice_id' => $lockedInvoice->id,
@@ -241,16 +386,21 @@ class GhPaymentService
                 'confirmed_at' => $confirmNow ? $recordedAt : null,
             ]);
 
-            $this->appendEvent($payment, $confirmNow ? 'CONFIRMED' : 'INITIATED', null, $status, $actor, [
+            $eventType = match ($status) {
+                GhPaymentStatus::CONFIRMED => 'CONFIRMED',
+                GhPaymentStatus::PENDING_REVIEW => 'DECLARED',
+                default => 'INITIATED',
+            };
+            $this->appendEvent($payment, $eventType, null, $status, $actor, array_merge([
                 'method' => $method,
                 'amount' => $amount,
-            ]);
+            ], is_array($data['event_payload'] ?? null) ? $data['event_payload'] : []));
 
             if ($confirmNow) {
                 // Re-lock and re-check balance against concurrent confirmed collections.
                 $lockedInvoice = GhInvoice::query()->whereKey($lockedInvoice->id)->lockForUpdate()->firstOrFail();
                 $after = $this->balances->forInvoice($lockedInvoice);
-                if (GhMoney::cmp($after['confirmed_total'], $after['invoice_total']) > 0
+                if (GhMoney::cmp($after['cash_net'], $after['net_invoiced']) > 0
                     && ! GhLaunchConfig::overpaymentAllowed()) {
                     throw ValidationException::withMessages([
                         'amount' => [__('gh.errors.payment_concurrent_overpay')],

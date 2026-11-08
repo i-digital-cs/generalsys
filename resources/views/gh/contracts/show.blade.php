@@ -5,11 +5,10 @@
 @section('content')
     <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
         <div>
-            <h1 class="h4 mb-1">{{ $contract->reference }}</h1>
+            <h1 class="h4 mb-1 num-ltr">{{ $contract->reference }}</h1>
             <p class="small text-body-secondary mb-0">
-                {{ $contract->customer?->localizedName() }} · {{ __('gh.contract_status.'.$contract->status) }}
-                · {{ $contract->effective_from->toDateString() }}
-                → {{ $contract->effective_to?->toDateString() ?? __('gh.contracts.open_ended') }}
+                {{ $contract->customer?->localizedName() ?: __('gh.orders.not_assigned') }}
+                · <span class="badge text-bg-secondary">{{ __('gh.contract_status.'.$contract->status) }}</span>
             </p>
         </div>
         <div class="d-flex gap-2">
@@ -20,19 +19,56 @@
         </div>
     </div>
 
-    @if ($errors->any())
+    @if (isset($errors) && $errors->any())
         <div class="alert alert-danger py-2 small"><ul class="mb-0 ps-3">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>
     @endif
 
     <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.contracts.show') }}</h2></div>
+        <div class="card-body small">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <span class="form-label d-block mb-0">{{ __('gh.fields.reference') }}</span>
+                    <span class="hp-value num-ltr">{{ $contract->reference }}</span>
+                </div>
+                <div class="col-md-3">
+                    <span class="form-label d-block mb-0">{{ __('gh.fields.customer') }}</span>
+                    <span class="hp-value">{{ $contract->customer?->localizedName() ?: '—' }}</span>
+                    @if ($contract->customer?->type)
+                        <span class="badge text-bg-secondary ms-1">{{ __('gh.customer_type.'.$contract->customer->type) }}</span>
+                    @endif
+                </div>
+                <div class="col-md-2">
+                    <span class="form-label d-block mb-0">{{ __('gh.fields.status') }}</span>
+                    <span class="badge text-bg-primary">{{ __('gh.contract_status.'.$contract->status) }}</span>
+                </div>
+                <div class="col-md-2">
+                    <span class="form-label d-block mb-0">{{ __('gh.fields.effective_from') }}</span>
+                    <span class="hp-value num-ltr">{{ $contract->effective_from?->toDateString() ?? '—' }}</span>
+                </div>
+                <div class="col-md-2">
+                    <span class="form-label d-block mb-0">{{ __('gh.fields.effective_to') }}</span>
+                    <span class="hp-value num-ltr">{{ $contract->effective_to?->toDateString() ?? __('gh.contracts.open_ended') }}</span>
+                </div>
+                @if ($contract->notes)
+                    <div class="col-12">
+                        <span class="form-label d-block mb-0">{{ __('gh.fields.notes') }}</span>
+                        <div>{{ $contract->notes }}</div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
         <div class="card-body">
-            <h2 class="h6">{{ __('gh.contracts.offerings') }}</h2>
+            <h2 class="h6 card-title">{{ __('gh.contracts.offerings') }}</h2>
             @can('update', $contract)
                 <form method="post" action="{{ route('gh.contracts.offerings.store', $contract) }}" class="row g-2 align-items-end mb-3 pb-3 border-bottom">
                     @csrf
                     <div class="col-md-5">
-                        <label class="form-label mb-1">{{ __('gh.fields.offering') }}</label>
-                        <select name="offering_id" class="form-select form-select-sm" required>
+                        <label class="form-label mb-1" for="offering_id">{{ __('gh.fields.offering') }}</label>
+                        <select id="offering_id" name="offering_id" class="form-select form-select-sm" required>
                             <option value="">—</option>
                             @foreach ($offerings as $o)
                                 <option value="{{ $o->id }}">
@@ -43,12 +79,12 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label mb-1">{{ __('gh.fields.contract_price') }}</label>
-                        <input name="contract_price" type="number" step="0.01" min="0" class="form-control form-control-sm" required>
+                        <label class="form-label mb-1" for="contract_price">{{ __('gh.fields.contract_price') }}</label>
+                        <input id="contract_price" name="contract_price" type="number" step="0.01" min="0" class="form-control form-control-sm" required>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label mb-1">{{ __('gh.fields.status') }}</label>
-                        <select name="status" class="form-select form-select-sm">
+                        <label class="form-label mb-1" for="co_status">{{ __('gh.fields.status') }}</label>
+                        <select id="co_status" name="status" class="form-select form-select-sm">
                             @foreach (\App\Support\GeneralHouse\GhCatalogStatus::ALL as $st)
                                 <option value="{{ $st }}" @selected($st === 'ACTIVE')>{{ __('gh.status.'.$st) }}</option>
                             @endforeach
@@ -59,7 +95,7 @@
             @endcan
 
             @if ($contract->contractOfferings->isEmpty())
-                <p class="text-body-secondary small mb-0">—</p>
+                <p class="text-body-secondary small mb-0">{{ __('gh.contracts.no_offerings') }}</p>
             @else
                 <div class="table-responsive">
                     <table class="table table-sm table-hr align-middle mb-0">
@@ -73,8 +109,12 @@
                         <tbody>
                         @foreach ($contract->contractOfferings as $row)
                             <tr>
-                                <td>{{ $row->offering?->product?->localizedName() }} / {{ $row->offering?->treatment?->localizedName() }}</td>
-                                <td class="hp-value num-ltr">{{ number_format((float) ($row->offering->standard_price ?? 0), 2) }}</td>
+                                <td>
+                                    {{ $row->offering?->product?->localizedName() ?? '—' }}
+                                    /
+                                    {{ $row->offering?->treatment?->localizedName() ?? '—' }}
+                                </td>
+                                <td class="hp-value num-ltr">{{ number_format((float) ($row->offering?->standard_price ?? 0), 2) }}</td>
                                 <td>
                                     @can('update', $contract)
                                         <form method="post" action="{{ route('gh.contracts.offerings.update', [$contract, $row]) }}" class="d-flex gap-1 align-items-center">
@@ -96,7 +136,7 @@
                                     @can('update', $contract)
                                         <form method="post" action="{{ route('gh.contracts.offerings.destroy', [$contract, $row]) }}" onsubmit="return confirm(@json(__('general.delete')))">
                                             @csrf @method('DELETE')
-                                            <button class="btn btn-link btn-sm text-danger p-0"><i class="bi bi-trash"></i></button>
+                                            <button class="btn btn-link btn-sm text-danger p-0" type="submit" aria-label="{{ __('general.delete') }}"><i class="bi bi-trash"></i></button>
                                         </form>
                                     @endcan
                                 </td>

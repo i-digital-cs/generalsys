@@ -46,6 +46,63 @@ class InvoiceTest extends TestCase
         config(['general_house.min_order_surcharge_tax_class' => null]);
     }
 
+    public function test_zero_line_booking_pickup_then_invoice_from_received(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-04 09:00:00', config('app.timezone')));
+        $manager = User::factory()->manager()->create();
+        $driver = User::factory()->driver()->create();
+        $zone = GhZone::factory()->create(['min_order_amount' => '0.00']);
+        $customer = GhCustomer::factory()->create(['type' => GhCustomerType::B2C]);
+        $address = GhCustomerAddress::factory()->create([
+            'customer_id' => $customer->id,
+            'zone_id' => $zone->id,
+        ]);
+        $offering = GhProductOffering::factory()->create(['standard_price' => '15.00']);
+
+        $this->actingAs($manager)->post(route('gh.orders.store'), [
+            'customer_id' => $customer->id,
+            'address_id' => $address->id,
+            'pickup_date' => '2026-11-04',
+            'pickup_window_start' => '10:00',
+            'pickup_window_end' => '12:00',
+            'pickup_driver_id' => $driver->id,
+        ])->assertRedirect();
+
+        $order = GhOrder::query()->firstOrFail();
+        $this->assertSame(GhOrderStatus::PICKUP, $order->status);
+        $this->assertSame(0, $order->lines()->count());
+
+        $this->actingAs($driver)->post(route('gh.orders.confirm-pickup', $order), [
+            'notes' => 'package',
+        ])->assertRedirect();
+
+        $order->refresh();
+        $this->assertSame(GhOrderStatus::WORKING, $order->status);
+        $this->assertSame(0, $order->receivedLines()->count());
+
+        $invoice = app(GhInvoiceService::class)->createDraftFromOrder($order, $manager);
+        $this->assertSame(0, $invoice->lines()->count());
+
+        $this->actingAs($manager)->put(route('gh.invoices.update', $invoice), [
+            'draft_version' => $invoice->draft_version,
+            'invoice_discount_type' => 'NONE',
+            'invoice_discount_value' => '0',
+            'min_order_override_type' => 'APPLY_DEFAULT',
+            'lines' => [['offering_id' => $offering->id, 'quantity' => 2]],
+        ])->assertRedirect();
+
+        $invoice->refresh();
+        $invLine = $invoice->lines()->firstOrFail();
+        $this->assertSame(1, $invoice->lines()->count());
+        $this->assertSame(2, (int) $invLine->quantity);
+        $this->assertNull($invLine->received_line_id);
+
+        app(GhInvoiceIssuanceService::class)->issue($invoice, $manager, (int) $invoice->draft_version);
+        $this->assertSame(GhOrderStatus::DELIVERY, $order->fresh()->status);
+
+        Carbon::setTestNow();
+    }
+
     public function test_draft_uses_received_quantity_not_requested(): void
     {
         $manager = User::factory()->manager()->create();

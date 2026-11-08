@@ -1,0 +1,31 @@
+{
+  "appId": "net.genral.generalhouse",
+  "appName": "GNRL Operations",
+  "webDir": "www",
+  "server": {
+    "url": "https://system.genral.net/login",
+    "cleartext": false,
+    "androidScheme": "https",
+    "allowNavigation": [
+      "system.genral.net",
+      "*.genral.net"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#000000",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#79caf9",
+      "overlaysWebView": false
+    }
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#000000",
+    "webContentsDebuggingEnabled": false
+  }
+}

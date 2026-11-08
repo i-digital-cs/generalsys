@@ -100,9 +100,11 @@ class ProductController extends Controller
 
     public function image(GhProduct $product): StreamedResponse
     {
-        $this->authorize('view', $product);
+        $this->authorize('viewImage', $product);
         abort_unless($product->image_path && Storage::disk('local')->exists($product->image_path), 404);
 
-        return Storage::disk('local')->response($product->image_path);
+        return Storage::disk('local')->response($product->image_path, null, [
+            'Cache-Control' => 'private, max-age=86400',
+        ]);
     }
 }

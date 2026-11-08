@@ -59,12 +59,10 @@
         </div>
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.orders.pickup_window') }}</h2></div>
+                <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.orders.scheduled_pickup') }}</h2></div>
                 <div class="card-body small">
                     <div class="mb-2 num-ltr hp-value">
                         {{ $order->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}
-                        –
-                        {{ $order->pickup_ends_at?->timezone($displayTz)->format('H:i') }}
                         ({{ $displayTz }})
                     </div>
                     <div class="mb-2">
@@ -80,11 +78,22 @@
                         @endif
                     </div>
                     <div class="mb-2"><span class="form-label d-block mb-0">{{ __('gh.orders.pickup_driver') }}</span>
-                        <span class="hp-value">{{ $order->pickupDriver?->localizedName() ?? '—' }}</span>
+                        @if ($order->pickupDriver)
+                            <span class="hp-value">{{ $order->pickupDriver->localizedName() }}</span>
+                        @else
+                            <span class="badge text-bg-warning">{{ __('gh.orders.not_assigned') }}</span>
+                        @endif
                     </div>
                     <div class="mb-2"><span class="form-label d-block mb-0">{{ __('gh.orders.delivery_driver') }}</span>
-                        <span class="hp-value">{{ $order->deliveryDriver?->localizedName() ?? __('gh.orders.none') }}</span>
+                        @if ($order->deliveryDriver)
+                            <span class="hp-value">{{ $order->deliveryDriver->localizedName() }}</span>
+                        @else
+                            <span class="badge text-bg-warning">{{ __('gh.orders.not_assigned') }}</span>
+                        @endif
                     </div>
+                    @if ($order->status === \App\Support\GeneralHouse\GhOrderStatus::DELIVERY && $order->delivery_driver_id === null)
+                        <div class="alert alert-warning py-2 small mb-0" role="status">{{ __('gh.orders.delivery_unassigned_hint') }}</div>
+                    @endif
                     @if ($order->scheduling_notes)
                         <div class="mb-2"><span class="form-label d-block mb-0">{{ __('gh.orders.scheduling_notes') }}</span>{{ $order->scheduling_notes }}</div>
                     @endif
@@ -139,8 +148,9 @@
 
     @if ($order->receivedLines->isNotEmpty())
         <div class="card border-0 shadow-sm mt-3">
-            <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.orders.received_lines') }}</h2></div>
+            <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.orders.received_lines_legacy') }}</h2></div>
             <div class="card-body">
+                <p class="small text-body-secondary">{{ __('gh.orders.received_lines_legacy_hint') }}</p>
                 <div class="table-responsive">
                     <table class="table table-hr table-sm align-middle mb-0">
                         <thead>
@@ -149,6 +159,7 @@
                             <th>{{ __('gh.fields.treatment') }}</th>
                             <th>{{ __('gh.orders.quantity') }}</th>
                             <th>{{ __('gh.orders.discrepancy') }}</th>
+                            <th>{{ __('gh.orders.unit_estimate') }}</th>
                             <th>{{ __('gh.fields.notes') }}</th>
                         </tr>
                         </thead>
@@ -159,6 +170,7 @@
                                 <td>{{ app()->getLocale() === 'ar' ? $recv->treatment_name_ar : ($recv->treatment_name_en ?: $recv->treatment_name_ar) }}</td>
                                 <td class="hp-value num-ltr">{{ $recv->quantity }}</td>
                                 <td><span class="badge text-bg-secondary">{{ __('gh.discrepancy.'.$recv->discrepancy_type) }}</span></td>
+                                <td class="hp-value num-ltr"><x-money :amount="$recv->unit_price_estimate" currency="AED" /></td>
                                 <td class="small">{{ $recv->notes }}</td>
                             </tr>
                         @endforeach

@@ -1365,6 +1365,24 @@ T-0.1 → T-0.2 → T-0.3
 
 ## Progress log
 
+- [x] 2026-11-04 GH owner UAT fixes (5 issues) CONDITIONAL PASS — TEST only. Auto contract refs `GH-CTR-######`; order refs unchanged; no visibility inputs (24h driver list rule + overdue stay actionable); driver list drag/arrows + `gh_driver_list_positions`; order 27 blocked correctly as pre-24h LATER with clear message; zero-line pickup add via sellable catalog; product Excel examples use live categories. Migration `2026_11_04_120000`. LIVE untouched; no push/merge/deploy.
+```text
+Task ID: GH-UAT-5
+Commands: php artisan migrate --force; php artisan test --filter=GeneralHouse; npm run build; browser UAT driver/contracts/products
+Automated tests: PASS (169 GeneralHouse / 824 assertions)
+UI/UX (AR+EN, RTL+LTR): CONDITIONAL (AR driver + EN contracts verified; full 375/768/1280 matrix not exhaustively resized)
+DATABASE CHANGES: YES (contracts sequence + gh_driver_list_positions)
+Next task allowed: yes
+```
+- [x] 2026-11-04 GH order workflow + Excel import (owner brief) CONDITIONAL PASS — TEST only. Orders create without `lines` (booking → pickup ADDITIONAL → invoice from received → DELIVERY). Master-data Excel import on categories/treatments/products/offerings/zones/customers/contracts with preview/confirm, example templates, product URL+ZIP images (SSRF/ZIP hardened). No financial bulk import. No schema migration. LIVE untouched; no push/merge/deploy.
+```text
+Task ID: GH-order-import (owner brief)
+Commands: php artisan test --filter=GeneralHouse; php artisan test --filter=GhExcelImport; browser UAT categories/products/orders.create AR+EN
+Automated tests: PASS (154 GeneralHouse incl. 29 GhExcelImport + zero-line lifecycle)
+UI/UX (AR+EN, RTL+LTR, 375/768/1280): CONDITIONAL (AR+EN verified in browser; full viewport matrix not exhaustively resized)
+DATABASE CHANGES: NO
+Next task allowed: yes (owner-directed; not a TASKS unlock chain item)
+```
 - [x] 2026-10-31 T-GH-8.1 PASS — Dashboard & reporting on TEST. Gate 0: GH-7 `7ae2819` preserved. Manager KPIs + reports; overdue deliveries UNAVAILABLE (documented); financial reconcile GH-INV-000001 111.30 / confirmed 100.00 / remaining 11.30. Backup `storage/backups/d14098_general_pre_gh8_*.sql`. LIVE untouched.
 ```text
 Task ID: T-GH-8.1

@@ -26,6 +26,7 @@ class UpdateGhOrderRequest extends FormRequest
                 'scheduling_notes' => ['nullable', 'string', 'max:2000'],
                 'delivery_driver_id' => ['nullable', 'integer', 'exists:users,id'],
                 'lines' => ['prohibited'],
+                'scheduled_pickup_at' => ['prohibited'],
                 'pickup_date' => ['prohibited'],
                 'pickup_window_start' => ['prohibited'],
                 'pickup_window_end' => ['prohibited'],
@@ -48,15 +49,17 @@ class UpdateGhOrderRequest extends FormRequest
             'new_address.directions' => ['nullable', 'string', 'max:500'],
             'new_address.is_default' => ['nullable', 'boolean'],
 
-            'lines' => ['required', 'array', 'min:1'],
+            // Operational edit may clear estimate lines; pickup records actuals.
+            'lines' => ['nullable', 'array'],
             'lines.*.offering_id' => ['required', 'integer', 'exists:gh_product_offerings,id'],
             'lines.*.quantity' => ['required', 'integer', 'min:1', 'max:9999'],
             'lines.*.unit_price' => ['prohibited'],
             'lines.*.unit_price_estimate' => ['prohibited'],
 
-            'pickup_date' => ['required', 'date_format:Y-m-d'],
-            'pickup_window_start' => ['required', 'date_format:H:i'],
-            'pickup_window_end' => ['required', 'date_format:H:i'],
+            'scheduled_pickup_at' => ['nullable', 'required_without_all:pickup_date,pickup_window_start', 'date'],
+            'pickup_date' => ['nullable', 'required_without:scheduled_pickup_at', 'date_format:Y-m-d'],
+            'pickup_window_start' => ['nullable', 'required_without:scheduled_pickup_at', 'date_format:H:i'],
+            'pickup_window_end' => ['nullable', 'date_format:H:i'],
             'pickup_driver_id' => ['required', 'integer', 'exists:users,id'],
             'delivery_driver_id' => ['nullable', 'integer', 'exists:users,id'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -68,6 +71,14 @@ class UpdateGhOrderRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $scheduled = trim((string) $this->input('scheduled_pickup_at', ''));
+        if ($scheduled !== '') {
+            $scheduled = str_replace('T', ' ', $scheduled);
+            if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/', $scheduled)) {
+                $this->merge(['scheduled_pickup_at' => substr($scheduled, 0, 16)]);
+            }
+        }
+
         foreach (['pickup_window_start', 'pickup_window_end'] as $timeField) {
             $raw = (string) $this->input($timeField, '');
             if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $raw)) {

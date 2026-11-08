@@ -18,6 +18,8 @@ class GhOrderReceivedLine extends Model
         'unit_price_estimate',
         'currency',
         'price_source',
+        'pricing_review_required',
+        'staff_price_approved',
         'contract_id',
         'product_name_ar',
         'product_name_en',
@@ -34,6 +36,8 @@ class GhOrderReceivedLine extends Model
         return [
             'quantity' => 'integer',
             'unit_price_estimate' => 'decimal:2',
+            'pricing_review_required' => 'boolean',
+            'staff_price_approved' => 'boolean',
             'sort_order' => 'integer',
         ];
     }

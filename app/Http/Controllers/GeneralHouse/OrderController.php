@@ -10,6 +10,7 @@ use App\Models\GeneralHouse\GhOrder;
 use App\Models\GeneralHouse\GhZone;
 use App\Services\GeneralHouse\Catalog\GhPricingResolver;
 use App\Services\GeneralHouse\Orders\GhDriverEligibilityService;
+use App\Services\GeneralHouse\Orders\GhDriverWorkspaceService;
 use App\Services\GeneralHouse\Orders\GhOrderService;
 use App\Services\GeneralHouse\Orders\GhPickupEligibilityService;
 use App\Support\GeneralHouse\GhCatalogStatus;
@@ -27,6 +28,7 @@ class OrderController extends Controller
         private readonly GhDriverEligibilityService $drivers,
         private readonly GhPricingResolver $pricing,
         private readonly GhPickupEligibilityService $eligibility,
+        private readonly GhDriverWorkspaceService $workspace,
     ) {}
 
     public function index(Request $request): View
@@ -129,7 +131,8 @@ class OrderController extends Controller
             'order' => $order,
             'drivers' => $this->drivers->eligibleDrivers(),
             'eligibility' => $this->eligibility,
-            'offerings' => $this->pricing->availableOfferingsForCustomer($order->customer),
+            'offerings' => collect(),
+            'productGroups' => [],
             'canConfirmPickup' => GhOrderAccess::mayConfirmPickup($user, $order),
             'canConfirmDelivery' => GhOrderAccess::mayConfirmDelivery($user, $order)
                 && $order->status === GhOrderStatus::DELIVERY,

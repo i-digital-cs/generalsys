@@ -29,6 +29,16 @@ class StoreGhCustomerRequest extends FormRequest
             'tax_registration_number' => ['nullable', 'string', 'max:80'],
             'status' => ['required', Rule::in(GhCatalogStatus::ALL)],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'allow_duplicate_phone' => ['sometimes', 'boolean'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('allow_duplicate_phone')) {
+            $this->merge([
+                'allow_duplicate_phone' => $this->boolean('allow_duplicate_phone'),
+            ]);
+        }
     }
 }

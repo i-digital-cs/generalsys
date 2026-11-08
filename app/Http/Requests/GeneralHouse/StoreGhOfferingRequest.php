@@ -29,9 +29,22 @@ class StoreGhOfferingRequest extends FormRequest
             ],
             'standard_price' => ['required', 'numeric', 'min:0', 'decimal:0,2'],
             'currency' => ['nullable', 'in:AED'],
-            'tax_class' => ['required', Rule::in(GhTaxClass::ALL)],
+            // Optional on create — defaults to configured STANDARD_RATED for routine laundry entry.
+            'tax_class' => ['nullable', Rule::in(GhTaxClass::ALL)],
             'status' => ['required', Rule::in(GhCatalogStatus::ALL)],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:999999'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $default = (string) config('general_house.default_offering_tax_class', GhTaxClass::STANDARD_RATED);
+        if (! in_array($default, GhTaxClass::ALL, true)) {
+            $default = GhTaxClass::STANDARD_RATED;
+        }
+        $tax = trim((string) $this->input('tax_class', ''));
+        $this->merge([
+            'tax_class' => $tax !== '' ? $tax : $default,
+        ]);
     }
 }

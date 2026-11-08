@@ -351,19 +351,55 @@ class GhOrderService
     }
 
     /**
+     * Accepts a single scheduled pickup datetime (preferred) or legacy date+start[+optional end].
+     * Missing end is derived as start + configured slot minutes for schema/compat only.
+     *
      * @param  array<string, mixed>  $data
      * @return array{starts_at: Carbon, ends_at: Carbon, timezone: string}
      */
     public function parsePickupWindow(array $data): array
     {
         $tz = $this->eligibility->timezone();
+        $scheduled = trim((string) ($data['scheduled_pickup_at'] ?? ''));
         $date = trim((string) ($data['pickup_date'] ?? ''));
         $start = trim((string) ($data['pickup_window_start'] ?? ''));
         $end = trim((string) ($data['pickup_window_end'] ?? ''));
 
-        if ($date === '' || $start === '' || $end === '') {
+        if ($scheduled !== '') {
+            $scheduled = str_replace('T', ' ', $scheduled);
+            if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $scheduled)) {
+                $scheduled = substr($scheduled, 0, 16);
+            }
+            if (! preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $scheduled)) {
+                throw ValidationException::withMessages([
+                    'scheduled_pickup_at' => [__('gh.errors.pickup_time_invalid')],
+                ]);
+            }
+            try {
+                $startsAt = Carbon::createFromFormat('Y-m-d H:i', $scheduled, $tz);
+            } catch (\Throwable) {
+                throw ValidationException::withMessages([
+                    'scheduled_pickup_at' => [__('gh.errors.pickup_window_ambiguous')],
+                ]);
+            }
+            if ($startsAt === false || $startsAt->format('Y-m-d H:i') !== $scheduled) {
+                throw ValidationException::withMessages([
+                    'scheduled_pickup_at' => [__('gh.errors.pickup_window_ambiguous')],
+                ]);
+            }
+            $slot = max(15, (int) config('general_house.pickup_default_slot_minutes', 60));
+            $endsAt = $startsAt->copy()->addMinutes($slot);
+
+            return [
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'timezone' => $tz,
+            ];
+        }
+
+        if ($date === '' || $start === '') {
             throw ValidationException::withMessages([
-                'pickup_date' => [__('gh.errors.pickup_window_required')],
+                'scheduled_pickup_at' => [__('gh.errors.pickup_window_required')],
             ]);
         }
 
@@ -373,7 +409,7 @@ class GhOrderService
             ]);
         }
 
-        if (! preg_match('/^\d{2}:\d{2}$/', $start) || ! preg_match('/^\d{2}:\d{2}$/', $end)) {
+        if (! preg_match('/^\d{2}:\d{2}$/', $start) || ($end !== '' && ! preg_match('/^\d{2}:\d{2}$/', $end))) {
             throw ValidationException::withMessages([
                 'pickup_window_start' => [__('gh.errors.pickup_time_invalid')],
             ]);
@@ -381,24 +417,35 @@ class GhOrderService
 
         try {
             $startsAt = Carbon::createFromFormat('Y-m-d H:i', $date.' '.$start, $tz);
-            $endsAt = Carbon::createFromFormat('Y-m-d H:i', $date.' '.$end, $tz);
+            if ($end !== '') {
+                $endsAt = Carbon::createFromFormat('Y-m-d H:i', $date.' '.$end, $tz);
+            } else {
+                $slot = max(15, (int) config('general_house.pickup_default_slot_minutes', 60));
+                $endsAt = $startsAt instanceof Carbon
+                    ? $startsAt->copy()->addMinutes($slot)
+                    : false;
+            }
         } catch (\Throwable) {
             throw ValidationException::withMessages([
-                'pickup_date' => [__('gh.errors.pickup_window_ambiguous')],
+                'scheduled_pickup_at' => [__('gh.errors.pickup_window_ambiguous')],
             ]);
         }
 
         if ($startsAt === false || $endsAt === false) {
             throw ValidationException::withMessages([
-                'pickup_date' => [__('gh.errors.pickup_window_ambiguous')],
+                'scheduled_pickup_at' => [__('gh.errors.pickup_window_ambiguous')],
             ]);
         }
 
-        // Reject ambiguous formats (createFromFormat can be loose without strict)
-        if ($startsAt->format('Y-m-d H:i') !== $date.' '.$start
-            || $endsAt->format('Y-m-d H:i') !== $date.' '.$end) {
+        if ($startsAt->format('Y-m-d H:i') !== $date.' '.$start) {
             throw ValidationException::withMessages([
-                'pickup_date' => [__('gh.errors.pickup_window_ambiguous')],
+                'scheduled_pickup_at' => [__('gh.errors.pickup_window_ambiguous')],
+            ]);
+        }
+
+        if ($end !== '' && $endsAt->format('Y-m-d H:i') !== $date.' '.$end) {
+            throw ValidationException::withMessages([
+                'scheduled_pickup_at' => [__('gh.errors.pickup_window_ambiguous')],
             ]);
         }
 
@@ -514,14 +561,14 @@ class GhOrderService
     }
 
     /**
+     * Normalize optional estimate lines. Empty is valid — booking does not require garments.
+     *
      * @return list<array{offering_id: int, quantity: int}>
      */
     private function normalizeLines(mixed $lines): array
     {
         if (! is_array($lines) || $lines === []) {
-            throw ValidationException::withMessages([
-                'lines' => [__('gh.errors.order_lines_required')],
-            ]);
+            return [];
         }
 
         $normalized = [];
@@ -541,12 +588,6 @@ class GhOrderService
                 'offering_id' => $offeringId,
                 'quantity' => $qty,
             ];
-        }
-
-        if ($normalized === []) {
-            throw ValidationException::withMessages([
-                'lines' => [__('gh.errors.order_lines_required')],
-            ]);
         }
 
         return $normalized;

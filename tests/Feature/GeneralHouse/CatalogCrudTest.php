@@ -105,6 +105,33 @@ class CatalogCrudTest extends TestCase
         ]);
     }
 
+    public function test_offering_create_defaults_tax_class_when_omitted(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $product = GhProduct::factory()->create();
+        $treatment = GhTreatment::factory()->create();
+
+        $this->actingAs($manager)
+            ->post(route('gh.offerings.store'), [
+                'product_id' => $product->id,
+                'treatment_id' => $treatment->id,
+                'standard_price' => '7.50',
+                'status' => GhCatalogStatus::ACTIVE,
+                'sort_order' => 0,
+            ])
+            ->assertRedirect(route('gh.offerings.index'));
+
+        $this->assertDatabaseHas('gh_product_offerings', [
+            'product_id' => $product->id,
+            'treatment_id' => $treatment->id,
+            'tax_class' => GhTaxClass::STANDARD_RATED,
+        ]);
+
+        $html = $this->actingAs($manager)->get(route('gh.offerings.index'))->assertOk()->getContent();
+        $this->assertStringContainsString(__('gh.offerings.tax_default_hint'), $html);
+        $this->assertStringContainsString(__('gh.offerings.advanced_tax'), $html);
+    }
+
     public function test_duplicate_offering_is_rejected(): void
     {
         $manager = User::factory()->manager()->create();

@@ -3,14 +3,22 @@
 namespace App\Http\Controllers\GeneralHouse;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\GeneralHouse\ReorderGhDriverListRequest;
 use App\Models\GeneralHouse\GhOrder;
-use App\Services\GeneralHouse\Catalog\GhPricingResolver;
+use App\Services\GeneralHouse\Orders\GhDriverListOrderService;
+use App\Services\GeneralHouse\Orders\GhDriverMovementLogService;
 use App\Services\GeneralHouse\Orders\GhDriverWorkspaceService;
+use App\Services\GeneralHouse\Orders\GhOrderStateService;
 use App\Services\GeneralHouse\Orders\GhPickupEligibilityService;
+use App\Services\GeneralHouse\Payments\GhDriverDeliveryPaymentService;
 use App\Services\GeneralHouse\Payments\GhPaymentBalanceService;
 use App\Support\GeneralHouse\GhAttemptReason;
+use App\Support\GeneralHouse\GhDriverMovementStatus;
+use App\Support\GeneralHouse\GhDriverMovementType;
+use App\Support\GeneralHouse\GhLaunchConfig;
 use App\Support\GeneralHouse\GhOrderAccess;
 use App\Support\GeneralHouse\GhOrderStatus;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -19,8 +27,11 @@ class DriverWorkspaceController extends Controller
     public function __construct(
         private readonly GhDriverWorkspaceService $workspace,
         private readonly GhPickupEligibilityService $eligibility,
-        private readonly GhPricingResolver $pricing,
         private readonly GhPaymentBalanceService $balances,
+        private readonly GhDriverDeliveryPaymentService $driverPayments,
+        private readonly GhOrderStateService $states,
+        private readonly GhDriverListOrderService $listOrder,
+        private readonly GhDriverMovementLogService $movements,
     ) {}
 
     public function dashboard(Request $request): View
@@ -42,31 +53,58 @@ class DriverWorkspaceController extends Controller
         abort_unless(GhOrderAccess::mayUseDriverWorkspace($user), 403);
         $this->workspace->assertCanOpenTask($user, $order, 'pickup');
 
+        if ($order->status === GhOrderStatus::LATER) {
+            // Promotes to PICKUP only when inside the eligibility window; otherwise a no-op.
+            $order = $this->states->reevaluatePrePickupStatus($order, $user);
+        }
+
         $order->load([
             'customer',
             'address.zone',
-            'lines',
-            'receivedLines',
             'attempts.actor',
+            'invoice',
             'events' => fn ($q) => $q->orderByDesc('id')->limit(20),
             'events.actor',
         ]);
 
-        $offerings = collect();
-        if ($order->status === GhOrderStatus::PICKUP && $order->customer) {
-            $offerings = $this->pricing->availableOfferingsForCustomer($order->customer, $order->pickup_starts_at);
-        }
+        $displayTz = $this->eligibility->displayTimezone($order->timezone);
+        $isPickup = $order->status === GhOrderStatus::PICKUP;
 
         return view('gh.driver.pickup', [
             'order' => $order,
-            'offerings' => $offerings,
-            'displayTz' => $this->eligibility->displayTimezone($order->timezone),
-            'canConfirm' => GhOrderAccess::mayConfirmPickup($user, $order)
-                && $order->status === GhOrderStatus::PICKUP,
-            'canFail' => GhOrderAccess::mayRecordPickupAttempt($user, $order)
-                && $order->status === GhOrderStatus::PICKUP,
+            'notYetEligible' => $this->workspace->pickupUnavailableNotice($order, $displayTz),
+            'displayTz' => $displayTz,
+            'canConfirm' => GhOrderAccess::mayConfirmPickup($user, $order) && $isPickup,
+            'canFail' => GhOrderAccess::mayRecordPickupAttempt($user, $order) && $isPickup,
             'failReasons' => GhAttemptReason::PICKUP,
+            'expectedPaymentMethod' => null,
         ]);
+    }
+
+    public function reorderPickups(ReorderGhDriverListRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $this->listOrder->reorder(
+            $request->user(),
+            GhDriverWorkspaceService::LIST_PICKUP,
+            $data['order_ids'],
+            $data['previous_order_ids'] ?? null,
+        );
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function reorderDeliveries(ReorderGhDriverListRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $this->listOrder->reorder(
+            $request->user(),
+            GhDriverWorkspaceService::LIST_DELIVERY,
+            $data['order_ids'],
+            $data['previous_order_ids'] ?? null,
+        );
+
+        return response()->json(['ok' => true]);
     }
 
     public function delivery(Request $request, GhOrder $order): View
@@ -78,8 +116,6 @@ class DriverWorkspaceController extends Controller
         $order->load([
             'customer',
             'address.zone',
-            'lines',
-            'receivedLines',
             'attempts.actor',
             'invoice',
             'events' => fn ($q) => $q->orderByDesc('id')->limit(20),
@@ -88,11 +124,12 @@ class DriverWorkspaceController extends Controller
 
         $paymentHint = null;
         if ($order->invoice && $order->invoice->isIssued()) {
-            $balance = $this->balances->forInvoice($order->invoice);
+            $ctx = $this->driverPayments->deliveryPaymentContext($order->invoice);
             $paymentHint = [
-                'status' => $balance['payment_status'],
-                'remaining' => $balance['remaining'],
-                'is_unpaid' => $balance['payment_status'] !== 'PAID',
+                'status' => $ctx['payment_status'],
+                'remaining' => $ctx['remaining'],
+                'invoice_total' => $ctx['invoice_total'],
+                'is_unpaid' => $ctx['needs_method'],
             ];
         }
 
@@ -105,6 +142,7 @@ class DriverWorkspaceController extends Controller
                 && $order->status === GhOrderStatus::DELIVERY,
             'failReasons' => GhAttemptReason::DELIVERY,
             'paymentHint' => $paymentHint,
+            'deliveryPaymentEnabled' => GhLaunchConfig::driverDeliveryPaymentEnabled(),
             'awaitingInvoice' => $order->status === GhOrderStatus::WORKING,
         ]);
     }
@@ -114,20 +152,23 @@ class DriverWorkspaceController extends Controller
         $user = $request->user();
         abort_unless(GhOrderAccess::mayUseDriverWorkspace($user), 403);
 
-        $uid = (int) $user->id;
-        $rows = GhOrder::query()
-            ->with(['customer', 'address'])
-            ->where(function ($q) use ($uid) {
-                $q->where('pickup_driver_id', $uid)
-                    ->orWhere('delivery_driver_id', $uid);
-            })
-            ->whereIn('status', [GhOrderStatus::COMPLETED, GhOrderStatus::CANCELLED, GhOrderStatus::WORKING])
-            ->orderByDesc('updated_at')
-            ->paginate(25);
+        $filters = [
+            'q' => $request->string('q')->toString() ?: null,
+            'type' => $request->string('type')->toString() ?: null,
+            'status' => $request->string('status')->toString() ?: null,
+            'date_from' => $request->string('date_from')->toString() ?: null,
+            'date_to' => $request->string('date_to')->toString() ?: null,
+        ];
+
+        $rows = $this->movements->paginateForDriver($user, $filters);
 
         return view('gh.driver.history', [
             'rows' => $rows,
+            'filters' => $filters,
+            'movementTypes' => GhDriverMovementType::ALL,
+            'movementStatuses' => GhDriverMovementStatus::ALL,
             'displayTz' => (string) config('general_house.timezone', 'Asia/Dubai'),
+            'hasActiveSearch' => filled($filters['q'] ?? null),
         ]);
     }
 }

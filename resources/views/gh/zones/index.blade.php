@@ -30,7 +30,7 @@
                     <div class="col-md-2"><label class="form-label mb-1" for="min_order_policy">{{ __('gh.fields.min_order_policy') }}</label>
                         <select id="min_order_policy" name="min_order_policy" class="form-select form-select-sm">
                             @foreach (\App\Support\GeneralHouse\GhMinOrderPolicy::ALL as $p)
-                                <option value="{{ $p }}" @selected(old('min_order_policy', 'SURCHARGE') === $p)>{{ __('gh.min_order_policy.'.$p) }}</option>
+                                <option value="{{ $p }}" @selected(old('min_order_policy', \App\Support\GeneralHouse\GhLaunchConfig::defaultMinOrderPolicy()) === $p)>{{ __('gh.min_order_policy.'.$p) }}</option>
                             @endforeach
                         </select></div>
                     <div class="col-md-2"><label class="form-label mb-1" for="status">{{ __('gh.fields.status') }}</label>
@@ -134,4 +134,5 @@
             </script>
         @endpush
     @endcan
+    @include('gh.import.partials.import-card', ['entity' => 'zones', 'model' => App\Models\GeneralHouse\GhZone::class])
 @endsection

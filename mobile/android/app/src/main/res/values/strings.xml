@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- Overridden per product flavor via resValue -->
+    <string name="app_name">GNRL Operations</string>
+    <string name="title_activity_main">GNRL Operations</string>
+    <string name="package_name">net.genral.generalhouse</string>
+    <string name="custom_url_scheme">net.genral.generalhouse</string>
+</resources>

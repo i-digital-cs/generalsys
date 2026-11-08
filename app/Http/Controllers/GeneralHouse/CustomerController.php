@@ -8,6 +8,7 @@ use App\Http\Requests\GeneralHouse\UpdateGhCustomerRequest;
 use App\Models\GeneralHouse\GhCustomer;
 use App\Services\GeneralHouse\Customers\GhCustomerService;
 use App\Services\GeneralHouse\Customers\GhZoneService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -39,6 +40,20 @@ class CustomerController extends Controller
         $this->authorize('create', GhCustomer::class);
 
         return view('gh.customers.form', ['customer' => null]);
+    }
+
+    public function lookup(Request $request): JsonResponse
+    {
+        $this->authorize('create', GhCustomer::class);
+
+        $exceptId = $request->filled('except_id') ? (int) $request->query('except_id') : null;
+
+        return response()->json($this->customers->lookupDuplicates(
+            $request->query('phone'),
+            $request->query('name_ar'),
+            $request->query('name_en'),
+            $exceptId > 0 ? $exceptId : null,
+        ));
     }
 
     public function store(StoreGhCustomerRequest $request): RedirectResponse

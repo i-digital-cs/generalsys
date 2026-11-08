@@ -10,11 +10,14 @@ use App\Models\GeneralHouse\GhProductOffering;
 use App\Models\GeneralHouse\GhZone;
 use App\Models\User;
 use App\Services\GeneralHouse\Catalog\GhPricingResolver;
+use App\Services\GeneralHouse\Customers\GhContractReferenceService;
+use App\Services\GeneralHouse\Customers\GhContractService;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use App\Support\GeneralHouse\GhContractStatus;
 use App\Support\GeneralHouse\GhCustomerType;
 use App\Support\GeneralHouse\GhMinOrderPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class CustomersZonesContractsTest extends TestCase
@@ -109,7 +112,6 @@ class CustomersZonesContractsTest extends TestCase
 
         $this->actingAs($manager)->post(route('gh.contracts.store'), [
             'customer_id' => $customer->id,
-            'reference' => 'GH-CTR-001',
             'effective_from' => '2026-01-01',
             'effective_to' => '2026-12-31',
             'status' => GhContractStatus::ACTIVE,
@@ -119,7 +121,6 @@ class CustomersZonesContractsTest extends TestCase
 
         $this->actingAs($manager)->post(route('gh.contracts.store'), [
             'customer_id' => $customer->id,
-            'reference' => 'GH-CTR-002',
             'effective_from' => '2026-06-01',
             'effective_to' => '2026-08-01',
             'status' => GhContractStatus::ACTIVE,
@@ -163,6 +164,135 @@ class CustomersZonesContractsTest extends TestCase
         $price = $resolver->resolvePrice($customer, $offering->fresh(['product.category', 'treatment']), '2026-03-01');
         $this->assertSame('CONTRACT', $price['source']);
         $this->assertSame('6.00', $price['unit_price']);
+    }
+
+    public function test_contract_show_renders_reference_customer_offerings_en_ar(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $customer = GhCustomer::factory()->b2b()->create([
+            'name_ar' => 'شركة اختبار',
+            'name_en' => 'Test Corp',
+        ]);
+        $offering = GhProductOffering::factory()->create(['standard_price' => '12.00']);
+        $contract = GhB2bContract::factory()->create([
+            'customer_id' => $customer->id,
+            'reference' => 'GH-CTR-000099',
+            'status' => GhContractStatus::ACTIVE,
+            'effective_from' => '2026-01-01',
+            'effective_to' => null,
+        ]);
+        GhB2bContractOffering::factory()->create([
+            'contract_id' => $contract->id,
+            'offering_id' => $offering->id,
+            'contract_price' => '9.00',
+            'status' => GhCatalogStatus::ACTIVE,
+        ]);
+
+        $en = $this->actingAs($manager)->withSession(['locale' => 'en'])
+            ->get(route('gh.contracts.show', $contract))
+            ->assertOk()
+            ->getContent();
+        $this->assertNotSame('', trim(strip_tags($en)));
+        $this->assertStringContainsString('GH-CTR-000099', $en);
+        $this->assertStringContainsString('9.00', $en);
+
+        $ar = $this->actingAs($manager)->withSession(['locale' => 'ar'])
+            ->get(route('gh.contracts.show', $contract))
+            ->assertOk()
+            ->getContent();
+        $this->assertStringContainsString('GH-CTR-000099', $ar);
+        $this->assertStringContainsString('شركة اختبار', $ar);
+
+        $employee = User::factory()->employee()->create();
+        $this->actingAs($employee)
+            ->get(route('gh.contracts.show', $contract))
+            ->assertForbidden();
+    }
+
+    public function test_contract_create_auto_assigns_distinct_references(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $first = GhCustomer::factory()->b2b()->create();
+        $second = GhCustomer::factory()->b2b()->create();
+
+        foreach ([$first, $second] as $customer) {
+            $this->actingAs($manager)->post(route('gh.contracts.store'), [
+                'customer_id' => $customer->id,
+                'effective_from' => '2026-01-01',
+                'status' => GhContractStatus::DRAFT,
+            ])->assertRedirect();
+        }
+
+        $references = GhB2bContract::query()->orderBy('id')->pluck('reference')->all();
+        $this->assertCount(2, $references);
+        $this->assertNotSame($references[0], $references[1]);
+        $this->assertMatchesRegularExpression('/^GH-CTR-\d{6}$/', $references[0]);
+        $this->assertMatchesRegularExpression('/^GH-CTR-\d{6}$/', $references[1]);
+    }
+
+    public function test_contract_store_rejects_client_supplied_reference(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $customer = GhCustomer::factory()->b2b()->create();
+
+        $this->actingAs($manager)->post(route('gh.contracts.store'), [
+            'customer_id' => $customer->id,
+            'reference' => 'HACK-1',
+            'effective_from' => '2026-01-01',
+            'status' => GhContractStatus::DRAFT,
+        ])->assertSessionHasErrors('reference');
+
+        $this->assertSame(0, GhB2bContract::query()->count());
+    }
+
+    public function test_contract_update_posts_without_reference_and_cannot_change_it(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $customer = GhCustomer::factory()->b2b()->create();
+        $contract = app(GhContractService::class)->create([
+            'customer_id' => $customer->id,
+            'effective_from' => '2026-01-01',
+        ]);
+        $original = $contract->reference;
+
+        $payload = [
+            'customer_id' => $customer->id,
+            'effective_from' => '2026-02-01',
+            'status' => GhContractStatus::DRAFT,
+            'notes' => 'updated',
+        ];
+
+        $this->actingAs($manager)->put(route('gh.contracts.update', $contract), $payload)->assertRedirect();
+        $this->assertSame($original, $contract->fresh()->reference);
+        $this->assertSame('updated', $contract->fresh()->notes);
+
+        $this->actingAs($manager)->put(route('gh.contracts.update', $contract), $payload + ['reference' => 'CHANGED'])
+            ->assertSessionHasErrors('reference');
+        $this->assertSame($original, $contract->fresh()->reference);
+    }
+
+    public function test_contract_references_stay_unique_across_repeated_and_colliding_creates(): void
+    {
+        $customer = GhCustomer::factory()->b2b()->create();
+        $service = app(GhContractService::class);
+
+        $refs = [];
+        for ($i = 0; $i < 5; $i++) {
+            $refs[] = $service->create(['customer_id' => $customer->id, 'effective_from' => '2026-0'.($i + 1).'-01'])->reference;
+        }
+        $this->assertCount(5, array_unique($refs));
+
+        $this->assertSame(
+            GhContractReferenceService::PREFIX.str_pad((string) 6, 6, '0', STR_PAD_LEFT),
+            app(GhContractReferenceService::class)->nextReference()
+        );
+
+        try {
+            $service->create(['customer_id' => $customer->id, 'reference' => $refs[0], 'effective_from' => '2027-01-01']);
+            $this->fail('Duplicate reference must be rejected.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('reference', $e->errors());
+        }
     }
 
     public function test_employee_forbidden_and_b2c_uses_standard_catalog(): void

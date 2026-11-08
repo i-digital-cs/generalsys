@@ -5,12 +5,15 @@ namespace App\Providers;
 use App\Models\Advance;
 use App\Models\AttendancePhoto;
 use App\Models\GeneralHouse\GhB2bContract;
+use App\Models\GeneralHouse\GhCreditNote;
 use App\Models\GeneralHouse\GhCustomer;
+use App\Models\GeneralHouse\GhFinancialCorrection;
 use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\GeneralHouse\GhPayment;
 use App\Models\GeneralHouse\GhProduct;
 use App\Models\GeneralHouse\GhProductOffering;
+use App\Models\GeneralHouse\GhRefund;
 use App\Models\GeneralHouse\GhServiceCategory;
 use App\Models\GeneralHouse\GhTreatment;
 use App\Models\GeneralHouse\GhZone;
@@ -37,12 +40,15 @@ use App\Policies\AdvancePolicy;
 use App\Policies\AttendancePhotoPolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\GeneralHouse\GhB2bContractPolicy;
+use App\Policies\GeneralHouse\GhCreditNotePolicy;
 use App\Policies\GeneralHouse\GhCustomerPolicy;
+use App\Policies\GeneralHouse\GhFinancialCorrectionPolicy;
 use App\Policies\GeneralHouse\GhInvoicePolicy;
 use App\Policies\GeneralHouse\GhOrderPolicy;
 use App\Policies\GeneralHouse\GhPaymentPolicy;
 use App\Policies\GeneralHouse\GhProductOfferingPolicy;
 use App\Policies\GeneralHouse\GhProductPolicy;
+use App\Policies\GeneralHouse\GhRefundPolicy;
 use App\Policies\GeneralHouse\GhServiceCategoryPolicy;
 use App\Policies\GeneralHouse\GhTreatmentPolicy;
 use App\Policies\GeneralHouse\GhZonePolicy;
@@ -63,7 +69,9 @@ use App\Policies\VacationPolicy;
 use App\Policies\ValuationAssignmentPolicy;
 use App\Policies\ValuationSheetPolicy;
 use App\Services\Auth\ImpersonationService;
+use App\Services\GeneralHouse\App\GhAppVersionPolicyService;
 use App\Services\Gross\LowStockAlertService;
+use App\Support\GnrlAppAccess;
 use App\Support\GrossAccess;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
@@ -124,6 +132,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GhOrder::class, GhOrderPolicy::class);
         Gate::policy(GhInvoice::class, GhInvoicePolicy::class);
         Gate::policy(GhPayment::class, GhPaymentPolicy::class);
+        Gate::policy(GhCreditNote::class, GhCreditNotePolicy::class);
+        Gate::policy(GhRefund::class, GhRefundPolicy::class);
+        Gate::policy(GhFinancialCorrection::class, GhFinancialCorrectionPolicy::class);
 
         View::composer('layouts.app', function (IlluminateView $view): void {
             $service = app(ImpersonationService::class);
@@ -138,7 +149,38 @@ class AppServiceProvider extends ServiceProvider
                 $count = app(LowStockAlertService::class)->count();
             }
 
+            $gnrlDownloads = [
+                'visible' => false,
+                'android_url' => null,
+                'ios_url' => null,
+            ];
+
+            if (GnrlAppAccess::mayDownload($user)) {
+                $policies = app(GhAppVersionPolicyService::class);
+                $androidReady = false;
+                try {
+                    $androidReady = $policies->androidDownloadAvailable();
+                } catch (\Throwable) {
+                    $androidReady = false;
+                }
+
+                $iosUrl = null;
+                try {
+                    $iosUrl = $policies->iosDownloadUrlForTrustedChannel();
+                } catch (\Throwable) {
+                    $iosUrl = null;
+                }
+
+                // Footer for every authenticated GeneralSys user (global sidebar).
+                $gnrlDownloads = [
+                    'visible' => true,
+                    'android_url' => $androidReady ? route('app.download.file') : null,
+                    'ios_url' => $iosUrl,
+                ];
+            }
+
             $view->with('grossLowStockCount', $count);
+            $view->with('gnrlAppDownloads', $gnrlDownloads);
         });
     }
 }

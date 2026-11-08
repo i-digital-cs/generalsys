@@ -1,0 +1,207 @@
+// General House (service module) table polish.
+// Scoped with [data-app-module='service'] so HR / Mohra / Settings stay untouched.
+// Depends on the .num-ltr table-cell guard in _hr-pro.scss.
+//
+// Important: Bootstrap 5.3 stripes via white --bs-table-bg + inset box-shadow.
+// That compositing leaves text-tight white “patches” inside striped rows
+// (especially visible with Arabic glyphs). Use solid cell backgrounds instead.
+
+[data-app-module='service'] {
+    --gh-table-row: #ffffff;
+    --gh-table-stripe: #f3f7fb;
+    --gh-table-hover: #e7f5fd;
+    --gh-table-head-bg: #eef3f8;
+    --gh-table-border: rgba(15, 23, 42, .08);
+
+    .table {
+        --bs-table-bg: var(--gh-table-row);
+        --bs-table-striped-bg: var(--gh-table-stripe);
+        --bs-table-hover-bg: var(--gh-table-hover);
+        --bs-table-border-color: var(--gh-table-border);
+        --bs-table-accent-bg: transparent;
+        margin-bottom: 0;
+        vertical-align: middle;
+        border-color: var(--gh-table-border);
+
+        > :not(caption) > * > * {
+            // Kill BS inset-shadow accent painting; solid bg only.
+            background-color: var(--gh-table-row) !important;
+            box-shadow: none !important;
+            vertical-align: middle;
+            border-bottom-color: var(--gh-table-border);
+        }
+
+        > thead > tr > th {
+            background-color: var(--gh-table-head-bg) !important;
+            color: var(--hp-label-color);
+            font-weight: 600;
+            font-size: .8125rem;
+            border-bottom-width: 1px;
+            white-space: nowrap;
+        }
+
+        > tbody > tr:nth-of-type(odd) > * {
+            background-color: var(--gh-table-stripe) !important;
+        }
+
+        > tbody > tr:hover > * {
+            background-color: var(--gh-table-hover) !important;
+        }
+
+        .badge {
+            font-weight: 600;
+        }
+
+        .btn-link {
+            text-decoration: none;
+        }
+
+        .btn-link:hover {
+            text-decoration: underline;
+        }
+    }
+
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    // Never set direction:ltr on the <td> itself — in RTL that flips
+    // text-align:start to the left edge and numbers drift into the next column
+    // (e.g. ترتيب العرض values sitting beside Arabic names).
+    // Keep digits LTR via an inner <span class="num-ltr"> only.
+    .table td.num-ltr,
+    .table th.num-ltr,
+    .table td.hp-value.num-ltr {
+        display: table-cell;
+    }
+}
+
+[data-bs-theme='dark'] [data-app-module='service'] {
+    --gh-table-row: #111827;
+    --gh-table-stripe: #161f2e;
+    --gh-table-hover: #1a2b40;
+    --gh-table-head-bg: #1a2332;
+    --gh-table-border: rgba(255, 255, 255, .08);
+}
+
+// Driver SortableJS — touch-first reorder (grip handle only; page scroll elsewhere).
+body.hp-driver-sorting {
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+.hp-driver-sort-handle {
+    cursor: grab;
+    touch-action: none;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bs-secondary-color);
+}
+
+.hp-driver-sort-handle:active {
+    cursor: grabbing;
+}
+
+.hp-driver-sort-ghost {
+    opacity: .35;
+}
+
+.hp-driver-sort-chosen .hp-driver-task,
+.hp-driver-sort-active .hp-driver-task {
+    box-shadow: 0 .5rem 1.25rem rgba(15, 23, 42, .18) !important;
+    transform: scale(1.02);
+}
+
+.hp-driver-sort-fallback {
+    opacity: .95;
+    box-shadow: 0 .75rem 1.5rem rgba(15, 23, 42, .22);
+}
+
+.hp-driver-sort-fallback a {
+    pointer-events: none;
+}
+
+// Compact product thumbnails in pickers / catalog cards.
+.gh-product-thumb {
+    width: 2.5rem;
+    height: 2.5rem;
+    object-fit: cover;
+    border-radius: .5rem;
+    flex-shrink: 0;
+    background: var(--bs-secondary-bg);
+    border: 1px solid var(--bs-border-color);
+}
+
+.gh-product-thumb--fallback,
+.gh-product-thumb--lg.gh-product-thumb--fallback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bs-secondary-color);
+    font-size: 1rem;
+}
+
+.gh-product-thumb--lg {
+    width: 3.25rem;
+    height: 3.25rem;
+}
+
+.gh-product-picker {
+    border: 1px solid var(--bs-border-color);
+    border-radius: .75rem;
+    background: var(--bs-body-bg);
+    overflow: hidden;
+}
+
+.gh-product-picker-list {
+    max-height: 16rem;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.gh-product-picker-item {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    width: 100%;
+    padding: .55rem .75rem;
+    border: 0;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: transparent;
+    text-align: start;
+    color: inherit;
+}
+
+.gh-product-picker-item:last-child {
+    border-bottom: 0;
+}
+
+.gh-product-picker-item:hover,
+.gh-product-picker-item:focus-visible {
+    background: var(--bs-tertiary-bg);
+    outline: 0;
+}
+
+.gh-product-picker-item.is-selected {
+    background: color-mix(in srgb, var(--bs-primary) 12%, transparent);
+}
+
+.gh-product-picker-meta {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    min-width: 0;
+}
+
+.gh-product-picker-empty {
+    padding: .75rem;
+}
+
+.gh-cat-card .gh-product-thumb--lg {
+    margin-bottom: .5rem;
+}

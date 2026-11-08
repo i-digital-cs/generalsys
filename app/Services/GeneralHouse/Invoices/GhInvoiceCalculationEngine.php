@@ -61,6 +61,7 @@ class GhInvoiceCalculationEngine
             ]);
         }
 
+        // Prefer header (draft-stamped or caller-supplied). Config/env is fallback only.
         $vatRate = GhMoney::of($header['standard_vat_rate'] ?? config('general_house.standard_vat_rate', '5.00'));
         $invoiceDiscountType = (string) ($header['invoice_discount_type'] ?? GhDiscountType::NONE);
         $invoiceDiscountValue = GhMoney::of($header['invoice_discount_value'] ?? '0');
@@ -143,6 +144,8 @@ class GhInvoiceCalculationEngine
                 'product_id' => $raw['product_id'] ?? null,
                 'treatment_id' => $raw['treatment_id'] ?? null,
                 'notes' => $raw['notes'] ?? null,
+                'pricing_review_required' => (bool) ($raw['pricing_review_required'] ?? false),
+                'staff_price_approved' => (bool) ($raw['staff_price_approved'] ?? false),
             ];
 
             $linesGross = GhMoney::add($linesGross, $gross);
@@ -438,6 +441,15 @@ class GhInvoiceCalculationEngine
             }
         }
 
+        $shortfall = '0.00';
+        if (
+            $effective !== null
+            && GhMoney::cmp($effective, '0') > 0
+            && GhMoney::cmp($serviceAfterDiscounts, $effective) < 0
+        ) {
+            $shortfall = GhMoney::roundHalfUp(GhMoney::sub($effective, $serviceAfterDiscounts));
+        }
+
         return [
             'original_minimum' => $original,
             'effective_minimum' => $effective,
@@ -445,6 +457,7 @@ class GhInvoiceCalculationEngine
             'override_type' => $override,
             'adjustment_amount' => $adjustment,
             'tax_class' => $taxClass,
+            'shortfall' => $shortfall,
             'blocks_issuance' => $blockReasons !== [],
             'block_reasons' => $blockReasons,
         ];

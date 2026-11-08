@@ -82,6 +82,20 @@
         </div>
 
         <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent fw-semibold">{{ __('settings.app_versions_section') }}</div>
+                <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <p class="small text-body-secondary mb-0">{{ __('settings.app_versions_hint') }}</p>
+                    <a class="btn btn-outline-primary"
+                       href="{{ route('admin.app.versions') }}"
+                       data-gnrl-app-versions-link="1">
+                        <i class="bi bi-phone-vibrate me-1" aria-hidden="true"></i>{{ __('nav.gh_app_versions') }}
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
             <a class="btn btn-outline-primary" href="{{ route('valuation.assignments.index') }}">{{ __('valuation.assign') }}</a>
             <button type="submit" class="btn btn-primary">{{ __('general.save') }}</button>
         </div>

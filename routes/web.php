@@ -25,19 +25,27 @@ use App\Http\Controllers\Employee\ProfileController;
 use App\Http\Controllers\Employee\RequestController;
 use App\Http\Controllers\Employee\SalaryController;
 use App\Http\Controllers\EmployeePhotoController;
+use App\Http\Controllers\GeneralHouse\AndroidAppController as GhAndroidAppController;
+use App\Http\Controllers\GeneralHouse\AppVersionCheckController as GhAppVersionCheckController;
+use App\Http\Controllers\GeneralHouse\AppVersionPolicyController as GhAppVersionPolicyController;
 use App\Http\Controllers\GeneralHouse\CategoryController as GhCategoryController;
 use App\Http\Controllers\GeneralHouse\ContractController as GhContractController;
+use App\Http\Controllers\GeneralHouse\CreditNoteController as GhCreditNoteController;
 use App\Http\Controllers\GeneralHouse\CustomerAddressController as GhCustomerAddressController;
 use App\Http\Controllers\GeneralHouse\CustomerController as GhCustomerController;
 use App\Http\Controllers\GeneralHouse\DashboardController as GhDashboardController;
 use App\Http\Controllers\GeneralHouse\DriverWorkspaceController as GhDriverWorkspaceController;
+use App\Http\Controllers\GeneralHouse\FinancialCorrectionController as GhFinancialCorrectionController;
+use App\Http\Controllers\GeneralHouse\ImportController as GhImportController;
 use App\Http\Controllers\GeneralHouse\InvoiceController as GhInvoiceController;
 use App\Http\Controllers\GeneralHouse\OfferingController as GhOfferingController;
 use App\Http\Controllers\GeneralHouse\OrderController as GhOrderController;
 use App\Http\Controllers\GeneralHouse\OrderLogisticsController as GhOrderLogisticsController;
 use App\Http\Controllers\GeneralHouse\PaymentController as GhPaymentController;
 use App\Http\Controllers\GeneralHouse\ProductController as GhProductController;
+use App\Http\Controllers\GeneralHouse\RefundController as GhRefundController;
 use App\Http\Controllers\GeneralHouse\ReportController as GhReportController;
+use App\Http\Controllers\GeneralHouse\SettingsController as GhSettingsController;
 use App\Http\Controllers\GeneralHouse\TreatmentController as GhTreatmentController;
 use App\Http\Controllers\GeneralHouse\ZoneController as GhZoneController;
 use App\Http\Controllers\Gross\CategoryController as GrossCategoryController;
@@ -67,6 +75,7 @@ use App\Http\Controllers\TeamLeader\ShiftAssignmentController;
 use App\Http\Controllers\TeamLeader\VacationCreditController;
 use App\Http\Controllers\Valuation\ValuationAssignmentController;
 use App\Http\Controllers\Valuation\ValuationSheetController;
+use App\Services\GeneralHouse\Import\GhImportService;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -87,6 +96,15 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 Route::post('/impersonation/leave', [ImpersonationController::class, 'destroy'])
     ->middleware('auth')->name('impersonation.leave');
 
+// GNRL Operations version-check: readable before login (Capacitor startup). Channel is server-trusted.
+Route::get('/app/version-check', GhAppVersionCheckController::class)
+    ->middleware('throttle:60,1')
+    ->name('app.version-check');
+// Compat alias for installed TEST builds that still call the GH path.
+Route::get('/service/gh/app/version-check', GhAppVersionCheckController::class)
+    ->middleware('throttle:60,1')
+    ->name('gh.app.version-check');
+
 Route::middleware('auth')->group(function () {
     Route::get('/account/inactive', AccountInactiveController::class)->name('account.inactive');
 
@@ -95,6 +113,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/service', [PortalController::class, 'service'])->name('portal.service');
     Route::get('/product', [PortalController::class, 'product'])->name('portal.product');
     Route::redirect('/production', '/product');
+
+    // GNRL Operations APK — any active authenticated GeneralSys user (not GH-scoped).
+    Route::get('/app/download', [GhAndroidAppController::class, 'show'])->name('app.download');
+    Route::get('/app/download/apk', [GhAndroidAppController::class, 'download'])
+        ->middleware('throttle:30,1')
+        ->name('app.download.file');
 
     Route::get('/valuation/assignments', [ValuationAssignmentController::class, 'index'])->name('valuation.assignments.index');
     Route::put('/valuation/assignments/{user}', [ValuationAssignmentController::class, 'update'])->name('valuation.assignments.update');
@@ -120,8 +144,17 @@ Route::middleware('auth')->group(function () {
 
     // General House — Dynamic Services Catalog (Phase 1)
     Route::prefix('service/gh')->name('gh.')->group(function () {
+        // Compat redirects → global GeneralSys routes (authorization-safe; auth already required).
+        Route::get('/app/download', fn () => redirect()->route('app.download'))->name('app.download');
+        Route::get('/app/download/apk', fn () => redirect()->route('app.download.file'))->name('app.download.file');
+        Route::get('/app/versions', fn () => redirect()->route('admin.app.versions'))->name('app.versions');
+        Route::put('/app/versions/{policy}', [GhAppVersionPolicyController::class, 'update'])
+            ->name('app.versions.update');
+
         // Phase GH-8 — manager dashboard & reports (Manager-only)
         Route::get('/dashboard', GhDashboardController::class)->name('dashboard');
+        Route::get('/settings', [GhSettingsController::class, 'index'])->name('settings');
+        Route::put('/settings/vat', [GhSettingsController::class, 'updateVat'])->name('settings.vat.update');
         Route::get('/reports', [GhReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/invoices', [GhReportController::class, 'invoices'])->name('reports.invoices');
         Route::get('/reports/collections', [GhReportController::class, 'collections'])->name('reports.collections');
@@ -130,6 +163,17 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/orders', [GhReportController::class, 'orders'])->name('reports.orders');
         Route::get('/reports/pickup-performance', [GhReportController::class, 'pickupPerformance'])->name('reports.pickup-performance');
         Route::get('/reports/delivery-performance', [GhReportController::class, 'deliveryPerformance'])->name('reports.delivery-performance');
+
+        // Excel import — master data only (never orders, invoices, payments, refunds or credit notes)
+        Route::prefix('import/{entity}')->name('import.')
+            ->where(['entity' => implode('|', array_keys(GhImportService::IMPORTERS))])
+            ->group(function () {
+                Route::get('/template', [GhImportController::class, 'template'])->name('template');
+                Route::post('/preview', [GhImportController::class, 'preview'])->name('preview.store');
+                Route::get('/preview/{token}', [GhImportController::class, 'showPreview'])->name('preview');
+                Route::post('/confirm/{token}', [GhImportController::class, 'confirm'])->name('confirm');
+                Route::get('/errors/{token}', [GhImportController::class, 'errors'])->name('errors');
+            });
 
         Route::get('/categories', [GhCategoryController::class, 'index'])->name('categories.index');
         Route::post('/categories', [GhCategoryController::class, 'store'])->name('categories.store');
@@ -162,6 +206,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/customers', [GhCustomerController::class, 'index'])->name('customers.index');
         Route::get('/customers/create', [GhCustomerController::class, 'create'])->name('customers.create');
+        Route::get('/customers/lookup', [GhCustomerController::class, 'lookup'])->middleware('throttle:60,1')->name('customers.lookup');
         Route::post('/customers', [GhCustomerController::class, 'store'])->name('customers.store');
         Route::get('/customers/{customer}', [GhCustomerController::class, 'show'])->name('customers.show');
         Route::get('/customers/{customer}/edit', [GhCustomerController::class, 'edit'])->name('customers.edit');
@@ -201,6 +246,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/orders/{order}/failed-pickup', [GhOrderLogisticsController::class, 'failedPickup'])->name('orders.failed-pickup');
         Route::post('/orders/{order}/failed-delivery', [GhOrderLogisticsController::class, 'failedDelivery'])->name('orders.failed-delivery');
         Route::post('/orders/{order}/reassign-driver', [GhOrderLogisticsController::class, 'reassignDriver'])->name('orders.reassign-driver');
+        Route::post('/orders/{order}/received-lines/sync', [GhOrderLogisticsController::class, 'syncReceivedLines'])
+            ->name('orders.received-lines.sync');
+        Route::post('/orders/{order}/received-lines/{receivedLine}/approve-pricing', [GhOrderLogisticsController::class, 'approveReceivedPricing'])
+            ->name('orders.received-lines.approve-pricing');
 
         // Phase GH-5 — invoices (Manager-only via policies)
         Route::get('/invoices', [GhInvoiceController::class, 'index'])->name('invoices.index');
@@ -219,6 +268,38 @@ Route::middleware('auth')->group(function () {
         Route::post('/invoices/{invoice}/payments/online', [GhPaymentController::class, 'storeOnline'])
             ->middleware('throttle:30,1')
             ->name('payments.online');
+
+        // Phase GH-10 — credit notes, cash refunds, payment recording corrections
+        Route::get('/credit-notes', [GhCreditNoteController::class, 'index'])->name('credit-notes.index');
+        Route::get('/invoices/{invoice}/credit-notes/create', [GhCreditNoteController::class, 'create'])->name('credit-notes.create');
+        Route::post('/invoices/{invoice}/credit-notes', [GhCreditNoteController::class, 'store'])->name('credit-notes.store');
+        Route::get('/credit-notes/{creditNote}', [GhCreditNoteController::class, 'show'])->name('credit-notes.show');
+        Route::post('/credit-notes/{creditNote}/submit', [GhCreditNoteController::class, 'submit'])->name('credit-notes.submit');
+        Route::post('/credit-notes/{creditNote}/approve', [GhCreditNoteController::class, 'approve'])->name('credit-notes.approve');
+        Route::post('/credit-notes/{creditNote}/reject', [GhCreditNoteController::class, 'reject'])->name('credit-notes.reject');
+        Route::post('/credit-notes/{creditNote}/issue', [GhCreditNoteController::class, 'issue'])->name('credit-notes.issue');
+        Route::post('/credit-notes/{creditNote}/cancel', [GhCreditNoteController::class, 'cancel'])->name('credit-notes.cancel');
+
+        Route::get('/refunds', [GhRefundController::class, 'index'])->name('refunds.index');
+        Route::get('/invoices/{invoice}/refunds/create', [GhRefundController::class, 'create'])->name('refunds.create');
+        Route::post('/invoices/{invoice}/refunds', [GhRefundController::class, 'store'])->name('refunds.store');
+        Route::get('/refunds/{refund}', [GhRefundController::class, 'show'])->name('refunds.show');
+        Route::post('/refunds/{refund}/submit', [GhRefundController::class, 'submit'])->name('refunds.submit');
+        Route::post('/refunds/{refund}/approve', [GhRefundController::class, 'approve'])->name('refunds.approve');
+        Route::post('/refunds/{refund}/reject', [GhRefundController::class, 'reject'])->name('refunds.reject');
+        Route::post('/refunds/{refund}/pay-out', [GhRefundController::class, 'payOut'])->middleware('throttle:20,1')->name('refunds.pay-out');
+        Route::post('/refunds/{refund}/cancel', [GhRefundController::class, 'cancel'])->name('refunds.cancel');
+
+        Route::get('/financial-corrections', [GhFinancialCorrectionController::class, 'index'])->name('financial-corrections.index');
+        Route::post('/payments/{payment}/financial-corrections', [GhFinancialCorrectionController::class, 'storeFromPayment'])->name('financial-corrections.store-from-payment');
+        Route::get('/financial-corrections/{financialCorrection}', [GhFinancialCorrectionController::class, 'show'])->name('financial-corrections.show');
+        Route::post('/financial-corrections/{financialCorrection}/submit', [GhFinancialCorrectionController::class, 'submit'])->name('financial-corrections.submit');
+        Route::post('/financial-corrections/{financialCorrection}/approve', [GhFinancialCorrectionController::class, 'approve'])->name('financial-corrections.approve');
+        Route::post('/financial-corrections/{financialCorrection}/reject', [GhFinancialCorrectionController::class, 'reject'])->name('financial-corrections.reject');
+        Route::post('/financial-corrections/{financialCorrection}/execute', [GhFinancialCorrectionController::class, 'execute'])->name('financial-corrections.execute');
+        Route::post('/payments/{payment}/confirm-declaration', [GhPaymentController::class, 'confirmDeclaration'])
+            ->middleware('throttle:30,1')
+            ->name('payments.confirm-declaration');
         Route::post('/payments/{payment}/cancel', [GhPaymentController::class, 'cancel'])
             ->middleware('throttle:30,1')
             ->name('payments.cancel');
@@ -228,6 +309,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/driver/history', [GhDriverWorkspaceController::class, 'history'])->name('driver.history');
         Route::get('/driver/pickup/{order}', [GhDriverWorkspaceController::class, 'pickup'])->name('driver.pickup');
         Route::get('/driver/delivery/{order}', [GhDriverWorkspaceController::class, 'delivery'])->name('driver.delivery');
+        Route::post('/driver/reorder-pickups', [GhDriverWorkspaceController::class, 'reorderPickups'])->middleware('throttle:60,1')->name('driver.reorder-pickups');
+        Route::post('/driver/reorder-deliveries', [GhDriverWorkspaceController::class, 'reorderDeliveries'])->middleware('throttle:60,1')->name('driver.reorder-deliveries');
     });
 
     Route::prefix('product/expenses')->name('product.expenses.')->group(function () {
@@ -435,6 +518,10 @@ Route::middleware(['auth', 'role:MANAGER'])->prefix('admin')->name('admin.')->gr
         ->name('settings.impersonation.disable');
     Route::post('/employees/{employee}/impersonate', [ImpersonationController::class, 'store'])
         ->name('employees.impersonate');
+
+    // GNRL Operations — App Version Management (global admin; not GH-scoped)
+    Route::get('/app/versions', [GhAppVersionPolicyController::class, 'index'])->name('app.versions');
+    Route::put('/app/versions/{policy}', [GhAppVersionPolicyController::class, 'update'])->name('app.versions.update');
 
     Route::get('/config/penalties', [PenaltyRuleController::class, 'index'])->name('config.penalties');
     Route::get('/config/penalties/create', [PenaltyRuleController::class, 'create'])->name('config.penalties.create');

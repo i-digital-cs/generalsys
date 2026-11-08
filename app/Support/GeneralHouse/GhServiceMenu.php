@@ -3,12 +3,15 @@
 namespace App\Support\GeneralHouse;
 
 use App\Models\GeneralHouse\GhB2bContract;
+use App\Models\GeneralHouse\GhCreditNote;
 use App\Models\GeneralHouse\GhCustomer;
+use App\Models\GeneralHouse\GhFinancialCorrection;
 use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\GeneralHouse\GhPayment;
 use App\Models\GeneralHouse\GhProduct;
 use App\Models\GeneralHouse\GhProductOffering;
+use App\Models\GeneralHouse\GhRefund;
 use App\Models\GeneralHouse\GhServiceCategory;
 use App\Models\GeneralHouse\GhTreatment;
 use App\Models\GeneralHouse\GhZone;
@@ -61,6 +64,7 @@ final class GhServiceMenu
             'valuation.sheets.index' => AppModule::mayAccessModule($user, AppModule::SERVICE)
                 && Gate::forUser($user)->allows('viewAny', ValuationSheet::class),
             'gh.dashboard' => GhCatalogAccess::mayManage($user),
+            'gh.settings' => GhCatalogAccess::mayManage($user),
             'gh.categories.index' => Gate::forUser($user)->allows('viewAny', GhServiceCategory::class),
             'gh.products.index' => Gate::forUser($user)->allows('viewAny', GhProduct::class),
             'gh.treatments.index' => Gate::forUser($user)->allows('viewAny', GhTreatment::class),
@@ -72,6 +76,9 @@ final class GhServiceMenu
             'gh.orders.create' => Gate::forUser($user)->allows('create', GhOrder::class),
             'gh.invoices.index' => Gate::forUser($user)->allows('viewAny', GhInvoice::class),
             'gh.payments.index' => Gate::forUser($user)->allows('viewAny', GhPayment::class),
+            'gh.credit-notes.index' => Gate::forUser($user)->allows('viewAny', GhCreditNote::class),
+            'gh.refunds.index' => Gate::forUser($user)->allows('viewAny', GhRefund::class),
+            'gh.financial-corrections.index' => Gate::forUser($user)->allows('viewAny', GhFinancialCorrection::class),
             'gh.reports.index',
             'gh.reports.outstanding',
             'gh.reports.collections',

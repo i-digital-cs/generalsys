@@ -1,0 +1,25 @@
+{
+  "name": "general-house-capacitor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor Android shell for General House Laundry (TEST + LIVE configs)",
+  "scripts": {
+    "env:test": "node scripts/apply-env.mjs test",
+    "env:live": "node scripts/apply-env.mjs live",
+    "brand:assets": "python3 scripts/generate-branding-assets.py",
+    "sync:test": "npm run env:test && npx cap sync android && cp -f android/app/build.gradle.flavors android/app/build.gradle",
+    "sync:live": "npm run env:live && npx cap sync android && cp -f android/app/build.gradle.flavors android/app/build.gradle",
+    "build:test:debug": "bash scripts/build-test-debug.sh",
+    "build:live:unsigned": "bash scripts/build-live-unsigned.sh",
+    "verify:config": "node scripts/verify-config.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/browser": "^6.0.6",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/splash-screen": "^6.0.4",
+    "@capacitor/status-bar": "^6.0.3"
+  }
+}

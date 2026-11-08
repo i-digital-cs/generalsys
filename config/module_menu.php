@@ -11,6 +11,7 @@ return [
     'service' => [
         ['key' => 'nav.dashboard', 'route' => 'portal.service', 'icon' => 'bi-speedometer2'],
         ['key' => 'nav.gh_dashboard', 'route' => 'gh.dashboard', 'icon' => 'bi-graph-up'],
+        ['key' => 'nav.gh_settings', 'route' => 'gh.settings', 'icon' => 'bi-gear'],
         ['key' => 'nav.valuation', 'route' => 'valuation.sheets.index', 'params' => ['module' => 'service'], 'icon' => 'bi-clipboard-data'],
 
         ['type' => 'heading', 'key' => 'nav.gh_section_catalog'],
@@ -31,6 +32,9 @@ return [
         ['type' => 'heading', 'key' => 'nav.gh_section_finance'],
         ['key' => 'nav.gh_invoices', 'route' => 'gh.invoices.index', 'icon' => 'bi-receipt'],
         ['key' => 'nav.gh_payments', 'route' => 'gh.payments.index', 'icon' => 'bi-cash-coin'],
+        ['key' => 'nav.gh_credit_notes', 'route' => 'gh.credit-notes.index', 'icon' => 'bi-journal-minus'],
+        ['key' => 'nav.gh_refunds', 'route' => 'gh.refunds.index', 'icon' => 'bi-arrow-counterclockwise'],
+        ['key' => 'nav.gh_financial_corrections', 'route' => 'gh.financial-corrections.index', 'icon' => 'bi-shield-exclamation'],
 
         ['type' => 'heading', 'key' => 'nav.gh_section_reports'],
         ['key' => 'nav.gh_reports', 'route' => 'gh.reports.index', 'icon' => 'bi-file-earmark-bar-graph'],

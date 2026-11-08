@@ -2,28 +2,40 @@
 
 namespace App\Services\GeneralHouse\Reporting;
 
+use App\Models\GeneralHouse\GhCreditNote;
 use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\GeneralHouse\GhOrderAttempt;
 use App\Models\GeneralHouse\GhPayment;
+use App\Models\GeneralHouse\GhRefund;
 use App\Models\User;
+use App\Services\GeneralHouse\Payments\GhPaymentBalanceService;
 use App\Support\GeneralHouse\GhAttemptType;
+use App\Support\GeneralHouse\GhCreditNoteStatus;
 use App\Support\GeneralHouse\GhInvoicePaymentStatus;
 use App\Support\GeneralHouse\GhInvoiceStatus;
 use App\Support\GeneralHouse\GhMoney;
 use App\Support\GeneralHouse\GhOrderStatus;
 use App\Support\GeneralHouse\GhPaymentMethod;
 use App\Support\GeneralHouse\GhPaymentStatus;
+use App\Support\GeneralHouse\GhRefundStatus;
 use App\Support\GeneralHouse\GhReportFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Manager dashboard aggregates. Financial figures use issued invoices + CONFIRMED payments only.
+ * Manager dashboard aggregates.
+ * Gross issued + confirmed collections labels preserved; GH-10 adds credit/refund KPIs.
+ *
+ * @see docs/general-house/GH10_FINANCIAL_REPORTING.md
  */
 class GhDashboardService
 {
+    public function __construct(
+        private readonly GhPaymentBalanceService $balances,
+    ) {}
+
     /**
      * @return array{
      *   filters: GhReportFilters,
@@ -92,12 +104,29 @@ class GhDashboardService
             ->sum('amount'));
 
         $outstanding = $this->outstandingReceivables($filters);
+        $creditsIssued = $this->issuedCreditsInPeriod($filters, $period);
+        $refundsPaid = $this->refundsPaidOutInPeriod($filters, $period);
+        $netInvoiced = GhMoney::of(GhMoney::sub($issuedValue, $creditsIssued));
+        if (GhMoney::cmp($netInvoiced, '0') < 0) {
+            $netInvoiced = '0.00';
+        }
+        $netCash = GhMoney::of(GhMoney::sub($totalCollected, $refundsPaid));
+        if (GhMoney::cmp($netCash, '0') < 0) {
+            $netCash = '0.00';
+        }
 
         $fin = [
+            // Legacy labels (gross / confirmed) — do not redefine meaning.
             'issued_invoice_value' => $issuedValue,
             'confirmed_cash_collections' => $cashCollected,
             'total_confirmed_collections' => $totalCollected,
             'outstanding_receivables' => $outstanding,
+            // GH-10 additive KPIs
+            'issued_credit_notes_value' => $creditsIssued,
+            'net_invoiced_value' => $netInvoiced,
+            'cash_refunds_paid_out' => $refundsPaid,
+            'net_cash_collected' => $netCash,
+            'customer_credit_liabilities' => $this->customerCreditLiabilities($filters),
             'partially_paid_invoices' => $this->issuedSnapshot($filters)->where('payment_status', GhInvoicePaymentStatus::PARTIAL)->count(),
             'unpaid_invoices' => $this->issuedSnapshot($filters)->where('payment_status', GhInvoicePaymentStatus::UNPAID)->count(),
             'paid_invoices' => $this->issuedSnapshot($filters)->where('payment_status', GhInvoicePaymentStatus::PAID)->count(),
@@ -283,22 +312,86 @@ class GhDashboardService
     {
         $rows = $this->issuedSnapshot($filters)
             ->whereIn('payment_status', [GhInvoicePaymentStatus::UNPAID, GhInvoicePaymentStatus::PARTIAL])
-            ->get(['id', 'total_payable']);
+            ->get();
 
         $sum = '0.00';
         foreach ($rows as $inv) {
-            $confirmed = GhMoney::of((string) GhPayment::query()
-                ->where('invoice_id', $inv->id)
-                ->where('status', GhPaymentStatus::CONFIRMED)
-                ->sum('amount'));
-            $remaining = GhMoney::roundHalfUp(GhMoney::sub(GhMoney::of((string) $inv->total_payable), $confirmed));
-            if (GhMoney::cmp($remaining, '0') < 0) {
-                $remaining = '0.00';
-            }
+            $remaining = $this->balances->forInvoice($inv)['remaining_due'];
             $sum = GhMoney::roundHalfUp(GhMoney::add($sum, $remaining));
         }
 
         return $sum;
+    }
+
+    private function customerCreditLiabilities(GhReportFilters $filters): string
+    {
+        $sum = '0.00';
+        foreach ($this->issuedSnapshot($filters)->get() as $inv) {
+            $credit = $this->balances->forInvoice($inv)['customer_credit'];
+            $sum = GhMoney::roundHalfUp(GhMoney::add($sum, $credit));
+        }
+
+        return $sum;
+    }
+
+    private function issuedCreditsInPeriod(GhReportFilters $filters, object $period): string
+    {
+        $q = GhCreditNote::query()
+            ->where('status', GhCreditNoteStatus::ISSUED)
+            ->where('issued_at', '>=', $period->startUtc)
+            ->where('issued_at', '<', $period->endUtc);
+
+        if ($filters->customerId || $filters->zoneId || $filters->customerType || $filters->driverId) {
+            $q->whereHas('invoice', function ($inv) use ($filters) {
+                if ($filters->customerId) {
+                    $inv->where('customer_id', $filters->customerId);
+                }
+                if ($filters->zoneId) {
+                    $inv->where('zone_id', $filters->zoneId);
+                }
+                if ($filters->customerType) {
+                    $inv->where('customer_type', $filters->customerType);
+                }
+                if ($filters->driverId) {
+                    $inv->whereHas('order', function ($o) use ($filters) {
+                        $o->where('pickup_driver_id', $filters->driverId)
+                            ->orWhere('delivery_driver_id', $filters->driverId);
+                    });
+                }
+            });
+        }
+
+        return GhMoney::of((string) $q->sum('total_credit'));
+    }
+
+    private function refundsPaidOutInPeriod(GhReportFilters $filters, object $period): string
+    {
+        $q = GhRefund::query()
+            ->where('status', GhRefundStatus::PAID_OUT)
+            ->where('paid_out_at', '>=', $period->startUtc)
+            ->where('paid_out_at', '<', $period->endUtc);
+
+        if ($filters->customerId || $filters->zoneId || $filters->customerType || $filters->driverId) {
+            $q->whereHas('invoice', function ($inv) use ($filters) {
+                if ($filters->customerId) {
+                    $inv->where('customer_id', $filters->customerId);
+                }
+                if ($filters->zoneId) {
+                    $inv->where('zone_id', $filters->zoneId);
+                }
+                if ($filters->customerType) {
+                    $inv->where('customer_type', $filters->customerType);
+                }
+                if ($filters->driverId) {
+                    $inv->whereHas('order', function ($o) use ($filters) {
+                        $o->where('pickup_driver_id', $filters->driverId)
+                            ->orWhere('delivery_driver_id', $filters->driverId);
+                    });
+                }
+            });
+        }
+
+        return GhMoney::of((string) $q->sum('amount'));
     }
 
     private function failedAttempts(GhReportFilters $filters, ?string $type): int

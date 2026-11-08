@@ -85,7 +85,7 @@
                     <table class="table table-hr table-sm table-hover align-middle mb-0">
                         <thead>
                             <tr>
-                                <th>{{ __('gh.fields.sort_order') }}</th>
+                                <th class="text-center" style="width: 7rem">{{ __('gh.fields.sort_order') }}</th>
                                 <th>{{ __('gh.fields.name_ar') }}</th>
                                 <th>{{ __('gh.fields.name_en') }}</th>
                                 <th>{{ __('gh.fields.status') }}</th>
@@ -95,7 +95,7 @@
                         <tbody>
                             @foreach ($rows as $row)
                                 <tr>
-                                    <td class="hp-value num-ltr">{{ $row->sort_order }}</td>
+                                    <td class="text-center"><span class="hp-value num-ltr">{{ $row->sort_order }}</span></td>
                                     <td>{{ $row->name_ar }}</td>
                                     <td>{{ $row->name_en }}</td>
                                     <td>@include('gh.partials.status-badge', ['status' => $row->status])</td>
@@ -191,4 +191,5 @@
             </script>
         @endpush
     @endcan
+    @include('gh.import.partials.import-card', ['entity' => 'categories', 'model' => App\Models\GeneralHouse\GhServiceCategory::class])
 @endsection

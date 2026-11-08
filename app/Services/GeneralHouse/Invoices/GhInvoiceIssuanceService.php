@@ -57,6 +57,13 @@ class GhInvoiceIssuanceService
                 ]);
             }
 
+            $pendingOoc = $locked->lines->where('pricing_review_required', true)->count();
+            if ($pendingOoc > 0) {
+                throw ValidationException::withMessages([
+                    'lines' => [__('gh.errors.invoice_pricing_review_required', ['count' => $pendingOoc])],
+                ]);
+            }
+
             $linesInput = $locked->lines->map(fn ($l) => [
                 'offering_id' => $l->offering_id,
                 'received_line_id' => $l->received_line_id,
@@ -97,8 +104,16 @@ class GhInvoiceIssuanceService
             $calc = $this->engine->calculate($linesInput, $header);
             if ($calc['blocks_issuance']) {
                 $msgs = [];
+                $min = $calc['min_order'] ?? [];
                 foreach ($calc['block_reasons'] as $reason) {
-                    $msgs[] = __('gh.errors.invoice_block_'.$reason);
+                    if ($reason === 'min_order_validation') {
+                        $msgs[] = __('gh.errors.invoice_block_min_order_validation', [
+                            'minimum' => number_format((float) ($min['effective_minimum'] ?? 0), 2),
+                            'shortfall' => number_format((float) ($min['shortfall'] ?? 0), 2),
+                        ]);
+                    } else {
+                        $msgs[] = __('gh.errors.invoice_block_'.$reason);
+                    }
                 }
                 throw ValidationException::withMessages([
                     'invoice' => $msgs !== [] ? $msgs : [__('gh.errors.invoice_blocked')],

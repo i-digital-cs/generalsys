@@ -29,8 +29,13 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" for="reference">{{ __('gh.fields.reference') }}</label>
-                    <input id="reference" name="reference" class="form-control" required maxlength="60"
-                           value="{{ old('reference', $contract->reference ?? '') }}">
+                    @if ($isEdit)
+                        <input id="reference" class="form-control hp-value" value="{{ $contract->reference }}" readonly disabled>
+                        <div class="form-text">{{ __('gh.contracts.reference_immutable') }}</div>
+                    @else
+                        <input id="reference" class="form-control" value="{{ __('gh.contracts.reference_auto') }}" readonly disabled>
+                        <div class="form-text">{{ __('gh.contracts.reference_auto_hint') }}</div>
+                    @endif
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" for="status">{{ __('gh.fields.status') }}</label>

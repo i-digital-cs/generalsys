@@ -20,6 +20,7 @@ class GhInvoiceLine extends Model
         'taxable_base', 'tax_amount', 'line_total',
         'product_name_ar', 'product_name_en', 'treatment_name_ar', 'treatment_name_en',
         'category_name_ar', 'category_name_en', 'notes',
+        'pricing_review_required', 'staff_price_approved',
     ];
 
     protected function casts(): array
@@ -28,6 +29,8 @@ class GhInvoiceLine extends Model
             'quantity' => 'integer',
             'quantity_received' => 'integer',
             'qty_differs_from_received' => 'boolean',
+            'pricing_review_required' => 'boolean',
+            'staff_price_approved' => 'boolean',
             'unit_price' => 'decimal:2',
             'tax_rate' => 'decimal:2',
             'item_discount_value' => 'decimal:2',

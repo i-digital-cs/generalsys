@@ -10,16 +10,18 @@
         \App\Support\AppModule::SERVICE => \App\Support\GeneralHouse\GhServiceMenu::filterForUser(auth()->user(), $rawItems),
         default => $rawItems,
     };
+    // GNRL Operations APK — global sidebar footer for every module that shows a sidebar.
+    $showAppDownloads = (bool) ($gnrlAppDownloads['visible'] ?? false);
 @endphp
-<div class="offcanvas-lg offcanvas-start bg-body-tertiary border-end flex-shrink-0"
+<div class="offcanvas-lg offcanvas-start bg-body-tertiary border-end flex-shrink-0 d-flex flex-column"
      tabindex="-1" id="sidebarNav" style="width: 210px;">
     <div class="offcanvas-header d-lg-none">
         <span class="offcanvas-title fw-semibold">{{ config('app.name') }}</span>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
                 data-bs-target="#sidebarNav" aria-label="{{ __('nav.menu') }}"></button>
     </div>
-    <div class="offcanvas-body p-0">
-        <ul class="nav flex-column py-2">
+    <div class="offcanvas-body p-0 d-flex flex-column">
+        <ul class="nav flex-column py-2 flex-grow-1">
             @foreach ($items as $item)
                 @if (($item['type'] ?? '') === 'heading')
                     <li class="nav-item mt-2 px-3">
@@ -73,5 +75,31 @@
                 </li>
             @endforeach
         </ul>
+
+        @if ($showAppDownloads)
+            <div class="border-top mt-auto px-3 py-3 bg-body-tertiary" data-gnrl-app-download-footer="1">
+                <div class="small text-uppercase text-body-secondary fw-semibold mb-2"
+                     style="font-size: .68rem; letter-spacing: .04em;">
+                    {{ __('nav.gh_app_download') }}
+                </div>
+                @if ($gnrlAppDownloads['android_url'] ?? null)
+                    <a class="btn btn-outline-primary btn-sm w-100 mb-2"
+                       href="{{ $gnrlAppDownloads['android_url'] }}">
+                        <i class="bi bi-android2 me-1" aria-hidden="true"></i>{{ __('nav.gh_app_download_android') }}
+                    </a>
+                @else
+                    <div class="small text-body-secondary mb-2">{{ __('nav.gh_app_download_android_unavailable') }}</div>
+                @endif
+                @if ($gnrlAppDownloads['ios_url'] ?? null)
+                    <a class="btn btn-outline-secondary btn-sm w-100"
+                       href="{{ $gnrlAppDownloads['ios_url'] }}"
+                       target="_blank" rel="noopener noreferrer">
+                        <i class="bi bi-apple me-1" aria-hidden="true"></i>{{ __('nav.gh_app_download_ios') }}
+                    </a>
+                @else
+                    <div class="small text-body-secondary">{{ __('nav.gh_app_download_ios_unavailable') }}</div>
+                @endif
+            </div>
+        @endif
     </div>
 </div>

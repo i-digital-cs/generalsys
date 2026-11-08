@@ -50,6 +50,7 @@ class Gh92HttpLaunchUatTest extends TestCase
         }
         config([
             'general_house.min_order.surcharge_enabled' => false,
+            'general_house.standard_vat_rate' => '5.00',
             'general_house.payments.cash_enabled' => true,
             'general_house.payments.partial_payments_enabled' => true,
             'general_house.payments.online_initiation_enabled' => false,
@@ -65,7 +66,8 @@ class Gh92HttpLaunchUatTest extends TestCase
 
         $show = $this->actingAs($manager)->get(route('gh.invoices.show', $invoice));
         $show->assertOk();
-        $show->assertSee(__('gh.payments.record_cash'), false);
+        $show->assertSee(__('gh.invoices.payment_at_delivery_hint'), false);
+        $show->assertDontSee(__('gh.payments.record_cash'), false);
         $show->assertDontSee(__('gh.payments.initiate_online'), false);
 
         $this->actingAs($manager)->post(route('gh.payments.cash', $invoice), [

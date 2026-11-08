@@ -107,10 +107,10 @@ class GhOrderStateService
     }
 
     /**
-     * PICKUP → WORKING with received-item reconciliation.
+     * PICKUP → WORKING (package pickup). Garment counting is staff work during WORKING.
      *
      * @param  array{
-     *   received: list<array{order_line_id?: int|null, offering_id: int, quantity: int, notes?: ?string}>,
+     *   received?: list<array{order_line_id?: int|null, offering_id: int, quantity: int, notes?: ?string}>,
      *   occurred_at?: string|null,
      *   notes?: string|null,
      *   evidence_note?: string|null
@@ -128,15 +128,19 @@ class GhOrderStateService
             /** @var GhOrder $locked */
             $locked = GhOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            // Idempotent: already confirmed.
+            // Idempotent: already confirmed — do not touch existing received lines.
             if ($locked->status === GhOrderStatus::WORKING && $locked->picked_up_at !== null) {
                 return $locked->fresh(['lines', 'receivedLines', 'events']);
             }
 
             $this->assertCanTransition($locked->status, GhOrderStatus::WORKING);
 
-            $snapshots = $this->receivedItems->buildReceivedSnapshots($locked, $data['received'] ?? []);
-            $this->receivedItems->persist($locked, $snapshots);
+            $received = $data['received'] ?? [];
+            // Optional legacy received payload still accepted; empty = package only.
+            if (is_array($received) && $received !== []) {
+                $snapshots = $this->receivedItems->buildReceivedSnapshots($locked, $received);
+                $this->receivedItems->persist($locked, $snapshots);
+            }
 
             $occurredAt = $this->parseOccurredAt($data['occurred_at'] ?? null, $locked);
             $notes = $data['notes'] ?? $data['evidence_note'] ?? null;
@@ -148,9 +152,10 @@ class GhOrderStateService
                 'updated_by' => $actor->id,
             ])->save();
 
+            $receivedCount = $locked->receivedLines()->count();
             $this->applyStatus($locked, GhOrderStatus::WORKING, $actor, GhOrderEventType::PICKUP_CONFIRMED, [
-                'received_count' => count($snapshots),
-                'discrepancies' => collect($snapshots)->pluck('discrepancy_type')->unique()->values()->all(),
+                'package_pickup' => true,
+                'received_count' => $receivedCount,
                 'notes' => $notes,
                 'occurred_at' => $occurredAt->toIso8601String(),
             ], $occurredAt);

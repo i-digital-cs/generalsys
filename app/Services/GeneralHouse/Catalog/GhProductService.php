@@ -6,6 +6,7 @@ use App\Models\GeneralHouse\GhProduct;
 use App\Models\GeneralHouse\GhServiceCategory;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -162,6 +163,27 @@ class GhProductService
                 'code' => [__('gh.errors.product_code_taken')],
             ]);
         }
+    }
+
+    /**
+     * Attach an already validated local image (e.g. import) as the product's single image.
+     */
+    public function attachStoredImage(GhProduct $product, string $absolutePath, string $ext): string
+    {
+        $ext = strtolower($ext);
+        if (! in_array($ext, self::IMAGE_MIMES, true)) {
+            $ext = 'jpg';
+        }
+
+        $path = Storage::disk('local')->putFileAs(
+            'gh-product-images/'.$product->id,
+            new File($absolutePath),
+            Str::random(40).'.'.$ext
+        );
+        $this->deleteStoredImage($product->image_path);
+        $product->update(['image_path' => $path]);
+
+        return $path;
     }
 
     private function storeImage(GhProduct $product, UploadedFile $file): string

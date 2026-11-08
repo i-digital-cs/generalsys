@@ -4,6 +4,7 @@ namespace App\Models\GeneralHouse;
 
 use App\Casts\GhUtcDateTime;
 use App\Models\User;
+use App\Support\GeneralHouse\GhPaymentMethod;
 use App\Support\GeneralHouse\GhPaymentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -63,5 +64,16 @@ class GhPayment extends Model
     public function isPending(): bool
     {
         return $this->status === GhPaymentStatus::PENDING;
+    }
+
+    public function isPendingReview(): bool
+    {
+        return $this->status === GhPaymentStatus::PENDING_REVIEW;
+    }
+
+    public function isOpenDeclaration(): bool
+    {
+        return $this->isPendingReview()
+            || ($this->isPending() && $this->method === GhPaymentMethod::ONLINE);
     }
 }

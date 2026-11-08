@@ -63,4 +63,5 @@
             @endif
         </div>
     </div>
+    @include('gh.import.partials.import-card', ['entity' => 'contracts', 'model' => App\Models\GeneralHouse\GhB2bContract::class])
 @endsection

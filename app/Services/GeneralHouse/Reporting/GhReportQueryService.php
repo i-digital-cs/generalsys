@@ -6,6 +6,7 @@ use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\GeneralHouse\GhOrderAttempt;
 use App\Models\GeneralHouse\GhPayment;
+use App\Services\GeneralHouse\Payments\GhPaymentBalanceService;
 use App\Support\GeneralHouse\GhAttemptType;
 use App\Support\GeneralHouse\GhCustomerType;
 use App\Support\GeneralHouse\GhInvoicePaymentStatus;
@@ -20,10 +21,15 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Paginated / exportable report queries. Balances use CONFIRMED payments only.
+ * Paginated / exportable report queries.
+ * Remaining due / credits / refunds consume GhPaymentBalanceService (GH-10 SSOT).
  */
 class GhReportQueryService
 {
+    public function __construct(
+        private readonly GhPaymentBalanceService $balances,
+    ) {}
+
     public function invoices(GhReportFilters $filters, int $perPage = 25): LengthAwarePaginator
     {
         return $this->invoiceBase($filters)
@@ -237,10 +243,10 @@ class GhReportQueryService
 
     public function remainingForInvoice(GhInvoice $invoice, ?string $confirmed = null): string
     {
-        $confirmed ??= $this->confirmedForInvoice($invoice);
-        $remaining = GhMoney::roundHalfUp(GhMoney::sub(GhMoney::of((string) $invoice->total_payable), $confirmed));
+        // $confirmed retained for call-site BC; remaining_due is balance SSOT (credits + refunds).
+        unset($confirmed);
 
-        return GhMoney::cmp($remaining, '0') < 0 ? '0.00' : $remaining;
+        return $this->balances->forInvoice($invoice)['remaining_due'];
     }
 
     public function confirmedForInvoice(GhInvoice $invoice): string

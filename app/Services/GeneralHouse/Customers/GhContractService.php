@@ -18,6 +18,10 @@ use Illuminate\Validation\ValidationException;
 
 class GhContractService
 {
+    public function __construct(
+        private readonly GhContractReferenceService $references,
+    ) {}
+
     /**
      * @param  array{q?: string, status?: string, customer_id?: int|string}  $filters
      * @return LengthAwarePaginator<int, GhB2bContract>
@@ -51,7 +55,7 @@ class GhContractService
     }
 
     /**
-     * @param  array{customer_id: int, reference: string, effective_from: string, effective_to?: ?string, status?: string, notes?: ?string}  $data
+     * @param  array{customer_id: int, reference?: ?string, effective_from: string, effective_to?: ?string, status?: string, notes?: ?string}  $data
      */
     public function create(array $data): GhB2bContract
     {
@@ -61,9 +65,19 @@ class GhContractService
         $this->assertStatus($status);
         $this->assertNoOverlap($customer->id, $from, $to, $status);
 
+        $reference = isset($data['reference']) && trim((string) $data['reference']) !== ''
+            ? strtoupper(trim((string) $data['reference']))
+            : $this->references->nextReference();
+
+        if (GhB2bContract::query()->where('reference', $reference)->exists()) {
+            throw ValidationException::withMessages([
+                'reference' => [__('gh.errors.contract_reference_taken')],
+            ]);
+        }
+
         return GhB2bContract::query()->create([
             'customer_id' => $customer->id,
-            'reference' => strtoupper(trim($data['reference'])),
+            'reference' => $reference,
             'effective_from' => $from->toDateString(),
             'effective_to' => $to?->toDateString(),
             'status' => $status,
@@ -72,7 +86,9 @@ class GhContractService
     }
 
     /**
-     * @param  array{customer_id: int, reference: string, effective_from: string, effective_to?: ?string, status?: string, notes?: ?string}  $data
+     * Reference is immutable after create — never accepted from the client.
+     *
+     * @param  array{customer_id: int, effective_from: string, effective_to?: ?string, status?: string, notes?: ?string}  $data
      */
     public function update(GhB2bContract $contract, array $data): GhB2bContract
     {
@@ -84,7 +100,6 @@ class GhContractService
 
         $contract->update([
             'customer_id' => $customer->id,
-            'reference' => strtoupper(trim($data['reference'])),
             'effective_from' => $from->toDateString(),
             'effective_to' => $to?->toDateString(),
             'status' => $status,

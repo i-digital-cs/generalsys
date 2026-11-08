@@ -120,6 +120,56 @@ class OrdersTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_order_can_be_created_without_product_lines(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25 09:00:00', config('app.timezone')));
+        $manager = User::factory()->manager()->create();
+        $driver = User::factory()->driver()->create();
+        [$customer, $address] = $this->b2cFixture(false);
+
+        $this->actingAs($manager)->post(route('gh.orders.store'), [
+            'customer_id' => $customer->id,
+            'address_id' => $address->id,
+            'lines' => [],
+            'pickup_date' => '2026-10-28',
+            'pickup_window_start' => '10:00',
+            'pickup_window_end' => '12:00',
+            'pickup_driver_id' => $driver->id,
+            'notes' => 'Booking without garments',
+        ])->assertRedirect();
+
+        $order = GhOrder::query()->firstOrFail();
+        $this->assertSame(GhOrderStatus::LATER, $order->status);
+        $this->assertSame(0, $order->lines()->count());
+        $this->assertSame('0.00', (string) $order->estimated_subtotal);
+        $this->assertSame('Booking without garments', $order->notes);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_order_create_omitted_lines_field_is_accepted(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25 09:00:00', config('app.timezone')));
+        $manager = User::factory()->manager()->create();
+        $driver = User::factory()->driver()->create();
+        [$customer, $address] = $this->b2cFixture(false);
+
+        $this->actingAs($manager)->post(route('gh.orders.store'), [
+            'customer_id' => $customer->id,
+            'address_id' => $address->id,
+            'pickup_date' => '2026-10-26',
+            'pickup_window_start' => '08:00',
+            'pickup_window_end' => '09:00',
+            'pickup_driver_id' => $driver->id,
+        ])->assertRedirect();
+
+        $order = GhOrder::query()->firstOrFail();
+        $this->assertSame(GhOrderStatus::PICKUP, $order->status);
+        $this->assertSame(0, $order->lines()->count());
+
+        Carbon::setTestNow();
+    }
+
     public function test_b2b_order_uses_contract_price_and_rejects_unauthorized_offering(): void
     {
         $manager = User::factory()->manager()->create();

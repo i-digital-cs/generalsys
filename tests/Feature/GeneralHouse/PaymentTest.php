@@ -52,6 +52,7 @@ class PaymentTest extends TestCase
         config([
             'general_house.min_order_surcharge_tax_class' => null,
             'general_house.min_order.surcharge_enabled' => false,
+            'general_house.standard_vat_rate' => '5.00',
             'general_house.payments.cash_enabled' => true,
             'general_house.payments.online_initiation_enabled' => false,
             'general_house.payments.online_gateway_confirm_enabled' => false,
@@ -59,6 +60,7 @@ class PaymentTest extends TestCase
             'general_house.payments.partial_payments_enabled' => true,
             'general_house.payments.overpayment_allowed' => false,
             'general_house.payments.driver_collection_enabled' => false,
+            'general_house.payments.driver_delivery_payment_enabled' => false,
         ]);
     }
 
@@ -253,6 +255,7 @@ class PaymentTest extends TestCase
 
         $this->actingAs($delivery)->post(route('gh.orders.confirm-delivery', $order), [
             'notes' => 'Delivered unpaid OK',
+            // Declarations disabled in this suite — payment fields not required.
         ])->assertRedirect();
 
         $this->assertSame(GhOrderStatus::COMPLETED, $order->fresh()->status);

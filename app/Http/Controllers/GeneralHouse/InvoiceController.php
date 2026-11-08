@@ -11,6 +11,8 @@ use App\Services\GeneralHouse\Catalog\GhPricingResolver;
 use App\Services\GeneralHouse\Invoices\GhInvoiceIssuanceService;
 use App\Services\GeneralHouse\Invoices\GhInvoiceService;
 use App\Services\GeneralHouse\Payments\GhPaymentBalanceService;
+use App\Services\GeneralHouse\Settings\GhVatConfigService;
+use App\Support\GeneralHouse\GhMoney;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,6 +24,7 @@ class InvoiceController extends Controller
         private readonly GhInvoiceIssuanceService $issuance,
         private readonly GhPricingResolver $pricing,
         private readonly GhPaymentBalanceService $paymentBalances,
+        private readonly GhVatConfigService $vatConfig,
     ) {}
 
     public function index(Request $request): View
@@ -67,33 +70,60 @@ class InvoiceController extends Controller
         $this->authorize('view', $invoice);
         $invoice->load(['lines', 'adjustments', 'order.customer', 'order.zone', 'minOrderOverride']);
         $order = $invoice->order;
-        $catalog = [];
+        $catalog = collect();
         $categories = collect();
-
+        $catalogMeta = [
+            'mode' => 'B2C',
+            'groups' => [],
+            'ooc_groups' => [],
+            'contract_reference' => null,
+            'message' => null,
+        ];
         if ($invoice->isDraft() && $order?->customer) {
-            $offerings = $this->pricing->availableOfferingsForCustomer($order->customer, $order->pickup_starts_at);
             $categories = GhServiceCategory::query()->where('status', 'ACTIVE')->orderBy('sort_order')->get();
-            $catalog = $offerings->map(function (array $row) {
-                $o = $row['offering'];
-
-                return [
-                    'offering_id' => $o->id,
-                    'unit_price' => $row['unit_price'],
-                    'source' => $row['source'],
-                    'tax_class' => $o->tax_class,
-                    'category_id' => $o->product?->category_id,
-                    'product_name' => app()->getLocale() === 'ar' ? $o->product?->name_ar : ($o->product?->name_en ?: $o->product?->name_ar),
-                    'treatment_name' => app()->getLocale() === 'ar' ? $o->treatment?->name_ar : ($o->treatment?->name_en ?: $o->treatment?->name_ar),
-                    'image_url' => $o->product ? route('gh.products.image', $o->product) : null,
-                ];
+            $catalogMeta = $this->pricing->invoiceBuilderCatalog($order->customer, $order->pickup_starts_at);
+            // Flat catalog kept for legacy JS consumers / tests.
+            $catalog = collect($catalogMeta['groups'])->flatMap(function (array $group) {
+                return collect($group['treatments'] ?? [])->map(fn (array $t) => [
+                    'offering_id' => $t['offering_id'],
+                    'unit_price' => $t['unit_price'],
+                    'source' => $t['source'],
+                    'tax_class' => $t['tax_class'] ?? null,
+                    'category_id' => $group['category_id'] ?? null,
+                    'product_code' => $group['code'] ?? null,
+                    'product_name' => app()->getLocale() === 'ar' ? $group['name_ar'] : ($group['name_en'] ?: $group['name_ar']),
+                    'treatment_name' => app()->getLocale() === 'ar' ? $t['name_ar'] : ($t['name_en'] ?: $t['name_ar']),
+                    'image_url' => $group['image_url'] ?? null,
+                    'out_of_contract' => (bool) ($group['out_of_contract'] ?? false),
+                ]);
             })->values();
         }
+
+        $zoneMinimum = GhMoney::of((string) ($invoice->min_order_original_amount ?? '0.00'));
+        $effectiveMinimum = GhMoney::of((string) ($invoice->min_order_effective_amount ?? $zoneMinimum));
+        $afterDiscounts = GhMoney::of((string) ($invoice->lines_after_discounts ?? '0.00'));
+        $minChanged = GhMoney::cmp($effectiveMinimum, $zoneMinimum) !== 0;
+        $belowMinimum = $invoice->lines->isNotEmpty()
+            && GhMoney::cmp($effectiveMinimum, '0') > 0
+            && GhMoney::cmp($afterDiscounts, $effectiveMinimum) < 0;
+        $minShortfall = $belowMinimum
+            ? GhMoney::roundHalfUp(GhMoney::sub($effectiveMinimum, $afterDiscounts))
+            : '0.00';
+        $canEditMinimum = request()->user()?->isManager() === true;
 
         return view('gh.invoices.builder', [
             'invoice' => $invoice,
             'order' => $order,
             'catalog' => $catalog,
+            'catalogMeta' => $catalogMeta,
             'categories' => $categories,
+            'belowMinimum' => $belowMinimum,
+            'minShortfall' => $minShortfall,
+            'zoneMinimum' => $zoneMinimum,
+            'effectiveMinimum' => $effectiveMinimum,
+            'minChanged' => $minChanged,
+            'canEditMinimum' => $canEditMinimum,
+            'standardVatRate' => (string) ($invoice->standard_vat_rate ?: $this->vatConfig->standardRate()),
         ]);
     }
 

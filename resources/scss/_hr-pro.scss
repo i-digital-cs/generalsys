@@ -157,6 +157,15 @@ textarea.form-control:disabled,
     unicode-bidi: isolate;
 }
 
+// Guard: .num-ltr must never collapse <td>/<th> into content-sized boxes.
+// Putting display:inline-block on a table cell creates white rectangular gaps
+// and breaks continuous row backgrounds (seen across General House tables).
+// Prefer wrapping the value: <td class="col-num"><span class="num-ltr">…</span></td>
+th.num-ltr,
+td.num-ltr {
+    display: table-cell;
+}
+
 // Shared table alignment: headers and cells share the same logical edge.
 // Never put dir="ltr" on a whole <td>/<th> (that flips text-align in RTL).
 // Use .col-num on both th+td for numbers/times, and wrap values in .num-ltr.
@@ -510,6 +519,291 @@ h6, .h6 { font-size: .9rem; }
     --bs-navbar-brand-font-size: 1.1rem;
 }
 
+// Global GeneralSys header + module switcher (HR / Service / Product / Settings).
+// Default / tablet: two-row chrome + modules. Desktop (>=1024): one compact row.
+// No CSS safe-area — Cap MainActivity applies WindowInsetsCompat once on the bridge root.
+.hp-app-header {
+    --hp-module-tab-min-height: 3rem; // 48px touch target (mobile/tablet)
+    --hp-header-icon-size: 1.35rem;
+    padding-block: 0;
+    align-items: stretch;
+    // Prevent Bootstrap .navbar flex-wrap from stacking header children vertically.
+    flex-wrap: nowrap;
+
+    // Bootstrap sets .navbar > .container-fluid { display:flex; flex-wrap:wrap }.
+    // That wrap + modules width:100% caused brand / modules / actions on 3 desktop rows.
+    > .hp-app-header__grid.container-fluid,
+    .hp-app-header__grid {
+        display: flex;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        gap: .4rem;
+        width: 100%;
+        max-width: 100%;
+        padding-block: .4rem .5rem;
+        padding-inline: .7rem;
+    }
+
+    .hp-app-header__chrome {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: .35rem;
+        min-width: 0;
+        width: 100%;
+        min-height: 2.85rem;
+    }
+
+    .hp-app-header__brand {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: .005em;
+        padding-block: .15rem;
+        padding-inline: .15rem;
+        // Prefer wrapping over ellipsis for the mobile product name.
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        color: var(--hp-header-fg, #fff);
+    }
+
+    .hp-app-header__brand-mobile {
+        display: inline;
+    }
+
+    .hp-app-header__brand-desktop {
+        display: none;
+    }
+
+    .hp-app-header__actions {
+        flex: 0 0 auto;
+        margin-inline-start: auto;
+        gap: .2rem !important;
+    }
+
+    .hp-app-header__icon-btn {
+        position: relative;
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: .65rem;
+        padding: 0 !important;
+
+        > .bi {
+            font-size: var(--hp-header-icon-size);
+            line-height: 1;
+        }
+
+        // Notification badge sits beside the icon, never covering the glyph.
+        > .badge {
+            position: absolute;
+            inset-block-start: .15rem;
+            inset-inline-end: .05rem;
+            transform: none;
+            min-width: 1.15rem;
+            padding: .15em .35em;
+            font-size: .65rem;
+            line-height: 1;
+            z-index: 1;
+        }
+    }
+
+    .hp-app-header__modules {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        gap: .45rem;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x proximity;
+        // Hide scrollbar; scrolling still works via touch/trackpad.
+        scrollbar-width: none;
+        padding-block: .1rem .15rem;
+        padding-inline: .05rem;
+        border-block-start: 1px solid color-mix(in srgb, var(--hp-header-fg) 14%, transparent);
+        padding-block-start: .45rem;
+        -ms-overflow-style: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+    }
+
+    .hp-module-tab {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: var(--hp-module-tab-min-height);
+        padding-block: .55rem;
+        padding-inline: 1.05rem;
+        font-size: .98rem;
+        font-weight: 600;
+        line-height: 1.2;
+        letter-spacing: .01em;
+        white-space: nowrap;
+        border-radius: .8rem;
+        border: 1.5px solid color-mix(in srgb, var(--hp-header-fg) 28%, transparent);
+        color: var(--hp-header-fg) !important;
+        background: color-mix(in srgb, #ffffff 22%, transparent);
+        box-shadow: none;
+        transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+
+        &:hover,
+        &:focus-visible {
+            background: color-mix(in srgb, #ffffff 42%, transparent);
+            border-color: color-mix(in srgb, var(--hp-header-fg) 50%, transparent);
+            color: var(--hp-header-fg) !important;
+        }
+
+        &.hp-module-tab--active,
+        &[aria-selected='true'] {
+            background: #ffffff;
+            border-color: #ffffff;
+            color: #0b4f9c !important;
+            font-weight: 700;
+            box-shadow: 0 .14rem .4rem rgba(15, 23, 42, .18);
+        }
+    }
+
+}
+
+// Tablet: keep two-row header; slightly tighter chrome (do not force one cramped row).
+@media (min-width: 768px) and (max-width: 1023.98px) {
+    .hp-app-header {
+        > .hp-app-header__grid.container-fluid,
+        .hp-app-header__grid {
+            gap: .35rem;
+            padding-block: .35rem .45rem;
+        }
+
+        .hp-app-header__brand {
+            font-size: 1.02rem;
+        }
+
+        .hp-module-tab {
+            min-height: 2.75rem;
+            font-size: .95rem;
+            padding-inline: .95rem;
+        }
+    }
+}
+
+// Desktop: brand | modules | actions on ONE compact horizontal row.
+@media (min-width: 1024px) {
+    .hp-app-header.navbar {
+        flex-wrap: nowrap;
+        align-items: center;
+    }
+
+    .hp-app-header {
+        > .hp-app-header__grid.container-fluid,
+        .hp-app-header__grid {
+            flex-direction: row;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: .65rem;
+            padding-block: .35rem;
+            padding-inline: .85rem;
+        }
+
+        .hp-app-header__chrome {
+            // Flatten so brand + actions participate in the same flex row as modules.
+            display: contents;
+        }
+
+        .hp-app-header__brand {
+            order: 1;
+            flex: 0 1 15rem;
+            max-width: 17rem;
+            width: auto;
+            font-size: 1.05rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-block: 0;
+        }
+
+        .hp-app-header__brand-mobile {
+            display: none;
+        }
+
+        .hp-app-header__brand-desktop {
+            display: inline;
+        }
+
+        .hp-app-header__modules {
+            order: 2;
+            flex: 1 1 auto;
+            // Critical: mobile width:100% must not remain — it forced a full-row wrap.
+            width: auto;
+            max-width: none;
+            min-width: 0;
+            margin-block: 0;
+            padding-block: 0;
+            padding-inline: 0;
+            border-block-start: 0;
+        }
+
+        .hp-app-header__actions {
+            order: 3;
+            flex: 0 0 auto;
+            width: auto;
+            margin-inline-start: 0;
+        }
+
+        .hp-app-header__icon-btn {
+            min-width: 2.5rem;
+            min-height: 2.5rem;
+        }
+
+        .hp-module-tab {
+            min-height: 2.4rem;
+            font-size: .92rem;
+            padding-block: .35rem;
+            padding-inline: .9rem;
+        }
+    }
+}
+
+[data-bs-theme='dark'] .hp-app-header {
+    .hp-module-tab {
+        background: color-mix(in srgb, #ffffff 8%, transparent);
+        border-color: color-mix(in srgb, #ffffff 28%, transparent);
+        color: #e2e8f0 !important;
+
+        &:hover,
+        &:focus-visible {
+            background: color-mix(in srgb, #ffffff 14%, transparent);
+            color: #fff !important;
+        }
+
+        &.hp-module-tab--active,
+        &[aria-selected='true'] {
+            background: #e2e8f0;
+            border-color: #e2e8f0;
+            color: #0f172a !important;
+        }
+    }
+
+    .hp-app-header__modules {
+        border-block-start-color: color-mix(in srgb, #ffffff 16%, transparent);
+    }
+}
+
 .dropdown-menu { font-size: .875rem; }
 .dropdown-item { padding: .35rem 1rem; }
 .breadcrumb { margin-bottom: .75rem; font-size: .85rem; }
@@ -702,25 +996,6 @@ textarea.form-control.is-valid,
         color: var(--hp-header-fg) !important;
     }
 
-    .navbar-brand {
-        min-width: 0;
-        max-width: min(55vw, 16rem);
-        line-height: 1.2;
-        padding-block: 0;
-    }
-
-    // Module pills (جنرال هاوس / مهرة / …): Cairo leaves extra descender space —
-    // center label with flex + tight line-height so text isn’t top-heavy.
-    .hp-module-tab {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        line-height: 1.15;
-        padding-block: .35rem;
-        padding-inline: .75rem;
-        min-height: 2rem;
-    }
-
     .nav-link {
         white-space: nowrap;
         display: inline-flex;
@@ -748,26 +1023,6 @@ textarea.form-control.is-valid,
     .dropdown-menu {
         min-width: 12rem;
         z-index: 1080;
-    }
-}
-
-// Light header (#79caf9): outline tabs need dark borders, not white.
-html:not([data-bs-theme='dark']) .navbar.bg-primary {
-    .btn-outline-light {
-        --bs-btn-color: var(--hp-header-fg);
-        --bs-btn-border-color: var(--hp-header-fg);
-        --bs-btn-hover-color: #fff;
-        --bs-btn-hover-bg: var(--hp-header-fg);
-        --bs-btn-hover-border-color: var(--hp-header-fg);
-        --bs-btn-active-color: #fff;
-        --bs-btn-active-bg: var(--hp-header-fg);
-        --bs-btn-active-border-color: var(--hp-header-fg);
-    }
-
-    .btn-light.text-primary {
-        --bs-btn-color: #0b4f9c;
-        --bs-btn-bg: #fff;
-        --bs-btn-border-color: #fff;
     }
 }
 

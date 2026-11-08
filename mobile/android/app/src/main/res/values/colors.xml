@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Match GeneralSys header brand (#79caf9) so status-bar strip aligns with web header. -->
+    <color name="colorPrimary">#79CAF9</color>
+    <color name="colorPrimaryDark">#0284C7</color>
+    <color name="colorAccent">#0284C7</color>
+    <color name="statusBar">#79CAF9</color>
+    <color name="navigationBar">#F8FAFC</color>
+</resources>

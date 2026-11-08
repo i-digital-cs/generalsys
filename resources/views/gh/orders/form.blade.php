@@ -139,7 +139,10 @@
                         </div>
                     </div>
 
-                    <div class="col-12"><h2 class="h6 card-title">{{ __('gh.orders.offerings') }}</h2></div>
+                    <div class="col-12">
+                        <h2 class="h6 card-title">{{ __('gh.orders.offerings') }}</h2>
+                        <p class="small text-body-secondary mb-2">{{ __('gh.orders.offerings_optional_hint') }}</p>
+                    </div>
                     @if ($offerings->isEmpty())
                         <div class="col-12"><p class="text-body-secondary small">{{ __('gh.orders.no_offerings') }}</p></div>
                     @else
@@ -164,7 +167,16 @@
                                         @endphp
                                         <tr>
                                             <td>{{ $o->product?->category?->localizedName() }}</td>
-                                            <td>{{ $o->product?->localizedName() }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    @if ($o->product?->imageUrl())
+                                                        <img class="gh-product-thumb" src="{{ $o->product->imageUrl() }}" alt="" width="40" height="40" loading="lazy" decoding="async">
+                                                    @else
+                                                        <span class="gh-product-thumb gh-product-thumb--fallback" aria-hidden="true"><i class="bi bi-image"></i></span>
+                                                    @endif
+                                                    <span>{{ $o->product?->localizedName() }}</span>
+                                                </div>
+                                            </td>
                                             <td>{{ $o->treatment?->localizedName() }}</td>
                                             <td class="hp-value"><x-money :amount="$row['unit_price']" currency="AED" />
                                                 <span class="small text-body-secondary">({{ __('gh.price_source.'.$row['source']) }})</span>
@@ -182,27 +194,18 @@
                         </div>
                     @endif
 
-                    <div class="col-12"><h2 class="h6 card-title">{{ __('gh.orders.pickup_window') }}</h2></div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="pickup_date">{{ __('gh.orders.pickup_date') }}</label>
-                        <input id="pickup_date" type="date" name="pickup_date" class="form-control"
-                               value="{{ old('pickup_date', $order?->pickup_starts_at?->timezone($tz)->format('Y-m-d')) }}">
+                    <div class="col-12">
+                        <h2 class="h6 card-title">{{ __('gh.orders.scheduled_pickup') }}</h2>
+                        <p class="small text-body-secondary mb-2">{{ __('gh.orders.driver_visibility_auto_hint') }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="scheduled_pickup_at">{{ __('gh.orders.scheduled_pickup') }}</label>
+                        <input id="scheduled_pickup_at" type="datetime-local" name="scheduled_pickup_at" class="form-control" required
+                               value="{{ old('scheduled_pickup_at', $order?->pickup_starts_at?->timezone($tz)->format('Y-m-d\\TH:i')) }}">
+                        @error('scheduled_pickup_at')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         @error('pickup_date')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="pickup_window_start">{{ __('gh.orders.window_start') }}</label>
-                        <input id="pickup_window_start" type="time" name="pickup_window_start" class="form-control"
-                               value="{{ old('pickup_window_start', $order?->pickup_starts_at?->timezone($tz)->format('H:i')) }}">
                         @error('pickup_window_start')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="pickup_window_end">{{ __('gh.orders.window_end') }}</label>
-                        <input id="pickup_window_end" type="time" name="pickup_window_end" class="form-control"
-                               value="{{ old('pickup_window_end', $order?->pickup_ends_at?->timezone($tz)->format('H:i')) }}">
-                        @error('pickup_window_end')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <p class="small text-body-secondary mb-2">{{ __('gh.orders.timezone_hint', ['tz' => $tz]) }}</p>
+                        <p class="small text-body-secondary mt-1 mb-0">{{ __('gh.orders.timezone_hint', ['tz' => $tz]) }}</p>
                     </div>
                 @endif
 

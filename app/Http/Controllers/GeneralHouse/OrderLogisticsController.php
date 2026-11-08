@@ -3,20 +3,27 @@
 namespace App\Http\Controllers\GeneralHouse;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\GeneralHouse\ApproveGhReceivedPricingRequest;
 use App\Http\Requests\GeneralHouse\CancelGhOrderRequest;
 use App\Http\Requests\GeneralHouse\ConfirmGhDeliveryRequest;
 use App\Http\Requests\GeneralHouse\ConfirmGhPickupRequest;
 use App\Http\Requests\GeneralHouse\ReassignGhDriverRequest;
 use App\Http\Requests\GeneralHouse\RecordGhAttemptRequest;
 use App\Http\Requests\GeneralHouse\RescheduleGhOrderRequest;
+use App\Http\Requests\GeneralHouse\SyncGhReceivedLinesRequest;
 use App\Models\GeneralHouse\GhOrder;
+use App\Models\GeneralHouse\GhOrderReceivedLine;
 use App\Services\GeneralHouse\Orders\GhOrderAssignmentService;
 use App\Services\GeneralHouse\Orders\GhOrderService;
 use App\Services\GeneralHouse\Orders\GhOrderStateService;
+use App\Services\GeneralHouse\Orders\GhReceivedItemService;
+use App\Services\GeneralHouse\Orders\GhReceivedPricingReviewService;
+use App\Services\GeneralHouse\Payments\GhDriverDeliveryPaymentService;
 use App\Support\GeneralHouse\GhAssignmentResponsibility;
 use App\Support\GeneralHouse\GhOrderAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OrderLogisticsController extends Controller
 {
@@ -24,6 +31,9 @@ class OrderLogisticsController extends Controller
         private readonly GhOrderStateService $states,
         private readonly GhOrderService $orders,
         private readonly GhOrderAssignmentService $assignments,
+        private readonly GhReceivedPricingReviewService $pricingReviews,
+        private readonly GhReceivedItemService $receivedItems,
+        private readonly GhDriverDeliveryPaymentService $driverPayments,
     ) {}
 
     public function confirmPickup(ConfirmGhPickupRequest $request, GhOrder $order): RedirectResponse
@@ -36,7 +46,13 @@ class OrderLogisticsController extends Controller
 
     public function confirmDelivery(ConfirmGhDeliveryRequest $request, GhOrder $order): RedirectResponse
     {
-        $this->states->confirmDelivery($order, $request->user(), $request->validated());
+        $data = $request->validated();
+
+        DB::transaction(function () use ($order, $request, &$data) {
+            $result = $this->driverPayments->handleBeforeDeliveryConfirm($order, $request->user(), $data);
+            $data['notes'] = $result['notes'];
+            $this->states->confirmDelivery($order, $request->user(), $data);
+        });
 
         return $this->redirectAfterDriverAction($request, $order, 'delivery')
             ->with('success', __('gh.flash.delivery_confirmed'));
@@ -97,6 +113,27 @@ class OrderLogisticsController extends Controller
         }
 
         return redirect()->route('gh.orders.show', $order);
+    }
+
+    public function approveReceivedPricing(
+        ApproveGhReceivedPricingRequest $request,
+        GhOrder $order,
+        GhOrderReceivedLine $receivedLine,
+    ): RedirectResponse {
+        $this->pricingReviews->approve($order, $receivedLine, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('gh.orders.show', $order)
+            ->with('success', __('gh.flash.pricing_review_approved'));
+    }
+
+    public function syncReceivedLines(SyncGhReceivedLinesRequest $request, GhOrder $order): RedirectResponse
+    {
+        $this->receivedItems->syncForStaff($order, $request->validated('received') ?? []);
+
+        return redirect()
+            ->route('gh.orders.show', $order)
+            ->with('success', __('gh.flash.received_synced'));
     }
 
     public function reassignDriver(ReassignGhDriverRequest $request, GhOrder $order): RedirectResponse

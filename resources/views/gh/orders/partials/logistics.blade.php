@@ -9,52 +9,20 @@
         <div class="row g-3">
             @if ($canConfirmPickup && $order->status === GhOrderStatus::PICKUP)
                 <div class="col-12">
-                    <h3 class="h6">{{ __('gh.orders.confirm_pickup') }}</h3>
-                    <p class="small text-body-secondary">{{ __('gh.orders.confirm_pickup_hint') }}</p>
+                    <h3 class="h6">{{ __('gh.orders.confirm_package_pickup') }}</h3>
+                    <p class="small text-body-secondary">{{ __('gh.orders.confirm_package_pickup_hint') }}</p>
                     <form method="post" action="{{ route('gh.orders.confirm-pickup', $order) }}" class="row g-2">
                         @csrf
                         <div class="col-md-4">
                             <label class="form-label" for="pickup_occurred_at">{{ __('gh.orders.actual_pickup_at') }}</label>
                             <input id="pickup_occurred_at" type="datetime-local" name="occurred_at" class="form-control form-control-sm">
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-5">
                             <label class="form-label" for="pickup_notes">{{ __('gh.orders.pickup_notes') }}</label>
                             <input id="pickup_notes" name="notes" class="form-control form-control-sm" value="{{ old('notes') }}">
                         </div>
-                        <div class="col-12">
-                            <div class="table-responsive">
-                                <table class="table table-hr table-sm align-middle">
-                                    <thead>
-                                    <tr>
-                                        <th>{{ __('gh.fields.product') }}</th>
-                                        <th>{{ __('gh.orders.requested_qty') }}</th>
-                                        <th>{{ __('gh.orders.received_qty') }}</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    @foreach ($order->lines as $i => $line)
-                                        <tr>
-                                            <td>
-                                                {{ app()->getLocale() === 'ar' ? $line->product_name_ar : $line->product_name_en }}
-                                                /
-                                                {{ app()->getLocale() === 'ar' ? $line->treatment_name_ar : $line->treatment_name_en }}
-                                                <input type="hidden" name="received[{{ $i }}][order_line_id]" value="{{ $line->id }}">
-                                                <input type="hidden" name="received[{{ $i }}][offering_id]" value="{{ $line->offering_id }}">
-                                            </td>
-                                            <td class="hp-value num-ltr">{{ $line->quantity }}</td>
-                                            <td style="min-width:6rem">
-                                                <input type="number" min="0" max="9999" class="form-control form-control-sm"
-                                                       name="received[{{ $i }}][quantity]" value="{{ old('received.'.$i.'.quantity', $line->quantity) }}">
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            @error('received')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-primary btn-sm">{{ __('gh.orders.confirm_pickup') }}</button>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-sm w-100">{{ __('gh.orders.confirm_package_pickup') }}</button>
                         </div>
                     </form>
                 </div>
@@ -120,23 +88,13 @@
                     <h3 class="h6">{{ __('gh.orders.reschedule') }}</h3>
                     <form method="post" action="{{ route('gh.orders.reschedule', $order) }}" class="row g-2">
                         @csrf
-                        <div class="col-4">
-                            <label class="form-label" for="rs_date">{{ __('gh.orders.pickup_date') }}</label>
-                            <input id="rs_date" type="date" name="pickup_date" class="form-control form-control-sm"
-                                   value="{{ old('pickup_date', $order->pickup_starts_at?->timezone($displayTz)->format('Y-m-d')) }}">
+                        <div class="col-md-8">
+                            <label class="form-label" for="rs_scheduled">{{ __('gh.orders.scheduled_pickup') }}</label>
+                            <input id="rs_scheduled" type="datetime-local" name="scheduled_pickup_at" class="form-control form-control-sm" required
+                                   value="{{ old('scheduled_pickup_at', $order->pickup_starts_at?->timezone($displayTz)->format('Y-m-d\\TH:i')) }}">
                         </div>
-                        <div class="col-4">
-                            <label class="form-label" for="rs_start">{{ __('gh.orders.window_start') }}</label>
-                            <input id="rs_start" type="time" name="pickup_window_start" class="form-control form-control-sm"
-                                   value="{{ old('pickup_window_start', $order->pickup_starts_at?->timezone($displayTz)->format('H:i')) }}">
-                        </div>
-                        <div class="col-4">
-                            <label class="form-label" for="rs_end">{{ __('gh.orders.window_end') }}</label>
-                            <input id="rs_end" type="time" name="pickup_window_end" class="form-control form-control-sm"
-                                   value="{{ old('pickup_window_end', $order->pickup_ends_at?->timezone($displayTz)->format('H:i')) }}">
-                        </div>
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-outline-primary btn-sm">{{ __('gh.orders.reschedule') }}</button>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary btn-sm w-100">{{ __('gh.orders.reschedule') }}</button>
                         </div>
                     </form>
                 </div>

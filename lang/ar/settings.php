@@ -14,6 +14,8 @@ return [
     'office_longitude' => 'خط طول المكتب',
     'office_radius_meters' => 'نصف القطر المسموح (متر)',
     'office_radius_hint' => 'الافتراضي 1000 م (1 كم). اترك الإحداثيات فارغة لتعطيل فحص المسافة (الموقع ما زال مطلوبًا عند التسجيل).',
+    'app_versions_section' => 'تطبيق الجوال',
+    'app_versions_hint' => 'إدارة سياسات إصدارات تطبيق GNRL Operations لأندرويد وiOS على بيئتي الاختبار والإنتاج.',
     'impersonation_otp' => 'رمز الوصول',
     'impersonation_unlock' => 'فتح',
     'impersonation_disable' => 'إغلاق',

@@ -14,6 +14,8 @@ return [
     'office_longitude' => 'Office longitude',
     'office_radius_meters' => 'Allowed radius (meters)',
     'office_radius_hint' => 'Default 1000 m (1 km). Leave lat/lng empty to disable distance checks (GPS is still required on punch).',
+    'app_versions_section' => 'Mobile application',
+    'app_versions_hint' => 'Manage GNRL Operations Android and iOS version policies for TEST and LIVE.',
     'impersonation_otp' => 'Access code',
     'impersonation_unlock' => 'Unlock',
     'impersonation_disable' => 'Lock',

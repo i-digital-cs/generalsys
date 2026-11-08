@@ -1,5 +1,7 @@
 import * as bootstrap from 'bootstrap';
 import { initClockCtaColors } from './pages/clock-cta-color';
+import { initDriverSort } from './pages/gh-driver-sort';
+import { initGhProductPickers } from './pages/gh-product-picker';
 import { initTableFilters } from './pages/table-filter';
 import { initThemeToggle } from './theme';
 import './pages/portal-clock';
@@ -7,6 +9,8 @@ import './pages/portal-clock';
 window.bootstrap = bootstrap;
 
 initTableFilters();
+initDriverSort();
+initGhProductPickers();
 initThemeToggle();
 initClockCtaColors();
 
@@ -60,4 +64,28 @@ document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((toggle) => {
             ],
         },
     });
+});
+
+// Keep the active global module tab visible inside the horizontal scroller (RTL + LTR).
+const scrollActiveModuleTabIntoView = () => {
+    const switcher = document.querySelector('[data-hp-module-switcher]');
+    if (! switcher) {
+        return;
+    }
+
+    const active = switcher.querySelector('.hp-module-tab--active, [aria-selected="true"]');
+    if (! active || typeof active.scrollIntoView !== 'function') {
+        return;
+    }
+
+    active.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'nearest',
+        block: 'nearest',
+    });
+};
+
+scrollActiveModuleTabIntoView();
+window.addEventListener('resize', () => {
+    window.requestAnimationFrame(scrollActiveModuleTabIntoView);
 });

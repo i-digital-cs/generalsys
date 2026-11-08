@@ -22,12 +22,48 @@ class ConfirmGhPickupRequest extends FormRequest
         return [
             'occurred_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
-            'received' => ['required', 'array', 'min:1'],
+            // Package pickup: received garment lines are optional (staff counts during WORKING).
+            // Legacy payloads with received[] remain accepted for compatibility.
+            'received' => ['sometimes', 'nullable', 'array'],
             'received.*.order_line_id' => ['nullable', 'integer', 'exists:gh_order_lines,id'],
-            'received.*.offering_id' => ['required', 'integer', 'exists:gh_product_offerings,id'],
-            'received.*.quantity' => ['required', 'integer', 'min:0', 'max:9999'],
+            'received.*.offering_id' => ['required_with:received', 'integer', 'exists:gh_product_offerings,id'],
+            'received.*.quantity' => ['required_with:received', 'integer', 'min:0', 'max:9999'],
             'received.*.notes' => ['nullable', 'string', 'max:1000'],
             'status' => ['prohibited'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (! $this->exists('received')) {
+            $this->merge(['received' => []]);
+
+            return;
+        }
+
+        $received = $this->input('received', []);
+        if (! is_array($received)) {
+            $this->merge(['received' => []]);
+
+            return;
+        }
+
+        $filtered = [];
+        foreach ($received as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $offeringId = (int) ($row['offering_id'] ?? 0);
+            if ($offeringId < 1) {
+                continue;
+            }
+            $filtered[] = [
+                'order_line_id' => $row['order_line_id'] ?? null,
+                'offering_id' => $offeringId,
+                'quantity' => (int) ($row['quantity'] ?? 0),
+                'notes' => $row['notes'] ?? null,
+            ];
+        }
+        $this->merge(['received' => $filtered]);
     }
 }

@@ -23,8 +23,10 @@ Cross-ref: `FINANCIAL_RULES.md` §8, `DECISION_LOG.md` D-GH-008/009, `DATABASE_D
 |---|---|---|
 | Bank transfer + receipt review | Not in approved methods | Method rejected; no UI |
 | Online gateway provider / webhooks / capture | PROPOSED stub only | No confirm path; no fake PAID |
-| Driver cash collection privileges | Not approved (DRIVER ≠ finance) | Drivers forbidden on all payment routes |
-| Two-step cash PENDING→CONFIRM by driver | Not specified | Manager records cash as **CONFIRMED** in one authorized action |
+| Driver delivery payment (one-step) | Owner-approved | Driver selects CASH or ONLINE and confirms delivery → payment **CONFIRMED** immediately for outstanding balance |
+| ONLINE at delivery | Operator-recorded | CONFIRMED without gateway callback; metadata `verification_source=OPERATOR_RECORDED` (not provider-verified) |
+| Settlement / driver cash reconciliation | Deferred | Not in this phase |
+| Manager direct cash | Still available | Managers may still record CONFIRMED cash on the invoice panel |
 | Overpayment / OVERPAID ledger | Example status only; rules OPEN | Amounts that would exceed remaining balance are **rejected** |
 | Payment reversals of CONFIRMED | C-GH-CORR | CONFIRMED immutable; no reverse API |
 | Accountant ACL for payments | “confirm” in BRD | Deferred — Manager-only (same as GH-5 invoice admin) |

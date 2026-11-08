@@ -1535,6 +1535,8 @@ CREATE TABLE gh_order_received_lines (
     currency CHAR(3) NOT NULL DEFAULT 'AED',
     price_source ENUM('STANDARD','CONTRACT') NOT NULL DEFAULT 'STANDARD',
     contract_id BIGINT UNSIGNED NULL,
+    pricing_review_required TINYINT(1) NOT NULL DEFAULT 0,
+    staff_price_approved TINYINT(1) NOT NULL DEFAULT 0,
     product_name_ar VARCHAR(150) NOT NULL,
     product_name_en VARCHAR(150) NOT NULL,
     treatment_name_ar VARCHAR(120) NOT NULL,
@@ -1705,9 +1707,27 @@ CREATE TABLE gh_min_order_overrides (
     CONSTRAINT fk_gh_min_ov_invoice FOREIGN KEY (invoice_id) REFERENCES gh_invoices(id) ON DELETE CASCADE,
     CONSTRAINT fk_gh_min_ov_order FOREIGN KEY (order_id) REFERENCES gh_orders(id) ON DELETE RESTRICT
 );
+
+-- Manager-managed standard VAT rate (settings.key = gh.standard_vat_rate).
+-- Precedence: DB setting → config/general_house.php (GH_STANDARD_VAT_RATE env) fallback.
+-- New invoice drafts stamp gh_invoices.standard_vat_rate; existing drafts/issued rows keep theirs.
+CREATE TABLE gh_vat_rate_audits (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    actor_id BIGINT UNSIGNED NOT NULL,
+    old_rate DECIMAL(5,2) NULL,
+    new_rate DECIMAL(5,2) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    recorded_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_gh_vat_audit_recorded (recorded_at),
+    CONSTRAINT fk_gh_vat_audit_actor FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE RESTRICT
+);
 ```
 
 Migration: `2026_10_31_140000_create_gh_invoice_tables.php`.
+VAT audits: `2026_11_08_082400_create_gh_vat_rate_audits_table.php`.
+Settings key: `gh.standard_vat_rate` (via `settings` table / `SettingService::KEY_GH_STANDARD_VAT_RATE`).
 
 ### GH-6 Payment ledger
 
@@ -1777,3 +1797,92 @@ Migration: `2026_10_31_160000_add_gh_reporting_indexes.php` — no new tables/co
 | `gh_orders` | `idx_gh_order_status_pickup_ends (status, pickup_ends_at)` |
 
 KPI definitions: `docs/general-house/REPORTING_KPIS.md`.
+
+### GH-10 — Financial corrections (credit notes, cash refunds, payment recording corrections)
+
+Migration: `2026_10_31_180000_create_gh_financial_correction_tables.php` — forward-only; does **not** alter issued invoice or CONFIRMED payment money columns.
+
+| Table | Purpose |
+|-------|---------|
+| `gh_credit_notes` | Credit-note headers (`GH-CN-######` on issue); statuses DRAFT…ISSUED / REJECTED / CANCELLED |
+| `gh_credit_note_lines` | Partial line credits with tax-class / VAT snapshots from original invoice lines |
+| `gh_credit_note_events` | Immutable CN audit events |
+| `gh_refunds` | Cash refunds (`GH-RF-######` on payout); ledger effect only when PAID_OUT |
+| `gh_refund_events` | Immutable refund audit events |
+| `gh_financial_corrections` | Payment recording error workflow (`GH-FC-######`); EXECUTE gated by config |
+| `gh_financial_correction_events` | Immutable correction audit events |
+
+Sequences in `gh_sequences`: `credit_notes`, `refunds`, `financial_corrections`.
+
+Balance equations: `docs/general-house/GH10_BALANCE_INVARIANTS.md`.
+
+## 29. General House UAT additions — contract sequence & driver list order
+
+Migration: `2026_11_04_120000_*` — forward-only, idempotent.
+
+* `gh_sequences.name = 'contracts'` — locked sequence for B2B contract references `GH-CTR-######` (`GhContractReferenceService`). Seeded to `MAX(numeric suffix of existing gh_b2b_contracts.reference)` so historical references stay unique. `gh_b2b_contracts.reference` stays `UNIQUE`; it is immutable after create (never accepted on update).
+* `gh_driver_list_positions` — a driver's personal ordering of actionable tasks.
+
+```sql
+CREATE TABLE gh_driver_list_positions (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    driver_user_id BIGINT UNSIGNED NOT NULL,   -- FK users.id (cascade)
+    list_type VARCHAR(16) NOT NULL,            -- PICKUP | DELIVERY
+    order_id BIGINT UNSIGNED NOT NULL,         -- FK gh_orders.id (cascade)
+    position INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_driver_list_order (driver_user_id, list_type, order_id),
+    KEY idx_gh_driver_list_pos (driver_user_id, list_type, position)
+);
+```
+
+Written only by `GhDriverListOrderService::reorder`; read by `GhDriverWorkspaceService` (LEFT JOIN, unpositioned tasks sort last).
+
+## 30. GNRL Operations — app version policies
+
+Migration: `2026_11_08_101000_create_gh_app_version_policy_tables.php`.
+
+One policy row per `(platform, channel)` — Android/iOS × TEST/LIVE. Comparisons use numeric `latest_build` / `minimum_build` only.
+
+```sql
+CREATE TABLE gh_app_version_policies (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    platform VARCHAR(16) NOT NULL,              -- android | ios
+    channel VARCHAR(8) NOT NULL,               -- test | live
+    latest_version_name VARCHAR(50) NULL,
+    latest_build INT UNSIGNED NOT NULL DEFAULT 0,
+    minimum_build INT UNSIGNED NOT NULL DEFAULT 0,
+    update_mode VARCHAR(32) NOT NULL DEFAULT 'OPTIONAL', -- OPTIONAL | REQUIRED_BY_MINIMUM
+    update_url VARCHAR(500) NULL,
+    release_notes_ar TEXT NULL,
+    release_notes_en TEXT NULL,
+    publication_status VARCHAR(16) NOT NULL DEFAULT 'UNPUBLISHED',
+    package_id VARCHAR(191) NULL,
+    sha256 CHAR(64) NULL,
+    artifact_path VARCHAR(255) NULL,
+    updated_by BIGINT UNSIGNED NULL,
+    published_at TIMESTAMP NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_app_version_platform_channel (platform, channel),
+    CONSTRAINT fk_gh_app_version_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE gh_app_version_policy_audits (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    policy_id BIGINT UNSIGNED NOT NULL,
+    actor_id BIGINT UNSIGNED NULL,
+    action VARCHAR(50) NOT NULL,
+    before_json JSON NULL,
+    after_json JSON NULL,
+    reason VARCHAR(500) NULL,
+    recorded_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    CONSTRAINT fk_gh_app_version_audit_policy FOREIGN KEY (policy_id) REFERENCES gh_app_version_policies(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gh_app_version_audit_actor FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL
+);
+```
+
+Trusted channel for version-check = `config(general_house.android_app.channel)`. Client `app_channel` cannot select another environment's policy.

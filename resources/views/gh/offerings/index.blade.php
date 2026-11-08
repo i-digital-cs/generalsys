@@ -57,16 +57,8 @@
                         <label class="form-label mb-1" for="standard_price">{{ __('gh.fields.standard_price') }}</label>
                         <input id="standard_price" name="standard_price" type="number" step="0.01" min="0"
                                class="form-control form-control-sm" value="{{ old('standard_price') }}" required>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label mb-1" for="tax_class">{{ __('gh.fields.tax_class') }}</label>
-                        <select id="tax_class" name="tax_class" class="form-select form-select-sm" required>
-                            @foreach ($taxClasses as $tc)
-                                <option value="{{ $tc }}" @selected(old('tax_class', 'STANDARD_RATED') === $tc)>
-                                    {{ __('gh.tax_class.'.$tc) }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <div class="form-text">{{ __('gh.offerings.tax_default_hint') }}</div>
+                        <input type="hidden" name="tax_class" value="{{ old('tax_class', config('general_house.default_offering_tax_class', 'STANDARD_RATED')) }}">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-1" for="status">{{ __('gh.fields.status') }}</label>
@@ -216,14 +208,6 @@
                                 <label class="form-label" for="gh-off-edit-price">{{ __('gh.fields.standard_price') }}</label>
                                 <input id="gh-off-edit-price" name="standard_price" type="number" step="0.01" min="0" class="form-control" required>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label" for="gh-off-edit-tax">{{ __('gh.fields.tax_class') }}</label>
-                                <select id="gh-off-edit-tax" name="tax_class" class="form-select" required>
-                                    @foreach ($taxClasses as $tc)
-                                        <option value="{{ $tc }}">{{ __('gh.tax_class.'.$tc) }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
                             <div class="col-md-2">
                                 <label class="form-label" for="gh-off-edit-status">{{ __('gh.fields.status') }}</label>
                                 <select id="gh-off-edit-status" name="status" class="form-select">
@@ -235,6 +219,18 @@
                             <div class="col-md-2">
                                 <label class="form-label" for="gh-off-edit-sort">{{ __('gh.fields.sort_order') }}</label>
                                 <input id="gh-off-edit-sort" name="sort_order" type="number" min="0" class="form-control">
+                            </div>
+                            <div class="col-12">
+                                <details class="border rounded p-2">
+                                    <summary class="small fw-semibold">{{ __('gh.offerings.advanced_tax') }}</summary>
+                                    <p class="small text-body-secondary mb-2">{{ __('gh.offerings.advanced_tax_hint') }}</p>
+                                    <label class="form-label" for="gh-off-edit-tax">{{ __('gh.fields.tax_class') }}</label>
+                                    <select id="gh-off-edit-tax" name="tax_class" class="form-select" required>
+                                        @foreach ($taxClasses as $tc)
+                                            <option value="{{ $tc }}">{{ __('gh.tax_class.'.$tc) }}</option>
+                                        @endforeach
+                                    </select>
+                                </details>
                             </div>
                         </div>
                     </div>
@@ -266,4 +262,5 @@
             </script>
         @endpush
     @endcan
+    @include('gh.import.partials.import-card', ['entity' => 'offerings', 'model' => App\Models\GeneralHouse\GhProductOffering::class])
 @endsection

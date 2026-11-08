@@ -23,6 +23,9 @@ class SettingService
 
     public const KEY_IMPERSONATION_ENABLED = 'impersonation_enabled';
 
+    /** General House standard VAT % (authoritative when set; else config/env fallback). */
+    public const KEY_GH_STANDARD_VAT_RATE = 'gh.standard_vat_rate';
+
     public function get(string $key, ?string $default = null): ?string
     {
         return Setting::query()->where('key', $key)->value('value') ?? $default;

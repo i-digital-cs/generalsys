@@ -108,6 +108,52 @@ class LogisticsTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_pickup_records_additional_items_when_order_has_no_estimate_lines(): void
+    {
+        $pickup = User::factory()->driver()->create();
+        $order = $this->makeOrder([
+            'status' => GhOrderStatus::PICKUP,
+            'pickup_driver_id' => $pickup->id,
+        ]);
+        $offering = GhProductOffering::factory()->create(['standard_price' => '12.00']);
+
+        $this->actingAs($pickup)->post(route('gh.orders.confirm-pickup', $order), [
+            'notes' => 'Driver counted garments on site',
+            'received' => [
+                ['offering_id' => $offering->id, 'quantity' => 3],
+            ],
+        ])->assertRedirect();
+
+        $order->refresh();
+        $this->assertSame(GhOrderStatus::WORKING, $order->status);
+        $this->assertNotNull($order->picked_up_at);
+        $this->assertSame(0, $order->lines()->count());
+        $this->assertSame(1, $order->receivedLines()->count());
+        $recv = $order->receivedLines()->firstOrFail();
+        $this->assertNull($recv->order_line_id);
+        $this->assertSame(3, (int) $recv->quantity);
+        $this->assertSame(GhReceivedDiscrepancy::ADDITIONAL, $recv->discrepancy_type);
+    }
+
+    public function test_pickup_rejects_zero_quantity_when_no_estimate_lines(): void
+    {
+        $pickup = User::factory()->driver()->create();
+        $order = $this->makeOrder([
+            'status' => GhOrderStatus::PICKUP,
+            'pickup_driver_id' => $pickup->id,
+        ]);
+        $offering = GhProductOffering::factory()->create(['standard_price' => '12.00']);
+
+        $this->actingAs($pickup)->post(route('gh.orders.confirm-pickup', $order), [
+            'received' => [
+                ['offering_id' => $offering->id, 'quantity' => 0],
+            ],
+        ])->assertSessionHasErrors();
+
+        $this->assertSame(GhOrderStatus::PICKUP, $order->fresh()->status);
+        $this->assertSame(0, $order->receivedLines()->count());
+    }
+
     public function test_pickup_driver_confirms_with_quantity_difference_and_idempotent_retry(): void
     {
         $manager = User::factory()->manager()->create();

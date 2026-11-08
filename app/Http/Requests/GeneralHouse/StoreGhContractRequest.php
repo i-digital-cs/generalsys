@@ -19,7 +19,8 @@ class StoreGhContractRequest extends FormRequest
     {
         return [
             'customer_id' => ['required', 'integer', 'exists:gh_customers,id'],
-            'reference' => ['required', 'string', 'max:60', 'unique:gh_b2b_contracts,reference'],
+            // Server allocates GH-CTR-###### — clients must not invent references.
+            'reference' => ['prohibited'],
             'effective_from' => ['required', 'date'],
             'effective_to' => ['nullable', 'date', 'after_or_equal:effective_from'],
             'status' => ['required', Rule::in(GhContractStatus::ALL)],

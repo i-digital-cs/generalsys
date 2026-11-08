@@ -7,18 +7,48 @@ use App\Models\GeneralHouse\GhOrderLine;
 use App\Models\GeneralHouse\GhOrderReceivedLine;
 use App\Models\GeneralHouse\GhProductOffering;
 use App\Services\GeneralHouse\Catalog\GhPricingResolver;
+use App\Support\GeneralHouse\GhOrderStatus;
 use App\Support\GeneralHouse\GhReceivedDiscrepancy;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Builds auditable received lines at pickup. Never mutates requested order lines.
+ * Builds auditable received lines. Requested order lines are never mutated.
+ * Package pickup may leave received empty; laundry staff syncs counts during WORKING.
  */
 class GhReceivedItemService
 {
     public function __construct(
         private readonly GhPricingResolver $pricing,
     ) {}
+
+    /**
+     * Staff replaces received garment lines while order is WORKING and not yet invoiced.
+     *
+     * @param  list<array{order_line_id?: int|null, offering_id: int, quantity: int, notes?: ?string}>  $received
+     */
+    public function syncForStaff(GhOrder $order, array $received): void
+    {
+        if ($order->status !== GhOrderStatus::WORKING || $order->picked_up_at === null) {
+            throw ValidationException::withMessages([
+                'order' => [__('gh.errors.received_sync_wrong_status')],
+            ]);
+        }
+        if ($order->invoice_issued_at !== null || $order->invoice()->exists()) {
+            throw ValidationException::withMessages([
+                'order' => [__('gh.errors.received_sync_invoiced')],
+            ]);
+        }
+
+        if ($received === []) {
+            GhOrderReceivedLine::query()->where('order_id', $order->id)->delete();
+
+            return;
+        }
+
+        $snapshots = $this->buildReceivedSnapshots($order, $received);
+        $this->persist($order, $snapshots);
+    }
 
     /**
      * @param  list<array{order_line_id?: int|null, offering_id: int, quantity: int, notes?: ?string}>  $received
@@ -29,6 +59,18 @@ class GhReceivedItemService
         if ($received === []) {
             throw ValidationException::withMessages([
                 'received' => [__('gh.errors.received_required')],
+            ]);
+        }
+
+        $positiveQty = 0;
+        foreach ($received as $row) {
+            if (is_array($row) && (int) ($row['quantity'] ?? 0) > 0) {
+                $positiveQty++;
+            }
+        }
+        if ($positiveQty < 1) {
+            throw ValidationException::withMessages([
+                'received' => [__('gh.errors.received_qty_required')],
             ]);
         }
 
@@ -90,11 +132,12 @@ class GhReceivedItemService
                 ]);
             }
 
-            // Additional items (no order_line_id) must still be sellable / on contract.
-            $resolved = $this->pricing->resolvePrice($customer, $offering, $onDate);
+            // Pickup estimates are non-binding; B2B out-of-contract items are flagged for staff.
+            $resolved = $this->pricing->provisionalPickupPrice($customer, $offering, $onDate);
             $product = $offering->product;
             $treatment = $offering->treatment;
             $category = $product?->category;
+            $needsReview = (bool) ($resolved['pricing_review_required'] ?? false);
 
             $discrepancy = GhReceivedDiscrepancy::ADDITIONAL;
             if ($requested !== null) {
@@ -113,6 +156,12 @@ class GhReceivedItemService
                 ]);
             }
 
+            $notes = $row['notes'] ?? null;
+            if ($needsReview) {
+                $flag = __('gh.orders.out_of_contract_flag');
+                $notes = $notes ? $flag.' — '.$notes : $flag;
+            }
+
             $built[] = [
                 'order_id' => $order->id,
                 'order_line_id' => $requested?->id,
@@ -122,6 +171,8 @@ class GhReceivedItemService
                 'unit_price_estimate' => $resolved['unit_price'],
                 'currency' => $resolved['currency'],
                 'price_source' => $resolved['source'],
+                'pricing_review_required' => $needsReview,
+                'staff_price_approved' => false,
                 'contract_id' => $resolved['source'] === 'CONTRACT' ? $order->contract_id : null,
                 'product_name_ar' => $product?->name_ar ?? '',
                 'product_name_en' => $product?->name_en ?? '',
@@ -129,7 +180,7 @@ class GhReceivedItemService
                 'treatment_name_en' => $treatment?->name_en ?? '',
                 'category_name_ar' => $category?->name_ar,
                 'category_name_en' => $category?->name_en,
-                'notes' => $row['notes'] ?? null,
+                'notes' => $notes,
                 'sort_order' => $sort++,
             ];
         }
@@ -148,6 +199,8 @@ class GhReceivedItemService
                 'unit_price_estimate' => $line->unit_price_estimate,
                 'currency' => $line->currency,
                 'price_source' => $line->price_source,
+                'pricing_review_required' => false,
+                'staff_price_approved' => false,
                 'contract_id' => $line->contract_id,
                 'product_name_ar' => $line->product_name_ar,
                 'product_name_en' => $line->product_name_en,

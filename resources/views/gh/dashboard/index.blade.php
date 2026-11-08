@@ -45,7 +45,9 @@
     <h2 class="h6 text-body-secondary mb-2">{{ __('gh.dashboard.financial') }}</h2>
     <div class="row g-2 mb-3">
         @foreach ([
-            'issued_invoice_value','confirmed_cash_collections','total_confirmed_collections','outstanding_receivables','average_invoice_value',
+            'issued_invoice_value','issued_credit_notes_value','net_invoiced_value',
+            'confirmed_cash_collections','cash_refunds_paid_out','net_cash_collected',
+            'total_confirmed_collections','outstanding_receivables','customer_credit_liabilities','average_invoice_value',
         ] as $key)
             <div class="col-6 col-md-4 col-xl-2">
                 <x-stat-card :title="__('gh.dashboard.kpi.'.$key)" icon="bi-cash-coin" color="success" :show-sparkline="false">

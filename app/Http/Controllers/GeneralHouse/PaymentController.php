@@ -63,6 +63,17 @@ class PaymentController extends Controller
             ->with('status', __('gh.payments.online_initiated', ['ref' => $payment->reference]));
     }
 
+    public function confirmDeclaration(Request $request, GhPayment $payment): RedirectResponse
+    {
+        $this->authorize('confirmDeclaration', $payment);
+
+        $confirmed = $this->payments->confirmCashDeclaration($payment, $request->user());
+
+        return redirect()
+            ->route('gh.invoices.show', $confirmed->invoice_id)
+            ->with('status', __('gh.payments.declaration_confirmed', ['ref' => $confirmed->reference]));
+    }
+
     public function cancel(Request $request, GhPayment $payment): RedirectResponse
     {
         $this->authorize('cancelPending', $payment);

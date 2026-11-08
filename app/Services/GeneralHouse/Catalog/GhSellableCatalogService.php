@@ -2,6 +2,7 @@
 
 namespace App\Services\GeneralHouse\Catalog;
 
+use App\Models\GeneralHouse\GhProduct;
 use App\Models\GeneralHouse\GhProductOffering;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use Illuminate\Support\Collection;
@@ -25,6 +26,33 @@ class GhSellableCatalogService
             })
             ->whereHas('treatment', fn ($q) => $q->where('status', GhCatalogStatus::ACTIVE))
             ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * Active products in active categories (for laundry staff physical counting).
+     * Includes products that do not yet have sellable offerings — UI must not invent offerings.
+     *
+     * @return Collection<int, GhProduct>
+     */
+    public function activeProductsForCounting(): Collection
+    {
+        return GhProduct::query()
+            ->with([
+                'category',
+                'offerings' => function ($q) {
+                    $q->where('status', GhCatalogStatus::ACTIVE)
+                        ->whereHas('treatment', fn ($t) => $t->where('status', GhCatalogStatus::ACTIVE))
+                        ->with('treatment')
+                        ->orderBy('sort_order')
+                        ->orderBy('id');
+                },
+            ])
+            ->where('status', GhCatalogStatus::ACTIVE)
+            ->whereHas('category', fn ($c) => $c->where('status', GhCatalogStatus::ACTIVE))
+            ->orderBy('sort_order')
+            ->orderBy('code')
             ->orderBy('id')
             ->get();
     }

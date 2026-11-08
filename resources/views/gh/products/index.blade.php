@@ -104,4 +104,5 @@
             @endif
         </div>
     </div>
+    @include('gh.import.partials.import-card', ['entity' => 'products', 'model' => App\Models\GeneralHouse\GhProduct::class, 'withZip' => true])
 @endsection
