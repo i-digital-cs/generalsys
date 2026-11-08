@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Models\ValuationAssignment;
 use App\Services\GeneralHouse\App\GhAndroidAppService;
 use App\Services\GeneralHouse\App\GhAppVersionPolicyService;
+use App\Services\GeneralHouse\App\GhMobileAppConfigService;
+use App\Support\GeneralHouse\GhAppChannel;
 use App\Support\GeneralHouse\GhAppPublicationStatus;
 use App\Support\GeneralHouse\GhAppUpdateMode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -171,12 +173,99 @@ class AppVersionPolicyTest extends TestCase
         $this->assertSame(3, $result['latest_build']);
     }
 
+    public function test_trusted_channel_defaults_to_test_and_live_when_configured(): void
+    {
+        config(['general_house.android_app.channel' => 'test']);
+        $this->assertSame(GhAppChannel::TEST, GhAppChannel::trusted());
+        $this->assertSame(GhAppChannel::TEST, app(GhAppVersionPolicyService::class)->trustedChannel());
+        $this->assertSame(GhAppChannel::TEST, app(GhAndroidAppService::class)->configuredChannel());
+
+        config(['general_house.android_app.channel' => 'live']);
+        $this->assertSame(GhAppChannel::LIVE, GhAppChannel::trusted());
+        $this->assertSame(GhAppChannel::LIVE, app(GhAppVersionPolicyService::class)->trustedChannel());
+        $this->assertSame(GhAppChannel::LIVE, app(GhAndroidAppService::class)->configuredChannel());
+
+        config(['general_house.android_app.channel' => 'bogus']);
+        $this->assertSame(GhAppChannel::TEST, GhAppChannel::trusted());
+    }
+
+    public function test_mobile_app_config_snapshot_uses_capacitor_and_trusted_channel(): void
+    {
+        config([
+            'general_house.android_app.channel' => 'test',
+            'app.url' => 'https://generalsys.idigital-cs.com',
+        ]);
+
+        $test = app(GhMobileAppConfigService::class)->snapshot();
+        $this->assertSame('test', $test['channel']);
+        $this->assertSame('TEST', $test['channel_label']);
+        $this->assertSame('android', $test['platform']);
+        $this->assertSame('GNRL Operations TEST', $test['application_name']);
+        $this->assertSame('net.genral.generalhouse.test', $test['package_id']);
+        $this->assertSame('https://generalsys.idigital-cs.com/login', $test['server_url']);
+        $this->assertTrue($test['host_matches_channel']);
+        $this->assertTrue($test['apk_available']);
+        $this->assertSame('1.0.2-test', $test['version_name']);
+        $this->assertSame(3, $test['version_build']);
+        $this->assertNotNull($test['download_url']);
+        $this->assertStringNotContainsString('password', json_encode($test));
+        $this->assertArrayNotHasKey('keystore', $test);
+
+        config([
+            'general_house.android_app.channel' => 'live',
+            'general_house.android_app.distribution_enabled' => false,
+            'app.url' => 'https://system.genral.net',
+        ]);
+
+        $live = app(GhMobileAppConfigService::class)->snapshot();
+        $this->assertSame('live', $live['channel']);
+        $this->assertSame('LIVE', $live['channel_label']);
+        $this->assertSame('GNRL Operations', $live['application_name']);
+        $this->assertSame('net.genral.generalhouse', $live['package_id']);
+        $this->assertSame('https://system.genral.net/login', $live['server_url']);
+        $this->assertTrue($live['host_matches_channel']);
+        $this->assertFalse($live['apk_available']);
+        $this->assertSame('distribution_disabled', $live['apk_status_key']);
+        $this->assertNull($live['download_url']);
+    }
+
+    public function test_version_check_and_download_follow_live_channel_config(): void
+    {
+        config([
+            'general_house.android_app.channel' => 'live',
+            'general_house.android_app.distribution_enabled' => true,
+        ]);
+
+        // TEST APK must not be served on LIVE.
+        $this->assertFalse(app(GhAndroidAppService::class)->isAvailable());
+
+        $this->getJson(route('app.version-check', [
+            'platform' => 'android',
+            'build_number' => 1,
+            'app_channel' => 'live',
+        ]))
+            ->assertOk()
+            ->assertJsonPath('channel', 'live')
+            ->assertJsonPath('latest_build', 0);
+
+        $this->getJson(route('app.version-check', [
+            'platform' => 'android',
+            'build_number' => 1,
+            'app_channel' => 'test',
+        ]))->assertStatus(422);
+    }
+
     public function test_manager_can_open_global_admin_page_others_forbidden(): void
     {
         $manager = User::factory()->manager()->create();
         $this->actingAs($manager)->get(route('admin.app.versions'))
             ->assertOk()
-            ->assertSee(__('gh.app_versions.title'), false);
+            ->assertSee(__('gh.app_versions.title'), false)
+            ->assertSee(__('gh.app_versions.mobile_config.title'), false)
+            ->assertSee('data-gnrl-mobile-app-config="1"', false)
+            ->assertSee('GNRL Operations TEST', false)
+            ->assertSee('net.genral.generalhouse.test', false)
+            ->assertSee('TEST', false);
 
         $this->actingAs($manager)->get(route('admin.settings'))
             ->assertOk()

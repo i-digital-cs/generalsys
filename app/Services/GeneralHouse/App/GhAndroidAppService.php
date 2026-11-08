@@ -2,6 +2,7 @@
 
 namespace App\Services\GeneralHouse\App;
 
+use App\Support\GeneralHouse\GhAppChannel;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -151,7 +152,7 @@ final class GhAndroidAppService
 
     public function configuredChannel(): string
     {
-        return strtolower((string) config('general_house.android_app.channel', self::CHANNEL_TEST));
+        return GhAppChannel::trusted();
     }
 
     /**

@@ -142,8 +142,18 @@ Publishing syncs Android `latest_build` / `latest_version_name` from the APK `ve
 
 `AppUpdateChecker` uses the installed `versionCode`, calls version-check on launch and (throttled ~15 min) resume. Mandatory → blocking overlay (Update Now only). Optional → dismissible prompt. Service failures soft-fail (no permanent lockout). Never silently installs APKs.
 
-Environment keys (optional overrides): `GH_ANDROID_APP_CHANNEL`, `GH_ANDROID_APP_DISTRIBUTION_ENABLED`, `GH_IOS_URL_HOSTS`.
+Environment keys (trusted server config — never from the mobile client):
+
+| Key | TEST | LIVE |
+|-----|------|------|
+| `GH_ANDROID_APP_CHANNEL` | `test` (default if unset) | **`live` (required)** |
+| `GH_ANDROID_APP_DISTRIBUTION_ENABLED` | `true` when TEST APK is published | `false` until signed LIVE APK is owner-approved |
+| `GH_IOS_URL_HOSTS` | optional | optional |
+
+**Root cause of “This server channel: TEST” on LIVE:** `config/general_house.php` reads `env('GH_ANDROID_APP_CHANNEL', 'test')`. If LIVE `.env` omits the key (or still has `test`), App Version Management, version-check, and APK download all treat the server as TEST. Fix is LIVE-only — edit LIVE `.env`, then `php artisan config:clear` (or rebuild config cache). **Do not copy TEST `.env`.**
 
 **LIVE rule:** set `GH_ANDROID_APP_CHANNEL=live` and keep distribution gated until a signed, owner-approved APK is published. TEST / UNVERIFIED / unsigned filenames are refused on the LIVE channel.
+
+App Version Management shows a read-only **Mobile App Configuration** panel sourced from `mobile/config/capacitor.{test|live}.json` for the trusted channel plus the Android policy / APK manifest for that channel.
 
 **iOS:** policy + API prepared. No iOS binary is produced by this project.

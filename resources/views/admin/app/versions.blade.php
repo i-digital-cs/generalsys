@@ -20,6 +20,75 @@
         {{ __('gh.app_versions.channel_trust_note') }}
     </div>
 
+    <section class="card border-0 shadow-sm mb-4" data-gnrl-mobile-app-config="1" aria-labelledby="gnrl-mobile-app-config-title">
+        <div class="card-header bg-transparent">
+            <h2 id="gnrl-mobile-app-config-title" class="h5 card-title mb-1">{{ __('gh.app_versions.mobile_config.title') }}</h2>
+            <p class="text-body-secondary small mb-0">{{ __('gh.app_versions.mobile_config.subtitle') }}</p>
+        </div>
+        <div class="card-body">
+            <dl class="row mb-0 small">
+                <dt class="col-sm-4 col-lg-3">{{ __('gh.app_versions.mobile_config.application_name') }}</dt>
+                <dd class="col-sm-8 col-lg-9 hp-value">{{ $mobileAppConfig['application_name'] }}</dd>
+
+                <dt class="col-sm-4 col-lg-3">{{ __('gh.app_versions.mobile_config.package_id') }}</dt>
+                <dd class="col-sm-8 col-lg-9 hp-value num-ltr">{{ $mobileAppConfig['package_id'] }}</dd>
+
+                <dt class="col-sm-4 col-lg-3">{{ __('gh.app_versions.mobile_config.server_url') }}</dt>
+                <dd class="col-sm-8 col-lg-9 hp-value num-ltr text-break">{{ $mobileAppConfig['server_url'] }}</dd>
+
+                <dt class="col-sm-4 col-lg-3">{{ __('gh.app_versions.mobile_config.platform') }}</dt>
+                <dd class="col-sm-8 col-lg-9 hp-value">{{ __('gh.app_versions.platform.'.$mobileAppConfig['platform']) }}</dd>
+
+                <dt class="col-sm-4 col-lg-3">{{ __('gh.app_versions.mobile_config.environment') }}</dt>
+                <dd class="col-sm-8 col-lg-9">
+                    <span class="badge {{ $mobileAppConfig['channel'] === 'live' ? 'text-bg-success' : 'text-bg-secondary' }} num-ltr">
+                        {{ $mobileAppConfig['channel_label'] }}
+                    </span>
+                </dd>
+
+                <dt class="col-sm-4 col-lg-3">{{ __('gh.app_versions.mobile_config.version') }}</dt>
+                <dd class="col-sm-8 col-lg-9 hp-value num-ltr">
+                    @if ($mobileAppConfig['version_name'])
+                        {{ $mobileAppConfig['version_name'] }}
+                        @if ($mobileAppConfig['version_build'] !== null)
+                            <span class="text-body-secondary">({{ __('gh.app_versions.mobile_config.build') }} {{ $mobileAppConfig['version_build'] }})</span>
+                        @endif
+                    @else
+                        {{ __('gh.app_versions.mobile_config.version_unavailable') }}
+                    @endif
+                </dd>
+
+                <dt class="col-sm-4 col-lg-3">{{ __('gh.app_versions.mobile_config.apk_status') }}</dt>
+                <dd class="col-sm-8 col-lg-9">
+                    <span class="badge {{ $mobileAppConfig['apk_available'] ? 'text-bg-success' : 'text-bg-secondary' }}">
+                        {{ __('gh.app_versions.mobile_config.apk_status_values.'.$mobileAppConfig['apk_status_key']) }}
+                    </span>
+                    <span class="badge {{ $mobileAppConfig['publication_status'] === 'PUBLISHED' ? 'text-bg-success' : 'text-bg-secondary' }} ms-1">
+                        {{ __('gh.app_versions.status.'.$mobileAppConfig['publication_status']) }}
+                    </span>
+                </dd>
+
+                <dt class="col-sm-4 col-lg-3">{{ __('gh.app_versions.mobile_config.download_url') }}</dt>
+                <dd class="col-sm-8 col-lg-9 hp-value num-ltr text-break">
+                    @if ($mobileAppConfig['download_url'])
+                        <a href="{{ $mobileAppConfig['download_url'] }}" class="link-primary">{{ $mobileAppConfig['download_url'] }}</a>
+                    @else
+                        {{ __('gh.app_versions.mobile_config.download_unavailable') }}
+                    @endif
+                </dd>
+            </dl>
+
+            @unless ($mobileAppConfig['host_matches_channel'])
+                <div class="alert alert-warning small py-2 mb-0 mt-3" role="status">
+                    {{ __('gh.app_versions.mobile_config.host_mismatch', [
+                        'app_host' => $mobileAppConfig['app_url_host'],
+                        'channel' => $mobileAppConfig['channel_label'],
+                    ]) }}
+                </div>
+            @endunless
+        </div>
+    </section>
+
     @foreach ($platforms as $platform)
         <h2 class="h5 mt-4 mb-3">{{ __('gh.app_versions.platform.'.$platform) }}</h2>
         <div class="row g-3 mb-2">

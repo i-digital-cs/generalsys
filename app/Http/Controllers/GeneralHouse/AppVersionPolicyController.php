@@ -7,6 +7,7 @@ use App\Http\Requests\GeneralHouse\UpdateGhAppVersionPolicyRequest;
 use App\Models\GeneralHouse\GhAppVersionPolicy;
 use App\Models\GeneralHouse\GhAppVersionPolicyAudit;
 use App\Services\GeneralHouse\App\GhAppVersionPolicyService;
+use App\Services\GeneralHouse\App\GhMobileAppConfigService;
 use App\Support\GeneralHouse\GhAppChannel;
 use App\Support\GeneralHouse\GhAppPlatform;
 use App\Support\GnrlAppAccess;
@@ -21,6 +22,7 @@ class AppVersionPolicyController extends Controller
 {
     public function __construct(
         private readonly GhAppVersionPolicyService $policies,
+        private readonly GhMobileAppConfigService $mobileConfig,
     ) {}
 
     public function index(Request $request): View
@@ -40,6 +42,7 @@ class AppVersionPolicyController extends Controller
             'platforms' => GhAppPlatform::all(),
             'channels' => GhAppChannel::all(),
             'trustedChannel' => $this->policies->trustedChannel(),
+            'mobileAppConfig' => $this->mobileConfig->snapshot(),
             'audits' => $audits,
         ]);
     }

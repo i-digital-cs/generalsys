@@ -127,6 +127,8 @@ return [
     |
     */
     'android_app' => [
+        // Trusted deployment channel: test|live. LIVE must set GH_ANDROID_APP_CHANNEL=live
+        // in its own .env (default is test). Never trust the mobile client for this value.
         'channel' => env('GH_ANDROID_APP_CHANNEL', 'test'),
         'distribution_enabled' => filter_var(
             env('GH_ANDROID_APP_DISTRIBUTION_ENABLED', true),
