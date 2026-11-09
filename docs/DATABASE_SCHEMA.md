@@ -532,6 +532,34 @@ CREATE TABLE payroll_records (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
+### payroll_status_audits
+
+Additive audit trail for payroll status transitions (e.g. Artisan `payroll:revert-approved-to-draft`).
+
+```sql
+CREATE TABLE payroll_status_audits (
+    id                 BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    payroll_record_id  BIGINT UNSIGNED NOT NULL,
+    user_id            BIGINT UNSIGNED NOT NULL,
+    actor_id           BIGINT UNSIGNED NULL,
+    from_status        VARCHAR(16) NOT NULL,
+    to_status          VARCHAR(16) NOT NULL,
+    action             VARCHAR(64) NOT NULL,
+    reason             VARCHAR(500) NULL,
+    meta_json          JSON NULL,
+    recorded_at        TIMESTAMP NOT NULL,
+    created_at         TIMESTAMP NULL,
+    updated_at         TIMESTAMP NULL,
+    CONSTRAINT fk_pay_status_audit_payroll FOREIGN KEY (payroll_record_id) REFERENCES payroll_records(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_pay_status_audit_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_pay_status_audit_actor FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_pay_status_audit_payroll (payroll_record_id, recorded_at),
+    INDEX idx_pay_status_audit_user (user_id, recorded_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+Migration: `2026_11_09_150000_create_payroll_status_audits_table.php`.
+
 ## 15. payroll_adjustments
 
 Manual lines on a payslip — Excel rows 43–49: عمولة القسم / عمولة مبيعات / عمولة ارباح / مكافآت / سلفة.

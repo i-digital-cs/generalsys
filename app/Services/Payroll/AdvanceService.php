@@ -3,6 +3,7 @@
 namespace App\Services\Payroll;
 
 use App\Models\Advance;
+use App\Models\PayrollAdjustment;
 use App\Models\PayrollRecord;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -133,6 +134,108 @@ class AdvanceService
                         : Advance::STATUS_ACTIVE,
                 ]);
             }
+        });
+    }
+
+    /**
+     * @return list<float>
+     *
+     * @throws InvalidArgumentException
+     */
+    public function plannedAdvanceRestoreAmounts(PayrollRecord $record): array
+    {
+        $amounts = $record->adjustments()
+            ->where('type', PayrollAdjustment::TYPE_ADVANCE)
+            ->orderBy('id')
+            ->pluck('amount')
+            ->map(fn ($v) => round((float) $v, 2))
+            ->values()
+            ->all();
+
+        $plannedTotal = round(array_sum($amounts), 2);
+        $recorded = round((float) $record->advance_deductions, 2);
+
+        if ($plannedTotal <= 0 && $recorded <= 0) {
+            return [];
+        }
+
+        if ($plannedTotal <= 0 && $recorded > 0) {
+            throw new InvalidArgumentException(
+                'Payroll has advance_deductions but no ADVANCE adjustment lines to reverse safely.'
+            );
+        }
+
+        if (abs($plannedTotal - $recorded) > 0.009) {
+            throw new InvalidArgumentException(
+                "Advance adjustment total ({$plannedTotal}) does not match payroll advance_deductions ({$recorded})."
+            );
+        }
+
+        return $amounts;
+    }
+
+    /**
+     * Restore advance remaining after an APPROVED→DRAFT reversal.
+     *
+     * Uses ADVANCE adjustment lines on the payslip (same order / amounts as
+     * generate-time deduction planning) and credits advances by ascending id.
+     *
+     * @return list<array{advance_id: int, restored: float, remaining_after: float}>
+     *
+     * @throws InvalidArgumentException when restoration cannot be applied safely
+     */
+    public function reverseDeductionsForPayroll(PayrollRecord $record): array
+    {
+        return DB::transaction(function () use ($record) {
+            $amounts = $this->plannedAdvanceRestoreAmounts($record);
+            if ($amounts === []) {
+                return [];
+            }
+
+            $advances = Advance::query()
+                ->where('user_id', $record->user_id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $restored = [];
+            $cursor = 0;
+
+            foreach ($amounts as $credit) {
+                if ($credit <= 0) {
+                    continue;
+                }
+
+                $placed = false;
+                while ($cursor < $advances->count()) {
+                    /** @var Advance $advance */
+                    $advance = $advances[$cursor];
+                    $newRemaining = round((float) $advance->remaining_amount + $credit, 2);
+                    if ($newRemaining <= round((float) $advance->amount, 2) + 0.009) {
+                        $advance->update([
+                            'remaining_amount' => min($newRemaining, round((float) $advance->amount, 2)),
+                            'status' => Advance::STATUS_ACTIVE,
+                        ]);
+                        $restored[] = [
+                            'advance_id' => (int) $advance->id,
+                            'restored' => $credit,
+                            'remaining_after' => (float) $advance->fresh()->remaining_amount,
+                        ];
+                        $cursor++;
+                        $placed = true;
+                        break;
+                    }
+                    $cursor++;
+                }
+
+                if (! $placed) {
+                    throw new InvalidArgumentException(
+                        'Cannot safely restore advance deduction of '.$credit.' — no matching advance room.'
+                    );
+                }
+            }
+
+            return $restored;
         });
     }
 }
