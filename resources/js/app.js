@@ -1,8 +1,10 @@
 import * as bootstrap from 'bootstrap';
 import { initClockCtaColors } from './pages/clock-cta-color';
 import { initDriverSort } from './pages/gh-driver-sort';
+import { initGhOrderBoard } from './pages/gh-order-board';
 import { initGhProductPickers } from './pages/gh-product-picker';
 import { initTableFilters } from './pages/table-filter';
+import { scrollChildIntoScrollerX } from './scroll-into-scroller';
 import { initThemeToggle } from './theme';
 import './pages/portal-clock';
 
@@ -10,6 +12,7 @@ window.bootstrap = bootstrap;
 
 initTableFilters();
 initDriverSort();
+initGhOrderBoard();
 initGhProductPickers();
 initThemeToggle();
 initClockCtaColors();
@@ -66,7 +69,8 @@ document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((toggle) => {
     });
 });
 
-// Keep the active global module tab visible inside the horizontal scroller (RTL + LTR).
+// Keep the active global module tab visible inside its own overflow-x scroller.
+// Do NOT use Element.scrollIntoView — it scrolls the page (Evaluation auto-jump).
 const scrollActiveModuleTabIntoView = () => {
     const switcher = document.querySelector('[data-hp-module-switcher]');
     if (! switcher) {
@@ -74,15 +78,11 @@ const scrollActiveModuleTabIntoView = () => {
     }
 
     const active = switcher.querySelector('.hp-module-tab--active, [aria-selected="true"]');
-    if (! active || typeof active.scrollIntoView !== 'function') {
+    if (! active) {
         return;
     }
 
-    active.scrollIntoView({
-        behavior: 'smooth',
-        inline: 'nearest',
-        block: 'nearest',
-    });
+    scrollChildIntoScrollerX(switcher, active, 'nearest');
 };
 
 scrollActiveModuleTabIntoView();

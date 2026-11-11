@@ -21,7 +21,7 @@ class AdvanceService
     public function listForAdmin(array $filters = [], int $perPage = 25): LengthAwarePaginator
     {
         $query = Advance::query()
-            ->with('user')
+            ->with(['user.profile'])
             ->orderByDesc('date_given')
             ->orderByDesc('id');
 

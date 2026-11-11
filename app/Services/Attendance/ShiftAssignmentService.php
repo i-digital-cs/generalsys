@@ -184,6 +184,7 @@ class ShiftAssignmentService
     {
         if ($actor->canManageOperations()) {
             return User::query()
+                ->with('profile')
                 ->whereIn('role', User::operationsVisibleRoles())
                 ->where('status', User::STATUS_ACTIVE)
                 ->orderBy('name_en')
@@ -191,6 +192,7 @@ class ShiftAssignmentService
         }
 
         return User::query()
+            ->with('profile')
             ->whereIn('role', User::fieldStaffRoles())
             ->where('status', User::STATUS_ACTIVE)
             ->ledBy($actor->id)

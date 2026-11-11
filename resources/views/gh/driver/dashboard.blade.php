@@ -3,8 +3,8 @@
 @section('title', __('gh.driver.dashboard'))
 
 @section('content')
-<div class="container-fluid py-3" style="max-width:40rem">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+<div class="container-fluid py-2 gh-order-board">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
         <div>
             <h1 class="h4 mb-1">{{ __('gh.driver.dashboard') }}</h1>
             <p class="text-body-secondary small mb-0">
@@ -13,64 +13,33 @@
                 ({{ $timezone }})
             </p>
         </div>
-        <a href="{{ route('gh.driver.history') }}" class="btn btn-outline-secondary btn-sm">{{ __('gh.driver.history') }}</a>
+        <a href="{{ route('gh.driver.history') }}" class="gh-board-btn gh-board-btn--ghost">{{ __('gh.driver.history') }}</a>
     </div>
 
-    <section class="mb-4">
-        <h2 class="h6 card-title mb-1">{{ __('gh.driver.today_pickups') }}</h2>
-        @if ($actionable_pickups->count() > 1 || $pending_deliveries->count() > 1)
-            <p class="text-body-secondary small mb-2">{{ __('gh.driver.sort_hint') }}</p>
-        @endif
-        <div data-gh-sortable
-             data-reorder-url="{{ route('gh.driver.reorder-pickups') }}"
-             data-error-message="{{ __('gh.driver.reorder_failed') }}">
-            @forelse ($actionable_pickups as $order)
-                @include('gh.driver.partials.task-card', ['order' => $order, 'taskType' => 'pickup', 'displayTz' => $displayTz, 'sortable' => true, 'position' => $loop->iteration])
-            @empty
-                <p class="text-body-secondary small">{{ __('gh.driver.empty_pickups') }}</p>
-            @endforelse
-        </div>
-    </section>
+    @include('gh.partials.order-board-tabs', [
+        'tabs' => $board['tabs'],
+        'activeTab' => $board['tab'],
+        'baseUrl' => route('gh.driver.dashboard'),
+    ])
 
-    <section class="mb-4">
-        <h2 class="h6 card-title mb-1">{{ __('gh.driver.upcoming_pickups') }}</h2>
-        <p class="text-body-secondary small mb-2">{{ __('gh.driver.upcoming_info_hint', ['hours' => $lead_hours]) }}</p>
-        @forelse ($upcoming_pickups as $order)
-            @include('gh.driver.partials.task-card', ['order' => $order, 'taskType' => 'pickup', 'displayTz' => $displayTz, 'informational' => true])
-        @empty
-            <p class="text-body-secondary small">{{ __('gh.driver.empty_upcoming') }}</p>
-        @endforelse
-    </section>
+    @if ($board['sortable'])
+        <p class="text-body-secondary small mb-2">{{ __('gh.driver.sort_hint') }}</p>
+    @endif
 
-    <section class="mb-4">
-        <h2 class="h6 card-title mb-2">{{ __('gh.driver.pending_deliveries') }}</h2>
-        <div data-gh-sortable
-             data-reorder-url="{{ route('gh.driver.reorder-deliveries') }}"
-             data-error-message="{{ __('gh.driver.reorder_failed') }}">
-            @forelse ($pending_deliveries as $order)
-                @include('gh.driver.partials.task-card', ['order' => $order, 'taskType' => 'delivery', 'displayTz' => $displayTz, 'sortable' => true, 'position' => $loop->iteration])
-            @empty
-                <p class="text-body-secondary small">{{ __('gh.driver.empty_deliveries') }}</p>
-            @endforelse
-        </div>
-    </section>
+    @if ($board['read_only'] && $board['tab'] === 'working')
+        <div class="alert alert-info small py-2" role="status">{{ __('gh.board.working_readonly_hint') }}</div>
+    @endif
 
-    <section class="mb-4">
-        <h2 class="h6 card-title mb-2">{{ __('gh.driver.failed_followups') }}</h2>
-        @forelse ($failed_followups as $movement)
-            @include('gh.driver.partials.movement-card', ['movement' => $movement, 'displayTz' => $displayTz])
-        @empty
-            <p class="text-body-secondary small">{{ __('gh.driver.empty_failed') }}</p>
-        @endforelse
-    </section>
+    @include('gh.partials.order-board-groups', [
+        'groups' => $board['groups'],
+        'role' => 'driver',
+        'sortable' => $board['sortable'],
+        'reorderUrl' => $board['reorder_url'],
+    ])
 
-    <section class="mb-2">
-        <h2 class="h6 card-title mb-2">{{ __('gh.driver.recent_completed') }}</h2>
-        @forelse ($completed as $movement)
-            @include('gh.driver.partials.movement-card', ['movement' => $movement, 'displayTz' => $displayTz])
-        @empty
-            <p class="text-body-secondary small">{{ __('gh.driver.empty_completed') }}</p>
-        @endforelse
-    </section>
+    @include('gh.partials.order-board-pager', [
+        'pager' => $board['pager'] ?? null,
+        'baseUrl' => route('gh.driver.dashboard'),
+    ])
 </div>
 @endsection

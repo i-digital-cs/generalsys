@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+def releaseKeystorePropsFile = System.getenv('GH_ANDROID_RELEASE_KEYSTORE_PROPS')
+        ? file(System.getenv('GH_ANDROID_RELEASE_KEYSTORE_PROPS'))
+        : file("${System.getProperty('user.home')}/.gnrl-android-signing/keystore.properties")
+def releaseKeystoreProps = new Properties()
+def hasReleaseKeystore = releaseKeystorePropsFile.exists()
+if (hasReleaseKeystore) {
+    releaseKeystorePropsFile.withInputStream { releaseKeystoreProps.load(it) }
+}
+
 android {
     namespace "net.genral.generalhouse"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +16,8 @@ android {
         applicationId "net.genral.generalhouse"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "1.0.5"
+        versionCode 1
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
@@ -17,7 +26,7 @@ android {
 
     // Flavor names must not start with "test" (Android Gradle Plugin reserved).
     // sandbox  => GNRL Operations TEST  (generalsys.idigital-cs.com)
-    // production => GNRL Operations LIVE (system.genral.net) — UNVERIFIED until owner approves
+    // production => GNRL Operations LIVE (system.genral.net)
     flavorDimensions "environment"
     productFlavors {
         sandbox {
@@ -41,6 +50,17 @@ android {
         buildConfig true
     }
 
+    signingConfigs {
+        release {
+            if (hasReleaseKeystore) {
+                storeFile file(releaseKeystoreProps['storeFile'])
+                storePassword releaseKeystoreProps['storePassword']
+                keyAlias releaseKeystoreProps['keyAlias']
+                keyPassword releaseKeystoreProps['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         debug {
             debuggable true
@@ -48,6 +68,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseKeystore) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

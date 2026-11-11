@@ -21,14 +21,19 @@
         </a>
     </div>
 
-    <div class="row g-3">
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent">
-                    <h2 class="h6 mb-0">{{ __('evaluation.tl.averages_title') }}</h2>
-                    <p class="small text-body-secondary mb-0 mt-1">{{ __('evaluation.tl.averages_hint') }}</p>
-                </div>
-                <div class="card-body">
+    <div class="eval-card-ui" data-eval-card-ui="tl-show">
+        <div class="row g-3">
+            <div class="col-12 col-lg-6">
+                <article class="gh-record-card">
+                    <header class="gh-record-card__head">
+                        <h2 class="gh-record-card__title">{{ __('evaluation.tl.averages_title') }}</h2>
+                        <div class="gh-record-card__badges">
+                            <span class="gh-record-card__badge gh-record-card__badge--status">
+                                {{ number_format((float) $scores['total_score'], 2) }}%
+                            </span>
+                        </div>
+                    </header>
+                    <p class="small mb-2" style="color: var(--gh-board-muted)">{{ __('evaluation.tl.averages_hint') }}</p>
                     <x-score-bar :label="__('evaluation.fields.performance')" :value="$scores['performance_score']" />
                     <x-score-bar :label="__('evaluation.fields.behavior')" :value="$scores['behavior_score']" />
                     <x-score-bar :label="__('evaluation.fields.productivity')" :value="$scores['productivity_score']" />
@@ -38,16 +43,21 @@
                     <hr>
                     <x-score-bar :label="__('evaluation.fields.total')" :value="$scores['total_score']"
                                  :hint="__('evaluation.tl.total_hint')" />
-                </div>
-            </div>
+                </article>
 
-            @foreach ($otherEvaluations ?? [] as $other)
-                <div class="card border-0 shadow-sm mt-3">
-                    <div class="card-header bg-transparent">
-                        <h2 class="h6 mb-0">{{ __('evaluation.tl.other_title') }}</h2>
-                        <p class="small text-body-secondary mb-0 mt-1">{{ $other->teamLeader?->localizedName() }}</p>
-                    </div>
-                    <div class="card-body">
+                @foreach ($otherEvaluations ?? [] as $other)
+                    <article class="gh-record-card mt-3">
+                        <header class="gh-record-card__head">
+                            <h2 class="gh-record-card__title">{{ __('evaluation.tl.other_title') }}</h2>
+                        </header>
+                        <div class="gh-record-card__meta">
+                            <x-gh.meta-cell icon="bi-person-badge" :value="$other->teamLeader?->localizedName() ?? '—'" />
+                            <x-gh.meta-cell
+                                icon="bi-percent"
+                                :value="number_format((float) $other->total_score, 2).'%'"
+                                :ltr="true"
+                            />
+                        </div>
                         <x-score-bar :label="__('evaluation.fields.performance')" :value="$other->performance_score" />
                         <x-score-bar :label="__('evaluation.fields.behavior')" :value="$other->behavior_score" />
                         <x-score-bar :label="__('evaluation.fields.productivity')" :value="$other->productivity_score" />
@@ -58,18 +68,17 @@
                         @if (filled($other->evaluation_text))
                             <div class="border rounded p-3 bg-body-tertiary mt-3">{{ $other->evaluation_text }}</div>
                         @endif
-                    </div>
-                </div>
-            @endforeach
-        </div>
+                    </article>
+                @endforeach
+            </div>
 
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent">
-                    <h2 class="h6 mb-0">{{ __('evaluation.tl.text_title') }}</h2>
-                    <p class="small text-body-secondary mb-0 mt-1">{{ __('evaluation.tl.text_hint') }}</p>
-                </div>
-                <div class="card-body">
+            <div class="col-12 col-lg-6">
+                <article class="gh-record-card">
+                    <header class="gh-record-card__head">
+                        <h2 class="gh-record-card__title">{{ __('evaluation.tl.text_title') }}</h2>
+                    </header>
+                    <p class="small mb-3" style="color: var(--gh-board-muted)">{{ __('evaluation.tl.text_hint') }}</p>
+
                     @if ($saved)
                         <div class="alert alert-success py-2">{{ __('evaluation.tl.already_saved') }}</div>
                     @endif
@@ -89,11 +98,12 @@
                             @enderror
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100">
-                            {{ __('evaluation.tl.save') }}
+                        <button type="submit" class="gh-board-btn w-100 justify-content-center">
+                            <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                            <span>{{ __('evaluation.tl.save') }}</span>
                         </button>
                     </form>
-                </div>
+                </article>
             </div>
         </div>
     </div>

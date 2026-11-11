@@ -73,6 +73,7 @@ use App\Http\Controllers\TeamLeader\ReportReviewController;
 use App\Http\Controllers\TeamLeader\RestDayController;
 use App\Http\Controllers\TeamLeader\ShiftAssignmentController;
 use App\Http\Controllers\TeamLeader\VacationCreditController;
+use App\Http\Controllers\Ui\ListViewModeController;
 use App\Http\Controllers\Valuation\ValuationAssignmentController;
 use App\Http\Controllers\Valuation\ValuationSheetController;
 use App\Services\GeneralHouse\Import\GhImportService;
@@ -469,6 +470,10 @@ Route::get('/locale/{locale}', function (string $locale) {
 
     return redirect()->back();
 })->name('locale');
+
+Route::post('/ui/display-mode', ListViewModeController::class)
+    ->middleware('auth')
+    ->name('ui.list-view');
 
 // Generic authenticated landing (TEAM_LEADER home until Phase 2 team dashboard)
 Route::get('/dashboard', DashboardController::class)

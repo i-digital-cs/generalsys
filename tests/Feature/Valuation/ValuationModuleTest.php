@@ -5,6 +5,7 @@ namespace Tests\Feature\Valuation;
 use App\Models\User;
 use App\Models\ValuationAssignment;
 use App\Models\ValuationSheet;
+use App\Support\Ui\ListViewMode;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -140,6 +141,8 @@ class ValuationModuleTest extends TestCase
         $this->assertStringContainsString('&#9733;', $arHtml);
         app()->setLocale('en');
 
+        ListViewMode::put($hamad, ListViewMode::CARDS);
+
         $this->withSession(['locale' => 'en'])->actingAs($hamad)
             ->get(route('valuation.sheets.index', 'service'))
             ->assertOk()
@@ -148,10 +151,13 @@ class ValuationModuleTest extends TestCase
             ->assertSee('1,306.55', false)
             ->assertSee(__('valuation.stats.b2b_sales'), false)
             ->assertSee(__('valuation.list'), false)
-            ->assertSee(__('general.actions'), false)
+            ->assertSee('data-eval-card-ui="valuations"', false)
+            ->assertSee('gh-record-card', false)
+            ->assertSee(__('valuation.view'), false)
             ->assertSee('data-table-filter-root', false)
             ->assertSee('data-table-search', false)
-            ->assertSee('data-filter-status', false);
+            ->assertSee('data-filter-status', false)
+            ->assertDontSee('table-hr', false);
 
         $this->withSession(['locale' => 'en'])->actingAs($hamad)
             ->get(route('portal.service'))

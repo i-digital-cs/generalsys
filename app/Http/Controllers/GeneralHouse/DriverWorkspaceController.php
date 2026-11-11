@@ -8,6 +8,7 @@ use App\Models\GeneralHouse\GhOrder;
 use App\Services\GeneralHouse\Orders\GhDriverListOrderService;
 use App\Services\GeneralHouse\Orders\GhDriverMovementLogService;
 use App\Services\GeneralHouse\Orders\GhDriverWorkspaceService;
+use App\Services\GeneralHouse\Orders\GhOrderBoardService;
 use App\Services\GeneralHouse\Orders\GhOrderStateService;
 use App\Services\GeneralHouse\Orders\GhPickupEligibilityService;
 use App\Services\GeneralHouse\Payments\GhDriverDeliveryPaymentService;
@@ -17,6 +18,7 @@ use App\Support\GeneralHouse\GhDriverMovementStatus;
 use App\Support\GeneralHouse\GhDriverMovementType;
 use App\Support\GeneralHouse\GhLaunchConfig;
 use App\Support\GeneralHouse\GhOrderAccess;
+use App\Support\GeneralHouse\GhOrderBoardTab;
 use App\Support\GeneralHouse\GhOrderStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,6 +34,7 @@ class DriverWorkspaceController extends Controller
         private readonly GhOrderStateService $states,
         private readonly GhDriverListOrderService $listOrder,
         private readonly GhDriverMovementLogService $movements,
+        private readonly GhOrderBoardService $board,
     ) {}
 
     public function dashboard(Request $request): View
@@ -39,12 +42,17 @@ class DriverWorkspaceController extends Controller
         $user = $request->user();
         abort_unless(GhOrderAccess::mayUseDriverWorkspace($user), 403);
 
-        $data = $this->workspace->dashboard($user);
+        $tab = GhOrderBoardTab::normalize((string) $request->query('tab', GhOrderBoardTab::PICKUP));
+        $page = max(1, (int) $request->query('page', 1));
+        $tz = (string) config('general_house.timezone', 'Asia/Dubai');
 
-        return view('gh.driver.dashboard', array_merge($data, [
+        return view('gh.driver.dashboard', [
             'driver' => $user,
-            'displayTz' => $data['timezone'],
-        ]));
+            'board' => $this->board->boardForDriver($user, $tab, $page),
+            'business_date' => now($tz)->toDateString(),
+            'timezone' => $tz,
+            'displayTz' => $tz,
+        ]);
     }
 
     public function pickup(Request $request, GhOrder $order): View

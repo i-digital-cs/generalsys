@@ -159,6 +159,7 @@ class EvaluationService
     {
         if ($actor->isManager()) {
             return User::query()
+                ->with('profile')
                 ->whereIn('role', [User::ROLE_EMPLOYEE, User::ROLE_TEAM_LEADER])
                 ->where('status', User::STATUS_ACTIVE)
                 ->orderBy('name_en')
@@ -167,6 +168,7 @@ class EvaluationService
 
         if ($actor->isTeamLeader()) {
             return User::query()
+                ->with('profile')
                 ->where('role', User::ROLE_EMPLOYEE)
                 ->where('status', User::STATUS_ACTIVE)
                 ->ledBy($actor->id)

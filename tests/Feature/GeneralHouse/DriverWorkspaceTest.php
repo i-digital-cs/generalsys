@@ -240,10 +240,14 @@ class DriverWorkspaceTest extends TestCase
         $this->assertNotContains($far->id, $actionable);
         $this->assertSame([$far->id], $data['upcoming_pickups']->pluck('id')->all());
 
-        $this->actingAs($driver)->get(route('gh.driver.dashboard'))
+        $this->actingAs($driver)->get(route('gh.driver.dashboard', ['tab' => 'pickup']))
             ->assertOk()
             ->assertSee('data-order-id="'.$near->id.'"', false)
-            ->assertDontSee('data-order-id="'.$far->id.'"', false)
+            ->assertDontSee('data-order-id="'.$far->id.'"', false);
+
+        $this->actingAs($driver)->get(route('gh.driver.dashboard', ['tab' => 'later']))
+            ->assertOk()
+            ->assertSee('data-order-id="'.$far->id.'"', false)
             ->assertSee($far->reference, false);
     }
 
@@ -358,12 +362,11 @@ class DriverWorkspaceTest extends TestCase
             'zone_id' => $b2bAddress->zone_id,
         ] + $this->windowIn(2));
 
-        $this->actingAs($driver)->get(route('gh.driver.dashboard'))
+        $this->actingAs($driver)->get(route('gh.driver.dashboard', ['tab' => 'pickup']))
             ->assertOk()
             ->assertSee($b2c->reference, false)
             ->assertSee($b2b->reference, false)
-            ->assertSee(__('gh.customer_type.B2C'), false)
-            ->assertSee(__('gh.customer_type.B2B'), false)
+            ->assertSee('gh-order-card', false)
             ->assertSee('data-gh-sortable', false)
             ->assertSee('data-sort-handle', false);
 

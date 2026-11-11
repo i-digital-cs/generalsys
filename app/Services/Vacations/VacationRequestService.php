@@ -197,7 +197,7 @@ class VacationRequestService
             ? $filters
             : ApprovalsListFilters::fromStatus($filters);
 
-        $query = Vacation::query()->with(['user.teamLeaders', 'decidedBy']);
+        $query = Vacation::query()->with(['user.teamLeaders', 'user.profile', 'decidedBy']);
 
         if ($actor->isTeamLeader()) {
             $query->whereHas('user', fn ($q) => $q->where('role', User::ROLE_EMPLOYEE)->ledBy($actor->id));

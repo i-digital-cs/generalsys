@@ -11,11 +11,13 @@ use App\Models\GeneralHouse\GhZone;
 use App\Services\GeneralHouse\Catalog\GhPricingResolver;
 use App\Services\GeneralHouse\Orders\GhDriverEligibilityService;
 use App\Services\GeneralHouse\Orders\GhDriverWorkspaceService;
+use App\Services\GeneralHouse\Orders\GhOrderBoardService;
 use App\Services\GeneralHouse\Orders\GhOrderService;
 use App\Services\GeneralHouse\Orders\GhPickupEligibilityService;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use App\Support\GeneralHouse\GhCustomerType;
 use App\Support\GeneralHouse\GhOrderAccess;
+use App\Support\GeneralHouse\GhOrderBoardTab;
 use App\Support\GeneralHouse\GhOrderStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +31,7 @@ class OrderController extends Controller
         private readonly GhPricingResolver $pricing,
         private readonly GhPickupEligibilityService $eligibility,
         private readonly GhDriverWorkspaceService $workspace,
+        private readonly GhOrderBoardService $board,
     ) {}
 
     public function index(Request $request): View
@@ -36,22 +39,20 @@ class OrderController extends Controller
         $this->authorize('viewAny', GhOrder::class);
 
         $filters = [
+            'tab' => GhOrderBoardTab::normalize((string) $request->query('tab', GhOrderBoardTab::PICKUP)),
             'q' => trim((string) $request->query('q', '')),
             'reference' => trim((string) $request->query('reference', '')),
             'customer' => trim((string) $request->query('customer', '')),
-            'status' => (string) $request->query('status', ''),
             'zone_id' => $request->query('zone_id', ''),
             'pickup_driver_id' => $request->query('pickup_driver_id', ''),
-            'pickup_from' => (string) $request->query('pickup_from', ''),
-            'pickup_to' => (string) $request->query('pickup_to', ''),
+            'page' => max(1, (int) $request->query('page', 1)),
         ];
 
         return view('gh.orders.index', [
-            'rows' => $this->orders->paginate($filters),
+            'board' => $this->board->boardForAdmin($filters),
             'filters' => $filters,
             'zones' => GhZone::query()->orderBy('sort_order')->orderBy('name_ar')->get(),
             'drivers' => $this->drivers->eligibleDrivers(),
-            'statuses' => GhOrderStatus::ALL,
         ]);
     }
 

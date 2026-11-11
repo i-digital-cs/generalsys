@@ -46,7 +46,7 @@ class PayrollController extends Controller
         $status = $request->input('status');
 
         $query = PayrollRecord::query()
-            ->with('user')
+            ->with(['user.profile'])
             ->where('month', $month)
             ->where('year', $year)
             ->orderBy('id');

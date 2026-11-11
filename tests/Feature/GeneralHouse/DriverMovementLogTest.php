@@ -190,7 +190,13 @@ class DriverMovementLogTest extends TestCase
             'delivered_at' => Carbon::now('UTC')->subHour(),
         ]);
 
-        $html = $this->actingAs($driver)->get(route('gh.driver.dashboard'))->assertOk()->getContent();
+        // Board Complete tab shows one order card; movement log keeps separate PICKUP/DELIVERY rows.
+        $this->actingAs($driver)->get(route('gh.driver.dashboard', ['tab' => 'complete']))
+            ->assertOk()
+            ->assertSee($order->reference, false)
+            ->assertSee('gh-order-card', false);
+
+        $html = $this->actingAs($driver)->get(route('gh.driver.history'))->assertOk()->getContent();
         $this->assertSame(1, substr_count($html, 'data-movement-key="'.$order->id.':PICKUP"'));
         $this->assertSame(1, substr_count($html, 'data-movement-key="'.$order->id.':DELIVERY"'));
         $this->assertDontSeeString('Pickup + Delivery', $html);

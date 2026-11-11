@@ -11,6 +11,7 @@
     "sync:live": "npm run env:live && npx cap sync android && cp -f android/app/build.gradle.flavors android/app/build.gradle",
     "build:test:debug": "bash scripts/build-test-debug.sh",
     "build:live:unsigned": "bash scripts/build-live-unsigned.sh",
+    "build:live:release": "bash scripts/build-live-release.sh",
     "verify:config": "node scripts/verify-config.mjs"
   },
   "dependencies": {

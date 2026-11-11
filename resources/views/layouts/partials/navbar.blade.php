@@ -32,6 +32,10 @@
             </a>
 
             <div class="hp-app-header__actions d-flex flex-nowrap align-items-center gap-1 {{ auth()->guest() ? 'ms-auto' : '' }}">
+                @auth
+                    <x-ui.list-view-toggle class="me-1" />
+                @endauth
+
                 <button type="button"
                         class="nav-link text-white px-2 border-0 bg-transparent hp-app-header__icon-btn d-none d-lg-inline-flex"
                         data-theme-toggle

@@ -9,6 +9,7 @@ use App\Models\Permission;
 use App\Models\User;
 use App\Models\ValuationAssignment;
 use App\Models\ValuationSheet;
+use App\Support\Ui\ListViewMode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -36,16 +37,19 @@ class TableFilterUiTest extends TestCase
 
         PenaltyRule::factory()->create();
 
-        foreach ([
-            route('admin.payroll.index', ['month' => now()->month, 'year' => now()->year]),
-            route('admin.config.penalties'),
-        ] as $url) {
-            $this->actingAs($manager)
-                ->get($url)
-                ->assertOk()
-                ->assertSee('table-hr', false)
-                ->assertSee('data-table-filter-root', false);
-        }
+        // Default presentation is Classic (legacy tables).
+        $this->actingAs($manager)
+            ->get(route('admin.payroll.index', ['month' => now()->month, 'year' => now()->year]))
+            ->assertOk()
+            ->assertSee('table-hr', false)
+            ->assertSee('data-table-filter-root', false)
+            ->assertSee('data-list-view-mode="legacy"', false);
+
+        $this->actingAs($manager)
+            ->get(route('admin.config.penalties'))
+            ->assertOk()
+            ->assertSee('table-hr', false)
+            ->assertSee('data-table-filter-root', false);
     }
 
     public function test_paginated_admin_lists_filter_server_side_only(): void
@@ -90,7 +94,7 @@ class TableFilterUiTest extends TestCase
             ->assertSee('name="employee_id"', false)
             ->assertDontSee('data-table-filter-root', false);
 
-        // Approvals: status pills + server-side GET form (month/user/search).
+        // Approvals (legacy default): status pills + server-side GET form.
         $this->actingAs($leader)
             ->get(route('team-leader.approvals'))
             ->assertOk()
@@ -136,6 +140,7 @@ class TableFilterUiTest extends TestCase
             'status' => PayrollRecord::STATUS_APPROVED,
         ]);
 
+        // Legacy default includes the desktop table + toolbar.
         $this->actingAs($employee)
             ->get(route('employee.salary'))
             ->assertOk()
@@ -147,6 +152,7 @@ class TableFilterUiTest extends TestCase
     {
         $manager = User::factory()->manager()->create();
         $hamad = User::factory()->employee()->create();
+        ListViewMode::put($hamad, ListViewMode::CARDS);
 
         ValuationAssignment::query()->create([
             'user_id' => $hamad->id,
@@ -164,10 +170,12 @@ class TableFilterUiTest extends TestCase
         $this->actingAs($hamad)
             ->get(route('valuation.sheets.index', 'service'))
             ->assertOk()
-            ->assertSee('table-hr', false)
+            ->assertSee('data-eval-card-ui="valuations"', false)
+            ->assertSee('data-filterable-item', false)
             ->assertSee('data-table-filter-root', false)
             ->assertSee('data-table-search', false)
-            ->assertSee('data-filter-status', false);
+            ->assertSee('data-filter-status', false)
+            ->assertDontSee('table-hr', false);
 
         $this->actingAs($manager)
             ->get(route('valuation.assignments.index'))

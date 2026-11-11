@@ -112,7 +112,9 @@ body.hp-driver-sorting {
 }
 
 .hp-driver-sort-chosen .hp-driver-task,
-.hp-driver-sort-active .hp-driver-task {
+.hp-driver-sort-active .hp-driver-task,
+.hp-driver-sort-chosen.gh-board-area-item,
+.hp-driver-sort-active.gh-board-area-item {
     box-shadow: 0 .5rem 1.25rem rgba(15, 23, 42, .18) !important;
     transform: scale(1.02);
 }
@@ -122,7 +124,8 @@ body.hp-driver-sorting {
     box-shadow: 0 .75rem 1.5rem rgba(15, 23, 42, .22);
 }
 
-.hp-driver-sort-fallback a {
+.hp-driver-sort-fallback a,
+.hp-driver-sort-fallback .gh-board-btn {
     pointer-events: none;
 }
 
@@ -204,4 +207,1008 @@ body.hp-driver-sorting {
 
 .gh-cat-card .gh-product-thumb--lg {
     margin-bottom: .5rem;
+}
+
+// ── Order board V2.2 (Admin + Driver) ──────────────────────────────────────
+// Scoped ops skin: owner reference navy/yellow/cream. Does NOT alter global ERP
+// theme (logo/header stay #79caf9). Official mobile mark is cyan; board uses the
+// operational reference palette only inside .gh-order-board.
+// Card contract: upper 3-col + lower 4-col metadata (icons inline with values).
+// V2.4.2: container queries drive 1→2→3→max-4 columns from content width (sidebar-aware).
+.gh-order-board {
+    --gh-board-navy: #101044;
+    --gh-board-yellow: #FFD329;
+    --gh-board-cream: #F8F7EF;
+    --gh-board-card: #ffffff;
+    --gh-board-line: #e4e1d6;
+    --gh-board-muted: #7a7785;
+    --gh-board-title: #101044;
+    --gh-board-radius: .5rem;
+    --gh-board-gap: .75rem;
+    --gh-board-card-min: 20rem; // ~320px floor when space allows
+
+    container-type: inline-size;
+    container-name: gh-board;
+    background: var(--gh-board-cream);
+    border-radius: .65rem;
+    padding: .65rem .55rem 1rem;
+    margin-inline: -.25rem;
+    overflow-x: clip;
+}
+
+.gh-order-board .gh-board-filters {
+    background: var(--gh-board-card);
+    border: 1px solid var(--gh-board-line);
+    border-radius: var(--gh-board-radius);
+    box-shadow: none;
+    margin-bottom: .65rem;
+}
+
+.gh-order-board .gh-board-filters .card-body {
+    padding: .55rem .7rem;
+}
+
+.gh-board-filters-primary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: .45rem;
+}
+
+.gh-board-filters-primary .gh-board-filter-search {
+    flex: 1 1 12rem;
+    min-width: 0;
+}
+
+.gh-board-filters-toggle {
+    display: none;
+}
+
+.gh-board-filters-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    min-width: 0;
+}
+
+.gh-board-filters-secondary .gh-board-filter-field {
+    flex: 1 1 10rem;
+    min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+    .gh-board-filters-primary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: .45rem;
+    }
+
+    .gh-board-filters-primary .gh-board-filter-search {
+        grid-column: 1 / -1;
+    }
+
+    .gh-board-filters-toggle {
+        display: inline-flex;
+        grid-column: 1;
+    }
+
+    .gh-board-filters-primary > .gh-board-btn:last-child {
+        grid-column: 2;
+    }
+
+    .gh-board-filters-secondary {
+        display: none;
+        grid-column: 1 / -1;
+        margin-top: .15rem;
+        padding-top: .45rem;
+        border-top: 1px solid var(--gh-board-line, #e4e1d6);
+    }
+
+    .gh-board-filters-secondary.is-open {
+        display: flex;
+    }
+}
+
+@media (min-width: 768px) {
+    .gh-board-filters-primary {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 2fr) auto;
+        align-items: end;
+        gap: .45rem;
+    }
+
+    .gh-board-filters-toggle {
+        display: none !important;
+    }
+
+    .gh-board-filters-secondary {
+        display: flex !important;
+    }
+}
+
+.gh-board-tabs {
+    position: relative;
+}
+
+.gh-board-tabs::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 1.5rem;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gh-board-cream, #F8F7EF) 92%, transparent));
+}
+
+[dir='rtl'] .gh-board-tabs::after {
+    background: linear-gradient(270deg, transparent, color-mix(in srgb, var(--gh-board-cream, #F8F7EF) 92%, transparent));
+}
+
+.gh-board-tabs-scroll {
+    display: flex;
+    gap: .3rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    padding: .1rem .15rem .45rem;
+    scrollbar-width: thin;
+}
+
+.gh-board-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    padding: .32rem .62rem;
+    border-radius: .45rem;
+    border: 1px solid var(--gh-board-line, #e4e1d6);
+    background: #fff;
+    color: var(--gh-board-title, #101044);
+    text-decoration: none;
+    font-size: .78rem;
+    font-weight: 650;
+    white-space: nowrap;
+    min-height: 2rem;
+    line-height: 1.1;
+}
+
+.gh-board-tab:hover,
+.gh-board-tab:focus-visible {
+    background: #fff;
+    border-color: color-mix(in srgb, var(--gh-board-navy, #101044) 35%, var(--gh-board-line, #e4e1d6));
+    color: var(--gh-board-navy, #101044);
+    outline: 0;
+}
+
+.gh-board-tab.is-active {
+    background: var(--gh-board-yellow, #FFD329);
+    border-color: color-mix(in srgb, var(--gh-board-yellow, #FFD329) 70%, #101044);
+    color: var(--gh-board-navy, #101044);
+    box-shadow: none;
+}
+
+.gh-board-tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.2rem;
+    padding: 0 .28rem;
+    border-radius: .35rem;
+    background: color-mix(in srgb, var(--gh-board-navy, #101044) 8%, #fff);
+    font-size: .7rem;
+    font-weight: 700;
+    color: var(--gh-board-navy, #101044);
+}
+
+.gh-board-tab.is-active .gh-board-tab-count {
+    background: #fff;
+}
+
+.gh-board-area {
+    margin-bottom: .75rem;
+}
+
+.gh-board-area-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .4rem;
+    margin-bottom: .28rem;
+    padding-inline: .1rem;
+}
+
+.gh-board-area-title {
+    margin: 0;
+    font-size: .82rem;
+    font-weight: 750;
+    color: var(--gh-board-navy, #101044);
+    letter-spacing: .01em;
+}
+
+.gh-board-area-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 .3rem;
+    border-radius: 999px;
+    background: var(--gh-board-navy, #101044);
+    color: #fff;
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+// V2.4.2: container-aware card grid (never 5–6 skinny columns).
+// Mobile 1 → tablet 2 → mid desktop 3 → wide desktop max 4.
+// Thresholds sized so cards land ~340–420px when the content column allows.
+.gh-board-area-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--gh-board-gap, .75rem);
+    align-items: stretch;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+}
+
+@container gh-board (min-width: 40rem) {
+    .gh-board-area-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@container gh-board (min-width: 64rem) {
+    .gh-board-area-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@container gh-board (min-width: 86rem) {
+    .gh-board-area-list {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.gh-board-area-item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .4rem;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    padding: .75rem .8rem .7rem;
+    background: var(--gh-board-card, #fff);
+    border: 1px solid var(--gh-board-line, #e4e1d6);
+    border-radius: var(--gh-board-radius, .5rem);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--gh-board-navy, #101044) 4%, transparent);
+}
+
+.gh-board-area-item__body {
+    min-width: 0;
+    width: 100%;
+}
+
+// V2.4.2 card: direction-aware [icon][value] cells; unequal meta columns.
+.gh-order-card {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.gh-order-card.is-readonly {
+    opacity: .92;
+}
+
+.gh-order-card__head {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: .45rem;
+    margin-bottom: .45rem;
+    min-width: 0;
+}
+
+.gh-order-card__ref {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-weight: 750;
+    font-size: .875rem;
+    line-height: 1.25;
+    color: var(--gh-board-navy, #101044);
+    text-decoration: none;
+    // Never truncate order references.
+    overflow: visible;
+    white-space: nowrap;
+    text-align: start;
+}
+
+.gh-order-card__ref:hover {
+    text-decoration: underline;
+}
+
+.gh-order-card__badges {
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: end;
+    flex: 1 1 auto;
+    gap: .25rem;
+    min-width: 0;
+    margin-inline-start: .25rem;
+}
+
+.gh-order-card__badge {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: .16rem .4rem;
+    border-radius: .35rem;
+    font-size: .6875rem;
+    font-weight: 750;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gh-order-card__badge--status {
+    background: var(--gh-board-yellow, #FFD329);
+    color: var(--gh-board-navy, #101044);
+}
+
+.gh-order-card__badge--status.is-done {
+    background: color-mix(in srgb, #16a34a 18%, #fff);
+    color: #166534;
+}
+
+.gh-order-card__badge--status.is-working {
+    background: color-mix(in srgb, #0ea5e9 16%, #fff);
+    color: #075985;
+}
+
+.gh-order-card__badge--danger {
+    background: #fee4e2;
+    color: #b42318;
+}
+
+.gh-order-card__meta {
+    width: 100%;
+    min-width: 0;
+    margin-bottom: .35rem;
+    column-gap: .45rem;
+    row-gap: .2rem;
+}
+
+// Seq (fixed) | customer (flex) | address (more flex) — not equal 1fr.
+.gh-order-card__meta--3 {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1.15fr) minmax(0, 1.4fr);
+    margin-bottom: .35rem;
+    padding-bottom: .35rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--gh-board-line, #e4e1d6) 80%, transparent);
+}
+
+// Date | time | kind | type — short values stay readable; kind can flex.
+.gh-order-card__meta--4 {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1.1fr) auto;
+    margin-bottom: .15rem;
+}
+
+// Direction-aware [icon][value]: DOM order is icon then value.
+// In LTR icon is on the left; in RTL flex row starts at inline-start (right).
+.gh-order-card__cell {
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: start;
+    gap: .35rem;
+    min-width: 0;
+    width: 100%;
+    padding-block: .1rem;
+    padding-inline: 0;
+}
+
+.gh-order-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    color: var(--gh-board-muted, #7a7785);
+    line-height: 1;
+}
+
+.gh-order-card__icon i {
+    font-size: .875rem;
+    line-height: 1;
+}
+
+.gh-order-card__value {
+    display: block;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--gh-board-navy, #101044);
+    font-size: .8125rem;
+    font-weight: 650;
+    line-height: 1.3;
+    text-align: start;
+}
+
+// Short / critical values must remain fully visible.
+.gh-order-card__cell--seq .gh-order-card__value,
+.gh-order-card__cell--date .gh-order-card__value,
+.gh-order-card__cell--time .gh-order-card__value,
+.gh-order-card__cell--type .gh-order-card__value {
+    flex: 0 0 auto;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.gh-order-card__meta--3 .gh-order-card__value {
+    font-size: .8125rem;
+}
+
+.gh-order-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: center;
+    justify-content: start;
+    gap: .4rem .5rem;
+    margin-block-start: auto;
+    padding-block-start: .45rem;
+    border-top: 1px solid color-mix(in srgb, var(--gh-board-line, #e4e1d6) 85%, transparent);
+}
+
+.gh-order-card__action-btns {
+    display: inline-flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: center;
+    gap: .35rem;
+    min-width: 0;
+    width: 100%;
+}
+
+.gh-board-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .3rem;
+    min-height: 2rem;
+    padding: .32rem .65rem;
+    border-radius: .4rem;
+    border: 1px solid var(--gh-board-navy, #101044);
+    background: var(--gh-board-navy, #101044);
+    color: #fff !important;
+    font-size: .75rem;
+    font-weight: 650;
+    line-height: 1.1;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.gh-board-btn:hover,
+.gh-board-btn:focus-visible {
+    background: color-mix(in srgb, var(--gh-board-navy, #101044) 88%, #fff);
+    color: #fff !important;
+    outline: 0;
+}
+
+.gh-board-btn--ghost {
+    background: #fff;
+    color: var(--gh-board-navy, #101044) !important;
+}
+
+.gh-board-btn--ghost:hover,
+.gh-board-btn--ghost:focus-visible {
+    background: color-mix(in srgb, var(--gh-board-yellow, #FFD329) 35%, #fff);
+    color: var(--gh-board-navy, #101044) !important;
+}
+
+.gh-order-card__drivers {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+    min-width: 0;
+    max-width: 100%;
+    font-size: .72rem;
+    color: var(--gh-board-muted, #7a7785);
+}
+
+.gh-order-card__drivers > span {
+    display: inline-flex;
+    align-items: center;
+    gap: .2rem;
+    min-width: 0;
+    max-width: 8rem;
+}
+
+.gh-order-card__driver-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gh-board-pager {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-top: .65rem;
+    padding: .35rem .15rem;
+    font-size: .75rem;
+    color: var(--gh-board-muted, #7a7785);
+}
+
+.gh-board-pager-actions {
+    display: inline-flex;
+    gap: .3rem;
+}
+
+.gh-board-sort-controls {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: .25rem;
+    flex-shrink: 0;
+    margin-block-end: .15rem;
+    color: var(--gh-board-muted, #7a7785);
+}
+
+.gh-board-sort-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 1px solid var(--gh-board-line, #e4e1d6);
+    border-radius: .3rem;
+    background: #fff;
+    color: var(--gh-board-navy, #101044);
+    font-size: .7rem;
+    line-height: 1;
+}
+
+.gh-board-sort-btn:disabled {
+    opacity: .4;
+}
+
+.gh-board-sort-pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 .25rem;
+    border-radius: .3rem;
+    background: color-mix(in srgb, var(--gh-board-navy, #101044) 8%, #fff);
+    color: var(--gh-board-navy, #101044);
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+[data-bs-theme='dark'] {
+    .gh-order-board {
+        --gh-board-cream: #12141c;
+        --gh-board-card: #1a1d27;
+        --gh-board-line: #2a2f3c;
+        --gh-board-muted: #a0a6b5;
+        --gh-board-title: #f3f4f6;
+        background: var(--gh-board-cream);
+    }
+
+    .gh-board-tab {
+        background: #1a1d27;
+        color: #e5e7eb;
+        border-color: #2a2f3c;
+    }
+
+    .gh-board-tab.is-active {
+        color: #101044;
+    }
+
+    .gh-board-area-item,
+    .gh-order-board .gh-board-filters {
+        background: var(--gh-board-card);
+    }
+
+    .gh-board-sort-btn {
+        background: #1a1d27;
+        border-color: #2a2f3c;
+        color: #e5e7eb;
+    }
+
+    .gh-order-card__ref,
+    .gh-order-card__value,
+    .gh-board-area-title {
+        color: #f3f4f6;
+    }
+}
+
+// ── Ops card UI (GH lists + Evaluation lists) ────────────────────────────────
+// Same navy/yellow/cream skin as Order Board V2.4.2. Scoped to .gh-card-ui /
+// .eval-card-ui only — does not alter global ERP chrome. Visual tokens only;
+// Evaluation does not import GH business logic.
+
+.gh-card-ui,
+.eval-card-ui {
+    --gh-board-navy: #101044;
+    --gh-board-yellow: #FFD329;
+    --gh-board-cream: #F8F7EF;
+    --gh-board-card: #ffffff;
+    --gh-board-line: #e4e1d6;
+    --gh-board-muted: #7a7785;
+    --gh-board-title: #101044;
+    --gh-board-radius: .5rem;
+    --gh-board-gap: .75rem;
+    --gh-card-max: 26.25rem; // ~420px
+
+    container-type: inline-size;
+    container-name: ops-card-ui;
+    background: var(--gh-board-cream);
+    border-radius: .65rem;
+    padding: .65rem .55rem 1rem;
+    margin-inline: -.25rem;
+    overflow-x: clip;
+}
+
+.gh-card-ui .gh-board-filters,
+.eval-card-ui .gh-board-filters {
+    background: var(--gh-board-card);
+    border: 1px solid var(--gh-board-line);
+    border-radius: var(--gh-board-radius);
+    box-shadow: none;
+    margin-bottom: .65rem;
+}
+
+.gh-card-ui .gh-board-filters .card-body,
+.eval-card-ui .gh-board-filters .card-body {
+    padding: .55rem .7rem;
+}
+
+.gh-card-ui__toolbar,
+.eval-card-ui__toolbar {
+    margin-bottom: .65rem;
+    padding: .55rem .7rem;
+    background: var(--gh-board-card);
+    border: 1px solid var(--gh-board-line);
+    border-radius: var(--gh-board-radius);
+}
+
+.gh-card-ui__grid,
+.eval-card-ui__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--gh-board-gap);
+    align-items: stretch;
+    justify-content: start;
+}
+
+@container ops-card-ui (min-width: 40rem) {
+    .gh-card-ui__grid,
+    .eval-card-ui__grid {
+        grid-template-columns: repeat(2, minmax(0, var(--gh-card-max)));
+    }
+}
+
+@container ops-card-ui (min-width: 64rem) {
+    .gh-card-ui__grid,
+    .eval-card-ui__grid {
+        grid-template-columns: repeat(3, minmax(0, var(--gh-card-max)));
+    }
+}
+
+@container ops-card-ui (min-width: 86rem) {
+    .gh-card-ui__grid,
+    .eval-card-ui__grid {
+        grid-template-columns: repeat(4, minmax(0, var(--gh-card-max)));
+    }
+}
+
+.gh-record-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    padding: .75rem .8rem .7rem;
+    background: var(--gh-board-card);
+    border: 1px solid var(--gh-board-line);
+    border-radius: var(--gh-board-radius);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--gh-board-navy) 4%, transparent);
+}
+
+.gh-record-card__head {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: .45rem;
+    margin-bottom: .45rem;
+    min-width: 0;
+}
+
+.gh-record-card__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-weight: 750;
+    font-size: .875rem;
+    line-height: 1.25;
+    color: var(--gh-board-navy);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+a.gh-record-card__title {
+    text-decoration: none;
+}
+
+a.gh-record-card__title:hover,
+a.gh-record-card__title:focus-visible {
+    color: var(--gh-board-navy);
+    text-decoration: underline;
+    outline: 0;
+}
+
+.gh-record-card__badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+}
+
+.gh-record-card__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .12rem .4rem;
+    border-radius: .35rem;
+    font-size: .68rem;
+    font-weight: 700;
+    line-height: 1.2;
+    background: color-mix(in srgb, var(--gh-board-navy) 8%, #fff);
+    color: var(--gh-board-navy);
+    white-space: nowrap;
+}
+
+.gh-record-card__badge--status {
+    background: color-mix(in srgb, var(--gh-board-yellow) 55%, #fff);
+}
+
+.gh-record-card__badge--muted {
+    background: color-mix(in srgb, var(--gh-board-muted) 18%, #fff);
+    color: var(--gh-board-title);
+}
+
+.gh-record-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem .65rem;
+    margin-bottom: .55rem;
+    min-width: 0;
+}
+
+.gh-record-card__cell {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: .28rem;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.gh-record-card__icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    color: var(--gh-board-muted);
+    font-size: .85rem;
+    line-height: 1;
+}
+
+.gh-record-card__value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--gh-board-title);
+    line-height: 1.25;
+}
+
+.gh-record-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .35rem;
+    margin-top: auto;
+    padding-top: .35rem;
+    border-top: 1px solid var(--gh-board-line);
+}
+
+.gh-card-ui__pager,
+.eval-card-ui__pager {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-top: .65rem;
+    padding: .35rem .15rem;
+    font-size: .75rem;
+    color: var(--gh-board-muted);
+}
+
+.gh-card-ui__empty,
+.eval-card-ui__empty {
+    padding: 1.25rem .75rem;
+    background: var(--gh-board-card);
+    border: 1px dashed var(--gh-board-line);
+    border-radius: var(--gh-board-radius);
+}
+
+[data-bs-theme='dark'] {
+    .gh-card-ui,
+    .eval-card-ui {
+        --gh-board-cream: #12141c;
+        --gh-board-card: #1a1d27;
+        --gh-board-line: #2a2f3c;
+        --gh-board-muted: #a0a6b5;
+        --gh-board-title: #f3f4f6;
+        background: var(--gh-board-cream);
+    }
+
+    .gh-record-card,
+    .gh-card-ui .gh-board-filters,
+    .eval-card-ui .gh-board-filters,
+    .gh-card-ui__toolbar,
+    .eval-card-ui__toolbar,
+    .gh-card-ui__empty,
+    .eval-card-ui__empty {
+        background: var(--gh-board-card);
+    }
+
+    .gh-record-card__title,
+    .gh-record-card__value {
+        color: #f3f4f6;
+    }
+}
+
+// ── Offerings create form (aligned single row) ───────────────────────────────
+.gh-offerings-create {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, .9fr) minmax(0, .75fr) auto;
+    gap: .45rem .65rem;
+    align-items: end;
+}
+
+// @csrf / other hidden inputs must not occupy a grid track.
+.gh-offerings-create > input[type='hidden'] {
+    display: none;
+}
+
+.gh-offerings-create__field {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.gh-offerings-create__field .form-control,
+.gh-offerings-create__field .form-select,
+.gh-offerings-create__action .btn {
+    min-height: 2rem;
+}
+
+.gh-offerings-create__action {
+    display: flex;
+    align-items: end;
+}
+
+.gh-offerings-create__action .btn {
+    white-space: nowrap;
+}
+
+.gh-offerings-create__hint {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 991.98px) {
+    .gh-offerings-create {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .gh-offerings-create__action {
+        grid-column: 1 / -1;
+    }
+
+    .gh-offerings-create__action .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .gh-offerings-create {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+// ── Record card media (product square / employee circle) ─────────────────────
+.gh-record-card__media {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: .65rem;
+    min-width: 0;
+}
+
+.gh-record-card__media-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.gh-record-card__thumb {
+    flex: 0 0 auto;
+    width: 3.25rem;
+    height: 3.25rem;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--gh-board-navy, #101044) 6%, #fff);
+    border: 1px solid var(--gh-board-line, #e4e1d6);
+}
+
+.gh-record-card__thumb--square {
+    border-radius: .45rem;
+}
+
+.gh-record-card__thumb--circle {
+    border-radius: 999px;
+}
+
+.gh-record-card__thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.gh-record-card__thumb-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--gh-board-muted, #7a7785);
+    font-size: 1.1rem;
+    font-weight: 700;
 }
