@@ -1194,7 +1194,13 @@ html:not([data-bs-theme='dark']) .btn-primary {
 }
 
 // ---- Stat card (system design — all dashboards) ---------------------------
+// Root cause (OPPO A85 / narrow Android): Bootstrap col-6 + flex body min-width:0
+// let .stat-body shrink below one digit (~8–12px). With breakable text that stacks
+// digits vertically. Fix: keep values nowrap, floor body width, and use 1-col KPI
+// rows on phones (see .hp-kpi-grid / Blade col-12 col-sm-6).
 .stat-card {
+    container-type: inline-size;
+    container-name: hp-stat;
     transition: transform .15s ease, box-shadow .15s ease;
     overflow: hidden;
     border: 0;
@@ -1210,6 +1216,7 @@ html:not([data-bs-theme='dark']) .btn-primary {
         align-items: center;
         gap: .65rem;
         min-width: 0;
+        width: 100%;
     }
 
     .stat-icon {
@@ -1221,8 +1228,10 @@ html:not([data-bs-theme='dark']) .btn-primary {
     }
 
     .stat-body {
-        flex: 1 1 0;
-        min-width: 0;
+        // Floor width so digits never get a ~1ch column (vertical wrap).
+        flex: 1 1 auto;
+        min-width: 4.75rem;
+        max-width: 100%;
     }
 
     .stat-label {
@@ -1234,16 +1243,20 @@ html:not([data-bs-theme='dark']) .btn-primary {
     }
 
     .stat-value {
-        font-size: clamp(0.95rem, 2.8vw, 1.35rem);
-        line-height: 1.3;
+        font-size: clamp(1rem, 2.6vw, 1.35rem);
+        line-height: 1.25;
         font-weight: 700;
-        // Never break digits/currency vertically (was overflow-wrap:anywhere + text-nowrap override).
+        // Critical: never allow mid-number wrap (Android one-digit-per-line bug).
+        white-space: nowrap !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
         overflow-wrap: normal;
-        word-break: normal;
-        min-width: 0;
+        word-break: keep-all;
+        word-wrap: normal;
         max-width: 100%;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
 
-        // Money / numeric KPI values stay on one line; ellipsis if truly cramped.
         .num-ltr,
         .text-nowrap,
         [dir='ltr'] {
@@ -1253,6 +1266,8 @@ html:not([data-bs-theme='dark']) .btn-primary {
             overflow: hidden;
             text-overflow: ellipsis;
             vertical-align: bottom;
+            word-break: keep-all;
+            overflow-wrap: normal;
         }
     }
 
@@ -1260,7 +1275,8 @@ html:not([data-bs-theme='dark']) .btn-primary {
         color: var(--hp-label-color);
         font-size: .72rem;
         margin-top: .15rem;
-        overflow-wrap: anywhere;
+        overflow-wrap: break-word;
+        word-break: normal;
         white-space: normal;
     }
 
@@ -1278,38 +1294,77 @@ html:not([data-bs-theme='dark']) .btn-primary {
     }
 }
 
-// Narrow phones: prevent KPI cards from stretching / overlapping.
-@media (max-width: 430px) {
+// When a card itself is still narrow (nested layouts), stack icon above value
+// instead of squeezing the numeric column.
+@container hp-stat (max-width: 11.5rem) {
+    .stat-card .stat-card-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .4rem;
+    }
+
+    .stat-card .stat-body {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .stat-card .stat-sparkline {
+        display: none;
+    }
+}
+
+// KPI grid: never force 2 ultra-narrow columns on phones ≤575px.
+.hp-kpi-grid > [class*='col-'] {
+    min-width: 0;
+}
+
+@media (max-width: 575.98px) {
+    .hp-kpi-grid > [class*='col-'] {
+        flex: 0 0 100%;
+        max-width: 100%;
+        width: 100%;
+    }
+
     .stat-card {
         .card-body {
-            padding: .65rem .7rem;
+            padding: .85rem .9rem;
         }
 
         .stat-card-inner {
-            flex-wrap: nowrap;
-            gap: .45rem;
-            align-items: flex-start;
+            gap: .75rem;
+            align-items: center;
         }
 
         .stat-icon {
-            width: 2.15rem;
-            height: 2.15rem;
-            font-size: 1rem;
-            border-radius: .6rem;
+            width: 2.4rem;
+            height: 2.4rem;
+            font-size: 1.05rem;
+        }
+
+        .stat-body {
+            min-width: 0;
+            flex: 1 1 auto;
         }
 
         .stat-value {
-            font-size: clamp(0.88rem, 4.2vw, 1.15rem);
+            font-size: clamp(1.05rem, 5vw, 1.35rem);
         }
 
-        // Sparkline competes with value width on ~320–360 CSS px — hide on smallest.
         .stat-sparkline {
             display: none;
         }
     }
+}
 
-    .row > [class*='col-'] > .stat-card {
-        min-width: 0;
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .stat-card {
+        .stat-value {
+            font-size: clamp(0.95rem, 2.4vw, 1.2rem);
+        }
+
+        .stat-sparkline {
+            display: none;
+        }
     }
 }
 
@@ -1729,13 +1784,24 @@ html:not([data-bs-theme='dark']) .btn-primary {
         }
 
         .hp-app-header__brand {
-            font-size: .92rem;
-            line-height: 1.15;
+            font-size: .88rem;
+            line-height: 1.2;
+            // Cap brand so actions keep ≥44px touch targets.
+            max-width: min(46vw, 11.5rem);
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+        }
+
+        .hp-app-header__actions {
+            flex-shrink: 0;
+            gap: .1rem !important;
         }
 
         .hp-app-header__icon-btn {
-            min-width: 2.4rem;
-            min-height: 2.4rem;
+            min-width: 2.5rem;
+            min-height: 2.5rem;
         }
 
         .hp-module-tab {
@@ -1743,6 +1809,22 @@ html:not([data-bs-theme='dark']) .btn-primary {
             padding-inline: .8rem;
             font-size: .88rem;
             border-radius: .65rem;
+        }
+    }
+
+    // OPPO / ~360 CSS px: keep chrome to hamburger + brand + bell + profile.
+    @media (max-width: 390px) {
+        .hp-app-header {
+            .hp-app-header__brand {
+                font-size: .82rem;
+                max-width: min(42vw, 9.5rem);
+            }
+
+            .hp-module-tab {
+                min-height: 2.4rem;
+                padding-inline: .7rem;
+                font-size: .82rem;
+            }
         }
     }
 

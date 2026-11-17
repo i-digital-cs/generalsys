@@ -54,11 +54,12 @@
 
             <div class="stat-body">
                 <div class="stat-label text-truncate" title="{{ $title }}">{{ $title }}</div>
+                {{-- num-ltr + nowrap: prevent Android/flex from stacking digits vertically --}}
                 <div class="stat-value">
                     @if ($value !== null)
-                        {{ $value }}
+                        <span class="num-ltr text-nowrap">{{ $value }}</span>
                     @else
-                        {{ $slot }}
+                        <span class="num-ltr text-nowrap">{{ $slot }}</span>
                     @endif
                 </div>
                 @if ($subtitle)

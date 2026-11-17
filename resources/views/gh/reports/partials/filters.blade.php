@@ -6,7 +6,7 @@
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body">
         <form method="get" action="{{ $action }}" class="row g-2 align-items-end">
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-2">
                 <label class="form-label" for="preset">{{ __('gh.reports.preset') }}</label>
                 <select id="preset" name="preset" class="form-select form-select-sm">
                     @foreach ([
@@ -20,15 +20,15 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-2">
                 <label class="form-label" for="from">{{ __('gh.reports.from') }}</label>
                 <input id="from" type="date" name="from" class="form-control form-control-sm" value="{{ $filters->period->fromDate }}">
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-2">
                 <label class="form-label" for="to">{{ __('gh.reports.to') }}</label>
                 <input id="to" type="date" name="to" class="form-control form-control-sm" value="{{ $filters->period->toDate }}">
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-2">
                 <label class="form-label" for="customer_type">{{ __('gh.reports.customer_type') }}</label>
                 <select id="customer_type" name="customer_type" class="form-select form-select-sm">
                     <option value="">{{ __('gh.reports.all') }}</option>
@@ -37,7 +37,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-2">
                 <label class="form-label" for="customer_id">{{ __('gh.reports.customer') }}</label>
                 <select id="customer_id" name="customer_id" class="form-select form-select-sm">
                     <option value="">{{ __('gh.reports.all') }}</option>
@@ -48,7 +48,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-2">
                 <label class="form-label" for="zone_id">{{ __('gh.reports.zone') }}</label>
                 <select id="zone_id" name="zone_id" class="form-select form-select-sm">
                     <option value="">{{ __('gh.reports.all') }}</option>
@@ -57,7 +57,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-2">
                 <label class="form-label" for="driver_id">{{ __('gh.reports.driver') }}</label>
                 <select id="driver_id" name="driver_id" class="form-select form-select-sm">
                     <option value="">{{ __('gh.reports.all') }}</option>
@@ -68,7 +68,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-2">
                 <label class="form-label" for="order_status">{{ __('gh.reports.order_status') }}</label>
                 <select id="order_status" name="order_status" class="form-select form-select-sm">
                     <option value="">{{ __('gh.reports.all') }}</option>
@@ -77,7 +77,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-2">
                 <label class="form-label" for="payment_status">{{ __('gh.reports.payment_status') }}</label>
                 <select id="payment_status" name="payment_status" class="form-select form-select-sm">
                     <option value="">{{ __('gh.reports.all') }}</option>

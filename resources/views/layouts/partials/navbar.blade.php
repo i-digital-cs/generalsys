@@ -33,7 +33,8 @@
 
             <div class="hp-app-header__actions d-flex flex-nowrap align-items-center gap-1 {{ auth()->guest() ? 'ms-auto' : '' }}">
                 @auth
-                    <x-ui.list-view-toggle class="me-1" />
+                    {{-- Hide on phones — toggle lives in the user menu to free header chrome --}}
+                    <x-ui.list-view-toggle class="me-1 d-none d-sm-inline-flex" />
                 @endauth
 
                 <button type="button"
@@ -136,6 +137,24 @@
                                 <a class="dropdown-item" href="{{ route('locale', $otherLocale) }}">
                                     <i class="bi bi-globe me-2" aria-hidden="true"></i>{{ __('general.language') }}
                                 </a>
+                            </li>
+                            <li class="d-sm-none">
+                                <form method="POST" action="{{ route('ui.list-view') }}">
+                                    @csrf
+                                    <input type="hidden" name="mode" value="{{ \App\Support\Ui\ListViewMode::LEGACY }}">
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bi bi-table me-2" aria-hidden="true"></i>{{ __('ui.list_view.legacy') }}
+                                    </button>
+                                </form>
+                            </li>
+                            <li class="d-sm-none">
+                                <form method="POST" action="{{ route('ui.list-view') }}">
+                                    @csrf
+                                    <input type="hidden" name="mode" value="{{ \App\Support\Ui\ListViewMode::CARDS }}">
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bi bi-grid-3x3-gap me-2" aria-hidden="true"></i>{{ __('ui.list_view.cards') }}
+                                    </button>
+                                </form>
                             </li>
                             <li class="d-lg-none"><hr class="dropdown-divider"></li>
                             @if ($authUser->isEmployee())
