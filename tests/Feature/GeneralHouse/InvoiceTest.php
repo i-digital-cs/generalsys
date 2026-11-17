@@ -65,6 +65,7 @@ class InvoiceTest extends TestCase
             'pickup_date' => '2026-11-04',
             'pickup_window_start' => '10:00',
             'pickup_window_end' => '12:00',
+            'scheduled_delivery_at' => '2026-11-04 16:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect();
 
@@ -98,7 +99,8 @@ class InvoiceTest extends TestCase
         $this->assertNull($invLine->received_line_id);
 
         app(GhInvoiceIssuanceService::class)->issue($invoice, $manager, (int) $invoice->draft_version);
-        $this->assertSame(GhOrderStatus::DELIVERY, $order->fresh()->status);
+        $this->assertNotNull($order->fresh()->invoice_issued_at);
+        $this->assertContains($order->fresh()->status, [GhOrderStatus::WORKING, GhOrderStatus::DELIVERY]);
 
         Carbon::setTestNow();
     }
@@ -156,12 +158,17 @@ class InvoiceTest extends TestCase
         $this->assertSame('UNPAID', $invoice->payment_status);
         $this->assertNotNull($invoice->number);
         $this->assertStringStartsWith('GH-INV-', $invoice->number);
-        $this->assertSame(GhOrderStatus::DELIVERY, $order->status);
+        // Invoice issuance no longer forces DELIVERY; same-day needs +2h after pickup.
+        $this->assertContains($order->status, [GhOrderStatus::WORKING, GhOrderStatus::DELIVERY]);
         $this->assertNotNull($order->invoice_issued_at);
         $this->assertSame(
             $invoice->issued_at->utc()->format('Y-m-d H:i:s'),
             $order->invoice_issued_at->utc()->format('Y-m-d H:i:s')
         );
+        $this->assertDatabaseHas('gh_order_events', [
+            'order_id' => $order->id,
+            'event_type' => 'INVOICE_ISSUED',
+        ]);
 
         $this->actingAs($manager)
             ->put(route('gh.invoices.update', $invoice), [
@@ -243,7 +250,8 @@ class InvoiceTest extends TestCase
         $this->assertSame(GhInvoiceStatus::ISSUED, $issued->status);
         $this->assertSame('UNPAID', $issued->payment_status);
         $this->assertTrue((float) $issued->min_order_adjustment_amount > 0);
-        $this->assertSame(GhOrderStatus::DELIVERY, $ctx['order']->fresh()->status);
+        $this->assertNotNull($ctx['order']->fresh()->invoice_issued_at);
+        $this->assertContains($ctx['order']->fresh()->status, [GhOrderStatus::WORKING, GhOrderStatus::DELIVERY]);
     }
 
     public function test_stale_draft_version_rejected(): void

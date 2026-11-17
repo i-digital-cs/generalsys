@@ -22,12 +22,12 @@
         </div>
     @endif
 
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body">
-            @can('create', App\Models\GeneralHouse\GhProductOffering::class)
-                <form method="post" action="{{ route('gh.offerings.store') }}" class="row g-2 align-items-end mb-3 pb-3 border-bottom">
+    @can('create', App\Models\GeneralHouse\GhProductOffering::class)
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body py-3">
+                <form method="post" action="{{ route('gh.offerings.store') }}" class="gh-offerings-create">
                     @csrf
-                    <div class="col-md-3">
+                    <div class="gh-offerings-create__field">
                         <label class="form-label mb-1" for="product_id">{{ __('gh.fields.product') }}</label>
                         <select id="product_id" name="product_id" class="form-select form-select-sm" required>
                             <option value="">—</option>
@@ -38,7 +38,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="gh-offerings-create__field">
                         <label class="form-label mb-1" for="treatment_id">{{ __('gh.fields.treatment') }}</label>
                         <select id="treatment_id" name="treatment_id" class="form-select form-select-sm" required>
                             <option value="">—</option>
@@ -49,14 +49,13 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="gh-offerings-create__field">
                         <label class="form-label mb-1" for="standard_price">{{ __('gh.fields.standard_price') }}</label>
                         <input id="standard_price" name="standard_price" type="number" step="0.01" min="0"
                                class="form-control form-control-sm" value="{{ old('standard_price') }}" required>
-                        <div class="form-text">{{ __('gh.offerings.tax_default_hint') }}</div>
                         <input type="hidden" name="tax_class" value="{{ old('tax_class', config('general_house.default_offering_tax_class', 'STANDARD_RATED')) }}">
                     </div>
-                    <div class="col-md-2">
+                    <div class="gh-offerings-create__field">
                         <label class="form-label mb-1" for="status">{{ __('gh.fields.status') }}</label>
                         <select id="status" name="status" class="form-select form-select-sm">
                             @foreach (\App\Support\GeneralHouse\GhCatalogStatus::ALL as $st)
@@ -64,18 +63,23 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="gh-offerings-create__field">
                         <label class="form-label mb-1" for="sort_order">{{ __('gh.fields.sort_order') }}</label>
                         <input id="sort_order" name="sort_order" type="number" min="0" class="form-control form-control-sm"
                                value="{{ old('sort_order', 0) }}">
                     </div>
-                    <div class="col-md-auto">
-                        <button type="submit" class="btn btn-primary btn-sm w-100">{{ __('gh.offerings.create') }}</button>
+                    <div class="gh-offerings-create__action">
+                        <button type="submit" class="btn btn-primary btn-sm">{{ __('gh.offerings.create') }}</button>
                     </div>
+                    <p class="gh-offerings-create__hint form-text mb-0">{{ __('gh.offerings.tax_default_hint') }}</p>
                 </form>
-            @endcan
+            </div>
+        </div>
+    @endcan
 
-            <form method="get" class="row g-2 align-items-end mb-3">
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-3">
+            <form method="get" class="row g-2 align-items-end gh-compact-filters">
                 <div class="col-md-3">
                     <label class="form-label mb-1" for="q">{{ __('general.search') }}</label>
                     <input id="q" name="q" class="form-control form-control-sm" value="{{ $filters['q'] ?? '' }}"
@@ -108,9 +112,15 @@
                     @endif
                 </div>
             </form>
+        </div>
+    </div>
 
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-0">
             @if ($rows->isEmpty())
-                <x-empty-state :title="__('gh.offerings.empty')" icon="bi-tag" :text="__('gh.offerings.empty_hint')" />
+                <div class="p-3">
+                    <x-empty-state :title="__('gh.offerings.empty')" icon="bi-tag" :text="__('gh.offerings.empty_hint')" />
+                </div>
             @else
                 <div class="table-responsive">
                     <table class="table table-hr table-sm table-hover align-middle mb-0">
@@ -167,7 +177,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="mt-3">{{ $rows->links() }}</div>
+                <div class="p-3">{{ $rows->links() }}</div>
             @endif
         </div>
     </div>

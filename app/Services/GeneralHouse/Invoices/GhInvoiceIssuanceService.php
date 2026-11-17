@@ -44,7 +44,12 @@ class GhInvoiceIssuanceService
             }
 
             $order = GhOrder::query()->whereKey($locked->order_id)->lockForUpdate()->firstOrFail();
-            if ($order->status !== GhOrderStatus::WORKING || $order->picked_up_at === null) {
+            // Issuance is financial-only; order may already be in DELIVERY/COMPLETED without an invoice.
+            if ($order->picked_up_at === null || ! in_array($order->status, [
+                GhOrderStatus::WORKING,
+                GhOrderStatus::DELIVERY,
+                GhOrderStatus::COMPLETED,
+            ], true)) {
                 throw ValidationException::withMessages([
                     'order' => [__('gh.errors.invoice_requires_working')],
                 ]);

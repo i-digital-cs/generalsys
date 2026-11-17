@@ -48,11 +48,29 @@ class StoreGhOrderRequest extends FormRequest
             'pickup_date' => ['nullable', 'required_without:scheduled_pickup_at', 'date_format:Y-m-d'],
             'pickup_window_start' => ['nullable', 'required_without:scheduled_pickup_at', 'date_format:H:i'],
             'pickup_window_end' => ['nullable', 'date_format:H:i'],
+            // Delivery date+time are mandatory on create (combined or split fields).
+            'scheduled_delivery_at' => ['nullable', 'required_without_all:scheduled_delivery_date,scheduled_delivery_time', 'date'],
+            'scheduled_delivery_date' => ['nullable', 'required_without:scheduled_delivery_at', 'required_with:scheduled_delivery_time', 'date_format:Y-m-d'],
+            'scheduled_delivery_time' => ['nullable', 'required_without:scheduled_delivery_at', 'required_with:scheduled_delivery_date', 'date_format:H:i'],
             'pickup_driver_id' => ['required', 'integer', 'exists:users,id'],
             'delivery_driver_id' => ['nullable', 'integer', 'exists:users,id'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'scheduling_notes' => ['nullable', 'string', 'max:2000'],
             'status' => ['prohibited'],
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        $msg = __('gh.errors.delivery_schedule_required_on_create');
+
+        return [
+            'scheduled_delivery_at.required_without_all' => $msg,
+            'scheduled_delivery_date.required_without' => $msg,
+            'scheduled_delivery_date.required_with' => $msg,
+            'scheduled_delivery_time.required_without' => $msg,
+            'scheduled_delivery_time.required_with' => $msg,
         ];
     }
 
@@ -74,7 +92,15 @@ class StoreGhOrderRequest extends FormRequest
             }
         }
 
-        foreach (['pickup_window_start', 'pickup_window_end'] as $timeField) {
+        $deliveryAt = trim((string) $this->input('scheduled_delivery_at', ''));
+        if ($deliveryAt !== '') {
+            $deliveryAt = str_replace('T', ' ', $deliveryAt);
+            if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/', $deliveryAt)) {
+                $this->merge(['scheduled_delivery_at' => substr($deliveryAt, 0, 16)]);
+            }
+        }
+
+        foreach (['pickup_window_start', 'pickup_window_end', 'scheduled_delivery_time'] as $timeField) {
             $raw = (string) $this->input($timeField, '');
             if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $raw)) {
                 $this->merge([$timeField => substr($raw, 0, 5)]);

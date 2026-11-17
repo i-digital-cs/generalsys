@@ -34,7 +34,7 @@ class CustomersZonesContractsTest extends TestCase
             'name_en' => 'Guest',
             'phone' => '0500000001',
             'status' => GhCatalogStatus::ACTIVE,
-        ])->assertRedirect();
+        ])->assertRedirect(route('gh.customers.index'));
 
         $b2c = GhCustomer::query()->where('type', GhCustomerType::B2C)->firstOrFail();
 
@@ -44,7 +44,7 @@ class CustomersZonesContractsTest extends TestCase
             'name_en' => 'Corp',
             'tax_registration_number' => 'TRN1',
             'status' => GhCatalogStatus::ACTIVE,
-        ])->assertRedirect();
+        ])->assertRedirect(route('gh.customers.index'));
 
         $this->assertDatabaseHas('gh_customers', ['type' => GhCustomerType::B2B, 'name_en' => 'Corp']);
 
@@ -53,7 +53,7 @@ class CustomersZonesContractsTest extends TestCase
             'name_ar' => 'عميل محدّث',
             'name_en' => 'Guest Updated',
             'status' => GhCatalogStatus::INACTIVE,
-        ])->assertRedirect();
+        ])->assertRedirect(route('gh.customers.index'));
 
         $this->assertDatabaseHas('gh_customers', ['id' => $b2c->id, 'name_en' => 'Guest Updated']);
     }
@@ -115,7 +115,7 @@ class CustomersZonesContractsTest extends TestCase
             'effective_from' => '2026-01-01',
             'effective_to' => '2026-12-31',
             'status' => GhContractStatus::ACTIVE,
-        ])->assertRedirect();
+        ])->assertRedirect(route('gh.contracts.index'));
 
         $contract = GhB2bContract::query()->firstOrFail();
 
@@ -262,7 +262,8 @@ class CustomersZonesContractsTest extends TestCase
             'notes' => 'updated',
         ];
 
-        $this->actingAs($manager)->put(route('gh.contracts.update', $contract), $payload)->assertRedirect();
+        $this->actingAs($manager)->put(route('gh.contracts.update', $contract), $payload)
+            ->assertRedirect(route('gh.contracts.index'));
         $this->assertSame($original, $contract->fresh()->reference);
         $this->assertSame('updated', $contract->fresh()->notes);
 

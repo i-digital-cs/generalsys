@@ -24,17 +24,27 @@ class GhOrderStateService
     private const ALLOWED = [
         GhOrderStatus::LATER => [GhOrderStatus::PICKUP, GhOrderStatus::CANCELLED],
         GhOrderStatus::PICKUP => [GhOrderStatus::WORKING, GhOrderStatus::LATER, GhOrderStatus::CANCELLED],
-        GhOrderStatus::WORKING => [GhOrderStatus::DELIVERY, GhOrderStatus::CANCELLED],
-        GhOrderStatus::DELIVERY => [GhOrderStatus::COMPLETED, GhOrderStatus::CANCELLED],
-        GhOrderStatus::COMPLETED => [],
-        GhOrderStatus::CANCELLED => [],
+        GhOrderStatus::WORKING => [GhOrderStatus::DELIVERY, GhOrderStatus::PICKUP, GhOrderStatus::CANCELLED],
+        GhOrderStatus::DELIVERY => [GhOrderStatus::COMPLETED, GhOrderStatus::WORKING, GhOrderStatus::CANCELLED],
+        GhOrderStatus::COMPLETED => [GhOrderStatus::DELIVERY],
+        GhOrderStatus::CANCELLED => [GhOrderStatus::LATER, GhOrderStatus::PICKUP, GhOrderStatus::WORKING],
     ];
 
     public function __construct(
         private readonly GhOrderEventService $events,
         private readonly GhPickupEligibilityService $eligibility,
+        private readonly GhDeliveryEligibilityService $deliveryEligibility,
         private readonly GhReceivedItemService $receivedItems,
+        private readonly GhOrderAssignmentService $assignments,
     ) {}
+
+    /**
+     * Lazy resolve avoids circular DI with GhOrderManualTransitionService.
+     */
+    private function manualTransitions(): GhOrderManualTransitionService
+    {
+        return app(GhOrderManualTransitionService::class);
+    }
 
     public function canTransition(string $from, string $to): bool
     {
@@ -93,12 +103,16 @@ class GhOrderStateService
             if ($locked->status !== GhOrderStatus::LATER) {
                 return false;
             }
+            if ($this->manualTransitions()->isAutoPromoteSuppressed($locked, GhOrderStatus::PICKUP, $now)) {
+                return false;
+            }
             if (! $this->eligibility->isEligibleForPickup($locked->pickup_starts_at, $now)) {
                 return false;
             }
 
             $this->applyStatus($locked, GhOrderStatus::PICKUP, null, GhOrderEventType::PICKUP_PROMOTED, [
                 'source' => 'scheduler',
+                'trigger' => 'automatic',
                 'lead_hours' => $this->eligibility->leadHours(),
             ]);
 
@@ -142,6 +156,25 @@ class GhOrderStateService
                 $this->receivedItems->persist($locked, $snapshots);
             }
 
+            $receivedCount = $locked->receivedLines()->count();
+
+            // Re-open from PICKUP with preserved pickup evidence: never overwrite original stamp.
+            if ($locked->picked_up_at !== null) {
+                $locked->forceFill(['updated_by' => $actor->id])->save();
+                $this->applyStatus($locked, GhOrderStatus::WORKING, $actor, GhOrderEventType::PICKUP_CONFIRMED, [
+                    'package_pickup' => true,
+                    'received_count' => $receivedCount,
+                    'preserved_existing_pickup' => true,
+                    'picked_up_at' => $locked->picked_up_at->toIso8601String(),
+                    'pickup_confirmed_by' => $locked->pickup_confirmed_by,
+                ], $locked->picked_up_at);
+
+                $fresh = $locked->fresh(['lines', 'receivedLines', 'events']);
+                $this->promoteOneToDelivery($fresh, $actor, 'pickup_reevaluation');
+
+                return $fresh->fresh(['lines', 'receivedLines', 'events', 'pickupDriver', 'deliveryDriver']);
+            }
+
             $occurredAt = $this->parseOccurredAt($data['occurred_at'] ?? null, $locked);
             $notes = $data['notes'] ?? $data['evidence_note'] ?? null;
 
@@ -152,7 +185,6 @@ class GhOrderStateService
                 'updated_by' => $actor->id,
             ])->save();
 
-            $receivedCount = $locked->receivedLines()->count();
             $this->applyStatus($locked, GhOrderStatus::WORKING, $actor, GhOrderEventType::PICKUP_CONFIRMED, [
                 'package_pickup' => true,
                 'received_count' => $receivedCount,
@@ -160,15 +192,20 @@ class GhOrderStateService
                 'occurred_at' => $occurredAt->toIso8601String(),
             ], $occurredAt);
 
-            return $locked->fresh(['lines', 'receivedLines', 'events']);
+            $fresh = $locked->fresh(['lines', 'receivedLines', 'events']);
+            // Late pickup after the scheduled delivery window: promote immediately when eligible.
+            // Do not auto-copy pickup driver onto delivery — manager assigns delivery driver separately.
+            $this->promoteOneToDelivery($fresh, $actor, 'pickup_reevaluation');
+
+            return $fresh->fresh(['lines', 'receivedLines', 'events', 'pickupDriver', 'deliveryDriver']);
         });
     }
 
     /**
-     * WORKING → DELIVERY — only after real invoice issuance (GH-5).
-     * No UI button; callers must prove invoice metadata.
+     * Record invoice issuance on the order. Does NOT require or force DELIVERY.
+     * If timing rules already allow DELIVERY, promotes as a side effect of reevaluation.
      *
-     * @param  array{invoice_id: int|string, invoice_number?: string, issued_at?: string}  $invoiceProof
+     * @param  array{invoice_id: int|string, invoice_number?: string, issued_at?: string|Carbon}  $invoiceProof
      */
     public function markDeliveryAfterInvoice(GhOrder $order, User $actor, array $invoiceProof): GhOrder
     {
@@ -179,7 +216,6 @@ class GhOrderStateService
             ]);
         }
 
-        // GH-5 invoice table does not exist yet — refuse simulation.
         if (! $this->invoiceArtifactExists($invoiceId)) {
             throw ValidationException::withMessages([
                 'invoice' => [__('gh.errors.invoice_not_issued')],
@@ -189,13 +225,10 @@ class GhOrderStateService
         return DB::transaction(function () use ($order, $actor, $invoiceProof, $invoiceId) {
             $locked = GhOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            if ($locked->status === GhOrderStatus::DELIVERY && $locked->invoice_issued_at !== null) {
+            if ($locked->invoice_issued_at !== null) {
                 return $locked->fresh();
             }
 
-            $this->assertCanTransition($locked->status, GhOrderStatus::DELIVERY);
-
-            // GH timestamps are canonical UTC (GhUtcDateTime). Never parse proof strings in app.timezone.
             if (isset($invoiceProof['issued_at']) && $invoiceProof['issued_at'] instanceof Carbon) {
                 $issuedAt = $invoiceProof['issued_at']->copy()->utc();
             } elseif (isset($invoiceProof['issued_at']) && is_string($invoiceProof['issued_at']) && $invoiceProof['issued_at'] !== '') {
@@ -209,14 +242,148 @@ class GhOrderStateService
                 'updated_by' => $actor->id,
             ])->save();
 
-            $this->applyStatus($locked, GhOrderStatus::DELIVERY, $actor, GhOrderEventType::DELIVERY_READY, [
-                'invoice_id' => $invoiceId,
-                'invoice_number' => $invoiceProof['invoice_number'] ?? null,
-                'source' => 'invoice_issuance',
-            ], $issuedAt);
+            $this->events->record(
+                $locked,
+                GhOrderEventType::INVOICE_ISSUED,
+                $actor,
+                $locked->status,
+                $locked->status,
+                [
+                    'invoice_id' => $invoiceId,
+                    'invoice_number' => $invoiceProof['invoice_number'] ?? null,
+                    'source' => 'invoice_issuance',
+                ],
+                $issuedAt,
+            );
+
+            // Invoice is independent of logistics; only promote when timing rules already permit.
+            $this->promoteOneToDelivery($locked->fresh(), $actor, 'invoice_reevaluation');
 
             return $locked->fresh();
         });
+    }
+
+    /**
+     * Scheduler: promote eligible WORKING orders to DELIVERY (invoice not required).
+     *
+     * @return int Number of orders promoted
+     */
+    public function promoteEligibleWorkingToDelivery(?Carbon $now = null, int $chunk = 100): int
+    {
+        $now ??= $this->deliveryEligibility->now();
+        $promoted = 0;
+
+        GhOrder::query()
+            ->where('status', GhOrderStatus::WORKING)
+            ->whereNotNull('picked_up_at')
+            ->orderBy('id')
+            ->chunkById($chunk, function ($orders) use ($now, &$promoted) {
+                foreach ($orders as $order) {
+                    if ($this->promoteOneToDelivery($order, null, 'scheduler', $now)) {
+                        $promoted++;
+                    }
+                }
+            });
+
+        return $promoted;
+    }
+
+    /**
+     * WORKING → DELIVERY when pickup confirmed and timing rules pass. Idempotent.
+     *
+     * @param  'scheduler'|'manual'|'pickup_reevaluation'|'invoice_reevaluation'|'schedule_reevaluation'  $source
+     */
+    public function promoteOneToDelivery(
+        GhOrder $order,
+        ?User $actor = null,
+        string $source = 'scheduler',
+        ?Carbon $now = null,
+    ): bool {
+        $now ??= $this->deliveryEligibility->now();
+
+        return (bool) DB::transaction(function () use ($order, $actor, $source, $now) {
+            /** @var GhOrder $locked */
+            $locked = GhOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->status === GhOrderStatus::DELIVERY) {
+                return false;
+            }
+            if (in_array($locked->status, [GhOrderStatus::COMPLETED, GhOrderStatus::CANCELLED], true)) {
+                return false;
+            }
+            if ($locked->status !== GhOrderStatus::WORKING || $locked->picked_up_at === null) {
+                return false;
+            }
+
+            $isManual = $source === 'manual';
+            if ($isManual) {
+                if (! $this->deliveryEligibility->isEligibleForManualDelivery($locked)) {
+                    return false;
+                }
+            } else {
+                if ($this->manualTransitions()->isAutoPromoteSuppressed($locked, GhOrderStatus::DELIVERY, $now)) {
+                    return false;
+                }
+                if (! $this->deliveryEligibility->isEligibleForDelivery($locked, $now)) {
+                    return false;
+                }
+            }
+
+            $this->assertCanTransition($locked->status, GhOrderStatus::DELIVERY);
+
+            $locked = $locked->fresh();
+            // Explicit manager advance clears indefinite hold (same as manual WORKING→DELIVERY).
+            if ($isManual && $locked->auto_promote_held) {
+                $locked->forceFill([
+                    'auto_promote_held' => false,
+                    'auto_promote_held_at' => null,
+                    'auto_promote_held_by' => null,
+                    'auto_promote_held_reason' => null,
+                    'updated_by' => $actor?->id,
+                ])->save();
+            }
+
+            $this->applyStatus($locked, GhOrderStatus::DELIVERY, $actor, GhOrderEventType::DELIVERY_READY, [
+                'source' => $source,
+                'trigger' => $isManual ? 'manual' : 'automatic',
+                'eligible_at' => $this->deliveryEligibility->eligibleAt($locked)?->toIso8601String(),
+                'delivery_driver_id' => $locked->delivery_driver_id,
+                'has_invoice' => $locked->invoice_issued_at !== null,
+                'has_scheduled_delivery' => $locked->scheduled_delivery_at !== null,
+            ], $now);
+
+            return true;
+        });
+    }
+
+    /**
+     * Manager-triggered WORKING → DELIVERY after confirmed pickup (schedule optional).
+     */
+    public function markDeliveryReady(GhOrder $order, User $actor): GhOrder
+    {
+        if (! GhOrderAccess::mayManage($actor)) {
+            throw ValidationException::withMessages([
+                'order' => [__('gh.errors.delivery_ready_forbidden')],
+            ]);
+        }
+
+        $ok = $this->promoteOneToDelivery($order, $actor, 'manual');
+        if (! $ok && $order->fresh()->status !== GhOrderStatus::DELIVERY) {
+            throw ValidationException::withMessages([
+                'status' => [__('gh.errors.delivery_not_eligible_yet')],
+            ]);
+        }
+
+        return $order->fresh();
+    }
+
+    /**
+     * Previously copied pickup → delivery when unassigned. Owner rule: delivery driver stays
+     * optional and must never be silently filled. Kept as a no-op for call-site compatibility.
+     */
+    public function ensureDefaultDeliveryDriver(GhOrder $order, ?User $actor = null): GhOrder
+    {
+        return $order;
     }
 
     /**
@@ -241,8 +408,24 @@ class GhOrderStateService
 
             if ($locked->status === GhOrderStatus::WORKING) {
                 throw ValidationException::withMessages([
-                    'status' => [__('gh.errors.delivery_requires_invoice_state')],
+                    'status' => [__('gh.errors.delivery_requires_delivery_state')],
                 ]);
+            }
+
+            // Reopened COMPLETED→DELIVERY keeps original delivery evidence — recomplete without rewrite.
+            if ($locked->delivered_at !== null) {
+                $this->assertCanTransition($locked->status, GhOrderStatus::COMPLETED);
+                $locked->forceFill(['updated_by' => $actor->id])->save();
+                $this->applyStatus($locked, GhOrderStatus::COMPLETED, $actor, GhOrderEventType::STATUS_CHANGED, [
+                    'source' => 'recomplete_preserved_delivery',
+                    'trigger' => 'manual',
+                    'preserved_delivery' => true,
+                    'delivered_at' => $locked->delivered_at->toIso8601String(),
+                    'delivered_by' => $locked->delivered_by,
+                    'no_new_collection' => true,
+                ], $locked->delivered_at);
+
+                return $locked->fresh();
             }
 
             $this->assertCanTransition($locked->status, GhOrderStatus::COMPLETED);
@@ -501,6 +684,23 @@ class GhOrderStateService
         });
     }
 
+    /**
+     * Public writer for GhOrderManualTransitionService only — still asserts ALLOWED graph.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function applyManualStatus(
+        GhOrder $order,
+        string $toStatus,
+        User $actor,
+        string $eventType,
+        array $payload = [],
+        ?Carbon $occurredAt = null,
+    ): void {
+        $this->assertCanTransition($order->status, $toStatus);
+        $this->applyStatus($order, $toStatus, $actor, $eventType, $payload, $occurredAt);
+    }
+
     private function applyStatus(
         GhOrder $order,
         string $toStatus,
@@ -537,17 +737,27 @@ class GhOrderStateService
 
     private function parseOccurredAt(mixed $raw, GhOrder $order): Carbon
     {
-        if ($raw === null || $raw === '') {
-            return Carbon::now($this->eligibility->displayTimezone($order->timezone));
-        }
+        $tz = $this->eligibility->displayTimezone($order->timezone);
 
         try {
-            return Carbon::parse((string) $raw, $this->eligibility->displayTimezone($order->timezone));
+            $at = ($raw === null || $raw === '')
+                ? Carbon::now($tz)
+                : Carbon::parse((string) $raw, $tz);
         } catch (\Throwable) {
             throw ValidationException::withMessages([
                 'occurred_at' => [__('gh.errors.occurred_at_invalid')],
             ]);
         }
+
+        $atUtc = $at->copy()->utc();
+        // Reject fabricated future operational stamps (allow small clock skew).
+        if ($atUtc->greaterThan(Carbon::now('UTC')->addMinutes(15))) {
+            throw ValidationException::withMessages([
+                'occurred_at' => [__('gh.errors.occurred_at_future')],
+            ]);
+        }
+
+        return $atUtc;
     }
 
     private function invoiceArtifactExists(int|string $invoiceId): bool

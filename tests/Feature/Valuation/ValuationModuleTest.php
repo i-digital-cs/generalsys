@@ -58,7 +58,7 @@ class ValuationModuleTest extends TestCase
                     'cashflow_base' => 2460,
                 ],
             ])
-            ->assertRedirect();
+            ->assertRedirect(route('valuation.sheets.index', 'service'));
 
         $sheet = ValuationSheet::query()->firstOrFail();
         $this->assertSame('loss', $sheet->result['kpi_label']);
@@ -143,7 +143,11 @@ class ValuationModuleTest extends TestCase
 
         ListViewMode::put($hamad, ListViewMode::CARDS);
 
-        $this->withSession(['locale' => 'en'])->actingAs($hamad)
+        $this->withSession([
+            'locale' => 'en',
+            // Prefer explicit session key: prior requests may have cached LEGACY in the test client session.
+            'ui.display_mode.'.$hamad->id => ListViewMode::CARDS,
+        ])->actingAs($hamad)
             ->get(route('valuation.sheets.index', 'service'))
             ->assertOk()
             ->assertSee(__('valuation.stats.title'), false)
@@ -329,7 +333,7 @@ class ValuationModuleTest extends TestCase
                     'sales_outdoor' => 70,
                 ],
             ])
-            ->assertRedirect();
+            ->assertRedirect(route('valuation.sheets.index', 'product'));
 
         $sheet = ValuationSheet::query()->where('module', 'product')->firstOrFail();
         $this->assertEquals(35, $sheet->input['target_count_total']);

@@ -5,6 +5,7 @@ namespace App\Support\GeneralHouse;
 use App\Models\GeneralHouse\GhB2bContract;
 use App\Models\GeneralHouse\GhCreditNote;
 use App\Models\GeneralHouse\GhCustomer;
+use App\Models\GeneralHouse\GhDebitAdjustment;
 use App\Models\GeneralHouse\GhFinancialCorrection;
 use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhOrder;
@@ -76,7 +77,10 @@ final class GhServiceMenu
             'gh.orders.create' => Gate::forUser($user)->allows('create', GhOrder::class),
             'gh.invoices.index' => Gate::forUser($user)->allows('viewAny', GhInvoice::class),
             'gh.payments.index' => Gate::forUser($user)->allows('viewAny', GhPayment::class),
+            'gh.driver-cash.index',
+            'gh.driver-cash.show' => GhCatalogAccess::mayManage($user),
             'gh.credit-notes.index' => Gate::forUser($user)->allows('viewAny', GhCreditNote::class),
+            'gh.debit-adjustments.index' => Gate::forUser($user)->allows('viewAny', GhDebitAdjustment::class),
             'gh.refunds.index' => Gate::forUser($user)->allows('viewAny', GhRefund::class),
             'gh.financial-corrections.index' => Gate::forUser($user)->allows('viewAny', GhFinancialCorrection::class),
             'gh.reports.index',

@@ -3,6 +3,7 @@
 namespace App\Services\GeneralHouse\Reporting;
 
 use App\Models\GeneralHouse\GhCreditNote;
+use App\Models\GeneralHouse\GhDebitAdjustment;
 use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\GeneralHouse\GhOrderAttempt;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Services\GeneralHouse\Payments\GhPaymentBalanceService;
 use App\Support\GeneralHouse\GhAttemptType;
 use App\Support\GeneralHouse\GhCreditNoteStatus;
+use App\Support\GeneralHouse\GhDebitAdjustmentStatus;
 use App\Support\GeneralHouse\GhInvoicePaymentStatus;
 use App\Support\GeneralHouse\GhInvoiceStatus;
 use App\Support\GeneralHouse\GhMoney;
@@ -21,6 +23,7 @@ use App\Support\GeneralHouse\GhPaymentStatus;
 use App\Support\GeneralHouse\GhRefundStatus;
 use App\Support\GeneralHouse\GhReportFilters;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -105,8 +108,10 @@ class GhDashboardService
 
         $outstanding = $this->outstandingReceivables($filters);
         $creditsIssued = $this->issuedCreditsInPeriod($filters, $period);
+        $debitsIssued = $this->issuedDebitsInPeriod($filters, $period);
         $refundsPaid = $this->refundsPaidOutInPeriod($filters, $period);
-        $netInvoiced = GhMoney::of(GhMoney::sub($issuedValue, $creditsIssued));
+        // Net billed = gross invoices + issued debits − issued credits (no double-count of invoice G).
+        $netInvoiced = GhMoney::of(GhMoney::sub(GhMoney::add($issuedValue, $debitsIssued), $creditsIssued));
         if (GhMoney::cmp($netInvoiced, '0') < 0) {
             $netInvoiced = '0.00';
         }
@@ -123,6 +128,7 @@ class GhDashboardService
             'outstanding_receivables' => $outstanding,
             // GH-10 additive KPIs
             'issued_credit_notes_value' => $creditsIssued,
+            'issued_debit_adjustments_value' => $debitsIssued,
             'net_invoiced_value' => $netInvoiced,
             'cash_refunds_paid_out' => $refundsPaid,
             'net_cash_collected' => $netCash,
@@ -341,6 +347,26 @@ class GhDashboardService
             ->where('issued_at', '>=', $period->startUtc)
             ->where('issued_at', '<', $period->endUtc);
 
+        $this->applyInvoiceDimFilters($q, $filters);
+
+        return GhMoney::of((string) $q->sum('total_credit'));
+    }
+
+    private function issuedDebitsInPeriod(GhReportFilters $filters, object $period): string
+    {
+        $q = GhDebitAdjustment::query()
+            ->where('status', GhDebitAdjustmentStatus::ISSUED)
+            ->where('issued_at', '>=', $period->startUtc)
+            ->where('issued_at', '<', $period->endUtc);
+
+        $this->applyInvoiceDimFilters($q, $filters);
+
+        return GhMoney::of((string) $q->sum('total_debit'));
+    }
+
+    /** @param  Builder<Model>  $q */
+    private function applyInvoiceDimFilters(Builder $q, GhReportFilters $filters): void
+    {
         if ($filters->customerId || $filters->zoneId || $filters->customerType || $filters->driverId) {
             $q->whereHas('invoice', function ($inv) use ($filters) {
                 if ($filters->customerId) {
@@ -360,8 +386,6 @@ class GhDashboardService
                 }
             });
         }
-
-        return GhMoney::of((string) $q->sum('total_credit'));
     }
 
     private function refundsPaidOutInPeriod(GhReportFilters $filters, object $period): string

@@ -564,24 +564,129 @@ body.hp-driver-sorting {
     text-overflow: ellipsis;
 }
 
-.gh-order-card__badge--status {
-    background: var(--gh-board-yellow, #FFD329);
-    color: var(--gh-board-navy, #101044);
+// GH order status colors — shared by driver views + board cards (accessible contrast).
+.gh-status-badge {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: .2rem .45rem;
+    border-radius: .4rem;
+    font-size: .6875rem;
+    font-weight: 750;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border: 1px solid transparent;
 }
 
-.gh-order-card__badge--status.is-done {
-    background: color-mix(in srgb, #16a34a 18%, #fff);
-    color: #166534;
+.gh-status-badge--later {
+    background: #e5e7eb;
+    color: #1f2937;
+    border-color: #d1d5db;
 }
 
-.gh-order-card__badge--status.is-working {
-    background: color-mix(in srgb, #0ea5e9 16%, #fff);
-    color: #075985;
+.gh-status-badge--pickup {
+    background: #dbeafe;
+    color: #1e3a8a;
+    border-color: #93c5fd;
 }
 
-.gh-order-card__badge--danger {
-    background: #fee4e2;
-    color: #b42318;
+.gh-status-badge--working {
+    background: #fef3c7;
+    color: #78350f;
+    border-color: #fcd34d;
+}
+
+.gh-status-badge--delivery {
+    background: #ede9fe;
+    color: #4c1d95;
+    border-color: #c4b5fd;
+}
+
+.gh-status-badge--completed {
+    background: #dcfce7;
+    color: #14532d;
+    border-color: #86efac;
+}
+
+.gh-status-badge--cancelled {
+    background: #fee2e2;
+    color: #7f1d1d;
+    border-color: #fca5a5;
+}
+
+.gh-status-badge--unknown {
+    background: #f3f4f6;
+    color: #374151;
+    border-color: #e5e7eb;
+}
+
+// Independent operational / financial warning badges (never replace status colors).
+.gh-warning-badge {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: .2rem .45rem;
+    border-radius: .4rem;
+    font-size: .6875rem;
+    font-weight: 750;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border: 1px solid transparent;
+}
+
+.gh-warning-badge--compact {
+    padding: .16rem .4rem;
+}
+
+.gh-warning-badge--orange {
+    background: #ffedd5;
+    color: #9a3412;
+    border-color: #fdba74;
+}
+
+.gh-warning-badge--red {
+    background: #fee2e2;
+    color: #7f1d1d;
+    border-color: #fca5a5;
+}
+
+.gh-order-card__badge.gh-warning-badge,
+.gh-order-card__badges .gh-warning-badge {
+    // Sit beside status badge; keep board badge density.
+    flex: 0 1 auto;
+}
+
+// Board card badges reuse the same palette (keep size from .gh-order-card__badge).
+.gh-order-card__badge.gh-status-badge {
+    padding: .16rem .4rem;
+}
+
+@media (max-width: 430px) {
+    .gh-order-card__meta--4 {
+        grid-template-columns: auto auto minmax(0, 1fr);
+        row-gap: .25rem;
+    }
+
+    .gh-order-card__meta--4 .gh-order-card__cell--type {
+        grid-column: 1 / -1;
+    }
+
+    .gh-order-card__meta--3 {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .gh-order-card__meta--3 .gh-order-card__cell--address {
+        grid-column: 1 / -1;
+    }
+
+    .hp-driver-task .card-body,
+    .hp-driver-movement .card-body {
+        padding: .75rem .8rem;
+    }
 }
 
 .gh-order-card__meta {
@@ -847,6 +952,42 @@ body.hp-driver-sorting {
     .gh-board-area-title {
         color: #f3f4f6;
     }
+
+    .gh-status-badge--later {
+        background: #374151;
+        color: #f9fafb;
+        border-color: #4b5563;
+    }
+
+    .gh-status-badge--pickup {
+        background: #1e3a8a;
+        color: #dbeafe;
+        border-color: #3b82f6;
+    }
+
+    .gh-status-badge--working {
+        background: #78350f;
+        color: #fef3c7;
+        border-color: #f59e0b;
+    }
+
+    .gh-status-badge--delivery {
+        background: #4c1d95;
+        color: #ede9fe;
+        border-color: #8b5cf6;
+    }
+
+    .gh-status-badge--completed {
+        background: #14532d;
+        color: #dcfce7;
+        border-color: #22c55e;
+    }
+
+    .gh-status-badge--cancelled {
+        background: #7f1d1d;
+        color: #fee2e2;
+        border-color: #ef4444;
+    }
 }
 
 // ── Ops card UI (GH lists + Evaluation lists) ────────────────────────────────
@@ -1101,6 +1242,48 @@ a.gh-record-card__title:focus-visible {
     .gh-record-card__value {
         color: #f3f4f6;
     }
+}
+
+// ── Compact Excel import (collapsed by default) ──────────────────────────────
+.gh-import-card__details {
+    border: 0;
+}
+
+.gh-import-card__summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .85rem 1rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.gh-import-card__summary::-webkit-details-marker {
+    display: none;
+}
+
+.gh-import-card__summary-text {
+    min-width: 0;
+}
+
+.gh-import-card__chevron {
+    flex: 0 0 auto;
+    transition: transform .15s ease;
+    opacity: .65;
+}
+
+.gh-import-card__details[open] > .gh-import-card__summary .gh-import-card__chevron {
+    transform: rotate(180deg);
+}
+
+[dir='rtl'] .gh-import-card__details[open] > .gh-import-card__summary .gh-import-card__chevron {
+    transform: rotate(-180deg);
+}
+
+.gh-compact-filters .form-label {
+    font-size: .8125rem;
 }
 
 // ── Offerings create form (aligned single row) ───────────────────────────────

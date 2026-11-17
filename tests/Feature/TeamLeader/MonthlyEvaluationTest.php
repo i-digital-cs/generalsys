@@ -90,11 +90,7 @@ class MonthlyEvaluationTest extends TestCase
                 'year' => 2026,
                 'evaluation_text' => 'Solid contribution this month.',
             ])
-            ->assertRedirect(route('team-leader.evaluations.show', [
-                'employee' => $this->employee,
-                'month' => 8,
-                'year' => 2026,
-            ]))
+            ->assertRedirect(route('team-leader.evaluations'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('evaluations', [

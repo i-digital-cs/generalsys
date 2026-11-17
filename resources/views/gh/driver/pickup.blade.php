@@ -7,8 +7,9 @@
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
         <div>
             <h1 class="h4 mb-1 num-ltr">{{ $order->reference }}</h1>
-            <p class="mb-0">
-                <span class="badge text-bg-primary">{{ __('gh.order_status.'.$order->status) }}</span>
+            <p class="mb-0 d-flex flex-wrap align-items-center gap-1">
+                @include('gh.partials.order-status-badge', ['status' => $order->status])
+                @include('gh.partials.order-warning-badges', ['warnings' => $warnings ?? []])
                 <span class="text-body-secondary small">· {{ __('gh.driver.task_pickup') }}</span>
             </p>
         </div>

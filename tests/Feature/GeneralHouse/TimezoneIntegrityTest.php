@@ -152,6 +152,7 @@ class TimezoneIntegrityTest extends TestCase
             'pickup_date' => $date,
             'pickup_window_start' => $start,
             'pickup_window_end' => $end,
+            'scheduled_delivery_at' => '2026-12-01 16:00',
             'pickup_driver_id' => $driver->id,
         ], $manager);
     }

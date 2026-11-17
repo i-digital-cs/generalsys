@@ -54,7 +54,7 @@ class ContractController extends Controller
         $contract = $this->contracts->create($request->validated());
 
         return redirect()
-            ->route('gh.contracts.show', $contract)
+            ->route('gh.contracts.index')
             ->with('success', __('gh.flash.contract_created'));
     }
 
@@ -90,7 +90,7 @@ class ContractController extends Controller
         $this->contracts->update($contract, $request->validated());
 
         return redirect()
-            ->route('gh.contracts.show', $contract)
+            ->route('gh.contracts.index')
             ->with('success', __('gh.flash.contract_updated'));
     }
 

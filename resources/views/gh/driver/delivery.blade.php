@@ -4,17 +4,19 @@
 
 @section('content')
 @php
-    $needsMethod = ($deliveryPaymentEnabled ?? false)
-        && ($paymentHint['is_unpaid'] ?? false)
-        && ($canConfirm ?? false);
-    $displayAmount = $paymentHint['remaining'] ?? ($paymentHint['invoice_total'] ?? null);
+    $deliveryPaymentEnabled = $deliveryPaymentEnabled ?? false;
+    $hasBalance = ($paymentHint['is_unpaid'] ?? false) && isset($paymentHint['remaining']);
+    $needsMethod = $deliveryPaymentEnabled && $hasBalance && ($canConfirm ?? false);
+    $showCashControls = $deliveryPaymentEnabled && ($canConfirm ?? false);
+    $displayAmount = $hasBalance ? ($paymentHint['remaining'] ?? null) : null;
 @endphp
 <div class="container-fluid py-3" style="max-width:40rem">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
         <div>
             <h1 class="h4 mb-1 num-ltr">{{ $order->reference }}</h1>
-            <p class="mb-0">
-                <span class="badge text-bg-primary">{{ __('gh.order_status.'.$order->status) }}</span>
+            <p class="mb-0 d-flex flex-wrap align-items-center gap-1">
+                @include('gh.partials.order-status-badge', ['status' => $order->status])
+                @include('gh.partials.order-warning-badges', ['warnings' => $warnings ?? []])
                 <span class="text-body-secondary small">· {{ __('gh.driver.task_delivery') }}</span>
             </p>
         </div>
@@ -29,7 +31,7 @@
 
     @if ($paymentHint && $displayAmount !== null)
         <div class="card border-0 shadow-sm mb-3">
-            <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.driver.invoice_amount') }}</h2></div>
+            <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.driver.remaining_due_label') }}</h2></div>
             <div class="card-body">
                 <p class="mb-0 hp-value num-ltr fs-5">
                     <x-money :amount="$displayAmount" currency="AED" />
@@ -39,6 +41,8 @@
                 @endunless
             </div>
         </div>
+    @elseif ($showCashControls && ! $paymentHint)
+        <div class="alert alert-secondary small">{{ __('gh.driver.cash_optional_no_invoice') }}</div>
     @endif
 
     @if ($order->operational_notes || $order->delivery_notes)
@@ -64,25 +68,40 @@
                         <input id="delivery_occurred_at" type="datetime-local" name="occurred_at" class="form-control" value="{{ old('occurred_at') }}">
                     </div>
 
-                    @if ($needsMethod)
+                    @if ($showCashControls)
                         <fieldset class="mb-3">
                             <legend class="form-label">{{ __('gh.driver.payment_method') }}</legend>
                             <div class="d-grid gap-2">
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="payment_method" id="pay_cash" value="CASH"
-                                           @checked(old('payment_method', 'CASH') === 'CASH') required>
+                                           @checked(old('payment_method', $needsMethod ? 'CASH' : '') === 'CASH')
+                                           {{ $needsMethod ? 'required' : '' }}>
                                     <label class="form-check-label" for="pay_cash">{{ __('gh.driver.method_CASH') }}</label>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="payment_method" id="pay_online" value="ONLINE"
-                                           @checked(old('payment_method') === 'ONLINE')>
-                                    <label class="form-check-label" for="pay_online">{{ __('gh.driver.method_ONLINE') }}</label>
-                                </div>
+                                @if ($needsMethod)
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="payment_method" id="pay_online" value="ONLINE"
+                                               @checked(old('payment_method') === 'ONLINE')>
+                                        <label class="form-check-label" for="pay_online">{{ __('gh.driver.method_ONLINE') }}</label>
+                                    </div>
+                                @endif
                             </div>
                             @error('payment_method')
                                 <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
                         </fieldset>
+
+                        <div class="mb-3" id="gh-cash-amount-wrap" hidden>
+                            <label class="form-label" for="cash_collected_amount">{{ __('gh.driver.cash_collected_prompt') }}</label>
+                            <input id="cash_collected_amount" type="number" inputmode="decimal" step="0.01" min="0.01"
+                                   name="cash_collected_amount" class="form-control form-control-lg"
+                                   value="{{ old('cash_collected_amount', $displayAmount) }}"
+                                   placeholder="0.00">
+                            <div class="form-text">{{ __('gh.driver.cash_collected_hint') }}</div>
+                            @error('cash_collected_amount')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
                     @endif
 
                     <div class="mb-3">
@@ -143,12 +162,27 @@
     @endif
 </div>
 
-@if ($canConfirm)
+@if ($canConfirm && $showCashControls)
 @push('scripts')
 <script>
 (() => {
   const form = document.getElementById('gh-driver-delivery-form');
   const btn = document.getElementById('gh-confirm-delivery-btn');
+  const wrap = document.getElementById('gh-cash-amount-wrap');
+  const amount = document.getElementById('cash_collected_amount');
+  const syncCash = () => {
+    const cash = form?.querySelector('input[name="payment_method"][value="CASH"]');
+    const on = !!(cash && cash.checked);
+    if (wrap) wrap.hidden = !on;
+    if (amount) {
+      amount.required = on;
+      if (!on) amount.value = amount.value; // keep typed value when toggling
+    }
+  };
+  form?.querySelectorAll('input[name="payment_method"]').forEach((el) => {
+    el.addEventListener('change', syncCash);
+  });
+  syncCash();
   form?.addEventListener('submit', () => { if (btn) btn.disabled = true; });
 })();
 </script>

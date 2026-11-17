@@ -4,6 +4,7 @@ namespace Tests\Feature\GeneralHouse;
 
 use App\Models\GeneralHouse\GhCustomer;
 use App\Models\GeneralHouse\GhCustomerAddress;
+use App\Models\GeneralHouse\GhDriverCashCollection;
 use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\GeneralHouse\GhPayment;
@@ -13,6 +14,8 @@ use App\Models\GeneralHouse\GhZone;
 use App\Models\User;
 use App\Services\GeneralHouse\Invoices\GhInvoiceIssuanceService;
 use App\Services\GeneralHouse\Invoices\GhInvoiceService;
+use App\Services\GeneralHouse\Orders\GhOrderStateService;
+use App\Services\GeneralHouse\Payments\GhDriverCashCustodyService;
 use App\Services\GeneralHouse\Payments\GhPaymentBalanceService;
 use App\Services\GeneralHouse\Payments\GhPaymentService;
 use App\Support\GeneralHouse\GhCustomerType;
@@ -82,11 +85,12 @@ class DriverDeliveryPaymentTest extends TestCase
             ->assertSee(__('gh.driver.confirm_delivery_and_pay'), false)
             ->assertSee(__('gh.driver.method_CASH'), false)
             ->assertSee(__('gh.driver.method_ONLINE'), false)
-            ->assertDontSee(__('gh.driver.cash_received'), false);
+            ->assertSee(__('gh.driver.cash_collected_prompt'), false);
 
         $this->actingAs($driver)
             ->post(route('gh.orders.confirm-delivery', $ctx['order']), [
                 'payment_method' => 'CASH',
+                'cash_collected_amount' => '100.00',
                 'notes' => 'handed over',
             ])
             ->assertRedirect();
@@ -100,6 +104,8 @@ class DriverDeliveryPaymentTest extends TestCase
         $this->assertSame('100.00', (string) $payment->amount);
         $this->assertSame(GhInvoicePaymentStatus::PAID, $ctx['invoice']->fresh()->payment_status);
         $this->assertSame('0.00', app(GhPaymentBalanceService::class)->forInvoice($ctx['invoice']->fresh())['remaining_due']);
+        $this->assertSame('100.00', app(GhDriverCashCustodyService::class)->outstandingFor($driver));
+        $this->assertSame(1, GhDriverCashCollection::query()->where('order_id', $ctx['order']->id)->count());
     }
 
     public function test_online_confirm_is_operator_recorded_not_gateway(): void
@@ -127,6 +133,8 @@ class DriverDeliveryPaymentTest extends TestCase
         $this->assertFalse((bool) ($event->payload['gateway_verified'] ?? true));
         $this->assertSame(GhInvoicePaymentStatus::PAID, $ctx['invoice']->fresh()->payment_status);
         $this->assertSame(GhOrderStatus::COMPLETED, $ctx['order']->fresh()->status);
+        $this->assertSame('0.00', app(GhDriverCashCustodyService::class)->outstandingFor($driver));
+        $this->assertSame(0, GhDriverCashCollection::query()->where('order_id', $ctx['order']->id)->count());
     }
 
     public function test_retry_does_not_duplicate_payment(): void
@@ -135,15 +143,42 @@ class DriverDeliveryPaymentTest extends TestCase
         $ctx = $this->deliveryReadyOrder($driver, unitPrice: '80.00');
 
         $this->actingAs($driver)
-            ->post(route('gh.orders.confirm-delivery', $ctx['order']), ['payment_method' => 'CASH'])
+            ->post(route('gh.orders.confirm-delivery', $ctx['order']), [
+                'payment_method' => 'CASH',
+                'cash_collected_amount' => '80.00',
+            ])
             ->assertRedirect();
 
         $this->actingAs($driver)
-            ->post(route('gh.orders.confirm-delivery', $ctx['order']), ['payment_method' => 'ONLINE'])
+            ->post(route('gh.orders.confirm-delivery', $ctx['order']), [
+                'payment_method' => 'ONLINE',
+            ])
             ->assertRedirect();
 
         $this->assertSame(1, GhPayment::query()->where('invoice_id', $ctx['invoice']->id)->count());
         $this->assertSame(GhPaymentStatus::CONFIRMED, GhPayment::query()->where('invoice_id', $ctx['invoice']->id)->value('status'));
+        $this->assertSame(GhOrderStatus::COMPLETED, $ctx['order']->fresh()->status);
+        $this->assertSame(1, GhDriverCashCollection::query()->where('order_id', $ctx['order']->id)->count());
+        $this->assertSame('80.00', app(GhDriverCashCustodyService::class)->outstandingFor($driver));
+    }
+
+    public function test_partial_cash_collection_leaves_invoice_partial(): void
+    {
+        $driver = User::factory()->driver()->create();
+        $ctx = $this->deliveryReadyOrder($driver, unitPrice: '100.00');
+
+        $this->actingAs($driver)
+            ->post(route('gh.orders.confirm-delivery', $ctx['order']), [
+                'payment_method' => 'CASH',
+                'cash_collected_amount' => '40.00',
+            ])
+            ->assertRedirect();
+
+        $payment = GhPayment::query()->where('invoice_id', $ctx['invoice']->id)->sole();
+        $this->assertSame('40.00', (string) $payment->amount);
+        $this->assertSame(GhInvoicePaymentStatus::PARTIAL, $ctx['invoice']->fresh()->payment_status);
+        $this->assertSame('60.00', app(GhPaymentBalanceService::class)->forInvoice($ctx['invoice']->fresh())['remaining_due']);
+        $this->assertSame('40.00', app(GhDriverCashCustodyService::class)->outstandingFor($driver));
         $this->assertSame(GhOrderStatus::COMPLETED, $ctx['order']->fresh()->status);
     }
 
@@ -160,7 +195,10 @@ class DriverDeliveryPaymentTest extends TestCase
         $this->assertSame(GhInvoicePaymentStatus::PARTIAL, $ctx['invoice']->fresh()->payment_status);
 
         $this->actingAs($driver)
-            ->post(route('gh.orders.confirm-delivery', $ctx['order']), ['payment_method' => 'CASH'])
+            ->post(route('gh.orders.confirm-delivery', $ctx['order']), [
+                'payment_method' => 'CASH',
+                'cash_collected_amount' => '60.00',
+            ])
             ->assertRedirect();
 
         $driverPay = GhPayment::query()
@@ -170,6 +208,7 @@ class DriverDeliveryPaymentTest extends TestCase
         $this->assertSame('60.00', (string) $driverPay->amount);
         $this->assertSame(GhInvoicePaymentStatus::PAID, $ctx['invoice']->fresh()->payment_status);
         $this->assertSame('0.00', app(GhPaymentBalanceService::class)->forInvoice($ctx['invoice']->fresh())['remaining_due']);
+        $this->assertSame('60.00', app(GhDriverCashCustodyService::class)->outstandingFor($driver));
     }
 
     public function test_already_paid_skips_collection(): void
@@ -258,9 +297,11 @@ class DriverDeliveryPaymentTest extends TestCase
             'standard_price' => $unitPrice,
             'tax_class' => 'STANDARD_RATED',
         ]);
+        $pickedUp = now('UTC')->subHours(3);
         $order = GhOrder::factory()->create([
             'status' => GhOrderStatus::WORKING,
-            'picked_up_at' => now()->subHour(),
+            'picked_up_at' => $pickedUp,
+            'scheduled_delivery_at' => $pickedUp,
             'pickup_driver_id' => $driver->id,
             'delivery_driver_id' => $driver->id,
             'customer_id' => $customer->id,
@@ -279,6 +320,8 @@ class DriverDeliveryPaymentTest extends TestCase
             'lines' => [['offering_id' => $offering->id, 'quantity' => 1]],
         ]);
         $invoice = app(GhInvoiceIssuanceService::class)->issue($draft, $manager, (int) $draft->draft_version);
+        app(GhOrderStateService::class)
+            ->promoteOneToDelivery($order->fresh(), $manager, 'manual');
         $order->refresh();
         $this->assertSame(GhOrderStatus::DELIVERY, $order->status);
 

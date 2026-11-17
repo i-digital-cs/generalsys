@@ -98,7 +98,7 @@ class ValuationSheetController extends Controller
         }
 
         return redirect()
-            ->route('valuation.sheets.show', ['module' => $module, 'sheet' => $sheet])
+            ->route('valuation.sheets.index', $module)
             ->with('success', __('valuation.flash.saved'));
     }
 

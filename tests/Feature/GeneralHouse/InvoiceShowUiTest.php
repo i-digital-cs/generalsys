@@ -73,8 +73,12 @@ class InvoiceShowUiTest extends TestCase
         $response->assertSee(__('gh.invoices.print'), false);
         $response->assertSee(__('gh.invoices.view_order'), false);
         $response->assertDontSee(__('gh.payments.record_cash'), false);
-        $response->assertDontSee(__('gh.credit_notes.create'), false);
         $response->assertDontSee(__('gh.refunds.create'), false);
+        // Issued-invoice corrections: credit note (decrease) + debit adjustment (increase); original invoice immutable.
+        $response->assertSee(__('gh.invoice_corrections.title'), false);
+        $response->assertSee(__('gh.invoice_corrections.create_credit_note'), false);
+        $response->assertSee(__('gh.invoice_corrections.create_debit_adjustment'), false);
+        $response->assertSee(__('gh.invoice_corrections.increase_via_debit'), false);
     }
 
     public function test_cash_paid_invoice_shows_method_and_status(): void

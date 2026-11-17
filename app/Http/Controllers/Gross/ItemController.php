@@ -87,7 +87,7 @@ class ItemController extends Controller
         $item = $this->items->create($data, $files);
 
         return redirect()
-            ->route('gross.items.show', $item)
+            ->route('gross.items.index')
             ->with('success', __('gross.flash.item_created'));
     }
 
@@ -136,7 +136,7 @@ class ItemController extends Controller
         $this->items->update($item, $data, $files, $removeIds);
 
         return redirect()
-            ->route('gross.items.show', $item)
+            ->route('gross.items.index')
             ->with('success', __('gross.flash.item_updated'));
     }
 

@@ -46,7 +46,12 @@ class GhInvoiceService
         return DB::transaction(function () use ($order, $actor, $options) {
             $locked = GhOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            if ($locked->status !== GhOrderStatus::WORKING || $locked->picked_up_at === null) {
+            // Invoice may be opened after pickup while WORKING/DELIVERY/COMPLETED (invoice-independent logistics).
+            if ($locked->picked_up_at === null || ! in_array($locked->status, [
+                GhOrderStatus::WORKING,
+                GhOrderStatus::DELIVERY,
+                GhOrderStatus::COMPLETED,
+            ], true)) {
                 throw ValidationException::withMessages([
                     'order' => [__('gh.errors.invoice_requires_working')],
                 ]);

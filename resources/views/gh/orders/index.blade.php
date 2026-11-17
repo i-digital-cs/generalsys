@@ -4,7 +4,13 @@
 
 @section('content')
     @php
-        $secondaryOpen = filled($filters['zone_id'] ?? null) || filled($filters['pickup_driver_id'] ?? null);
+        $secondaryOpen = filled($filters['zone_id'] ?? null)
+            || filled($filters['pickup_driver_id'] ?? null)
+            || filled($filters['status'] ?? null)
+            || filled($filters['created_from'] ?? null)
+            || filled($filters['created_to'] ?? null)
+            || filled($filters['pickup_from'] ?? null)
+            || filled($filters['pickup_to'] ?? null);
     @endphp
     <div class="gh-order-board">
         <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
@@ -66,6 +72,31 @@
                                         <option value="{{ $driver->id }}" @selected((string) ($filters['pickup_driver_id'] ?? '') === (string) $driver->id)>{{ $driver->localizedName() }}</option>
                                     @endforeach
                                 </select>
+                            </div>
+                            <div class="gh-board-filter-field">
+                                <label class="form-label mb-1" for="status">{{ __('gh.orders.status') }}</label>
+                                <select id="status" name="status" class="form-select form-select-sm">
+                                    <option value="">{{ __('general.all') }}</option>
+                                    @foreach (\App\Support\GeneralHouse\GhOrderStatus::ALL as $st)
+                                        <option value="{{ $st }}" @selected((string) ($filters['status'] ?? '') === $st)>{{ __('gh.order_status.'.$st) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="gh-board-filter-field">
+                                <label class="form-label mb-1" for="created_from">{{ __('gh.orders.created_from') }}</label>
+                                <input id="created_from" type="date" name="created_from" class="form-control form-control-sm" value="{{ $filters['created_from'] ?? '' }}" title="{{ __('gh.orders.created_from_hint') }}">
+                            </div>
+                            <div class="gh-board-filter-field">
+                                <label class="form-label mb-1" for="created_to">{{ __('gh.orders.created_to') }}</label>
+                                <input id="created_to" type="date" name="created_to" class="form-control form-control-sm" value="{{ $filters['created_to'] ?? '' }}">
+                            </div>
+                            <div class="gh-board-filter-field">
+                                <label class="form-label mb-1" for="pickup_from">{{ __('gh.orders.pickup_from') }}</label>
+                                <input id="pickup_from" type="date" name="pickup_from" class="form-control form-control-sm" value="{{ $filters['pickup_from'] ?? '' }}" title="{{ __('gh.orders.pickup_from_hint') }}">
+                            </div>
+                            <div class="gh-board-filter-field">
+                                <label class="form-label mb-1" for="pickup_to">{{ __('gh.orders.pickup_to') }}</label>
+                                <input id="pickup_to" type="date" name="pickup_to" class="form-control form-control-sm" value="{{ $filters['pickup_to'] ?? '' }}">
                             </div>
                         </div>
 

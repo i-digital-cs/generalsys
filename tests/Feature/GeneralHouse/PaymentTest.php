@@ -14,6 +14,7 @@ use App\Models\GeneralHouse\GhZone;
 use App\Models\User;
 use App\Services\GeneralHouse\Invoices\GhInvoiceIssuanceService;
 use App\Services\GeneralHouse\Invoices\GhInvoiceService;
+use App\Services\GeneralHouse\Orders\GhOrderStateService;
 use App\Services\GeneralHouse\Payments\GhPaymentBalanceService;
 use App\Services\GeneralHouse\Payments\GhPaymentService;
 use App\Support\GeneralHouse\GhCustomerType;
@@ -282,13 +283,15 @@ class PaymentTest extends TestCase
         ]);
         $offering = GhProductOffering::factory()->create(['standard_price' => $unitPrice]);
 
+        $pickedUp = Carbon::now('UTC')->subHours(3);
         $order = GhOrder::factory()->create([
             'customer_id' => $customer->id,
             'address_id' => $address->id,
             'zone_id' => $zone->id,
             'timezone' => $tz,
             'status' => GhOrderStatus::WORKING,
-            'picked_up_at' => Carbon::now('UTC'),
+            'picked_up_at' => $pickedUp,
+            'scheduled_delivery_at' => $pickedUp,
             'pickup_starts_at' => Carbon::now($tz)->subDay()->setTime(10, 0),
             'pickup_ends_at' => Carbon::now($tz)->subDay()->setTime(12, 0),
             'delivery_driver_id' => $deliveryDriverId,
@@ -323,7 +326,10 @@ class PaymentTest extends TestCase
         ]);
 
         $draft = app(GhInvoiceService::class)->createDraftFromOrder($order, $manager);
+        $issued = app(GhInvoiceIssuanceService::class)->issue($draft, $manager, (int) $draft->draft_version);
+        app(GhOrderStateService::class)
+            ->promoteOneToDelivery($order->fresh(), $manager, 'manual');
 
-        return app(GhInvoiceIssuanceService::class)->issue($draft, $manager, (int) $draft->draft_version);
+        return $issued->fresh(['order']);
     }
 }

@@ -7,6 +7,7 @@ use App\Models\AttendancePhoto;
 use App\Models\GeneralHouse\GhB2bContract;
 use App\Models\GeneralHouse\GhCreditNote;
 use App\Models\GeneralHouse\GhCustomer;
+use App\Models\GeneralHouse\GhDebitAdjustment;
 use App\Models\GeneralHouse\GhFinancialCorrection;
 use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhOrder;
@@ -42,6 +43,7 @@ use App\Policies\EmployeePolicy;
 use App\Policies\GeneralHouse\GhB2bContractPolicy;
 use App\Policies\GeneralHouse\GhCreditNotePolicy;
 use App\Policies\GeneralHouse\GhCustomerPolicy;
+use App\Policies\GeneralHouse\GhDebitAdjustmentPolicy;
 use App\Policies\GeneralHouse\GhFinancialCorrectionPolicy;
 use App\Policies\GeneralHouse\GhInvoicePolicy;
 use App\Policies\GeneralHouse\GhOrderPolicy;
@@ -133,6 +135,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GhInvoice::class, GhInvoicePolicy::class);
         Gate::policy(GhPayment::class, GhPaymentPolicy::class);
         Gate::policy(GhCreditNote::class, GhCreditNotePolicy::class);
+        Gate::policy(GhDebitAdjustment::class, GhDebitAdjustmentPolicy::class);
         Gate::policy(GhRefund::class, GhRefundPolicy::class);
         Gate::policy(GhFinancialCorrection::class, GhFinancialCorrectionPolicy::class);
 

@@ -79,7 +79,128 @@
 
             @if ($order->status === GhOrderStatus::WORKING)
                 <div class="col-12">
-                    <div class="alert alert-secondary py-2 small mb-0">{{ __('gh.orders.delivery_awaiting_invoice') }}</div>
+                    <div class="alert alert-secondary py-2 small mb-2">
+                        @if ($order->scheduled_delivery_at)
+                            {{ __('gh.orders.delivery_awaiting_schedule') }}
+                        @else
+                            {{ __('gh.orders.delivery_not_scheduled_working_hint') }}
+                        @endif
+                    </div>
+                    @if ($canManageLogistics)
+                        <form method="post" action="{{ route('gh.orders.mark-delivery-ready', $order) }}" class="d-inline"
+                              onsubmit="return confirm(@json(__('gh.orders.confirm_mark_delivery_ready')))">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-primary btn-sm">{{ __('gh.orders.mark_delivery_ready') }}</button>
+                        </form>
+                    @endif
+                </div>
+            @endif
+
+            @php
+                $manualDestinations = $manualStatusDestinations ?? [];
+                $manualReasonFlags = $manualStatusReasonFlags ?? [];
+                $statusRank = [
+                    GhOrderStatus::CANCELLED => 0,
+                    GhOrderStatus::LATER => 1,
+                    GhOrderStatus::PICKUP => 2,
+                    GhOrderStatus::WORKING => 3,
+                    GhOrderStatus::DELIVERY => 4,
+                    GhOrderStatus::COMPLETED => 5,
+                ];
+                $currentRank = $statusRank[$order->status] ?? 0;
+                $showAutoPromoteHold = $canManageLogistics && ! empty($autoPromoteHeld);
+            @endphp
+            @if ($showAutoPromoteHold)
+                <div class="col-12">
+                    <div class="alert alert-warning py-2 px-3 mb-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <strong class="d-block">{{ __('gh.orders.auto_promote_held_title') }}</strong>
+                            <span class="small">{{ __('gh.orders.auto_promote_held_hint') }}</span>
+                            @if ($order->auto_promote_held_reason)
+                                <span class="small d-block text-body-secondary">{{ $order->auto_promote_held_reason }}</span>
+                            @endif
+                        </div>
+                        <form method="post" action="{{ route('gh.orders.resume-auto-promote', $order) }}"
+                              onsubmit="return confirm(@json(__('gh.orders.auto_promote_resume_confirm')))">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-primary">{{ __('gh.orders.auto_promote_resume') }}</button>
+                        </form>
+                    </div>
+                </div>
+            @endif
+            @if ($canManageLogistics && $manualDestinations !== [])
+                <div class="col-12">
+                    <h3 class="h6">{{ __('gh.orders.manual_status_title') }}</h3>
+                    <p class="small text-body-secondary mb-2">{{ __('gh.orders.manual_status_hint') }}</p>
+                    <form method="post" action="{{ route('gh.orders.manual-status', $order) }}" class="row g-2" id="gh-manual-status-form"
+                          data-current-status="{{ $order->status }}"
+                          data-current-label="{{ __('gh.order_status.'.$order->status) }}"
+                          data-confirm-forward="{{ __('gh.orders.manual_status_confirm_forward') }}"
+                          data-confirm-backward="{{ __('gh.orders.manual_status_confirm_backward') }}"
+                          data-reason-required="{{ __('gh.errors.manual_status_reason_required') }}">
+                        @csrf
+                        <div class="col-md-4">
+                            <label class="form-label" for="manual_to_status">{{ __('gh.orders.manual_status_to') }}</label>
+                            <select id="manual_to_status" name="to_status" class="form-select form-select-sm" required>
+                                <option value="">{{ __('gh.orders.manual_status_select') }}</option>
+                                @foreach ($manualDestinations as $dest)
+                                    @php
+                                        $destRank = $statusRank[$dest] ?? 0;
+                                        $needsReason = (bool) ($manualReasonFlags[$dest] ?? false);
+                                        $isBackward = $destRank < $currentRank;
+                                    @endphp
+                                    <option value="{{ $dest }}"
+                                            data-direction="{{ $isBackward ? 'backward' : 'forward' }}"
+                                            data-reason-required="{{ $needsReason ? '1' : '0' }}"
+                                            data-label="{{ __('gh.order_status.'.$dest) }}"
+                                            @selected(old('to_status') === $dest)>
+                                        {{ __('gh.order_status.'.$dest) }}
+                                        ({{ $isBackward ? __('gh.orders.manual_status_backward') : __('gh.orders.manual_status_forward') }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('to_status')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label" for="manual_status_reason">{{ __('gh.orders.manual_status_reason') }}</label>
+                            <input id="manual_status_reason" name="reason" class="form-control form-control-sm"
+                                   maxlength="500" value="{{ old('reason') }}"
+                                   placeholder="{{ __('gh.orders.manual_status_reason_placeholder') }}">
+                            @error('reason')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-warning btn-sm w-100">{{ __('gh.orders.manual_status_submit') }}</button>
+                        </div>
+                    </form>
+                    <script>
+                        (function () {
+                            const form = document.getElementById('gh-manual-status-form');
+                            if (!form) return;
+                            form.addEventListener('submit', function (e) {
+                                const select = form.querySelector('#manual_to_status');
+                                const reason = form.querySelector('#manual_status_reason');
+                                const opt = select && select.options[select.selectedIndex];
+                                if (!opt || !opt.value) return;
+                                const direction = opt.getAttribute('data-direction') || 'forward';
+                                const needsReason = opt.getAttribute('data-reason-required') === '1';
+                                const toLabel = opt.getAttribute('data-label') || opt.value;
+                                const fromLabel = form.getAttribute('data-current-label') || '';
+                                if (needsReason && reason && !String(reason.value || '').trim()) {
+                                    e.preventDefault();
+                                    alert(form.getAttribute('data-reason-required') || '');
+                                    reason.focus();
+                                    return;
+                                }
+                                const tpl = direction === 'backward'
+                                    ? (form.getAttribute('data-confirm-backward') || '')
+                                    : (form.getAttribute('data-confirm-forward') || '');
+                                const msg = tpl.replace(':from', fromLabel).replace(':to', toLabel);
+                                if (!window.confirm(msg)) {
+                                    e.preventDefault();
+                                }
+                            });
+                        })();
+                    </script>
                 </div>
             @endif
 

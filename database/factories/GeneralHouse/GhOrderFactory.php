@@ -36,6 +36,7 @@ class GhOrderFactory extends Factory
             'status' => GhOrderStatus::LATER,
             'pickup_starts_at' => $starts,
             'pickup_ends_at' => $ends,
+            'scheduled_delivery_at' => null,
             'timezone' => $tz,
             'notes' => null,
             'scheduling_notes' => null,

@@ -32,7 +32,9 @@ return [
         ['type' => 'heading', 'key' => 'nav.gh_section_finance'],
         ['key' => 'nav.gh_invoices', 'route' => 'gh.invoices.index', 'icon' => 'bi-receipt'],
         ['key' => 'nav.gh_payments', 'route' => 'gh.payments.index', 'icon' => 'bi-cash-coin'],
+        ['key' => 'nav.gh_driver_cash', 'route' => 'gh.driver-cash.index', 'icon' => 'bi-wallet2'],
         ['key' => 'nav.gh_credit_notes', 'route' => 'gh.credit-notes.index', 'icon' => 'bi-journal-minus'],
+        ['key' => 'nav.gh_debit_adjustments', 'route' => 'gh.debit-adjustments.index', 'icon' => 'bi-journal-plus'],
         ['key' => 'nav.gh_refunds', 'route' => 'gh.refunds.index', 'icon' => 'bi-arrow-counterclockwise'],
         ['key' => 'nav.gh_financial_corrections', 'route' => 'gh.financial-corrections.index', 'icon' => 'bi-shield-exclamation'],
 

@@ -17,6 +17,7 @@ use App\Services\GeneralHouse\Catalog\GhPricingResolver;
 use App\Services\GeneralHouse\Invoices\GhInvoiceIssuanceService;
 use App\Services\GeneralHouse\Invoices\GhInvoiceService;
 use App\Services\GeneralHouse\Orders\GhDriverWorkspaceService;
+use App\Services\GeneralHouse\Orders\GhOrderStateService;
 use App\Support\GeneralHouse\GhAttemptReason;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use App\Support\GeneralHouse\GhContractStatus;
@@ -99,7 +100,7 @@ class DriverWorkspaceTest extends TestCase
 
         $this->actingAs($pickup)
             ->post(route('gh.orders.confirm-pickup', $order), $payload)
-            ->assertRedirect(route('gh.driver.pickup', $order));
+            ->assertRedirect(route('gh.driver.dashboard', ['tab' => 'pickup']));
 
         $order->refresh();
         $this->assertSame(GhOrderStatus::WORKING, $order->status);
@@ -157,8 +158,9 @@ class DriverWorkspaceTest extends TestCase
             ->post(route('gh.orders.confirm-delivery', $order), [
                 'notes' => 'Left at door',
                 'payment_method' => 'CASH',
+                'cash_collected_amount' => (string) $invoice->fresh()->total_payable,
             ])
-            ->assertRedirect(route('gh.driver.delivery', $order));
+            ->assertRedirect(route('gh.driver.dashboard', ['tab' => 'delivery']));
         $this->assertSame(GhOrderStatus::COMPLETED, $order->fresh()->status);
         $this->assertSame('PAID', $invoice->fresh()->payment_status);
 
@@ -186,7 +188,7 @@ class DriverWorkspaceTest extends TestCase
         $this->actingAs($pickup)->post(route('gh.orders.failed-pickup', $order), [
             'reason_code' => GhAttemptReason::CUSTOMER_UNAVAILABLE,
             'notes' => 'No answer',
-        ])->assertRedirect(route('gh.driver.pickup', $order));
+        ])->assertRedirect(route('gh.driver.dashboard', ['tab' => 'pickup']));
 
         $this->assertDatabaseHas('gh_order_attempts', [
             'order_id' => $order->id,
@@ -329,7 +331,7 @@ class DriverWorkspaceTest extends TestCase
 
         $this->actingAs($driver)
             ->post(route('gh.orders.confirm-pickup', $order), ['notes' => 'package only'])
-            ->assertRedirect(route('gh.driver.pickup', $order));
+            ->assertRedirect(route('gh.driver.dashboard', ['tab' => 'pickup']));
 
         $this->assertSame(GhOrderStatus::WORKING, $order->fresh()->status);
         $this->assertSame(0, GhOrderReceivedLine::query()->where('order_id', $order->id)->count());
@@ -575,6 +577,65 @@ class DriverWorkspaceTest extends TestCase
         $this->assertNotSame('40.00', (string) $invoiceLine->unit_price);
     }
 
+    public function test_driver_views_render_status_color_badges(): void
+    {
+        $driver = User::factory()->driver()->create();
+        $pickup = $this->makeOrder([
+            'status' => GhOrderStatus::PICKUP,
+            'pickup_driver_id' => $driver->id,
+        ]);
+        $working = $this->makeOrder([
+            'status' => GhOrderStatus::WORKING,
+            'pickup_driver_id' => $driver->id,
+            'picked_up_at' => now('UTC'),
+        ]);
+        $delivery = $this->makeOrder([
+            'status' => GhOrderStatus::DELIVERY,
+            'delivery_driver_id' => $driver->id,
+            'picked_up_at' => now('UTC')->subHour(),
+        ]);
+
+        $this->actingAs($driver)->get(route('gh.driver.dashboard'))
+            ->assertOk()
+            ->assertSee('gh-status-badge--pickup', false)
+            ->assertSee(__('gh.order_status.PICKUP'), false);
+
+        $this->actingAs($driver)->get(route('gh.driver.pickup', $pickup))
+            ->assertOk()
+            ->assertSee('gh-status-badge--pickup', false)
+            ->assertSee(__('gh.order_status.PICKUP'), false);
+
+        $this->actingAs($driver)->get(route('gh.driver.delivery', $delivery))
+            ->assertOk()
+            ->assertSee('gh-status-badge--delivery', false)
+            ->assertSee(__('gh.order_status.DELIVERY'), false);
+
+        $this->actingAs($driver)
+            ->withSession(['locale' => 'ar'])
+            ->get(route('gh.driver.dashboard'))
+            ->assertOk()
+            ->assertSee(__('gh.order_status.PICKUP'), false);
+
+        // Ensure WORKING badge class exists in shared partial rendering for board cards.
+        $this->assertStringContainsString(
+            'gh-status-badge--working',
+            view('gh.partials.order-status-badge', ['status' => GhOrderStatus::WORKING])->render()
+        );
+        $this->assertStringContainsString(
+            'gh-status-badge--later',
+            view('gh.partials.order-status-badge', ['status' => GhOrderStatus::LATER])->render()
+        );
+        $this->assertStringContainsString(
+            'gh-status-badge--completed',
+            view('gh.partials.order-status-badge', ['status' => GhOrderStatus::COMPLETED])->render()
+        );
+        $this->assertStringContainsString(
+            'gh-status-badge--cancelled',
+            view('gh.partials.order-status-badge', ['status' => GhOrderStatus::CANCELLED])->render()
+        );
+        unset($working);
+    }
+
     private function makeOrder(array $overrides = []): GhOrder
     {
         $tz = config('general_house.timezone', 'Asia/Dubai');
@@ -619,7 +680,9 @@ class DriverWorkspaceTest extends TestCase
     {
         $order = $this->makeOrder([
             'status' => GhOrderStatus::WORKING,
-            'picked_up_at' => Carbon::now('UTC'),
+            // Eligible for same-day DELIVERY without waiting in this helper.
+            'picked_up_at' => Carbon::now('UTC')->subHours(3),
+            'scheduled_delivery_at' => Carbon::now('UTC')->subHours(3),
             'pickup_driver_id' => $pickup->id,
             'delivery_driver_id' => $delivery->id,
         ]);
@@ -646,7 +709,9 @@ class DriverWorkspaceTest extends TestCase
         ]);
 
         $draft = app(GhInvoiceService::class)->createDraftFromOrder($order->fresh(['zone', 'customer']), $manager);
+        $issued = app(GhInvoiceIssuanceService::class)->issue($draft, $manager, (int) $draft->draft_version);
+        app(GhOrderStateService::class)->promoteOneToDelivery($issued->order->fresh(), $manager, 'manual');
 
-        return app(GhInvoiceIssuanceService::class)->issue($draft, $manager, (int) $draft->draft_version);
+        return $issued->fresh(['order']);
     }
 }

@@ -46,7 +46,7 @@ class ItemCodeAutoGenerateTest extends TestCase
                 'reorder_level' => 5,
                 'status' => 'ACTIVE',
             ])
-            ->assertRedirect();
+            ->assertRedirect(route('gross.items.index'));
 
         $this->assertDatabaseHas('gross_items', [
             'name' => 'Dress Auto',

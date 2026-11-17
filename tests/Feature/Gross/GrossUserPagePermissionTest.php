@@ -155,7 +155,7 @@ class GrossUserPagePermissionTest extends TestCase
 
         $this->actingAs($this->manager)
             ->put(route('admin.employees.update', $sales), $payload)
-            ->assertRedirect(route('admin.employees.edit', $sales));
+            ->assertRedirect(route('admin.employees.index'));
 
         $keys = GrossUserPage::query()->where('user_id', $sales->id)->pluck('page_key')->sort()->values()->all();
         $this->assertSame(['items', 'sales', 'stock'], $keys);
@@ -225,7 +225,7 @@ class GrossUserPagePermissionTest extends TestCase
 
         $this->actingAs($assistant)
             ->put(route('admin.employees.update', $employee), $payload)
-            ->assertRedirect(route('admin.employees.edit', $employee));
+            ->assertRedirect(route('admin.employees.index'));
 
         $this->assertSame(0, GrossUserPage::query()->where('user_id', $employee->id)->count());
         $this->assertSame(0, ValuationAssignment::query()->where('user_id', $employee->id)->count());

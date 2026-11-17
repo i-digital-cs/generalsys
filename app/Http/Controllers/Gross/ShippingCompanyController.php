@@ -53,7 +53,7 @@ class ShippingCompanyController extends Controller
         $company = $this->companies->create($request->validated());
 
         return redirect()
-            ->route('gross.shipping.show', $company)
+            ->route('gross.shipping.index')
             ->with('success', __('gross.flash.shipping_created'));
     }
 

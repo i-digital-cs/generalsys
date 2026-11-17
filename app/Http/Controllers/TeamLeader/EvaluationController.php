@@ -99,11 +99,7 @@ class EvaluationController extends Controller
         }
 
         return redirect()
-            ->route('team-leader.evaluations.show', [
-                'employee' => $employee,
-                'month' => $data['month'],
-                'year' => $data['year'],
-            ])
+            ->route('team-leader.evaluations')
             ->with('success', __('evaluation.flash.monthly_saved'));
     }
 }

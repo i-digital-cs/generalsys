@@ -38,13 +38,42 @@ class ConfirmGhDeliveryRequest extends FormRequest
                 'nullable',
                 Rule::in([GhPaymentMethod::CASH, GhPaymentMethod::ONLINE]),
             ],
+            'cash_collected_amount' => [
+                Rule::requiredIf(function () use ($order) {
+                    // Recomplete (delivered_at set) never collects again.
+                    if ($order->delivered_at !== null) {
+                        return false;
+                    }
+
+                    return strtoupper(trim((string) $this->input('payment_method', ''))) === GhPaymentMethod::CASH;
+                }),
+                'nullable',
+                'numeric',
+                'gt:0',
+                'decimal:0,2',
+                'max:999999999.99',
+            ],
             'cash_outcome' => ['prohibited'],
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'cash_collected_amount.required' => __('gh.errors.cash_collected_amount_required'),
+            'cash_collected_amount.gt' => __('gh.errors.cash_collected_amount_required'),
         ];
     }
 
     private function deliveryNeedsPaymentMethod(GhOrder $order): bool
     {
         if (! GhLaunchConfig::driverDeliveryPaymentEnabled()) {
+            return false;
+        }
+
+        // Recomplete path — no new collection.
+        if ($order->delivered_at !== null) {
             return false;
         }
 

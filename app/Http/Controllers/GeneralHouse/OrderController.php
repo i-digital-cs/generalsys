@@ -12,7 +12,9 @@ use App\Services\GeneralHouse\Catalog\GhPricingResolver;
 use App\Services\GeneralHouse\Orders\GhDriverEligibilityService;
 use App\Services\GeneralHouse\Orders\GhDriverWorkspaceService;
 use App\Services\GeneralHouse\Orders\GhOrderBoardService;
+use App\Services\GeneralHouse\Orders\GhOrderManualTransitionService;
 use App\Services\GeneralHouse\Orders\GhOrderService;
+use App\Services\GeneralHouse\Orders\GhOrderWarningService;
 use App\Services\GeneralHouse\Orders\GhPickupEligibilityService;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use App\Support\GeneralHouse\GhCustomerType;
@@ -32,6 +34,8 @@ class OrderController extends Controller
         private readonly GhPickupEligibilityService $eligibility,
         private readonly GhDriverWorkspaceService $workspace,
         private readonly GhOrderBoardService $board,
+        private readonly GhOrderWarningService $orderWarnings,
+        private readonly GhOrderManualTransitionService $manualTransitions,
     ) {}
 
     public function index(Request $request): View
@@ -39,12 +43,17 @@ class OrderController extends Controller
         $this->authorize('viewAny', GhOrder::class);
 
         $filters = [
-            'tab' => GhOrderBoardTab::normalize((string) $request->query('tab', GhOrderBoardTab::PICKUP)),
+            'tab' => GhOrderBoardTab::normalize((string) $request->query('tab', GhOrderBoardTab::ALL_ORDERS)),
             'q' => trim((string) $request->query('q', '')),
             'reference' => trim((string) $request->query('reference', '')),
             'customer' => trim((string) $request->query('customer', '')),
+            'status' => trim((string) $request->query('status', '')),
             'zone_id' => $request->query('zone_id', ''),
             'pickup_driver_id' => $request->query('pickup_driver_id', ''),
+            'created_from' => trim((string) $request->query('created_from', '')),
+            'created_to' => trim((string) $request->query('created_to', '')),
+            'pickup_from' => trim((string) $request->query('pickup_from', '')),
+            'pickup_to' => trim((string) $request->query('pickup_to', '')),
             'page' => max(1, (int) $request->query('page', 1)),
         ];
 
@@ -101,7 +110,7 @@ class OrderController extends Controller
         $order = $this->orders->create($request->validated(), $request->user());
 
         return redirect()
-            ->route('gh.orders.show', $order)
+            ->route('gh.orders.index')
             ->with('success', __('gh.flash.order_created'));
     }
 
@@ -128,6 +137,10 @@ class OrderController extends Controller
 
         $user = request()->user();
 
+        $audience = GhOrderAccess::mayManage($user)
+            ? GhOrderWarningService::AUDIENCE_ADMIN
+            : GhOrderWarningService::AUDIENCE_DRIVER;
+
         return view('gh.orders.show', [
             'order' => $order,
             'drivers' => $this->drivers->eligibleDrivers(),
@@ -139,6 +152,16 @@ class OrderController extends Controller
                 && $order->status === GhOrderStatus::DELIVERY,
             'canManageLogistics' => GhOrderAccess::mayManage($user),
             'displayTz' => $this->eligibility->displayTimezone($order->timezone),
+            'warnings' => $this->orderWarnings->forOrder($order, $audience),
+            'manualStatusDestinations' => GhOrderAccess::mayManage($user)
+                ? $this->manualTransitions->permittedDestinations($order)
+                : [],
+            'manualStatusReasonFlags' => GhOrderAccess::mayManage($user)
+                ? collect($this->manualTransitions->permittedDestinations($order))
+                    ->mapWithKeys(fn (string $to) => [$to => $this->manualTransitions->requiresReason($order, $to)])
+                    ->all()
+                : [],
+            'autoPromoteHeld' => (bool) $order->auto_promote_held,
         ]);
     }
 
@@ -184,7 +207,7 @@ class OrderController extends Controller
         }
 
         return redirect()
-            ->route('gh.orders.show', $order)
+            ->route('gh.orders.index')
             ->with('success', __('gh.flash.order_updated'));
     }
 }

@@ -41,7 +41,7 @@
     <h2 class="h6 text-body-secondary mb-2">{{ __('gh.dashboard.financial') }}</h2>
     <div class="row g-2 mb-3">
         @foreach ([
-            'issued_invoice_value','issued_credit_notes_value','net_invoiced_value',
+            'issued_invoice_value','issued_debit_adjustments_value','issued_credit_notes_value','net_invoiced_value',
             'confirmed_cash_collections','cash_refunds_paid_out','net_cash_collected',
             'total_confirmed_collections','outstanding_receivables','customer_credit_liabilities','average_invoice_value',
         ] as $key)

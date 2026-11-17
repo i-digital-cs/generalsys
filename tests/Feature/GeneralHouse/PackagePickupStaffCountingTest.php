@@ -66,6 +66,7 @@ class PackagePickupStaffCountingTest extends TestCase
             'customer_id' => $customer->id,
             'address_id' => $address->id,
             'scheduled_pickup_at' => '2026-11-07T14:00',
+            'scheduled_delivery_at' => '2026-11-07 16:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect();
 
@@ -107,7 +108,8 @@ class PackagePickupStaffCountingTest extends TestCase
         $this->assertStringContainsString('gh-catalog-grid', $html);
 
         $issued = app(GhInvoiceIssuanceService::class)->issue($draft, $manager, (int) $draft->draft_version);
-        $this->assertSame(GhOrderStatus::DELIVERY, $order->fresh()->status);
+        $this->assertNotNull($order->fresh()->invoice_issued_at);
+        $this->assertContains($order->fresh()->status, [GhOrderStatus::WORKING, GhOrderStatus::DELIVERY]);
         $this->assertNotNull($issued->issued_at);
 
         Carbon::setTestNow();

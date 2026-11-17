@@ -207,12 +207,40 @@
                         @error('pickup_window_start')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         <p class="small text-body-secondary mt-1 mb-0">{{ __('gh.orders.timezone_hint', ['tz' => $tz]) }}</p>
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="scheduled_delivery_at">{{ __('gh.orders.scheduled_delivery') }} <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input id="scheduled_delivery_at" type="datetime-local" name="scheduled_delivery_at" class="form-control" required
+                               value="{{ old('scheduled_delivery_at', $order?->scheduled_delivery_at?->timezone($tz)->format('Y-m-d\\TH:i')) }}">
+                        @error('scheduled_delivery_at')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        @error('scheduled_delivery_date')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        @error('scheduled_delivery_time')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        <p class="small text-body-secondary mt-1 mb-0">{{ __('gh.orders.scheduled_delivery_required_hint') }}</p>
+                    </div>
+                @else
+                    <div class="col-md-6">
+                        <label class="form-label" for="scheduled_delivery_at">{{ __('gh.orders.scheduled_delivery') }}
+                            @if ($order?->scheduled_delivery_at === null)
+                                <span class="text-danger" aria-hidden="true">*</span>
+                            @endif
+                        </label>
+                        <input id="scheduled_delivery_at" type="datetime-local" name="scheduled_delivery_at" class="form-control"
+                               @if ($order?->scheduled_delivery_at === null) required @endif
+                               value="{{ old('scheduled_delivery_at', $order?->scheduled_delivery_at?->timezone($tz)->format('Y-m-d\\TH:i')) }}">
+                        @error('scheduled_delivery_at')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        <p class="small text-body-secondary mt-1 mb-0">
+                            @if ($order?->scheduled_delivery_at === null)
+                                {{ __('gh.orders.scheduled_delivery_legacy_required_hint') }}
+                            @else
+                                {{ __('gh.orders.scheduled_delivery_required_hint') }}
+                            @endif
+                        </p>
+                    </div>
                 @endif
 
                 <div class="col-md-6">
-                    <label class="form-label" for="pickup_driver_id">{{ __('gh.orders.assign_pickup') }}</label>
+                    <label class="form-label" for="pickup_driver_id">{{ __('gh.orders.assign_pickup') }} <span class="text-danger" aria-hidden="true">*</span></label>
                     @if ($fullEdit)
-                        <select id="pickup_driver_id" name="pickup_driver_id" class="form-select">
+                        <select id="pickup_driver_id" name="pickup_driver_id" class="form-select" required>
                             <option value="">—</option>
                             @foreach ($drivers as $driver)
                                 <option value="{{ $driver->id }}" @selected((string) old('pickup_driver_id', $order?->pickup_driver_id) === (string) $driver->id)>
@@ -228,7 +256,7 @@
                 <div class="col-md-6">
                     <label class="form-label" for="delivery_driver_id">{{ __('gh.orders.assign_delivery') }}</label>
                     <select id="delivery_driver_id" name="delivery_driver_id" class="form-select">
-                        <option value="">{{ __('gh.orders.none') }}</option>
+                        <option value="">{{ __('gh.orders.unassigned') }}</option>
                         @foreach ($drivers as $driver)
                             <option value="{{ $driver->id }}" @selected((string) old('delivery_driver_id', $order?->delivery_driver_id) === (string) $driver->id)>
                                 {{ $driver->localizedName() }}
@@ -236,6 +264,7 @@
                         @endforeach
                     </select>
                     @error('delivery_driver_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    <p class="small text-body-secondary mt-1 mb-0">{{ __('gh.orders.delivery_driver_optional_hint') }}</p>
                 </div>
 
                 <div class="col-md-6">

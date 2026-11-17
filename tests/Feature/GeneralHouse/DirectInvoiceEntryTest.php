@@ -179,7 +179,8 @@ class DirectInvoiceEntryTest extends TestCase
 
         $draft->refresh();
         app(GhInvoiceIssuanceService::class)->issue($draft, $manager, (int) $draft->draft_version);
-        $this->assertSame(GhOrderStatus::DELIVERY, $order->fresh()->status);
+        $this->assertNotNull($order->fresh()->invoice_issued_at);
+        $this->assertContains($order->fresh()->status, [GhOrderStatus::WORKING, GhOrderStatus::DELIVERY]);
 
         // Legacy received prefill path
         $legacy = $this->workingOrder(GhCustomerType::B2C);

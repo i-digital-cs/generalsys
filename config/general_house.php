@@ -101,6 +101,7 @@ return [
     */
     'corrections' => [
         'credit_notes_enabled' => filter_var(env('GH_CN_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'debit_adjustments_enabled' => filter_var(env('GH_DA_ENABLED', true), FILTER_VALIDATE_BOOL),
         'refunds_enabled' => filter_var(env('GH_REFUND_ENABLED', true), FILTER_VALIDATE_BOOL),
         // REQUEST/APPROVE allowed; EXECUTE blocked until accounting policy approved.
         'payment_correction_execute_enabled' => filter_var(

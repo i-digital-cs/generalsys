@@ -130,7 +130,16 @@ class InvoiceController extends Controller
     public function show(GhInvoice $invoice): View
     {
         $this->authorize('view', $invoice);
-        $invoice->load(['lines', 'adjustments', 'order', 'issuer', 'payments.collector', 'payments.recorder']);
+        $invoice->load([
+            'lines',
+            'adjustments',
+            'order',
+            'issuer',
+            'payments.collector',
+            'payments.recorder',
+            'creditNotes',
+            'debitAdjustments',
+        ]);
         $balance = $this->paymentBalances->forInvoice($invoice);
 
         return view('gh.invoices.show', compact('invoice', 'balance'));

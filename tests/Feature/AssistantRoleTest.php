@@ -160,7 +160,7 @@ class AssistantRoleTest extends TestCase
                     'contract_type' => 'سنة',
                 ],
             ]))
-            ->assertRedirect(route('admin.employees.edit', $this->employee));
+            ->assertRedirect(route('admin.employees.index'));
 
         $this->employee->refresh();
         $this->assertSame('Updated By Assistant', $this->employee->name_en);

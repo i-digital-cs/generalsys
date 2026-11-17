@@ -33,6 +33,13 @@
         <div class="col-lg-8">
             @if ($invoice->isIssued())
                 @include('gh.invoices.partials.payment-panel', ['invoice' => $invoice, 'balance' => $balance])
+                @include('gh.invoices.partials.correction-panel', ['invoice' => $invoice])
+            @elseif ($invoice->isDraft())
+                <div class="alert alert-info small">
+                    <strong>{{ __('gh.invoice_corrections.title') }}</strong>
+                    — {{ __('gh.invoice_corrections.completed_draft_ok') }}
+                    <a href="{{ route('gh.invoices.builder', $invoice) }}" class="alert-link">{{ __('gh.invoice_corrections.open_builder') }}</a>
+                </div>
             @endif
 
             <div class="card border-0 shadow-sm mb-3">
@@ -63,14 +70,54 @@
                     </table>
                 </div>
             </div>
+
+            @if ($invoice->isIssued() && $invoice->debitAdjustments->isNotEmpty())
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.debit_adjustments.title') }}</h2></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                            <tr>
+                                <th>{{ __('gh.debit_adjustments.number') }}</th>
+                                <th>{{ __('gh.invoices.status') }}</th>
+                                <th class="text-end">{{ __('gh.debit_adjustments.total') }}</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach ($invoice->debitAdjustments as $da)
+                                <tr>
+                                    <td class="num-ltr">{{ $da->number ?: '—' }}</td>
+                                    <td>{{ __('gh.da_status.'.$da->status) }}</td>
+                                    <td class="text-end"><x-money :amount="$da->total_debit" currency="AED" /></td>
+                                    <td class="text-end">
+                                        <a href="{{ route('gh.debit-adjustments.show', $da) }}" class="btn btn-sm btn-outline-primary">{{ __('general.view') }}</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
         </div>
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.invoices.summary') }}</h2></div>
                 <div class="card-body">
                     @include('gh.invoices.partials.totals', ['invoice' => $invoice, 'hidePaymentStatus' => true])
+                    @if ($invoice->isIssued() && isset($balance))
+                        <hr class="my-2">
+                        <div class="small">
+                            <div class="d-flex justify-content-between"><span>{{ __('gh.debit_adjustments.debits_issued') }}</span><span class="hp-value num-ltr"><x-money :amount="$balance['debits_issued']" currency="AED" /></span></div>
+                            <div class="d-flex justify-content-between"><span>{{ __('gh.credit_notes.credits_issued') }}</span><span class="hp-value num-ltr"><x-money :amount="$balance['credits_issued']" currency="AED" /></span></div>
+                            <div class="d-flex justify-content-between"><span>{{ __('gh.credit_notes.net_invoiced') }}</span><span class="hp-value num-ltr"><x-money :amount="$balance['net_invoiced']" currency="AED" /></span></div>
+                            <div class="d-flex justify-content-between"><span>{{ __('gh.payments.confirmed_total') }}</span><span class="hp-value num-ltr"><x-money :amount="$balance['confirmed_total']" currency="AED" /></span></div>
+                            <div class="d-flex justify-content-between fw-semibold"><span>{{ __('gh.credit_notes.remaining_due') }}</span><span class="hp-value num-ltr"><x-money :amount="$balance['remaining_due']" currency="AED" /></span></div>
+                        </div>
+                    @endif
                     @if ($invoice->issued_at)
-                        <p class="small text-body-secondary mb-0">
+                        <p class="small text-body-secondary mb-0 mt-2">
                             {{ __('gh.invoices.issued_at') }}:
                             <span class="num-ltr">{{ $invoice->issued_at->timezone(config('general_house.timezone'))->translatedFormat('Y-m-d H:i') }}</span>
                         </p>

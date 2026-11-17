@@ -73,6 +73,11 @@ final class GhLaunchConfig
         return (bool) config('general_house.corrections.credit_notes_enabled', false);
     }
 
+    public static function debitAdjustmentsEnabled(): bool
+    {
+        return (bool) config('general_house.corrections.debit_adjustments_enabled', true);
+    }
+
     public static function paymentCorrectionExecuteEnabled(): bool
     {
         return (bool) config('general_house.corrections.payment_correction_execute_enabled', false);

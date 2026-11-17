@@ -5,6 +5,7 @@ namespace App\Services\GeneralHouse\Orders;
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\User;
 use App\Support\GeneralHouse\GhOrderBoardTab;
+use App\Support\GeneralHouse\GhOrderEventType;
 use App\Support\GeneralHouse\GhOrderStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -39,6 +40,7 @@ final class GhOrderBoardService
         private readonly GhPickupEligibilityService $eligibility,
         private readonly GhDriverWorkspaceService $workspace,
         private readonly GhDriverMovementLogService $movements,
+        private readonly GhOrderWarningService $warnings,
     ) {}
 
     /**
@@ -64,6 +66,7 @@ final class GhOrderBoardService
 
         if ($driver !== null) {
             return match ($tab) {
+                GhOrderBoardTab::ALL_ORDERS => $this->driverAllOrdersQuery($driver)->count(),
                 GhOrderBoardTab::LATER => $this->driverLaterQuery($driver)->count(),
                 GhOrderBoardTab::ACTIONS => $this->driverActionsOrders($driver)->count(),
                 GhOrderBoardTab::PICKUP => $this->workspace->actionablePickupsQuery($driver)->count(),
@@ -99,7 +102,16 @@ final class GhOrderBoardService
         $pager = $this->pagerMeta($page, $perPage, $total);
 
         $orders = (clone $base)
-            ->with(['customer', 'address.zone', 'zone', 'pickupDriver', 'deliveryDriver', 'invoice'])
+            ->with([
+                'customer',
+                'address.zone',
+                'zone',
+                'pickupDriver',
+                'deliveryDriver',
+                'invoice',
+                'events' => fn ($q) => $q->where('event_type', GhOrderEventType::DELIVERY_READY)
+                    ->orderByDesc('id'),
+            ])
             ->forPage($pager['page'], $perPage)
             ->get();
 
@@ -140,12 +152,13 @@ final class GhOrderBoardService
             $orders = $all->slice(($pager['page'] - 1) * $perPage, $perPage)->values();
         } else {
             $query = match ($tab) {
+                GhOrderBoardTab::ALL_ORDERS => $this->driverAllOrdersQuery($driver),
                 GhOrderBoardTab::LATER => $this->driverLaterQuery($driver),
                 GhOrderBoardTab::PICKUP => $this->workspace->actionablePickupsQuery($driver),
                 GhOrderBoardTab::WORKING => $this->driverWorkingQuery($driver),
                 GhOrderBoardTab::DELIVERY => $this->workspace->actionableDeliveriesQuery($driver),
                 GhOrderBoardTab::COMPLETE => $this->driverCompleteQuery($driver),
-                default => GhOrder::query()->whereRaw('1 = 0'),
+                default => $this->driverAllOrdersQuery($driver),
             };
             $total = (clone $query)->count();
             $pager = $this->pagerMeta($page, $perPage, $total);
@@ -273,12 +286,45 @@ final class GhOrderBoardService
 
         $isDeliveryStage = in_array($order->status, [GhOrderStatus::DELIVERY, GhOrderStatus::COMPLETED], true)
             || $tab === GhOrderBoardTab::DELIVERY;
-        $scheduled = $isDeliveryStage && $order->invoice_issued_at
-            ? $order->invoice_issued_at
-            : $order->pickup_starts_at;
+        $isWorkingStage = ! $isDeliveryStage && $order->status === GhOrderStatus::WORKING;
+        // WORKING cards must not reuse Pickup/Delivery status vocabulary as the schedule kind —
+        // that caused admin/driver operators to confuse schedule context with operational status.
+        $scheduleKind = match (true) {
+            $isDeliveryStage => 'delivery',
+            $isWorkingStage => 'working',
+            default => 'pickup',
+        };
+        $scheduled = match (true) {
+            $isDeliveryStage, $isWorkingStage => $order->scheduled_delivery_at,
+            default => $order->pickup_starts_at,
+        };
+        $deliveryNotScheduled = $order->scheduled_delivery_at === null;
 
-        $overdue = $order->status === GhOrderStatus::PICKUP
-            && ($order->pickup_ends_at?->isPast() || $order->pickup_starts_at?->isPast());
+        $audience = $role === 'driver'
+            ? GhOrderWarningService::AUDIENCE_DRIVER
+            : GhOrderWarningService::AUDIENCE_ADMIN;
+        $warningList = $this->warnings->forOrder($order, $audience);
+        $overdue = collect($warningList)->contains(
+            fn (array $w) => in_array($w['code'], [
+                GhOrderWarningService::CODE_OVERDUE_PICKUP,
+                GhOrderWarningService::CODE_OVERDUE_DELIVERY,
+            ], true)
+        );
+
+        $invoice = $order->invoice;
+        $invoiceStatus = match (true) {
+            $invoice === null && $order->invoice_issued_at === null => 'NONE',
+            $invoice !== null => (string) $invoice->status,
+            default => 'ISSUED',
+        };
+        $deliveryReady = $order->relationLoaded('events')
+            ? $order->events->firstWhere('event_type', GhOrderEventType::DELIVERY_READY)
+            : null;
+        $deliveryTransition = null;
+        if ($deliveryReady !== null) {
+            $payload = is_array($deliveryReady->payload) ? $deliveryReady->payload : [];
+            $deliveryTransition = ($payload['trigger'] ?? null) === 'manual' ? 'manual' : 'automatic';
+        }
 
         $taskType = $tab === GhOrderBoardTab::DELIVERY || $order->status === GhOrderStatus::DELIVERY
             ? 'delivery'
@@ -310,28 +356,71 @@ final class GhOrderBoardService
             default => __('gh.board.execute_pickup'),
         };
 
+        $notScheduledLabel = __('gh.orders.delivery_not_scheduled');
+        $fmt = static function (?Carbon $at, string $empty = '—') use ($tz): array {
+            if ($at === null) {
+                return ['short' => $empty, 'full' => $empty, 'time' => $empty];
+            }
+            $local = $at->timezone($tz);
+
+            return [
+                'short' => $local->format('d/m'),
+                'full' => $local->translatedFormat('d M Y H:i'),
+                'time' => $local->format('H:i'),
+            ];
+        };
+        $created = $fmt($order->created_at ? Carbon::parse($order->created_at, 'UTC') : null);
+        $pickupSched = $fmt($order->pickup_starts_at);
+        $pickupActual = $fmt($order->picked_up_at);
+        $deliverySched = $fmt($order->scheduled_delivery_at, $notScheduledLabel);
+        $stageScheduled = ($isDeliveryStage || $isWorkingStage)
+            ? $fmt($scheduled, $notScheduledLabel)
+            : $fmt($scheduled);
+
         return [
             'id' => (int) $order->id,
             'reference' => (string) $order->reference,
             'sequence' => $sequence,
             'status' => (string) $order->status,
             'status_label' => __('gh.order_status.'.$order->status),
+            'invoice_status' => $invoiceStatus,
+            'invoice_status_label' => $invoiceStatus === 'NONE'
+                ? __('gh.invoice_status_display.NONE')
+                : __('gh.invoice_status.'.$invoiceStatus),
+            'delivery_transition' => $deliveryTransition,
+            'delivery_transition_label' => $deliveryTransition === null
+                ? null
+                : __('gh.board.delivery_transition.'.$deliveryTransition),
             'customer_name' => $order->customer?->localizedName() ?? '—',
+            'customer_phone' => $order->customer?->phone,
             'address_line' => $addressLine,
             // Compact board date (d/m) keeps 4-col cells readable; full date in title/tooltip.
-            'scheduled_date' => $scheduled?->timezone($tz)->format('d/m') ?? '—',
-            'scheduled_date_full' => $scheduled?->timezone($tz)->translatedFormat('d M Y') ?? '—',
-            'scheduled_time' => $scheduled?->timezone($tz)->format('H:i') ?? '—',
-            'schedule_kind' => $isDeliveryStage ? 'delivery' : 'pickup',
+            'scheduled_date' => $stageScheduled['short'],
+            'scheduled_date_full' => $stageScheduled['full'],
+            'scheduled_time' => $stageScheduled['time'],
+            'schedule_kind' => $scheduleKind,
+            'delivery_not_scheduled' => $deliveryNotScheduled,
+            'created_at_short' => $created['short'],
+            'created_at_full' => $created['full'],
+            'pickup_scheduled_full' => $pickupSched['full'],
+            'pickup_actual_full' => $pickupActual['full'],
+            'delivery_scheduled_full' => $deliverySched['full'],
             'order_type' => 'NORMAL',
             'order_type_label' => __('gh.board.order_type.NORMAL'),
             'overdue' => $overdue,
+            'warnings' => $warningList,
             'href' => $href,
             'task_type' => $taskType,
             'maps_url' => $this->mapsUrl($addressLine, $addr?->latitude, $addr?->longitude),
             'pickup_driver' => $order->pickupDriver?->localizedName(),
             'delivery_driver' => $order->deliveryDriver?->localizedName(),
-            'can_edit' => $role === 'admin' && $order->isEditableOperationally(),
+            'needs_delivery_driver' => $role === 'admin'
+                && $order->status === GhOrderStatus::DELIVERY
+                && $order->delivery_driver_id === null,
+            'can_edit' => $role === 'admin' && (
+                $order->isEditableOperationally()
+                || ($order->invoice_issued_at === null && ! GhOrderStatus::isPrePickup($order->status))
+            ),
             'read_only' => $readOnly,
             'can_execute_task' => $canExecuteTask,
             'task_action_label' => $taskActionLabel,
@@ -358,9 +447,18 @@ final class GhOrderBoardService
     private function sortInstant(GhOrder $order, string $tab): int
     {
         $at = match ($tab) {
-            GhOrderBoardTab::DELIVERY, GhOrderBoardTab::COMPLETE => $order->invoice_issued_at ?? $order->delivered_at ?? $order->pickup_starts_at,
+            GhOrderBoardTab::ALL_ORDERS => $order->created_at
+                ? Carbon::parse($order->created_at, 'UTC')
+                : null,
+            GhOrderBoardTab::DELIVERY => $order->scheduled_delivery_at ?? $order->invoice_issued_at ?? $order->pickup_starts_at,
+            GhOrderBoardTab::COMPLETE => $order->delivered_at ?? $order->scheduled_delivery_at ?? $order->pickup_starts_at,
             default => $order->pickup_starts_at,
         };
+
+        // ALL_ORDERS uses DESC; invert timestamp so existing ASC sorter still works for other tabs.
+        if ($tab === GhOrderBoardTab::ALL_ORDERS) {
+            return -1 * ($at?->getTimestamp() ?? 0);
+        }
 
         return $at?->getTimestamp() ?? PHP_INT_MAX;
     }
@@ -374,13 +472,14 @@ final class GhOrderBoardService
         $q = GhOrder::query()->where('status', '!=', GhOrderStatus::CANCELLED);
 
         $q = match ($tab) {
+            GhOrderBoardTab::ALL_ORDERS => $q->orderByDesc('created_at')->orderByDesc('id'),
             GhOrderBoardTab::LATER => $q->where('status', GhOrderStatus::LATER)->orderBy('pickup_starts_at'),
             GhOrderBoardTab::PICKUP => $q->where('status', GhOrderStatus::PICKUP)->orderBy('pickup_starts_at'),
             GhOrderBoardTab::WORKING => $q->where('status', GhOrderStatus::WORKING)->orderByDesc('picked_up_at'),
-            GhOrderBoardTab::DELIVERY => $q->where('status', GhOrderStatus::DELIVERY)->orderByDesc('invoice_issued_at'),
+            GhOrderBoardTab::DELIVERY => $q->where('status', GhOrderStatus::DELIVERY)->orderByDesc('scheduled_delivery_at'),
             GhOrderBoardTab::COMPLETE => $q->where('status', GhOrderStatus::COMPLETED)->orderByDesc('delivered_at'),
             GhOrderBoardTab::ACTIONS => $this->applyAdminActionsFilter($q)->orderBy('pickup_starts_at'),
-            default => $q->where('status', GhOrderStatus::PICKUP)->orderBy('pickup_starts_at'),
+            default => $q->orderByDesc('created_at')->orderByDesc('id'),
         };
 
         return $this->applySharedFilters($q, $filters);
@@ -416,7 +515,61 @@ final class GhOrderBoardService
             $q->where('pickup_driver_id', $pickupDriverId);
         }
 
+        $status = (string) ($filters['status'] ?? '');
+        if (in_array($status, GhOrderStatus::ALL, true)) {
+            $q->where('status', $status);
+        }
+
+        $createdFrom = trim((string) ($filters['created_from'] ?? ''));
+        if ($createdFrom !== '') {
+            $q->where(
+                'created_at',
+                '>=',
+                $this->eligibility->toUtcSql(Carbon::parse($createdFrom, $this->eligibility->timezone())->startOfDay())
+            );
+        }
+
+        $createdTo = trim((string) ($filters['created_to'] ?? ''));
+        if ($createdTo !== '') {
+            $q->where(
+                'created_at',
+                '<=',
+                $this->eligibility->toUtcSql(Carbon::parse($createdTo, $this->eligibility->timezone())->endOfDay())
+            );
+        }
+
+        $pickupFrom = trim((string) ($filters['pickup_from'] ?? ''));
+        if ($pickupFrom !== '') {
+            $q->where(
+                'pickup_starts_at',
+                '>=',
+                $this->eligibility->toUtcSql(Carbon::parse($pickupFrom, $this->eligibility->timezone())->startOfDay())
+            );
+        }
+
+        $pickupTo = trim((string) ($filters['pickup_to'] ?? ''));
+        if ($pickupTo !== '') {
+            $q->where(
+                'pickup_starts_at',
+                '<=',
+                $this->eligibility->toUtcSql(Carbon::parse($pickupTo, $this->eligibility->timezone())->endOfDay())
+            );
+        }
+
         return $q;
+    }
+
+    /** @return Builder<GhOrder> */
+    private function driverAllOrdersQuery(User $driver): Builder
+    {
+        return GhOrder::query()
+            ->where('status', '!=', GhOrderStatus::CANCELLED)
+            ->where(function (Builder $q) use ($driver) {
+                $q->where('pickup_driver_id', $driver->id)
+                    ->orWhere('delivery_driver_id', $driver->id);
+            })
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
     }
 
     /**

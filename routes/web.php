@@ -34,6 +34,8 @@ use App\Http\Controllers\GeneralHouse\CreditNoteController as GhCreditNoteContro
 use App\Http\Controllers\GeneralHouse\CustomerAddressController as GhCustomerAddressController;
 use App\Http\Controllers\GeneralHouse\CustomerController as GhCustomerController;
 use App\Http\Controllers\GeneralHouse\DashboardController as GhDashboardController;
+use App\Http\Controllers\GeneralHouse\DebitAdjustmentController as GhDebitAdjustmentController;
+use App\Http\Controllers\GeneralHouse\DriverCashCustodyController;
 use App\Http\Controllers\GeneralHouse\DriverWorkspaceController as GhDriverWorkspaceController;
 use App\Http\Controllers\GeneralHouse\FinancialCorrectionController as GhFinancialCorrectionController;
 use App\Http\Controllers\GeneralHouse\ImportController as GhImportController;
@@ -244,6 +246,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/orders/{order}/confirm-delivery', [GhOrderLogisticsController::class, 'confirmDelivery'])->name('orders.confirm-delivery');
         Route::post('/orders/{order}/cancel', [GhOrderLogisticsController::class, 'cancel'])->name('orders.cancel');
         Route::post('/orders/{order}/reschedule', [GhOrderLogisticsController::class, 'reschedule'])->name('orders.reschedule');
+        Route::post('/orders/{order}/mark-delivery-ready', [GhOrderLogisticsController::class, 'markDeliveryReady'])->name('orders.mark-delivery-ready');
+        Route::post('/orders/{order}/manual-status', [GhOrderLogisticsController::class, 'manualStatus'])->name('orders.manual-status');
+        Route::post('/orders/{order}/resume-auto-promote', [GhOrderLogisticsController::class, 'resumeAutoPromote'])->name('orders.resume-auto-promote');
         Route::post('/orders/{order}/failed-pickup', [GhOrderLogisticsController::class, 'failedPickup'])->name('orders.failed-pickup');
         Route::post('/orders/{order}/failed-delivery', [GhOrderLogisticsController::class, 'failedDelivery'])->name('orders.failed-delivery');
         Route::post('/orders/{order}/reassign-driver', [GhOrderLogisticsController::class, 'reassignDriver'])->name('orders.reassign-driver');
@@ -262,6 +267,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/invoices/{invoice}/print', [GhInvoiceController::class, 'print'])->name('invoices.print');
 
         // Phase GH-6 — payments (Manager-only; no Gross treasury; no driver finance)
+        Route::get('/driver-cash', [DriverCashCustodyController::class, 'index'])->name('driver-cash.index');
+        Route::get('/driver-cash/{driver}', [DriverCashCustodyController::class, 'show'])->name('driver-cash.show');
+        Route::post('/driver-cash/{driver}/settle', [DriverCashCustodyController::class, 'settle'])->name('driver-cash.settle');
+
         Route::get('/payments', [GhPaymentController::class, 'index'])->name('payments.index');
         Route::post('/invoices/{invoice}/payments/cash', [GhPaymentController::class, 'storeCash'])
             ->middleware('throttle:30,1')
@@ -280,6 +289,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/credit-notes/{creditNote}/reject', [GhCreditNoteController::class, 'reject'])->name('credit-notes.reject');
         Route::post('/credit-notes/{creditNote}/issue', [GhCreditNoteController::class, 'issue'])->name('credit-notes.issue');
         Route::post('/credit-notes/{creditNote}/cancel', [GhCreditNoteController::class, 'cancel'])->name('credit-notes.cancel');
+
+        // Phase 4.1 — debit adjustments (additive corrections on issued invoices)
+        Route::get('/debit-adjustments', [GhDebitAdjustmentController::class, 'index'])->name('debit-adjustments.index');
+        Route::get('/invoices/{invoice}/debit-adjustments/create', [GhDebitAdjustmentController::class, 'create'])->name('debit-adjustments.create');
+        Route::post('/invoices/{invoice}/debit-adjustments', [GhDebitAdjustmentController::class, 'store'])->middleware('throttle:20,1')->name('debit-adjustments.store');
+        Route::get('/debit-adjustments/{debitAdjustment}', [GhDebitAdjustmentController::class, 'show'])->name('debit-adjustments.show');
+        Route::post('/debit-adjustments/{debitAdjustment}/issue', [GhDebitAdjustmentController::class, 'issue'])->middleware('throttle:20,1')->name('debit-adjustments.issue');
+        Route::post('/debit-adjustments/{debitAdjustment}/cancel', [GhDebitAdjustmentController::class, 'cancel'])->name('debit-adjustments.cancel');
 
         Route::get('/refunds', [GhRefundController::class, 'index'])->name('refunds.index');
         Route::get('/invoices/{invoice}/refunds/create', [GhRefundController::class, 'create'])->name('refunds.create');

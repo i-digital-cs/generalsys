@@ -7,13 +7,16 @@ use App\Http\Requests\GeneralHouse\ApproveGhReceivedPricingRequest;
 use App\Http\Requests\GeneralHouse\CancelGhOrderRequest;
 use App\Http\Requests\GeneralHouse\ConfirmGhDeliveryRequest;
 use App\Http\Requests\GeneralHouse\ConfirmGhPickupRequest;
+use App\Http\Requests\GeneralHouse\ManualGhOrderStatusRequest;
 use App\Http\Requests\GeneralHouse\ReassignGhDriverRequest;
 use App\Http\Requests\GeneralHouse\RecordGhAttemptRequest;
 use App\Http\Requests\GeneralHouse\RescheduleGhOrderRequest;
+use App\Http\Requests\GeneralHouse\ResumeGhAutoPromoteRequest;
 use App\Http\Requests\GeneralHouse\SyncGhReceivedLinesRequest;
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\GeneralHouse\GhOrderReceivedLine;
 use App\Services\GeneralHouse\Orders\GhOrderAssignmentService;
+use App\Services\GeneralHouse\Orders\GhOrderManualTransitionService;
 use App\Services\GeneralHouse\Orders\GhOrderService;
 use App\Services\GeneralHouse\Orders\GhOrderStateService;
 use App\Services\GeneralHouse\Orders\GhReceivedItemService;
@@ -21,6 +24,7 @@ use App\Services\GeneralHouse\Orders\GhReceivedPricingReviewService;
 use App\Services\GeneralHouse\Payments\GhDriverDeliveryPaymentService;
 use App\Support\GeneralHouse\GhAssignmentResponsibility;
 use App\Support\GeneralHouse\GhOrderAccess;
+use App\Support\GeneralHouse\GhOrderBoardTab;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +38,7 @@ class OrderLogisticsController extends Controller
         private readonly GhReceivedPricingReviewService $pricingReviews,
         private readonly GhReceivedItemService $receivedItems,
         private readonly GhDriverDeliveryPaymentService $driverPayments,
+        private readonly GhOrderManualTransitionService $manualTransitions,
     ) {}
 
     public function confirmPickup(ConfirmGhPickupRequest $request, GhOrder $order): RedirectResponse
@@ -81,6 +86,37 @@ class OrderLogisticsController extends Controller
             ->with('success', __('gh.flash.order_rescheduled'));
     }
 
+    public function markDeliveryReady(Request $request, GhOrder $order): RedirectResponse
+    {
+        if (! GhOrderAccess::mayManage($request->user())) {
+            abort(403);
+        }
+
+        $this->states->markDeliveryReady($order, $request->user());
+
+        return redirect()
+            ->route('gh.orders.show', $order)
+            ->with('success', __('gh.flash.delivery_ready'));
+    }
+
+    public function manualStatus(ManualGhOrderStatusRequest $request, GhOrder $order): RedirectResponse
+    {
+        $this->manualTransitions->transition($order, $request->user(), $request->validated());
+
+        return redirect()
+            ->route('gh.orders.show', $order)
+            ->with('success', __('gh.flash.manual_status_updated'));
+    }
+
+    public function resumeAutoPromote(ResumeGhAutoPromoteRequest $request, GhOrder $order): RedirectResponse
+    {
+        $this->manualTransitions->resumeAutoPromote($order, $request->user(), $request->validated());
+
+        return redirect()
+            ->route('gh.orders.show', $order)
+            ->with('success', __('gh.flash.auto_promote_resumed'));
+    }
+
     public function failedPickup(RecordGhAttemptRequest $request, GhOrder $order): RedirectResponse
     {
         if (! GhOrderAccess::mayRecordPickupAttempt($request->user(), $order)) {
@@ -103,13 +139,17 @@ class OrderLogisticsController extends Controller
             ->with('success', __('gh.flash.delivery_failed_recorded'));
     }
 
+    /**
+     * Drivers return to the workspace list (not the completed task detail).
+     * Managers stay on the order detail for follow-up actions.
+     */
     private function redirectAfterDriverAction(Request $request, GhOrder $order, string $taskType): RedirectResponse
     {
         $user = $request->user();
         if ($user !== null && $user->isDriver()) {
-            $route = $taskType === 'delivery' ? 'gh.driver.delivery' : 'gh.driver.pickup';
+            $tab = $taskType === 'delivery' ? GhOrderBoardTab::DELIVERY : GhOrderBoardTab::PICKUP;
 
-            return redirect()->route($route, $order);
+            return redirect()->route('gh.driver.dashboard', ['tab' => $tab]);
         }
 
         return redirect()->route('gh.orders.show', $order);

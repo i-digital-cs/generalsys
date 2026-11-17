@@ -6,20 +6,33 @@
     <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
         <div>
             <h1 class="h4 mb-1">{{ $order->reference }}</h1>
-            <p class="text-body-secondary small mb-0">
-                <span class="badge text-bg-primary">{{ __('gh.order_status.'.$order->status) }}</span>
-                · {{ $order->customer?->localizedName() }}
+            <p class="text-body-secondary small mb-0 d-flex flex-wrap align-items-center gap-1">
+                @include('gh.partials.order-status-badge', ['status' => $order->status])
+                @include('gh.partials.order-warning-badges', ['warnings' => $warnings ?? []])
+                @php
+                    $invoiceStatusKey = $order->invoice
+                        ? (string) $order->invoice->status
+                        : ($order->invoice_issued_at ? 'ISSUED' : 'NONE');
+                @endphp
+                <span class="badge text-bg-secondary">{{ $invoiceStatusKey === 'NONE' ? __('gh.invoice_status_display.NONE') : __('gh.invoice_status.'.$invoiceStatusKey) }}</span>
+                <span>· {{ $order->customer?->localizedName() }}</span>
             </p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             @can('update', $order)
                 <a href="{{ route('gh.orders.edit', $order) }}" class="btn btn-outline-primary btn-sm">{{ __('general.edit') }}</a>
             @endcan
-            @if ($order->status === \App\Support\GeneralHouse\GhOrderStatus::WORKING)
+            @if (in_array($order->status, [\App\Support\GeneralHouse\GhOrderStatus::WORKING, \App\Support\GeneralHouse\GhOrderStatus::DELIVERY, \App\Support\GeneralHouse\GhOrderStatus::COMPLETED], true))
                 @can('create', \App\Models\GeneralHouse\GhInvoice::class)
                     @if ($order->invoice)
-                        <a href="{{ route('gh.invoices.builder', $order->invoice) }}" class="btn btn-primary btn-sm">{{ __('gh.invoices.builder') }}</a>
-                    @else
+                        @if ($order->invoice->status === \App\Support\GeneralHouse\GhInvoiceStatus::DRAFT)
+                            <a href="{{ route('gh.invoices.builder', $order->invoice) }}" class="btn btn-primary btn-sm">{{ __('gh.invoices.builder') }}</a>
+                        @else
+                            @can('view', $order->invoice)
+                                <a href="{{ route('gh.invoices.show', $order->invoice) }}" class="btn btn-outline-primary btn-sm">{{ __('gh.invoices.view') }}</a>
+                            @endcan
+                        @endif
+                    @elseif ($order->picked_up_at !== null && $order->invoice_issued_at === null)
                         <form method="post" action="{{ route('gh.invoices.create-from-order', $order) }}" class="d-inline">
                             @csrf
                             <button type="submit" class="btn btn-primary btn-sm">{{ __('gh.invoices.create_draft') }}</button>
@@ -61,9 +74,33 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.orders.scheduled_pickup') }}</h2></div>
                 <div class="card-body small">
-                    <div class="mb-2 num-ltr hp-value">
-                        {{ $order->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}
-                        ({{ $displayTz }})
+                    <div class="mb-2">
+                        <span class="form-label d-block mb-0">{{ __('gh.orders.created_at') }}</span>
+                        <span class="num-ltr hp-value">{{ $order->created_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="form-label d-block mb-0">{{ __('gh.orders.scheduled_pickup') }}</span>
+                        <span class="num-ltr hp-value">
+                            {{ $order->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}
+                            ({{ $displayTz }})
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="form-label d-block mb-0">{{ __('gh.orders.actual_pickup') }}</span>
+                        <span class="num-ltr hp-value">
+                            {{ $order->picked_up_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') ?? '—' }}
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="form-label d-block mb-0">{{ __('gh.orders.scheduled_delivery') }}</span>
+                        <span class="num-ltr hp-value">
+                            @if ($order->scheduled_delivery_at)
+                                {{ $order->scheduled_delivery_at->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}
+                                ({{ $displayTz }})
+                            @else
+                                {{ __('gh.orders.delivery_not_scheduled') }}
+                            @endif
+                        </span>
                     </div>
                     <div class="mb-2">
                         <span class="form-label d-block mb-0">{{ __('gh.orders.eligibility') }}</span>
@@ -73,9 +110,21 @@
                             </span>
                         @elseif ($order->status === \App\Support\GeneralHouse\GhOrderStatus::PICKUP)
                             <span class="badge text-bg-success">{{ __('gh.orders.in_pickup') }}</span>
+                        @elseif ($order->status === \App\Support\GeneralHouse\GhOrderStatus::WORKING)
+                            @if ($order->auto_promote_held)
+                                <span class="badge text-bg-warning">{{ __('gh.orders.auto_promote_held_title') }}</span>
+                                <div class="form-text mb-0">{{ __('gh.orders.auto_promote_held_hint') }}</div>
+                            @elseif ($order->scheduled_delivery_at === null)
+                                <span class="badge text-bg-secondary">{{ __('gh.orders.delivery_not_scheduled') }}</span>
+                                <div class="form-text mb-0">{{ __('gh.orders.delivery_not_scheduled_working_hint') }}</div>
+                            @else
+                                <span class="badge text-bg-info">{{ __('gh.orders.delivery_timing_pending') }}</span>
+                                <div class="form-text mb-0">{{ __('gh.orders.delivery_awaiting_schedule') }}</div>
+                            @endif
                         @else
                             <span class="badge text-bg-light">{{ __('gh.order_status.'.$order->status) }}</span>
                         @endif
+                        <div class="form-text mb-0">{{ __('gh.orders.status_ssot_hint') }}</div>
                     </div>
                     <div class="mb-2"><span class="form-label d-block mb-0">{{ __('gh.orders.pickup_driver') }}</span>
                         @if ($order->pickupDriver)
@@ -88,11 +137,14 @@
                         @if ($order->deliveryDriver)
                             <span class="hp-value">{{ $order->deliveryDriver->localizedName() }}</span>
                         @else
-                            <span class="badge text-bg-warning">{{ __('gh.orders.not_assigned') }}</span>
+                            <span class="badge text-bg-warning">{{ __('gh.orders.unassigned') }}</span>
                         @endif
                     </div>
                     @if ($order->status === \App\Support\GeneralHouse\GhOrderStatus::DELIVERY && $order->delivery_driver_id === null)
-                        <div class="alert alert-warning py-2 small mb-0" role="status">{{ __('gh.orders.delivery_unassigned_hint') }}</div>
+                        <div class="alert alert-warning py-2 small mb-0" role="status">
+                            <strong>{{ __('gh.warnings.needs_delivery_driver') }}</strong>
+                            — {{ __('gh.orders.delivery_unassigned_hint') }}
+                        </div>
                     @endif
                     @if ($order->scheduling_notes)
                         <div class="mb-2"><span class="form-label d-block mb-0">{{ __('gh.orders.scheduling_notes') }}</span>{{ $order->scheduling_notes }}</div>

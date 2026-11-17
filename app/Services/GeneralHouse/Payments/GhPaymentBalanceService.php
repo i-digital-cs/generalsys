@@ -3,11 +3,13 @@
 namespace App\Services\GeneralHouse\Payments;
 
 use App\Models\GeneralHouse\GhCreditNote;
+use App\Models\GeneralHouse\GhDebitAdjustment;
 use App\Models\GeneralHouse\GhFinancialCorrection;
 use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhPayment;
 use App\Models\GeneralHouse\GhRefund;
 use App\Support\GeneralHouse\GhCreditNoteStatus;
+use App\Support\GeneralHouse\GhDebitAdjustmentStatus;
 use App\Support\GeneralHouse\GhFinancialCorrectionStatus;
 use App\Support\GeneralHouse\GhFinancialCorrectionType;
 use App\Support\GeneralHouse\GhInvoicePaymentStatus;
@@ -19,6 +21,9 @@ use App\Support\GeneralHouse\GhRefundStatus;
  * Single source of truth for GH invoice payment / correction balances.
  * Controllers / Blade / JS are consumers only.
  *
+ * Equation: net = max(0, invoice_total + debits_issued − credits_issued)
+ * remaining_due = max(0, net − cash_net)
+ *
  * @see docs/general-house/GH10_BALANCE_INVARIANTS.md
  */
 class GhPaymentBalanceService
@@ -26,6 +31,7 @@ class GhPaymentBalanceService
     /**
      * @return array{
      *   invoice_total: string,
+     *   debits_issued: string,
      *   credits_issued: string,
      *   net_invoiced: string,
      *   confirmed_total: string,
@@ -46,8 +52,9 @@ class GhPaymentBalanceService
     public function forInvoice(GhInvoice $invoice): array
     {
         $gross = GhMoney::of((string) $invoice->total_payable);
+        $debits = $this->sumIssuedDebits($invoice->id);
         $credits = $this->sumIssuedCredits($invoice->id);
-        $net = GhMoney::of(GhMoney::sub($gross, $credits));
+        $net = GhMoney::of(GhMoney::sub(GhMoney::add($gross, $debits), $credits));
         if (GhMoney::cmp($net, '0') < 0) {
             $net = '0.00';
         }
@@ -82,6 +89,7 @@ class GhPaymentBalanceService
 
         return [
             'invoice_total' => $gross,
+            'debits_issued' => $debits,
             'credits_issued' => $credits,
             'net_invoiced' => $net,
             'confirmed_total' => $confirmed,
@@ -137,6 +145,16 @@ class GhPaymentBalanceService
             ->where('invoice_id', $invoiceId)
             ->where('status', GhCreditNoteStatus::ISSUED)
             ->sum('total_credit');
+
+        return GhMoney::of((string) $raw);
+    }
+
+    public function sumIssuedDebits(int $invoiceId): string
+    {
+        $raw = GhDebitAdjustment::query()
+            ->where('invoice_id', $invoiceId)
+            ->where('status', GhDebitAdjustmentStatus::ISSUED)
+            ->sum('total_debit');
 
         return GhMoney::of((string) $raw);
     }

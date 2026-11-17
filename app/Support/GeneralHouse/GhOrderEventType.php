@@ -16,6 +16,12 @@ final class GhOrderEventType
 
     public const STATUS_CHANGED = 'STATUS_CHANGED';
 
+    /** Management correction (forward/backward); payload.source = MANUAL. */
+    public const MANUAL_STATUS_TRANSITION = 'MANUAL_STATUS_TRANSITION';
+
+    /** Manager cleared auto_promote_held so scheduler may promote again. */
+    public const AUTO_PROMOTE_RESUMED = 'AUTO_PROMOTE_RESUMED';
+
     public const PICKUP_WINDOW_CHANGED = 'PICKUP_WINDOW_CHANGED';
 
     public const PICKUP_PROMOTED = 'PICKUP_PROMOTED';
@@ -25,6 +31,8 @@ final class GhOrderEventType
     public const DELIVERY_READY = 'DELIVERY_READY';
 
     public const DELIVERY_CONFIRMED = 'DELIVERY_CONFIRMED';
+
+    public const INVOICE_ISSUED = 'INVOICE_ISSUED';
 
     public const ORDER_CANCELLED = 'ORDER_CANCELLED';
 

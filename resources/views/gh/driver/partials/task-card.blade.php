@@ -54,7 +54,7 @@
                     @if ($informational)
                         <span class="badge text-bg-secondary">{{ __('gh.driver.not_yet_visible') }}</span>
                     @endif
-                    <span class="badge text-bg-primary">{{ __('gh.order_status.'.$order->status) }}</span>
+                    @include('gh.partials.order-status-badge', ['status' => $order->status])
                 </span>
             </div>
             <div class="small text-body-secondary mb-1">{{ __('gh.driver.task_'.$taskType) }}</div>

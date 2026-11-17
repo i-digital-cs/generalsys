@@ -143,7 +143,7 @@ class EmployeePhotoTest extends TestCase
 
         $this->actingAs($this->manager)
             ->put(route('admin.employees.update', $employee), $payload)
-            ->assertRedirect(route('admin.employees.edit', $employee));
+            ->assertRedirect(route('admin.employees.index'));
 
         $path = $employee->profile()->firstOrFail()->personal_photo_path;
         $this->assertNotNull($path);

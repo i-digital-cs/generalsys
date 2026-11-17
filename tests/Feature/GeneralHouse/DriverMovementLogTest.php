@@ -42,6 +42,9 @@ class DriverMovementLogTest extends TestCase
             'status' => GhOrderStatus::COMPLETED,
             'pickup_driver_id' => $driver->id,
             'delivery_driver_id' => $driver->id,
+            // Explicit past schedule so chronological sort is wall-clock independent.
+            'pickup_starts_at' => Carbon::now('UTC')->subHours(6),
+            'pickup_ends_at' => Carbon::now('UTC')->subHours(5),
             'picked_up_at' => Carbon::now('UTC')->subHours(5),
             'delivered_at' => Carbon::now('UTC')->subHour(),
             'invoice_issued_at' => Carbon::now('UTC')->subHours(2),

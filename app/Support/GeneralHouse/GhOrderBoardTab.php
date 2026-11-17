@@ -10,6 +10,9 @@ namespace App\Support\GeneralHouse;
  */
 final class GhOrderBoardTab
 {
+    /** Default list: all non-cancelled authorized orders, newest first. */
+    public const ALL_ORDERS = 'all';
+
     public const LATER = 'later';
 
     public const ACTIONS = 'actions';
@@ -24,6 +27,7 @@ final class GhOrderBoardTab
 
     /** @var list<string> */
     public const ALL = [
+        self::ALL_ORDERS,
         self::LATER,
         self::ACTIONS,
         self::PICKUP,
@@ -41,6 +45,6 @@ final class GhOrderBoardTab
     {
         $tab = strtolower(trim((string) $tab));
 
-        return self::isValid($tab) ? $tab : self::PICKUP;
+        return self::isValid($tab) ? $tab : self::ALL_ORDERS;
     }
 }

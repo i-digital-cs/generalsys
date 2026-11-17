@@ -46,6 +46,7 @@ class ScheduledPickupTest extends TestCase
             'address_id' => $address->id,
             'lines' => [['offering_id' => $offering->id, 'quantity' => 1]],
             'scheduled_pickup_at' => '2026-11-03T15:30',
+            'scheduled_delivery_at' => '2026-11-03 16:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect()->assertSessionDoesntHaveErrors();
 
@@ -66,6 +67,7 @@ class ScheduledPickupTest extends TestCase
             'address_id' => $address->id,
             'lines' => [['offering_id' => $offering->id, 'quantity' => 1]],
             'scheduled_pickup_at' => '2026-11-02T10:00',
+            'scheduled_delivery_at' => '2026-11-02 18:00',
             'pickup_driver_id' => $driver->id,
         ])->assertSessionDoesntHaveErrors(['pickup_window_end', 'scheduled_pickup_at']);
         Carbon::setTestNow();
@@ -81,6 +83,7 @@ class ScheduledPickupTest extends TestCase
             'address_id' => $address->id,
             'lines' => [['offering_id' => $offering->id, 'quantity' => 1]],
             'scheduled_pickup_at' => '2026-11-07T12:00',
+            'scheduled_delivery_at' => '2026-11-07 18:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect();
         $this->assertSame(GhOrderStatus::LATER, GhOrder::query()->latest('id')->firstOrFail()->status);
@@ -90,6 +93,7 @@ class ScheduledPickupTest extends TestCase
             'address_id' => $address->id,
             'lines' => [['offering_id' => $offering->id, 'quantity' => 1]],
             'scheduled_pickup_at' => '2026-11-06T11:00',
+            'scheduled_delivery_at' => '2026-11-06 18:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect();
         $this->assertSame(GhOrderStatus::PICKUP, GhOrder::query()->latest('id')->firstOrFail()->status);
@@ -113,6 +117,7 @@ class ScheduledPickupTest extends TestCase
             'address_id' => $address->id,
             'lines' => [['offering_id' => $offering->id, 'quantity' => 1]],
             'scheduled_pickup_at' => '2026-11-10 10:00',
+            'scheduled_delivery_at' => '2026-11-10 18:00',
             'pickup_driver_id' => $driver->id,
         ], $manager);
 

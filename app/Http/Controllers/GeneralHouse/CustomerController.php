@@ -61,7 +61,7 @@ class CustomerController extends Controller
         $customer = $this->customers->create($request->validated());
 
         return redirect()
-            ->route('gh.customers.show', $customer)
+            ->route('gh.customers.index')
             ->with('success', __('gh.flash.customer_created'));
     }
 
@@ -89,7 +89,7 @@ class CustomerController extends Controller
         $this->customers->update($customer, $request->validated());
 
         return redirect()
-            ->route('gh.customers.show', $customer)
+            ->route('gh.customers.index')
             ->with('success', __('gh.flash.customer_updated'));
     }
 

@@ -96,7 +96,8 @@ class InvoiceMinOrderTaxUxTest extends TestCase
                 (int) $ctx['invoice']->draft_version
             );
             $this->assertSame('0.00', (string) $issued->min_order_adjustment_amount);
-            $this->assertSame(GhOrderStatus::DELIVERY, $ctx['order']->fresh()->status);
+            $this->assertNotNull($ctx['order']->fresh()->invoice_issued_at);
+            $this->assertContains($ctx['order']->fresh()->status, [GhOrderStatus::WORKING, GhOrderStatus::DELIVERY]);
         } else {
             $this->expectException(ValidationException::class);
             app(GhInvoiceIssuanceService::class)->issue(
@@ -128,7 +129,8 @@ class InvoiceMinOrderTaxUxTest extends TestCase
             $manager,
             (int) $ctx['invoice']->draft_version
         );
-        $this->assertSame(GhOrderStatus::DELIVERY, $ctx['order']->fresh()->status);
+        $this->assertNotNull($ctx['order']->fresh()->invoice_issued_at);
+        $this->assertContains($ctx['order']->fresh()->status, [GhOrderStatus::WORKING, GhOrderStatus::DELIVERY]);
         $this->assertSame('0.00', (string) $issued->min_order_adjustment_amount);
         $this->assertSame(0, GhMinOrderOverride::query()->where('invoice_id', $issued->id)->count());
     }

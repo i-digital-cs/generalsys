@@ -46,7 +46,7 @@ class CustomerController extends Controller
         $customer = $this->customers->create($request->validated());
 
         return redirect()
-            ->route('gross.customers.show', $customer)
+            ->route('gross.customers.index')
             ->with('success', __('gross.flash.customer_created'));
     }
 

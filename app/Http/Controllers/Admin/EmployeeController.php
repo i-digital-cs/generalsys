@@ -54,7 +54,7 @@ class EmployeeController extends Controller
         $employee = $this->employees->create($request->validated(), $request->file('photo'), $request->user());
 
         return redirect()
-            ->route('admin.employees.edit', $employee)
+            ->route('admin.employees.index')
             ->with('success', __('employees.flash.created'));
     }
 
@@ -80,7 +80,7 @@ class EmployeeController extends Controller
         $this->employees->update($employee, $request->validated(), $request->file('photo'), $request->user());
 
         return redirect()
-            ->route('admin.employees.edit', $employee)
+            ->route('admin.employees.index')
             ->with('success', __('employees.flash.updated'));
     }
 

@@ -26,6 +26,7 @@ class GhOrderService
     public function __construct(
         private readonly GhOrderReferenceService $references,
         private readonly GhPickupEligibilityService $eligibility,
+        private readonly GhDeliveryEligibilityService $deliveryEligibility,
         private readonly GhPricingResolver $pricing,
         private readonly GhCustomerService $customers,
         private readonly GhCustomerAddressService $addresses,
@@ -52,8 +53,8 @@ class GhOrderService
     {
         $perPage = max(1, min(50, $perPage));
         $q = GhOrder::query()
-            ->with(['customer', 'zone', 'pickupDriver', 'deliveryDriver', 'address'])
-            ->orderByDesc('pickup_starts_at')
+            ->with(['customer', 'zone', 'pickupDriver', 'deliveryDriver', 'address', 'invoice'])
+            ->orderByDesc('created_at')
             ->orderByDesc('id');
 
         $refOnly = trim((string) ($filters['reference'] ?? ''));
@@ -129,11 +130,15 @@ class GhOrderService
             $customer = $this->resolveCustomer($data);
             $address = $this->resolveAddress($customer, $data);
             $window = $this->parsePickupWindow($data);
+            $scheduledDelivery = $this->parseScheduledDelivery($data, $window['starts_at'], $window['timezone'], required: true);
             $linesInput = $this->normalizeLines($data['lines'] ?? []);
 
             $pickupDriverId = (int) ($data['pickup_driver_id'] ?? 0);
             $this->drivers->assertEligible($pickupDriverId, 'pickup_driver_id');
-            $deliveryDriverId = isset($data['delivery_driver_id']) && $data['delivery_driver_id'] !== '' && $data['delivery_driver_id'] !== null
+            // Omitted or empty delivery driver → stay unassigned (never copy pickup driver).
+            $deliveryDriverId = array_key_exists('delivery_driver_id', $data)
+                && $data['delivery_driver_id'] !== ''
+                && $data['delivery_driver_id'] !== null
                 ? (int) $data['delivery_driver_id']
                 : null;
             $this->drivers->assertOptionalEligible($deliveryDriverId, 'delivery_driver_id');
@@ -162,6 +167,7 @@ class GhOrderService
                 'status' => $status,
                 'pickup_starts_at' => $window['starts_at'],
                 'pickup_ends_at' => $window['ends_at'],
+                'scheduled_delivery_at' => $scheduledDelivery,
                 'timezone' => $window['timezone'],
                 'notes' => $data['notes'] ?? null,
                 'scheduling_notes' => $data['scheduling_notes'] ?? null,
@@ -219,14 +225,11 @@ class GhOrderService
             $customer = $order->customer()->firstOrFail();
             $address = $this->resolveAddressForUpdate($order, $customer, $data);
             $window = $this->parsePickupWindow($data);
+            $scheduledDelivery = $this->parseScheduledDelivery($data, $window['starts_at'], $window['timezone'], required: true);
             $linesInput = $this->normalizeLines($data['lines'] ?? []);
 
             $pickupDriverId = (int) ($data['pickup_driver_id'] ?? 0);
             $this->drivers->assertEligible($pickupDriverId, 'pickup_driver_id');
-            $deliveryDriverId = isset($data['delivery_driver_id']) && $data['delivery_driver_id'] !== '' && $data['delivery_driver_id'] !== null
-                ? (int) $data['delivery_driver_id']
-                : null;
-            $this->drivers->assertOptionalEligible($deliveryDriverId, 'delivery_driver_id');
 
             $contract = $customer->type === GhCustomerType::B2B
                 ? $this->pricing->activeContractFor($customer, $window['starts_at'])
@@ -250,6 +253,7 @@ class GhOrderService
                 'contract_id' => $contract?->id,
                 'pickup_starts_at' => $window['starts_at'],
                 'pickup_ends_at' => $window['ends_at'],
+                'scheduled_delivery_at' => $scheduledDelivery,
                 'timezone' => $window['timezone'],
                 'notes' => $data['notes'] ?? null,
                 'scheduling_notes' => $data['scheduling_notes'] ?? null,
@@ -282,16 +286,23 @@ class GhOrderService
 
             $this->states->reevaluatePrePickupStatus($order->fresh(), $actor);
             $this->assignments->assignPickup($order, $pickupDriverId, $actor);
-            $this->assignments->assignDelivery($order, $deliveryDriverId, $actor);
+            // Explicit key only: omitted preserves assignment; empty string clears (Unassigned).
+            if (array_key_exists('delivery_driver_id', $data)) {
+                $deliveryDriverId = $data['delivery_driver_id'] !== '' && $data['delivery_driver_id'] !== null
+                    ? (int) $data['delivery_driver_id']
+                    : null;
+                $this->drivers->assertOptionalEligible($deliveryDriverId, 'delivery_driver_id');
+                $this->assignments->assignDelivery($order, $deliveryDriverId, $actor);
+            }
 
             return $order->fresh(['customer', 'address', 'zone', 'lines', 'pickupDriver', 'deliveryDriver', 'events']);
         });
     }
 
     /**
-     * Restricted post-pickup update: notes + delivery driver only.
+     * Restricted post-pickup update: notes + delivery driver + optional delivery appointment.
      *
-     * @param  array{notes?: ?string, scheduling_notes?: ?string, delivery_driver_id?: int|string|null}  $data
+     * @param  array{notes?: ?string, scheduling_notes?: ?string, delivery_driver_id?: int|string|null, scheduled_delivery_at?: string|null, scheduled_delivery_date?: string|null}  $data
      */
     public function updateRestricted(GhOrder $order, array $data, User $actor): GhOrder
     {
@@ -310,6 +321,25 @@ class GhOrderService
         return DB::transaction(function () use ($order, $data, $actor) {
             $order = GhOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
+            $fields = ['notes', 'delivery_driver'];
+            $deliveryChanged = false;
+
+            if (array_key_exists('scheduled_delivery_at', $data) || array_key_exists('scheduled_delivery_date', $data)) {
+                $scheduledDelivery = $this->parseScheduledDelivery(
+                    $data,
+                    $order->pickup_starts_at,
+                    (string) ($order->timezone ?: $this->eligibility->timezone()),
+                );
+                $before = $order->scheduled_delivery_at;
+                $deliveryChanged = ($before === null) !== ($scheduledDelivery === null)
+                    || ($before !== null && $scheduledDelivery !== null && ! $before->equalTo($scheduledDelivery));
+
+                $order->forceFill([
+                    'scheduled_delivery_at' => $scheduledDelivery,
+                ]);
+                $fields[] = 'scheduled_delivery_at';
+            }
+
             $order->forceFill([
                 'notes' => array_key_exists('notes', $data) ? $data['notes'] : $order->notes,
                 'scheduling_notes' => array_key_exists('scheduling_notes', $data)
@@ -327,11 +357,19 @@ class GhOrderService
             }
 
             $this->events->record($order, GhOrderEventType::ORDER_UPDATED, $actor, null, null, [
-                'fields' => ['notes', 'delivery_driver'],
+                'fields' => $fields,
                 'mode' => 'restricted_post_pickup',
+                'scheduled_delivery_at' => $order->scheduled_delivery_at?->toIso8601String(),
             ]);
 
-            return $order->fresh(['customer', 'address', 'zone', 'lines', 'pickupDriver', 'deliveryDriver', 'events']);
+            $fresh = $order->fresh(['customer', 'address', 'zone', 'lines', 'pickupDriver', 'deliveryDriver', 'events']);
+            if ($deliveryChanged && $fresh !== null) {
+                // Recalculate automatic eligibility without inventing a schedule.
+                $this->states->promoteOneToDelivery($fresh, $actor, 'schedule_reevaluation');
+            }
+
+            return $fresh?->fresh(['customer', 'address', 'zone', 'lines', 'pickupDriver', 'deliveryDriver', 'events'])
+                ?? $order->fresh(['customer', 'address', 'zone', 'lines', 'pickupDriver', 'deliveryDriver', 'events']);
         });
     }
 
@@ -348,6 +386,71 @@ class GhOrderService
                 'order' => [__('gh.errors.order_locked_after_pickup')],
             ]);
         }
+    }
+
+    /**
+     * Resolve scheduled delivery appointment (local date+time → UTC).
+     * Never invents a same-day default or a time.
+     * When $required is true (create / full edit), empty input is rejected.
+     * When false (restricted post-pickup notes), empty → null for legacy orders.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function parseScheduledDelivery(array $data, Carbon $pickupStartsAt, string $timezone, bool $required = false): ?Carbon
+    {
+        $tz = $this->deliveryEligibility->displayTimezone($timezone);
+        $rawDate = trim((string) ($data['scheduled_delivery_date'] ?? ''));
+        $rawTime = trim((string) ($data['scheduled_delivery_time'] ?? ''));
+        $rawAt = trim((string) ($data['scheduled_delivery_at'] ?? ''));
+
+        if ($rawAt !== '') {
+            $rawAt = str_replace('T', ' ', $rawAt);
+            if (preg_match('/^(\d{4}-\d{2}-\d{2})[ ](\d{2}:\d{2})/', $rawAt, $m)) {
+                $rawDate = $m[1];
+                $rawTime = $m[2];
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawAt)) {
+                throw ValidationException::withMessages([
+                    'scheduled_delivery_at' => [__('gh.errors.delivery_time_required')],
+                ]);
+            } else {
+                throw ValidationException::withMessages([
+                    'scheduled_delivery_at' => [__('gh.errors.delivery_date_invalid')],
+                ]);
+            }
+        }
+
+        if ($rawDate === '' && $rawTime === '') {
+            if ($required) {
+                throw ValidationException::withMessages([
+                    'scheduled_delivery_at' => [__('gh.errors.delivery_schedule_required_on_create')],
+                ]);
+            }
+
+            return null;
+        }
+
+        if ($rawDate === '' || $rawTime === '') {
+            throw ValidationException::withMessages([
+                'scheduled_delivery_at' => [$required
+                    ? __('gh.errors.delivery_schedule_required_on_create')
+                    : __('gh.errors.delivery_appointment_incomplete')],
+            ]);
+        }
+
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate) || ! preg_match('/^\d{2}:\d{2}$/', $rawTime)) {
+            throw ValidationException::withMessages([
+                'scheduled_delivery_at' => [__('gh.errors.delivery_date_invalid')],
+            ]);
+        }
+
+        $pickupDay = $pickupStartsAt->copy()->timezone($tz)->toDateString();
+        if ($rawDate < $pickupDay) {
+            throw ValidationException::withMessages([
+                'scheduled_delivery_at' => [__('gh.errors.delivery_before_pickup')],
+            ]);
+        }
+
+        return $this->deliveryEligibility->scheduledDeliveryFromLocal($rawDate, $rawTime, $timezone);
     }
 
     /**

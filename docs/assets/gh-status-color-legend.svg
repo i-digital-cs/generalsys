@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="220" viewBox="0 0 720 220" role="img" aria-label="GH order status color legend">
+  <rect width="720" height="220" fill="#F8F7EF"/>
+  <text x="24" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#101044">GH Order Status Colors</text>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">
+    <rect x="24" y="60" width="100" height="32" rx="8" fill="#e5e7eb" stroke="#d1d5db"/>
+    <text x="74" y="81" text-anchor="middle" fill="#1f2937">LATER</text>
+    <rect x="136" y="60" width="100" height="32" rx="8" fill="#dbeafe" stroke="#93c5fd"/>
+    <text x="186" y="81" text-anchor="middle" fill="#1e3a8a">PICKUP</text>
+    <rect x="248" y="60" width="100" height="32" rx="8" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="298" y="81" text-anchor="middle" fill="#78350f">WORKING</text>
+    <rect x="360" y="60" width="100" height="32" rx="8" fill="#ede9fe" stroke="#c4b5fd"/>
+    <text x="410" y="81" text-anchor="middle" fill="#4c1d95">DELIVERY</text>
+    <rect x="472" y="60" width="110" height="32" rx="8" fill="#dcfce7" stroke="#86efac"/>
+    <text x="527" y="81" text-anchor="middle" fill="#14532d">COMPLETED</text>
+    <rect x="594" y="60" width="102" height="32" rx="8" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="645" y="81" text-anchor="middle" fill="#7f1d1d">CANCELLED</text>
+  </g>
+  <text x="24" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#374151">AR labels: D'-B'K / '3*D'E / BJ/ 'D9ED / *H5JD / EC*ED / ED:I (via lang keys)</text>
+  <text x="24" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#6b7280">Gray · Blue · Amber · Purple · Green · Red  accessible soft fills with dark text</text>
+  <text x="24" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#6b7280">Applied on driver dashboard cards, pickup/delivery workspace, board order cards</text>
+</svg>

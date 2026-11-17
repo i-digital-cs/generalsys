@@ -38,10 +38,13 @@ class GhOrder extends Model
             // Operational instants: UTC via GhUtcDateTime (not app.timezone).
             'pickup_starts_at' => GhUtcDateTime::class,
             'pickup_ends_at' => GhUtcDateTime::class,
+            'scheduled_delivery_at' => GhUtcDateTime::class,
             'picked_up_at' => GhUtcDateTime::class,
             'invoice_issued_at' => GhUtcDateTime::class,
             'delivered_at' => GhUtcDateTime::class,
             'cancelled_at' => GhUtcDateTime::class,
+            'auto_promote_held' => 'boolean',
+            'auto_promote_held_at' => GhUtcDateTime::class,
             'estimated_subtotal' => 'decimal:2',
             'customer_id' => 'integer',
             'address_id' => 'integer',
@@ -52,6 +55,7 @@ class GhOrder extends Model
             'pickup_confirmed_by' => 'integer',
             'delivered_by' => 'integer',
             'cancelled_by' => 'integer',
+            'auto_promote_held_by' => 'integer',
         ];
     }
 

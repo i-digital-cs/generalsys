@@ -86,6 +86,11 @@ class GhInvoice extends Model
         return $this->hasMany(GhFinancialCorrection::class, 'invoice_id')->orderByDesc('id');
     }
 
+    public function debitAdjustments(): HasMany
+    {
+        return $this->hasMany(GhDebitAdjustment::class, 'invoice_id')->orderByDesc('id');
+    }
+
     public function isDraft(): bool
     {
         return $this->status === GhInvoiceStatus::DRAFT;

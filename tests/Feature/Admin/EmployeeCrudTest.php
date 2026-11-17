@@ -87,7 +87,7 @@ class EmployeeCrudTest extends TestCase
 
         $this->actingAs($this->manager)
             ->post(route('admin.employees.store'), $this->validPayload(['team_leader_ids' => [$leader->id]]))
-            ->assertRedirect();
+            ->assertRedirect(route('admin.employees.index'));
 
         $employee = User::where('email', 'new.employee@hrpro.test')->firstOrFail();
 
@@ -371,7 +371,7 @@ class EmployeeCrudTest extends TestCase
 
         $this->actingAs($this->manager)
             ->put(route('admin.employees.update', $employee), $payload)
-            ->assertRedirect(route('admin.employees.edit', $employee));
+            ->assertRedirect(route('admin.employees.index'));
 
         $employee->refresh();
         $this->assertSame('7500.00', $employee->base_salary);
@@ -556,7 +556,7 @@ class EmployeeCrudTest extends TestCase
 
         $this->actingAs($this->manager)
             ->put(route('admin.employees.update', $employee), $payload)
-            ->assertRedirect(route('admin.employees.edit', $employee));
+            ->assertRedirect(route('admin.employees.index'));
 
         $this->assertSame(1, $employee->qualifications()->count());
         $this->assertSame('New Degree', $employee->qualifications()->firstOrFail()->degree);

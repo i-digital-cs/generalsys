@@ -24,7 +24,7 @@
 
     @can('create', App\Models\GeneralHouse\GhProductOffering::class)
         <div class="card border-0 shadow-sm mb-3">
-            <div class="card-body">
+            <div class="card-body py-3">
                 <form method="post" action="{{ route('gh.offerings.store') }}" class="gh-offerings-create">
                     @csrf
                     <div class="gh-offerings-create__field">

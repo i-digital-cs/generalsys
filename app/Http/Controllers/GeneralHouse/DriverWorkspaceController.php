@@ -10,6 +10,7 @@ use App\Services\GeneralHouse\Orders\GhDriverMovementLogService;
 use App\Services\GeneralHouse\Orders\GhDriverWorkspaceService;
 use App\Services\GeneralHouse\Orders\GhOrderBoardService;
 use App\Services\GeneralHouse\Orders\GhOrderStateService;
+use App\Services\GeneralHouse\Orders\GhOrderWarningService;
 use App\Services\GeneralHouse\Orders\GhPickupEligibilityService;
 use App\Services\GeneralHouse\Payments\GhDriverDeliveryPaymentService;
 use App\Services\GeneralHouse\Payments\GhPaymentBalanceService;
@@ -35,6 +36,7 @@ class DriverWorkspaceController extends Controller
         private readonly GhDriverListOrderService $listOrder,
         private readonly GhDriverMovementLogService $movements,
         private readonly GhOrderBoardService $board,
+        private readonly GhOrderWarningService $orderWarnings,
     ) {}
 
     public function dashboard(Request $request): View
@@ -86,6 +88,7 @@ class DriverWorkspaceController extends Controller
             'canFail' => GhOrderAccess::mayRecordPickupAttempt($user, $order) && $isPickup,
             'failReasons' => GhAttemptReason::PICKUP,
             'expectedPaymentMethod' => null,
+            'warnings' => $this->orderWarnings->forOrder($order, GhOrderWarningService::AUDIENCE_DRIVER),
         ]);
     }
 
@@ -152,6 +155,7 @@ class DriverWorkspaceController extends Controller
             'paymentHint' => $paymentHint,
             'deliveryPaymentEnabled' => GhLaunchConfig::driverDeliveryPaymentEnabled(),
             'awaitingInvoice' => $order->status === GhOrderStatus::WORKING,
+            'warnings' => $this->orderWarnings->forOrder($order, GhOrderWarningService::AUDIENCE_DRIVER),
         ]);
     }
 

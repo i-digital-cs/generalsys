@@ -1235,13 +1235,24 @@ html:not([data-bs-theme='dark']) .btn-primary {
 
     .stat-value {
         font-size: clamp(0.95rem, 2.8vw, 1.35rem);
-        line-height: 1.25;
+        line-height: 1.3;
         font-weight: 700;
-        overflow-wrap: anywhere;
-        word-break: break-word;
+        // Never break digits/currency vertically (was overflow-wrap:anywhere + text-nowrap override).
+        overflow-wrap: normal;
+        word-break: normal;
+        min-width: 0;
+        max-width: 100%;
 
-        .text-nowrap {
-            white-space: normal !important;
+        // Money / numeric KPI values stay on one line; ellipsis if truly cramped.
+        .num-ltr,
+        .text-nowrap,
+        [dir='ltr'] {
+            display: inline-block;
+            max-width: 100%;
+            white-space: nowrap !important;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: bottom;
         }
     }
 
@@ -1249,6 +1260,8 @@ html:not([data-bs-theme='dark']) .btn-primary {
         color: var(--hp-label-color);
         font-size: .72rem;
         margin-top: .15rem;
+        overflow-wrap: anywhere;
+        white-space: normal;
     }
 
     .stat-sparkline {
@@ -1262,6 +1275,41 @@ html:not([data-bs-theme='dark']) .btn-primary {
         width: 100%;
         height: 100%;
         display: block;
+    }
+}
+
+// Narrow phones: prevent KPI cards from stretching / overlapping.
+@media (max-width: 430px) {
+    .stat-card {
+        .card-body {
+            padding: .65rem .7rem;
+        }
+
+        .stat-card-inner {
+            flex-wrap: nowrap;
+            gap: .45rem;
+            align-items: flex-start;
+        }
+
+        .stat-icon {
+            width: 2.15rem;
+            height: 2.15rem;
+            font-size: 1rem;
+            border-radius: .6rem;
+        }
+
+        .stat-value {
+            font-size: clamp(0.88rem, 4.2vw, 1.15rem);
+        }
+
+        // Sparkline competes with value width on ~320–360 CSS px — hide on smallest.
+        .stat-sparkline {
+            display: none;
+        }
+    }
+
+    .row > [class*='col-'] > .stat-card {
+        min-width: 0;
     }
 }
 
@@ -1661,6 +1709,51 @@ html:not([data-bs-theme='dark']) .btn-primary {
 
     main.flex-grow-1 {
         padding-bottom: 1.25rem;
+    }
+
+    // Compact crowded mobile header (phones ≤575).
+    .hp-app-header {
+        --hp-module-tab-min-height: 2.65rem;
+        --hp-header-icon-size: 1.2rem;
+
+        > .hp-app-header__grid.container-fluid,
+        .hp-app-header__grid {
+            gap: .3rem;
+            padding-block: .3rem .4rem;
+            padding-inline: .55rem;
+        }
+
+        .hp-app-header__chrome {
+            min-height: 2.5rem;
+            gap: .25rem;
+        }
+
+        .hp-app-header__brand {
+            font-size: .92rem;
+            line-height: 1.15;
+        }
+
+        .hp-app-header__icon-btn {
+            min-width: 2.4rem;
+            min-height: 2.4rem;
+        }
+
+        .hp-module-tab {
+            padding-block: .4rem;
+            padding-inline: .8rem;
+            font-size: .88rem;
+            border-radius: .65rem;
+        }
+    }
+
+    // Stop page-level horizontal overflow from wide KPI / tables.
+    body {
+        overflow-x: clip;
+    }
+
+    .container-fluid {
+        max-width: 100%;
+        padding-inline: .75rem;
     }
 }
 

@@ -1438,6 +1438,7 @@ CREATE TABLE gh_orders (
     status ENUM('LATER','PICKUP','WORKING','DELIVERY','COMPLETED','CANCELLED') NOT NULL DEFAULT 'LATER',
     pickup_starts_at TIMESTAMP NOT NULL,
     pickup_ends_at TIMESTAMP NOT NULL,
+    scheduled_delivery_at TIMESTAMP NULL,  -- optional delivery appointment (local date+time, UTC stored); NULL = pickup-only (no auto DELIVERY)
     timezone VARCHAR(64) NOT NULL DEFAULT 'Africa/Cairo',
     notes TEXT NULL,
     scheduling_notes TEXT NULL,
@@ -1550,6 +1551,8 @@ Migration: `2026_10_25_220000_create_gh_orders_tables.php`. Controllers must not
 -- pickup_confirmed_by, pickup_confirmation_notes,
 -- delivered_at, delivered_by, delivery_notes,
 -- cancelled_at, cancelled_by, cancel_reason
+-- auto_promote_held, auto_promote_held_at, auto_promote_held_by, auto_promote_held_reason
+--   (manager indefinite hold vs scheduler LATER→PICKUP / WORKING→DELIVERY; Resume clears)
 -- timezone default for NEW rows: Asia/Dubai (existing values untouched)
 
 CREATE TABLE gh_order_received_lines (
@@ -1843,6 +1846,35 @@ Migration: `2026_10_31_180000_create_gh_financial_correction_tables.php` — for
 Sequences in `gh_sequences`: `credit_notes`, `refunds`, `financial_corrections`.
 
 Balance equations: `docs/general-house/GH10_BALANCE_INVARIANTS.md`.
+
+### GH Phase 4.1 — Debit adjustments (additive corrections on issued invoices)
+
+Migration: `2026_11_15_190000_create_gh_debit_adjustment_tables.php` — forward-only; does **not** alter issued invoice money columns, original lines, VAT snapshots, or payment rows.
+
+| Table | Purpose |
+|-------|---------|
+| `gh_debit_adjustments` | Debit headers (`GH-DA-######` on issue); statuses DRAFT / ISSUED / CANCELLED; linked to invoice + order + customer |
+| `gh_debit_adjustment_lines` | Positive lines: ADDITIONAL_ITEM / QUANTITY_INCREASE / PRICE_INCREASE with tax-class / VAT snapshots |
+| `gh_debit_adjustment_events` | Immutable debit-adjustment audit events |
+
+Sequence in `gh_sequences`: `debit_adjustments`.
+
+SSOT equation: `net = max(0, invoice_total + issued_debits − issued_credits)`; `remaining_due = max(0, net − cash_net)`.
+
+### GH driver cash custody (physical cash bag)
+
+Migration: `2026_11_15_180000_create_gh_driver_cash_custody_tables.php`.
+
+Custody is **not** customer AR and settlements are **not** revenue. Customer invoice payments remain on `gh_payments`; custody tracks physical cash held by drivers until manager settlement.
+
+| Table | Purpose |
+|-------|---------|
+| `gh_driver_cash_collections` | Actual cash collected at delivery (`GH-DCC-######`); optional `payment_id` link |
+| `gh_driver_cash_settlements` | Manager handoff from driver (`GH-DCS-######`); never creates invoice payments |
+| `gh_driver_cash_balances` | Per-driver materialized totals (`collected_total`, `settled_total`, `outstanding`) with row locks |
+| `gh_driver_cash_events` | Immutable custody audit events |
+
+Sequences: `driver_cash_collections`, `driver_cash_settlements`.
 
 ## 29. General House UAT additions — contract sequence & driver list order
 

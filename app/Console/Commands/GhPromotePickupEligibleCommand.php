@@ -9,12 +9,13 @@ class GhPromotePickupEligibleCommand extends Command
 {
     protected $signature = 'gh:promote-pickup-eligible';
 
-    protected $description = 'Promote GH LATER orders to PICKUP when within the 24h eligibility window';
+    protected $description = 'Promote GH LATER→PICKUP (24h window) and WORKING→DELIVERY (timing rules; invoice not required)';
 
     public function handle(GhOrderStateService $states): int
     {
-        $count = $states->promoteEligibleLaterOrders();
-        $this->info("Promoted {$count} order(s) to PICKUP.");
+        $pickup = $states->promoteEligibleLaterOrders();
+        $delivery = $states->promoteEligibleWorkingToDelivery();
+        $this->info("Promoted {$pickup} order(s) to PICKUP; {$delivery} order(s) to DELIVERY.");
 
         return self::SUCCESS;
     }

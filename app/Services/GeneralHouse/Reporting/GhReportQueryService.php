@@ -81,13 +81,23 @@ class GhReportQueryService
 
     public function b2bReceivables(GhReportFilters $filters, int $perPage = 25): LengthAwarePaginator
     {
-        return $this->b2bGrouped($filters)->paginate($perPage)->withQueryString();
+        $all = $this->b2bAggregatedViaSsot($filters);
+        $page = max(1, (int) request()->integer('page', 1));
+        $slice = $all->forPage($page, $perPage)->values();
+
+        return new \Illuminate\Pagination\LengthAwarePaginator(
+            $slice,
+            $all->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
     }
 
     /** @return Collection<int, object> */
     public function b2bReceivablesForExport(GhReportFilters $filters): Collection
     {
-        return $this->b2bGrouped($filters)->limit(5000)->get();
+        return $this->b2bAggregatedViaSsot($filters)->take(5000)->values();
     }
 
     public function orders(GhReportFilters $filters, int $perPage = 25): LengthAwarePaginator
@@ -346,43 +356,53 @@ class GhReportQueryService
         return $q;
     }
 
-    private function b2bGrouped(GhReportFilters $filters): Builder
+    /**
+     * B2B receivables grouped by customer/contract using payment-balance SSOT
+     * (invoice + issued debits − credits − cash net).
+     *
+     * @return Collection<int, object>
+     */
+    private function b2bAggregatedViaSsot(GhReportFilters $filters): Collection
     {
-        $confirmedSub = GhPayment::query()
-            ->selectRaw('invoice_id, SUM(amount) as confirmed_total')
-            ->where('status', GhPaymentStatus::CONFIRMED)
-            ->groupBy('invoice_id');
-
         $q = GhInvoice::query()
-            ->from('gh_invoices as i')
-            ->leftJoinSub($confirmedSub, 'p', 'p.invoice_id', '=', 'i.id')
-            ->where('i.status', GhInvoiceStatus::ISSUED)
-            ->where('i.customer_type', GhCustomerType::B2B)
-            ->selectRaw('
-                i.customer_id,
-                MAX(i.customer_name_ar) as customer_name_ar,
-                MAX(i.customer_name_en) as customer_name_en,
-                i.contract_id,
-                MAX(i.contract_reference) as contract_reference,
-                SUM(i.total_payable) as issued_total,
-                SUM(COALESCE(p.confirmed_total, 0)) as confirmed_total,
-                SUM(CASE WHEN i.total_payable - COALESCE(p.confirmed_total, 0) > 0
-                    THEN i.total_payable - COALESCE(p.confirmed_total, 0) ELSE 0 END) as outstanding_total
-            ')
-            ->groupBy('i.customer_id', 'i.contract_id')
-            ->orderBy('customer_name_en');
+            ->where('status', GhInvoiceStatus::ISSUED)
+            ->where('customer_type', GhCustomerType::B2B)
+            ->where('issued_at', '>=', $filters->period->startUtc)
+            ->where('issued_at', '<', $filters->period->endUtc);
 
         if ($filters->customerId) {
-            $q->where('i.customer_id', $filters->customerId);
+            $q->where('customer_id', $filters->customerId);
         }
         if ($filters->zoneId) {
-            $q->where('i.zone_id', $filters->zoneId);
+            $q->where('zone_id', $filters->zoneId);
         }
-        // Period applies to issued_at for B2B issued totals in range; outstanding still from those invoices.
-        $q->where('i.issued_at', '>=', $filters->period->startUtc)
-            ->where('i.issued_at', '<', $filters->period->endUtc);
 
-        return $q;
+        /** @var array<string, array<string, mixed>> $groups */
+        $groups = [];
+        foreach ($q->orderBy('id')->cursor() as $inv) {
+            $key = ((int) $inv->customer_id).'|'.((string) ($inv->contract_id ?? '0'));
+            $bal = $this->balances->forInvoice($inv);
+            if (! isset($groups[$key])) {
+                $groups[$key] = [
+                    'customer_id' => $inv->customer_id,
+                    'customer_name_ar' => $inv->customer_name_ar,
+                    'customer_name_en' => $inv->customer_name_en,
+                    'contract_id' => $inv->contract_id,
+                    'contract_reference' => $inv->contract_reference,
+                    'issued_total' => '0.00',
+                    'confirmed_total' => '0.00',
+                    'outstanding_total' => '0.00',
+                ];
+            }
+            $groups[$key]['issued_total'] = GhMoney::roundHalfUp(GhMoney::add($groups[$key]['issued_total'], $bal['net_invoiced']));
+            $groups[$key]['confirmed_total'] = GhMoney::roundHalfUp(GhMoney::add($groups[$key]['confirmed_total'], $bal['cash_net']));
+            $groups[$key]['outstanding_total'] = GhMoney::roundHalfUp(GhMoney::add($groups[$key]['outstanding_total'], $bal['remaining_due']));
+        }
+
+        return collect($groups)
+            ->map(fn (array $row) => (object) $row)
+            ->sortBy(fn ($r) => (string) ($r->customer_name_en ?: $r->customer_name_ar))
+            ->values();
     }
 
     /** @return Builder<GhOrder> */

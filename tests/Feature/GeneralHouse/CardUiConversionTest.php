@@ -181,6 +181,21 @@ class CardUiConversionTest extends TestCase
             ->get(route('gh.offerings.index'))
             ->assertOk()
             ->assertSee('gh-offerings-create', false)
-            ->assertSee('gh-offerings-create__hint', false);
+            ->assertSee('gh-offerings-create__hint', false)
+            ->assertSee('gh-import-card__details', false);
+    }
+
+    public function test_offerings_classic_mode_also_uses_compact_create_and_collapsed_import(): void
+    {
+        $manager = User::factory()->manager()->create();
+        ListViewMode::put($manager, ListViewMode::LEGACY);
+
+        $this->actingAs($manager)
+            ->get(route('gh.offerings.index'))
+            ->assertOk()
+            ->assertSee('gh-offerings-create', false)
+            ->assertSee('gh-compact-filters', false)
+            ->assertSee('gh-import-card__details', false)
+            ->assertDontSee('col-md-3">\n                        <label class="form-label mb-1" for="product_id"', false);
     }
 }

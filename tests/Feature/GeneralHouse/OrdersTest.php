@@ -80,11 +80,12 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-28',
             'pickup_window_start' => '10:00',
             'pickup_window_end' => '12:00',
+            'scheduled_delivery_at' => '2026-10-28 16:00',
             'pickup_driver_id' => $driver->id,
             'delivery_driver_id' => $delivery->id,
             'notes' => 'Ops note',
             'scheduling_notes' => 'Gate code 1',
-        ])->assertRedirect();
+        ])->assertRedirect(route('gh.orders.index'));
 
         $order = GhOrder::query()->firstOrFail();
         $this->assertSame(GhOrderStatus::LATER, $order->status);
@@ -113,6 +114,7 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-26',
             'pickup_window_start' => '08:00',
             'pickup_window_end' => '09:00',
+            'scheduled_delivery_at' => '2026-10-26 16:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect();
 
@@ -134,6 +136,7 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-28',
             'pickup_window_start' => '10:00',
             'pickup_window_end' => '12:00',
+            'scheduled_delivery_at' => '2026-10-28 18:00',
             'pickup_driver_id' => $driver->id,
             'notes' => 'Booking without garments',
         ])->assertRedirect();
@@ -160,6 +163,7 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-26',
             'pickup_window_start' => '08:00',
             'pickup_window_end' => '09:00',
+            'scheduled_delivery_at' => '2026-10-26 16:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect();
 
@@ -204,6 +208,7 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-28',
             'pickup_window_start' => '10:00',
             'pickup_window_end' => '11:00',
+            'scheduled_delivery_at' => '2026-10-28 16:00',
             'pickup_driver_id' => $driver->id,
         ])->assertSessionHasErrors();
 
@@ -214,6 +219,7 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-28',
             'pickup_window_start' => '10:00',
             'pickup_window_end' => '11:00',
+            'scheduled_delivery_at' => '2026-10-28 18:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect();
 
@@ -251,6 +257,7 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-30',
             'pickup_window_start' => '14:00',
             'pickup_window_end' => '16:00',
+            'scheduled_delivery_at' => '2026-10-30 16:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect();
 
@@ -274,6 +281,7 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-28',
             'pickup_window_start' => '10:00',
             'pickup_window_end' => '11:00',
+            'scheduled_delivery_at' => '2026-10-28 18:00',
             'pickup_driver_id' => $driver->id,
         ])->assertSessionHasErrors();
 
@@ -293,6 +301,7 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-28',
             'pickup_window_start' => '12:00',
             'pickup_window_end' => '10:00',
+            'scheduled_delivery_at' => '2026-10-28 16:00',
             'pickup_driver_id' => $driver->id,
         ])->assertSessionHasErrors('pickup_window_end');
     }
@@ -330,6 +339,7 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-28',
             'pickup_window_start' => '10:00',
             'pickup_window_end' => '11:00',
+            'scheduled_delivery_at' => '2026-10-28 16:00',
             'pickup_driver_id' => $driver->id,
             'notes' => 'before',
         ])->assertRedirect();
@@ -347,13 +357,14 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-29',
             'pickup_window_start' => '10:00',
             'pickup_window_end' => '11:00',
+            'scheduled_delivery_at' => '2026-10-29 18:00',
             'pickup_driver_id' => $driver->id,
         ])->assertSessionHasErrors();
 
         $this->actingAs($manager)->put(route('gh.orders.update', $order), [
             'notes' => 'after pickup',
             'delivery_driver_id' => $otherDriver->id,
-        ])->assertRedirect();
+        ])->assertRedirect(route('gh.orders.index'));
 
         $order->refresh();
         $this->assertSame('after pickup', $order->notes);
@@ -379,6 +390,7 @@ class OrdersTest extends TestCase
             'pickup_date' => '2026-10-28',
             'pickup_window_start' => '10:00',
             'pickup_window_end' => '11:00',
+            'scheduled_delivery_at' => '2026-10-28 16:00',
             'pickup_driver_id' => $driver->id,
         ])->assertSessionHasErrors('address_id');
 

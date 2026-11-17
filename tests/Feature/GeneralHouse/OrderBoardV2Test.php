@@ -172,7 +172,7 @@ class OrderBoardV2Test extends TestCase
             ->get(route('gh.orders.index', ['tab' => 'pickup']))
             ->assertOk()
             ->assertSee('GH-ORD-777001', false)
-            ->assertSee(__('gh.driver.overdue'), false)
+            ->assertSee(__('gh.warnings.overdue_pickup'), false)
             ->assertSee(__('gh.board.more_filters'), false)
             ->getContent();
 
@@ -188,7 +188,11 @@ class OrderBoardV2Test extends TestCase
         $this->assertStringContainsString('gh-order-card__cell--customer', $upper[1]);
         $this->assertStringContainsString('gh-order-card__cell--address', $upper[1]);
         $this->assertStringContainsString('gh-order-card__cell--date', $lower[1]);
-        $this->assertStringContainsString('gh-order-card__badge--danger', $html);
+        // Smart warnings (not legacy gh-order-card__badge--danger): red overdue_pickup + card is-overdue.
+        $this->assertStringContainsString('gh-warning-badge--red', $html);
+        $this->assertStringContainsString('data-warning-code="overdue_pickup"', $html);
+        $this->assertStringContainsString('is-overdue', $html);
+        $this->assertStringNotContainsString('gh-order-card__badge--danger', $html);
         $this->assertMatchesRegularExpression('/\d{2}\/\d{2}/', $html);
 
         $driverHtml = $this->actingAs($driver)
