@@ -1438,7 +1438,7 @@ CREATE TABLE gh_orders (
     status ENUM('LATER','PICKUP','WORKING','DELIVERY','COMPLETED','CANCELLED') NOT NULL DEFAULT 'LATER',
     pickup_starts_at TIMESTAMP NOT NULL,
     pickup_ends_at TIMESTAMP NOT NULL,
-    scheduled_delivery_at TIMESTAMP NULL,  -- optional delivery appointment (local date+time, UTC stored); NULL = pickup-only (no auto DELIVERY)
+    scheduled_delivery_at TIMESTAMP NULL,  -- delivery appointment (Asia/Dubai wall → UTC). NULL allowed for legacy rows; new orders require date+time in app validation. NULL ⇒ no auto WORKING→DELIVERY
     timezone VARCHAR(64) NOT NULL DEFAULT 'Africa/Cairo',
     notes TEXT NULL,
     scheduling_notes TEXT NULL,
