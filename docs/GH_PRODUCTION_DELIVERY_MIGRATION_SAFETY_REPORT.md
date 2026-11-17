@@ -98,7 +98,12 @@ Frontend: not affected (no asset change). `npm run build` not required for this 
 
 ## Release commit
 
-Prepared on branch `release/generalsys-full-20261108` (see git SHA after commit step in this session).
+| Field | Value |
+|-------|--------|
+| Branch | `release/generalsys-full-20261108` |
+| Fix commit (migrations + tests + initial report) | `ef16713a834411f13eaee7543141aa3ac9ccb4e9` (`ef16713`) |
+| Docs follow-up | on branch tip — run `git rev-parse HEAD` / `git log -2` |
+| Ahead of origin | 2 commits (not pushed) as of report authoring |
 
 **Push / production deploy:** blocked pending owner authorization.
 
