@@ -44,6 +44,9 @@
                     <a href="{{ route('gh.invoices.show', $order->invoice) }}" class="btn btn-outline-primary btn-sm">{{ __('gh.invoices.view') }}</a>
                 @endcan
             @endif
+            @if ($canDeleteOrder ?? false)
+                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#gh-delete-order-modal">{{ __('gh.orders.delete') }}</button>
+            @endif
             <a href="{{ route('gh.orders.history', $order) }}" class="btn btn-outline-secondary btn-sm">{{ __('gh.orders.history') }}</a>
             <a href="{{ route('gh.orders.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('gh.orders.back') }}</a>
         </div>
@@ -197,6 +200,31 @@
     </div>
 
     @include('gh.orders.partials.logistics')
+
+    @if ($canDeleteOrder ?? false)
+        <div class="modal fade" id="gh-delete-order-modal" tabindex="-1" aria-labelledby="gh-delete-order-title" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form method="post" action="{{ route('gh.orders.destroy', $order) }}" class="modal-content">
+                    @csrf
+                    @method('DELETE')
+                    <div class="modal-header">
+                        <h2 class="modal-title h5" id="gh-delete-order-title">{{ __('gh.orders.delete_confirm_title') }}</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('general.close') }}"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">{{ __('gh.orders.delete_confirm_body') }}</p>
+                        <p class="small text-body-secondary">{{ __('gh.orders.delete_hint') }}</p>
+                        <label class="form-label" for="gh-delete-reason">{{ __('gh.orders.delete_reason') }}</label>
+                        <textarea id="gh-delete-reason" name="delete_reason" class="form-control" rows="3" maxlength="500" required>{{ old('delete_reason') }}</textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ __('general.cancel') }}</button>
+                        <button type="submit" class="btn btn-danger">{{ __('gh.orders.delete_confirm_submit') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 
     @if ($order->receivedLines->isNotEmpty())
         <div class="card border-0 shadow-sm mt-3">

@@ -7,6 +7,7 @@ use App\Http\Requests\GeneralHouse\ApproveGhReceivedPricingRequest;
 use App\Http\Requests\GeneralHouse\CancelGhOrderRequest;
 use App\Http\Requests\GeneralHouse\ConfirmGhDeliveryRequest;
 use App\Http\Requests\GeneralHouse\ConfirmGhPickupRequest;
+use App\Http\Requests\GeneralHouse\DeleteGhOrderRequest;
 use App\Http\Requests\GeneralHouse\ManualGhOrderStatusRequest;
 use App\Http\Requests\GeneralHouse\ReassignGhDriverRequest;
 use App\Http\Requests\GeneralHouse\RecordGhAttemptRequest;
@@ -16,6 +17,7 @@ use App\Http\Requests\GeneralHouse\SyncGhReceivedLinesRequest;
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\GeneralHouse\GhOrderReceivedLine;
 use App\Services\GeneralHouse\Orders\GhOrderAssignmentService;
+use App\Services\GeneralHouse\Orders\GhOrderDeletionService;
 use App\Services\GeneralHouse\Orders\GhOrderManualTransitionService;
 use App\Services\GeneralHouse\Orders\GhOrderService;
 use App\Services\GeneralHouse\Orders\GhOrderStateService;
@@ -39,6 +41,7 @@ class OrderLogisticsController extends Controller
         private readonly GhReceivedItemService $receivedItems,
         private readonly GhDriverDeliveryPaymentService $driverPayments,
         private readonly GhOrderManualTransitionService $manualTransitions,
+        private readonly GhOrderDeletionService $deletions,
     ) {}
 
     public function confirmPickup(ConfirmGhPickupRequest $request, GhOrder $order): RedirectResponse
@@ -106,6 +109,15 @@ class OrderLogisticsController extends Controller
         return redirect()
             ->route('gh.orders.show', $order)
             ->with('success', __('gh.flash.manual_status_updated'));
+    }
+
+    public function destroy(DeleteGhOrderRequest $request, GhOrder $order): RedirectResponse
+    {
+        $this->deletions->delete($order, $request->user(), (string) $request->validated('delete_reason'));
+
+        return redirect()
+            ->route('gh.orders.index')
+            ->with('success', __('gh.flash.order_deleted', ['reference' => $order->reference]));
     }
 
     public function resumeAutoPromote(ResumeGhAutoPromoteRequest $request, GhOrder $order): RedirectResponse

@@ -1551,6 +1551,9 @@ Migration: `2026_10_25_220000_create_gh_orders_tables.php`. Controllers must not
 -- pickup_confirmed_by, pickup_confirmation_notes,
 -- delivered_at, delivered_by, delivery_notes,
 -- cancelled_at, cancelled_by, cancel_reason
+-- deleted_at (NULL = active; UTC), deleted_by (FK users, nullOnDelete), delete_reason VARCHAR(500)
+--   Admin soft delete (D-GH-023): only LATER/PICKUP orders with no confirmed pickup and no
+--   linked financial records. Rows are never hard-deleted; gh_order_events keeps ORDER_DELETED.
 -- auto_promote_held, auto_promote_held_at, auto_promote_held_by, auto_promote_held_reason
 --   (manager indefinite hold vs scheduler LATER→PICKUP / WORKING→DELIVERY; Resume clears)
 -- timezone default for NEW rows: Asia/Dubai (existing values untouched)

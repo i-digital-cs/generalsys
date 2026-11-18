@@ -25,6 +25,8 @@ Payment status is **independent** of this chain (see §5).
 - Reassignment: close current row (`unassigned_at`), open new current row; emit `DRIVER_REASSIGNED` event.
 - Drivers are existing `users` with DRIVER (or equivalent) permissions — no duplicate driver identity store.
 
+**Admin deletion (not a status):** a Manager may soft-delete an order only while it is `LATER`, or `PICKUP` with no confirmed physical pickup, and only if it has no linked financial records (D-GH-023). The row stays in `gh_orders` with `deleted_at`, `deleted_by`, `delete_reason`; an `ORDER_DELETED` event is written. Deleted orders are excluded from boards, drivers, the scheduler and reports. `CANCELLED` is a separate status and cannot be deleted.
+
 ## 3. Operational events (prefer over extra primary states) (APPROVED)
 
 Failed attempts and side effects are **events / attempt records**, not primary status values:

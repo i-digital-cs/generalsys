@@ -28,8 +28,9 @@ class GhOrderPolicy
         return GhCatalogAccess::mayManage($user);
     }
 
+    /** Role gate only; status/pickup/financial eligibility lives in GhOrderDeletionService. */
     public function delete(User $user, GhOrder $order): bool
     {
-        return false;
+        return GhCatalogAccess::mayManage($user);
     }
 }

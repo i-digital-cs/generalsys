@@ -240,6 +240,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/orders/{order}/edit', [GhOrderController::class, 'edit'])->name('orders.edit');
         Route::put('/orders/{order}', [GhOrderController::class, 'update'])->name('orders.update');
         Route::get('/orders/{order}/history', [GhOrderController::class, 'history'])->name('orders.history');
+        Route::delete('/orders/{order}', [GhOrderLogisticsController::class, 'destroy'])->name('orders.destroy');
 
         // Phase GH-4 — logistics transitions (status only via GhOrderStateService)
         Route::post('/orders/{order}/confirm-pickup', [GhOrderLogisticsController::class, 'confirmPickup'])->name('orders.confirm-pickup');

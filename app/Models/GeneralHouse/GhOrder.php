@@ -12,12 +12,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 class GhOrder extends Model
 {
-    /** @use HasFactory<GhOrderFactory> */
-    use HasFactory;
+    /**
+     * Scope only: rows are soft-deleted exclusively by GhOrderDeletionService, which stamps
+     * deleted_at in UTC through the cast. Never call ->delete() on an order directly.
+     *
+     * @use HasFactory<GhOrderFactory>
+     */
+    use HasFactory, SoftDeletes;
 
     protected $table = 'gh_orders';
 
@@ -43,6 +49,7 @@ class GhOrder extends Model
             'invoice_issued_at' => GhUtcDateTime::class,
             'delivered_at' => GhUtcDateTime::class,
             'cancelled_at' => GhUtcDateTime::class,
+            'deleted_at' => GhUtcDateTime::class,
             'auto_promote_held' => 'boolean',
             'auto_promote_held_at' => GhUtcDateTime::class,
             'estimated_subtotal' => 'decimal:2',
@@ -55,6 +62,7 @@ class GhOrder extends Model
             'pickup_confirmed_by' => 'integer',
             'delivered_by' => 'integer',
             'cancelled_by' => 'integer',
+            'deleted_by' => 'integer',
             'auto_promote_held_by' => 'integer',
         ];
     }
@@ -137,6 +145,11 @@ class GhOrder extends Model
     public function cancelledByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function deletedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     public function isEditableOperationally(): bool

@@ -421,6 +421,7 @@ class GhDashboardService
     private function failedAttempts(GhReportFilters $filters, ?string $type): int
     {
         $q = GhOrderAttempt::query()
+            ->whereHas('order')
             ->where('outcome', 'FAILED')
             ->where('occurred_at', '>=', $filters->period->startUtc)
             ->where('occurred_at', '<', $filters->period->endUtc);

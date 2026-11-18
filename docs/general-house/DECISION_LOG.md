@@ -28,6 +28,7 @@ Cross-ref: `DESIGN_CHANGE_SUMMARY.md` (owner CONDITIONAL APPROVAL 2026-10-25).
 | D-GH-020 | Catalog offering | Unique product×treatment; standard + B2B contract prices | **APPROVED** | — |
 | D-GH-021 | GH-6 payments scope | Cash confirmed by Manager; ONLINE initiation=PENDING only; partial OK; overpay rejected; bank/gateway/refunds/driver collection **disabled** | **APPROVED** (gate doc) | Full bank/gateway → owner |
 | D-GH-022 | Pickup eligibility (calendar day) | LATER → PICKUP at **00:00 Asia/Dubai of the scheduled pickup date** (no rolling hours window; `GH_PICKUP_LEAD_HOURS` removed). Manager early promotion with reason + audit unchanged. Auto promotion never sets pickup confirmation. | **APPROVED** (owner, 2026-11-18) | — |
+| D-GH-023 | Admin order deletion | Manager-only **soft delete** (`gh_orders.deleted_at/by/reason`, `ORDER_DELETED` event) of orders in `LATER` or `PICKUP` with no confirmed physical pickup (`picked_up_at`/`pickup_confirmed_by` null) and **no** linked invoice (draft or issued), payment, refund, credit note, financial correction, debit adjustment, driver cash collection or min-order override. Reason mandatory. Finance rows are inspected only — never changed. Deleted orders vanish from lists, scheduler, drivers, reports. | **APPROVED** (owner request, 2026-11-18) | — |
 
 ## Blocking confirmations (owner)
 

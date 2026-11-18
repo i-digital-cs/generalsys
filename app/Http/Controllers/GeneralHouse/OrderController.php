@@ -12,6 +12,7 @@ use App\Services\GeneralHouse\Catalog\GhPricingResolver;
 use App\Services\GeneralHouse\Orders\GhDriverEligibilityService;
 use App\Services\GeneralHouse\Orders\GhDriverWorkspaceService;
 use App\Services\GeneralHouse\Orders\GhOrderBoardService;
+use App\Services\GeneralHouse\Orders\GhOrderDeletionService;
 use App\Services\GeneralHouse\Orders\GhOrderManualTransitionService;
 use App\Services\GeneralHouse\Orders\GhOrderService;
 use App\Services\GeneralHouse\Orders\GhOrderWarningService;
@@ -36,6 +37,7 @@ class OrderController extends Controller
         private readonly GhOrderBoardService $board,
         private readonly GhOrderWarningService $orderWarnings,
         private readonly GhOrderManualTransitionService $manualTransitions,
+        private readonly GhOrderDeletionService $deletions,
     ) {}
 
     public function index(Request $request): View
@@ -151,6 +153,7 @@ class OrderController extends Controller
             'canConfirmDelivery' => GhOrderAccess::mayConfirmDelivery($user, $order)
                 && $order->status === GhOrderStatus::DELIVERY,
             'canManageLogistics' => GhOrderAccess::mayManage($user),
+            'canDeleteOrder' => $this->deletions->isDeletable($user, $order),
             'displayTz' => $this->eligibility->displayTimezone($order->timezone),
             'warnings' => $this->orderWarnings->forOrder($order, $audience),
             'manualStatusDestinations' => GhOrderAccess::mayManage($user)

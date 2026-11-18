@@ -94,10 +94,11 @@ class GhOrderStateService
         $now ??= $this->eligibility->now();
 
         return (bool) DB::transaction(function () use ($order, $now) {
-            /** @var GhOrder $locked */
-            $locked = GhOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            /** @var GhOrder|null $locked */
+            $locked = GhOrder::query()->whereKey($order->id)->lockForUpdate()->first();
 
-            if ($locked->status !== GhOrderStatus::LATER) {
+            // Null when an admin soft-deleted the order after the scheduler loaded its chunk.
+            if ($locked === null || $locked->status !== GhOrderStatus::LATER) {
                 return false;
             }
             if ($this->manualTransitions()->isAutoPromoteSuppressed($locked, GhOrderStatus::PICKUP, $now)) {

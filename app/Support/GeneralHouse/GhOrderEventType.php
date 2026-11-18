@@ -36,6 +36,9 @@ final class GhOrderEventType
 
     public const ORDER_CANCELLED = 'ORDER_CANCELLED';
 
+    /** Admin soft deletion of a LATER / PICKUP order; payload carries reason + status at deletion. */
+    public const ORDER_DELETED = 'ORDER_DELETED';
+
     public const PICKUP_FAILED = 'PICKUP_FAILED';
 
     public const DELIVERY_FAILED = 'DELIVERY_FAILED';
