@@ -13,7 +13,7 @@ LATER → PICKUP → WORKING → DELIVERY → COMPLETED
 |---|---|---|
 | → `PICKUP` | Scheduler / eligibility job | Eligible from **00:00 Asia/Dubai on the scheduled pickup date** (D-GH-022). Manager may promote earlier with reason + audit. |
 | → `WORKING` | Physical **pickup confirmation** | Authorized actor (typically pickup driver or elevated role) |
-| → `DELIVERY` | Successful **invoice issuance** | Financial finalize moves logistics here |
+| → `DELIVERY` | Scheduler (`gh:promote-pickup-eligible`) or Manager **mark delivery ready** | Requires `WORKING` + confirmed pickup. Automatic: needs `scheduled_delivery_at`; same day as actual pickup → `picked_up_at` + 2h, future day → 08:00 Asia/Dubai on the delivery date; skipped while `auto_promote_held`. Manual: confirmed pickup only. **Invoice issuance is not required and does not change order status** (issuance allowed in `WORKING` / `DELIVERY` / `COMPLETED`). Delivery driver optional. |
 | → `COMPLETED` | **Delivery confirmation** | Authorized actor (typically delivery driver or elevated role) |
 
 Payment status is **independent** of this chain (see §5).
@@ -75,7 +75,8 @@ ISSUED → CREDIT_NOTE / REFUND documents (separate artifacts — rules TBD)
 |---|---|
 | Eligibility → PICKUP | System job |
 | Confirm pickup → WORKING | Pickup driver / Manager / Admin |
-| Issue invoice → DELIVERY | Authorized invoice issuer (Admin/Manager/cashier per ACL) |
+| WORKING → DELIVERY | System job (schedule timing) / Manager (mark delivery ready) |
+| Issue invoice (no status change) | Authorized invoice issuer (Admin/Manager/cashier per ACL) |
 | Confirm delivery → COMPLETED | Delivery driver / Manager / Admin |
 | Assign/reassign drivers | Manager / Admin (policy TBD for self) |
 | Cancel / override min-order | Elevated roles only |
