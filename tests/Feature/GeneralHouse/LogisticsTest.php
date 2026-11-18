@@ -50,13 +50,13 @@ class LogisticsTest extends TestCase
 
     public function test_scheduler_promotes_later_to_pickup_idempotently(): void
     {
-        Carbon::setTestNow(Carbon::parse('2026-10-31 10:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-10-31 10:00:00', 'Asia/Dubai'));
 
-        // Relative to frozen now so SQLite wall-clock storage cannot skew eligibility.
+        // Later the same Dubai calendar day → eligible.
         $order = $this->makeOrder([
             'status' => GhOrderStatus::LATER,
-            'pickup_starts_at' => Carbon::now()->addHours(12),
-            'pickup_ends_at' => Carbon::now()->addHours(14),
+            'pickup_starts_at' => Carbon::parse('2026-10-31 18:00:00', 'Asia/Dubai')->utc(),
+            'pickup_ends_at' => Carbon::parse('2026-10-31 20:00:00', 'Asia/Dubai')->utc(),
         ]);
 
         $svc = app(GhOrderStateService::class);
@@ -264,7 +264,7 @@ class LogisticsTest extends TestCase
             'pickup_ends_at' => Carbon::now()->addDays(5)->addHours(2),
         ]);
 
-        // Reschedule into a Dubai wall-clock window within 24h of frozen now.
+        // Reschedule onto today's Dubai pickup date (frozen now).
         $this->actingAs($manager)->post(route('gh.orders.reschedule', $later), [
             'pickup_date' => '2026-10-31',
             'pickup_window_start' => '18:00',
@@ -315,15 +315,15 @@ class LogisticsTest extends TestCase
         app(GhOrderStateService::class)->transition($order, GhOrderStatus::PICKUP, $manager, 'bypass');
     }
 
-    public function test_eligibility_boundary_exact_24h(): void
+    public function test_eligibility_boundary_is_pickup_calendar_date(): void
     {
         $svc = app(GhPickupEligibilityService::class);
         $tz = $svc->timezone();
-        $now = Carbon::parse('2026-10-31 12:00:00', $tz);
-        $exact = Carbon::parse('2026-11-01 12:00:00', $tz);
-        $justOutside = Carbon::parse('2026-11-01 12:00:01', $tz);
-        $this->assertTrue($svc->isEligibleForPickup($exact, $now));
-        $this->assertFalse($svc->isEligibleForPickup($justOutside, $now));
+        $now = Carbon::parse('2026-10-31 23:59:59', $tz);
+        $sameDayLate = Carbon::parse('2026-10-31 23:59:59', $tz);
+        $nextDayEarly = Carbon::parse('2026-11-01 00:00:00', $tz);
+        $this->assertTrue($svc->isEligibleForPickup($sameDayLate, $now));
+        $this->assertFalse($svc->isEligibleForPickup($nextDayEarly, $now));
     }
 
     /**

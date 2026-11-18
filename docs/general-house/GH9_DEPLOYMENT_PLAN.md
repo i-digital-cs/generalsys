@@ -75,7 +75,6 @@ Set/confirm without guessing LIVE secrets in this audit:
 | `GH_TIMEZONE` | `Asia/Dubai` |
 | `GH_STANDARD_VAT_RATE` | Owner-approved (default 5.00) |
 | `GH_MIN_ORDER_SURCHARGE_TAX_CLASS` | **Only after C-GH-TAX-MIN** (or leave null to keep ISSUE blocked on surcharge) |
-| `GH_PICKUP_LEAD_HOURS` | 24 (unless owner changes) |
 | Payment flags | Prefer cash-only launch: consider `online_initiation_enabled=false` until gateway |
 | `APP_TIMEZONE` / app TZ | **Do not change** (`Africa/Cairo`) for Attendance/Payroll |
 | Queue | `database` |

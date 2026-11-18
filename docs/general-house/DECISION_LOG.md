@@ -22,11 +22,12 @@ Cross-ref: `DESIGN_CHANGE_SUMMARY.md` (owner CONDITIONAL APPROVAL 2026-10-25).
 | D-GH-014 | Rounding | HALF_UP to 2 dp | **APPROVED** | — |
 | D-GH-015 | Order ref format | `GH-ORD-######` via locked `gh_sequences.orders` (never COUNT) | **APPROVED** (GH-3) | — |
 | D-GH-016 | Invoice number | `GH-INV-YYYYMM-####` month sequence | **PROPOSED** | Phase 5 |
-| D-GH-017 | Pickup eligibility | Eligible from **24h before** pickup window start | **APPROVED** | — |
+| D-GH-017 | Pickup eligibility | Eligible from **24h before** pickup window start | **SUPERSEDED** by D-GH-022 (2026-11-18) | — |
 | D-GH-018 | Happy-path states | `LATER → PICKUP → WORKING → DELIVERY → COMPLETED` with approved triggers | **APPROVED** | — |
 | D-GH-019 | Invoice v1 | One primary invoice per order; txn-safe unique ISSUE | **APPROVED** | — |
 | D-GH-020 | Catalog offering | Unique product×treatment; standard + B2B contract prices | **APPROVED** | — |
 | D-GH-021 | GH-6 payments scope | Cash confirmed by Manager; ONLINE initiation=PENDING only; partial OK; overpay rejected; bank/gateway/refunds/driver collection **disabled** | **APPROVED** (gate doc) | Full bank/gateway → owner |
+| D-GH-022 | Pickup eligibility (calendar day) | LATER → PICKUP at **00:00 Asia/Dubai of the scheduled pickup date** (no rolling hours window; `GH_PICKUP_LEAD_HOURS` removed). Manager early promotion with reason + audit unchanged. Auto promotion never sets pickup confirmation. | **APPROVED** (owner, 2026-11-18) | — |
 
 ## Blocking confirmations (owner)
 

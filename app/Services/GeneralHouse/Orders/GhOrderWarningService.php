@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
  * Does not mutate orders, invoices, payments, or ledger rows.
  *
  * Audience:
- * - admin: missing invoice, completed unpaid/partial, overdue pickup/delivery
+ * - admin: missing invoice (WORKING onward), completed unpaid/partial, overdue pickup/delivery
  * - driver: operational overdue only (no finance prompts they cannot act on)
  */
 final class GhOrderWarningService
@@ -98,6 +98,10 @@ final class GhOrderWarningService
 
     public function isMissingIssuedInvoice(GhOrder $order): bool
     {
+        // Invoicing starts after physical pickup; LATER / PICKUP orders have nothing to invoice yet.
+        if (GhOrderStatus::isPrePickup($order->status)) {
+            return false;
+        }
         if ($order->invoice_issued_at !== null) {
             return false;
         }

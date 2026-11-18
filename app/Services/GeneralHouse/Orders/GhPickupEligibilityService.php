@@ -6,19 +6,15 @@ use App\Support\GeneralHouse\GhOrderStatus;
 use Illuminate\Support\Carbon;
 
 /**
- * Shared eligibility: pickup eligible when now >= pickup_starts_at − lead hours.
+ * Shared LATER → PICKUP eligibility: an order becomes pickup-eligible at 00:00 of its
+ * scheduled pickup calendar date in the GH business timezone (Asia/Dubai).
  *
- * Wall-clock inputs/displays use GH business timezone (Asia/Dubai).
+ * Wall-clock inputs/displays use the GH business timezone.
  * Canonical storage is UTC (GhUtcDateTime). Instant comparisons use absolute Carbon values.
  * Does not change config('app.timezone').
  */
 class GhPickupEligibilityService
 {
-    public function leadHours(): int
-    {
-        return max(1, (int) config('general_house.pickup_eligibility_lead_hours', 24));
-    }
-
     /** GH business zone for parsing/display of local pickup windows. */
     public function timezone(): string
     {
@@ -53,12 +49,28 @@ class GhPickupEligibilityService
         return $instant->copy()->utc()->format('Y-m-d H:i:s');
     }
 
+    /** Instant (UTC) when the order's pickup calendar date begins in the business timezone. */
+    public function eligibleFrom(Carbon $pickupStartsAt): Carbon
+    {
+        return $pickupStartsAt->copy()->timezone($this->timezone())->startOfDay()->utc();
+    }
+
     public function isEligibleForPickup(Carbon $pickupStartsAt, ?Carbon $now = null): bool
     {
         $now ??= $this->now();
-        $threshold = $pickupStartsAt->copy()->subHours($this->leadHours());
 
-        return $now->greaterThanOrEqualTo($threshold);
+        return $now->greaterThanOrEqualTo($this->eligibleFrom($pickupStartsAt));
+    }
+
+    /**
+     * UTC SQL bound: LATER orders with pickup_starts_at strictly below this are eligible
+     * (pickup local date ≤ today in the business timezone).
+     */
+    public function eligibleCutoffUtcSql(?Carbon $now = null): string
+    {
+        $now ??= $this->now();
+
+        return $this->toUtcSql($now->copy()->timezone($this->timezone())->startOfDay()->addDay());
     }
 
     public function initialStatus(Carbon $pickupStartsAt, ?Carbon $now = null): string

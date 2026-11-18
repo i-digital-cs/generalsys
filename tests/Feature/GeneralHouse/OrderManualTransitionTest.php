@@ -46,7 +46,6 @@ class OrderManualTransitionTest extends TestCase
         config([
             'general_house.min_order_surcharge_tax_class' => null,
             'general_house.standard_vat_rate' => '5.00',
-            'general_house.pickup_eligibility_lead_hours' => 24,
         ]);
     }
 

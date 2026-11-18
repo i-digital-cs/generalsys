@@ -1418,7 +1418,7 @@ Operational service requests — **not** issued invoices. Estimated line amounts
 
 **Timezone policy:** Pickup window date + `HH:MM` interpreted in `config('app.timezone')` (Africa/Cairo). Stored as absolute timestamps; original window not silently rewritten.
 
-**Initial status:** `GhPickupEligibilityService` — if `now >= pickup_starts_at − 24h` → `PICKUP`, else `LATER`. Same rule GH-4 scheduler will use (job not implemented in GH-3).
+**Initial status:** `GhPickupEligibilityService` — if `now >=` 00:00 Asia/Dubai of the pickup calendar date → `PICKUP`, else `LATER` (D-GH-022). The `gh:promote-pickup-eligible` scheduler uses the same rule.
 
 ```sql
 CREATE TABLE gh_sequences (

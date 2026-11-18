@@ -70,16 +70,13 @@ class GhOrderStateService
     public function promoteEligibleLaterOrders(?Carbon $now = null, int $chunk = 100): int
     {
         $now ??= $this->eligibility->now();
-        // Wide SQL window (lead + 1 day buffer), then authoritative eligibility in PHP.
         // Bind UTC string so app.timezone cannot skew TIMESTAMP comparisons.
-        $sqlCutoff = $this->eligibility->toUtcSql(
-            $now->copy()->addHours($this->eligibility->leadHours() + 24)
-        );
+        $sqlCutoff = $this->eligibility->eligibleCutoffUtcSql($now);
         $promoted = 0;
 
         GhOrder::query()
             ->where('status', GhOrderStatus::LATER)
-            ->where('pickup_starts_at', '<=', $sqlCutoff)
+            ->where('pickup_starts_at', '<', $sqlCutoff)
             ->orderBy('id')
             ->chunkById($chunk, function ($orders) use ($now, &$promoted) {
                 foreach ($orders as $order) {
@@ -113,7 +110,8 @@ class GhOrderStateService
             $this->applyStatus($locked, GhOrderStatus::PICKUP, null, GhOrderEventType::PICKUP_PROMOTED, [
                 'source' => 'scheduler',
                 'trigger' => 'automatic',
-                'lead_hours' => $this->eligibility->leadHours(),
+                'rule' => 'pickup_calendar_day',
+                'pickup_date' => $locked->pickup_starts_at->copy()->timezone($this->eligibility->timezone())->toDateString(),
             ]);
 
             return true;

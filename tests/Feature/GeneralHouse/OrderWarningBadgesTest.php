@@ -223,7 +223,7 @@ class OrderWarningBadgesTest extends TestCase
 
         $warnings = app(GhOrderWarningService::class)->forOrder($order->fresh(['invoice']));
         $codes = collect($warnings)->pluck('code');
-        $this->assertTrue($codes->contains(GhOrderWarningService::CODE_MISSING_INVOICE));
+        $this->assertFalse($codes->contains(GhOrderWarningService::CODE_MISSING_INVOICE));
         $this->assertTrue($codes->contains(GhOrderWarningService::CODE_OVERDUE_PICKUP));
         $this->assertTrue($codes->contains(GhOrderWarningService::CODE_OVERDUE_DELIVERY));
 
@@ -238,8 +238,43 @@ class OrderWarningBadgesTest extends TestCase
 
         $this->actingAs($manager)->get(route('gh.orders.index', ['tab' => 'pickup']))
             ->assertOk()
-            ->assertSee(__('gh.warnings.missing_invoice'), false)
+            ->assertDontSee(__('gh.warnings.missing_invoice'), false)
             ->assertSee(__('gh.warnings.overdue_pickup'), false);
+    }
+
+    public function test_missing_invoice_hidden_in_later_and_pickup_shown_from_working(): void
+    {
+        $tz = 'Asia/Dubai';
+        Carbon::setTestNow(Carbon::parse('2026-11-15 12:00:00', $tz));
+        $manager = User::factory()->manager()->create();
+        $svc = app(GhOrderWarningService::class);
+        $picked = Carbon::parse('2026-11-15 09:00:00', $tz)->utc();
+
+        $later = $this->makeOrder([
+            'status' => GhOrderStatus::LATER,
+            'pickup_starts_at' => Carbon::parse('2026-11-20 10:00:00', $tz)->utc(),
+            'pickup_ends_at' => Carbon::parse('2026-11-20 11:00:00', $tz)->utc(),
+            'invoice_issued_at' => null,
+        ]);
+        $pickup = $this->makeOrder(['status' => GhOrderStatus::PICKUP, 'invoice_issued_at' => null]);
+        $working = $this->makeOrder(['status' => GhOrderStatus::WORKING, 'picked_up_at' => $picked, 'invoice_issued_at' => null]);
+        $delivery = $this->makeOrder(['status' => GhOrderStatus::DELIVERY, 'picked_up_at' => $picked, 'invoice_issued_at' => null]);
+
+        foreach ([$later, $pickup] as $order) {
+            $codes = collect($svc->forOrder($order->fresh(['invoice'])))->pluck('code');
+            $this->assertFalse($codes->contains(GhOrderWarningService::CODE_MISSING_INVOICE), $order->status);
+            $this->actingAs($manager)->withSession(['locale' => 'en'])->get(route('gh.orders.show', $order))
+                ->assertOk()
+                ->assertDontSee('data-warning-code="missing_invoice"', false);
+        }
+        foreach ([$working, $delivery] as $order) {
+            $codes = collect($svc->forOrder($order->fresh(['invoice'])))->pluck('code');
+            $this->assertTrue($codes->contains(GhOrderWarningService::CODE_MISSING_INVOICE), $order->status);
+        }
+
+        $this->actingAs($manager)->get(route('gh.orders.index', ['tab' => 'later']))
+            ->assertOk()
+            ->assertDontSee('data-warning-code="missing_invoice"', false);
     }
 
     public function test_driver_board_shows_operational_not_finance_warnings(): void

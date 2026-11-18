@@ -27,13 +27,13 @@ class GhDriverWorkspaceService
 
     /**
      * Pickups the driver can act on now: PICKUP status (incl. overdue unfinished),
-     * or LATER already inside the eligibility lead window (24h by default).
+     * or LATER whose pickup date is today (business timezone) awaiting the scheduler.
      *
      * @return Builder<GhOrder>
      */
     public function actionablePickupsQuery(User $driver, ?Carbon $now = null): Builder
     {
-        $cutoff = $this->eligibility->toUtcSql(($now ?? $this->eligibility->now())->copy()->addHours($this->eligibility->leadHours()));
+        $cutoff = $this->eligibility->eligibleCutoffUtcSql($now);
 
         return $this->orderedByPosition(
             GhOrder::query()
@@ -41,7 +41,7 @@ class GhDriverWorkspaceService
                 ->where(function (Builder $q) use ($cutoff) {
                     $q->where('status', GhOrderStatus::PICKUP)
                         ->orWhere(function (Builder $later) use ($cutoff) {
-                            $later->where('status', GhOrderStatus::LATER)->where('pickup_starts_at', '<=', $cutoff);
+                            $later->where('status', GhOrderStatus::LATER)->where('pickup_starts_at', '<', $cutoff);
                         });
                 }),
             $driver,
@@ -87,7 +87,6 @@ class GhDriverWorkspaceService
      *   failed_followups: Collection<int, GhDriverMovement>,
      *   business_date: string,
      *   timezone: string,
-     *   lead_hours: int,
      * }
      */
     public function dashboard(User $driver): array
@@ -100,12 +99,12 @@ class GhDriverWorkspaceService
 
         $actionablePickups = $this->actionablePickupsQuery($driver, $now)->with($with)->limit(50)->get();
 
-        // Informational only: LATER and not yet inside the eligibility window.
+        // Informational only: LATER with a pickup date after today (business timezone).
         $upcomingPickups = GhOrder::query()
             ->with($with)
             ->where('pickup_driver_id', $uid)
             ->where('status', GhOrderStatus::LATER)
-            ->where('pickup_starts_at', '>', $this->eligibility->toUtcSql($now->copy()->addHours($this->eligibility->leadHours())))
+            ->where('pickup_starts_at', '>=', $this->eligibility->eligibleCutoffUtcSql($now))
             ->orderBy('pickup_starts_at')
             ->limit(50)
             ->get();
@@ -124,7 +123,6 @@ class GhDriverWorkspaceService
             'failed_followups' => $failedFollowups,
             'business_date' => $now->toDateString(),
             'timezone' => $tz,
-            'lead_hours' => $this->eligibility->leadHours(),
         ];
     }
 
@@ -205,7 +203,7 @@ class GhDriverWorkspaceService
         }
         if ($order->status === GhOrderStatus::LATER) {
             return __('gh.orders.pickup_not_eligible', [
-                'hours' => $this->eligibility->leadHours(),
+                'date' => $order->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d') ?? '—',
                 'time' => $order->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') ?? '—',
             ]);
         }

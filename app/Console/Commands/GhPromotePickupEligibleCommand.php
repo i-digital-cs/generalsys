@@ -9,7 +9,7 @@ class GhPromotePickupEligibleCommand extends Command
 {
     protected $signature = 'gh:promote-pickup-eligible';
 
-    protected $description = 'Promote GH LATER→PICKUP (24h window) and WORKING→DELIVERY (timing rules; invoice not required)';
+    protected $description = 'Promote GH LATER→PICKUP (on pickup date, Asia/Dubai) and WORKING→DELIVERY (timing rules; invoice not required)';
 
     public function handle(GhOrderStateService $states): int
     {

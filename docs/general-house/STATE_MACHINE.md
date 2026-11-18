@@ -11,7 +11,7 @@ LATER → PICKUP → WORKING → DELIVERY → COMPLETED
 
 | Transition | Trigger | Notes |
 |---|---|---|
-| → `PICKUP` | Scheduler / eligibility job | Eligible when now ≥ pickup window start − **24 hours** |
+| → `PICKUP` | Scheduler / eligibility job | Eligible from **00:00 Asia/Dubai on the scheduled pickup date** (D-GH-022). Manager may promote earlier with reason + audit. |
 | → `WORKING` | Physical **pickup confirmation** | Authorized actor (typically pickup driver or elevated role) |
 | → `DELIVERY` | Successful **invoice issuance** | Financial finalize moves logistics here |
 | → `COMPLETED` | **Delivery confirmation** | Authorized actor (typically delivery driver or elevated role) |

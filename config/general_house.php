@@ -24,8 +24,6 @@ return [
     */
     'timezone' => env('GH_TIMEZONE', 'Asia/Dubai'),
 
-    'pickup_eligibility_lead_hours' => (int) env('GH_PICKUP_LEAD_HOURS', 24),
-
     /*
     | When staff enter a single scheduled pickup datetime, legacy pickup_ends_at
     | is derived as start + this many minutes (schema/compat only; not shown in UI).

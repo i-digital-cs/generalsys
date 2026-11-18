@@ -1365,6 +1365,8 @@ T-0.1 → T-0.2 → T-0.3
 
 ## Progress log
 
+- [x] 2026-11-18 GH pickup calendar-day eligibility + pre-pickup invoice warning PASS — TEST only. LATER→PICKUP at 00:00 Asia/Dubai of pickup date (D-GH-022 supersedes 24h D-GH-017; `GH_PICKUP_LEAD_HOURS` removed); `missing_invoice` hidden in LATER/PICKUP. No DB changes. Owner confirmed invoice behaviour unchanged (WORKING→DELIVERY stays invoice-independent). Report `docs/GH_PICKUP_PROMOTION_AND_INVOICE_WARNING_FIX_REPORT.md`. Tests: 381 GeneralHouse PASS. Local TEST commit only; LIVE untouched; no push/deploy.
+
 - [x] 2026-11-04 GH owner UAT fixes (5 issues) CONDITIONAL PASS — TEST only. Auto contract refs `GH-CTR-######`; order refs unchanged; no visibility inputs (24h driver list rule + overdue stay actionable); driver list drag/arrows + `gh_driver_list_positions`; order 27 blocked correctly as pre-24h LATER with clear message; zero-line pickup add via sellable catalog; product Excel examples use live categories. Migration `2026_11_04_120000`. LIVE untouched; no push/merge/deploy.
 ```text
 Task ID: GH-UAT-5

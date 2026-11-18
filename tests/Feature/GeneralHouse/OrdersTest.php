@@ -100,25 +100,28 @@ class OrdersTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_initial_pickup_status_within_24_hours(): void
+    public function test_initial_status_follows_pickup_calendar_date(): void
     {
-        Carbon::setTestNow(Carbon::parse('2026-10-25 09:00:00', config('app.timezone')));
+        Carbon::setTestNow(Carbon::parse('2026-10-25 09:00:00', 'Asia/Dubai'));
         $manager = User::factory()->manager()->create();
         $driver = User::factory()->driver()->create();
         [$customer, $address, $offering] = $this->b2cFixture();
 
-        $this->actingAs($manager)->post(route('gh.orders.store'), [
+        $base = [
             'customer_id' => $customer->id,
             'address_id' => $address->id,
             'lines' => [['offering_id' => $offering->id, 'quantity' => 1]],
-            'pickup_date' => '2026-10-26',
             'pickup_window_start' => '08:00',
             'pickup_window_end' => '09:00',
             'scheduled_delivery_at' => '2026-10-26 16:00',
             'pickup_driver_id' => $driver->id,
-        ])->assertRedirect();
+        ];
 
-        $this->assertSame(GhOrderStatus::PICKUP, GhOrder::query()->firstOrFail()->status);
+        $this->actingAs($manager)->post(route('gh.orders.store'), $base + ['pickup_date' => '2026-10-26'])->assertRedirect();
+        $this->assertSame(GhOrderStatus::LATER, GhOrder::query()->latest('id')->firstOrFail()->status);
+
+        $this->actingAs($manager)->post(route('gh.orders.store'), ['pickup_window_start' => '20:00', 'pickup_window_end' => '21:00'] + $base + ['pickup_date' => '2026-10-25'])->assertRedirect();
+        $this->assertSame(GhOrderStatus::PICKUP, GhOrder::query()->latest('id')->firstOrFail()->status);
         Carbon::setTestNow();
     }
 
@@ -168,7 +171,7 @@ class OrdersTest extends TestCase
         ])->assertRedirect();
 
         $order = GhOrder::query()->firstOrFail();
-        $this->assertSame(GhOrderStatus::PICKUP, $order->status);
+        $this->assertSame(GhOrderStatus::LATER, $order->status);
         $this->assertSame(0, $order->lines()->count());
 
         Carbon::setTestNow();
@@ -400,11 +403,13 @@ class OrdersTest extends TestCase
     public function test_eligibility_service_shared_rule(): void
     {
         $svc = app(GhPickupEligibilityService::class);
-        $now = Carbon::parse('2026-10-25 12:00:00');
-        $this->assertTrue($svc->isEligibleForPickup(Carbon::parse('2026-10-26 11:00:00'), $now));
-        $this->assertFalse($svc->isEligibleForPickup(Carbon::parse('2026-10-27 12:01:00'), $now));
-        $this->assertSame(GhOrderStatus::PICKUP, $svc->initialStatus(Carbon::parse('2026-10-26 10:00:00'), $now));
-        $this->assertSame(GhOrderStatus::LATER, $svc->initialStatus(Carbon::parse('2026-10-28 10:00:00'), $now));
+        $tz = 'Asia/Dubai';
+        $now = Carbon::parse('2026-10-25 12:00:00', $tz);
+        $this->assertTrue($svc->isEligibleForPickup(Carbon::parse('2026-10-25 23:30:00', $tz), $now));
+        $this->assertTrue($svc->isEligibleForPickup(Carbon::parse('2026-10-24 10:00:00', $tz), $now));
+        $this->assertFalse($svc->isEligibleForPickup(Carbon::parse('2026-10-26 00:00:00', $tz), $now));
+        $this->assertSame(GhOrderStatus::PICKUP, $svc->initialStatus(Carbon::parse('2026-10-25 18:00:00', $tz), $now));
+        $this->assertSame(GhOrderStatus::LATER, $svc->initialStatus(Carbon::parse('2026-10-26 10:00:00', $tz), $now));
         $this->assertSame('Asia/Dubai', $svc->timezone());
     }
 

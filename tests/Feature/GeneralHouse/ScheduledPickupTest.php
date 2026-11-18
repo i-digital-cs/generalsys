@@ -73,17 +73,18 @@ class ScheduledPickupTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_booking_48h_ahead_is_later_23h_is_pickup(): void
+    public function test_booking_tomorrow_is_later_and_same_day_is_pickup(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-11-05 12:00:00', 'Asia/Dubai'));
         [$manager, $driver, $customer, $address, $offering] = $this->fixture();
 
+        // Tomorrow 11:00 is < 24h away, but a future calendar date → LATER.
         $this->actingAs($manager)->post(route('gh.orders.store'), [
             'customer_id' => $customer->id,
             'address_id' => $address->id,
             'lines' => [['offering_id' => $offering->id, 'quantity' => 1]],
-            'scheduled_pickup_at' => '2026-11-07T12:00',
-            'scheduled_delivery_at' => '2026-11-07 18:00',
+            'scheduled_pickup_at' => '2026-11-06T11:00',
+            'scheduled_delivery_at' => '2026-11-06 18:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect();
         $this->assertSame(GhOrderStatus::LATER, GhOrder::query()->latest('id')->firstOrFail()->status);
@@ -92,7 +93,7 @@ class ScheduledPickupTest extends TestCase
             'customer_id' => $customer->id,
             'address_id' => $address->id,
             'lines' => [['offering_id' => $offering->id, 'quantity' => 1]],
-            'scheduled_pickup_at' => '2026-11-06T11:00',
+            'scheduled_pickup_at' => '2026-11-05T18:00',
             'scheduled_delivery_at' => '2026-11-06 18:00',
             'pickup_driver_id' => $driver->id,
         ])->assertRedirect();

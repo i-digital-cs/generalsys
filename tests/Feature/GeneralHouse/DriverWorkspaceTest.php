@@ -40,6 +40,8 @@ class DriverWorkspaceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // 08:00 Dubai so windowIn(1..15) stays on today's pickup date and windowIn(≥17) is tomorrow+.
+        Carbon::setTestNow(Carbon::parse('2026-11-15 08:00:00', 'Asia/Dubai'));
         foreach (['orders', 'invoices', 'payments'] as $seq) {
             if (! DB::table('gh_sequences')->where('name', $seq)->exists()) {
                 DB::table('gh_sequences')->insert([
@@ -55,6 +57,12 @@ class DriverWorkspaceTest extends TestCase
             'general_house.payments.driver_delivery_payment_enabled' => true,
             'general_house.standard_vat_rate' => '5.00',
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     public function test_driver_dashboard_shows_only_assigned_tasks(): void
@@ -231,7 +239,8 @@ class DriverWorkspaceTest extends TestCase
     {
         $driver = User::factory()->driver()->create();
         $far = $this->makeOrder(['status' => GhOrderStatus::LATER, 'pickup_driver_id' => $driver->id] + $this->windowIn(48));
-        $near = $this->makeOrder(['status' => GhOrderStatus::LATER, 'pickup_driver_id' => $driver->id] + $this->windowIn(23));
+        $near = $this->makeOrder(['status' => GhOrderStatus::LATER, 'pickup_driver_id' => $driver->id] + $this->windowIn(10));
+        $tomorrow = $this->makeOrder(['status' => GhOrderStatus::LATER, 'pickup_driver_id' => $driver->id] + $this->windowIn(23));
         $overdue = $this->makeOrder(['status' => GhOrderStatus::PICKUP, 'pickup_driver_id' => $driver->id] + $this->windowIn(-72));
 
         $data = app(GhDriverWorkspaceService::class)->dashboard($driver);
@@ -240,15 +249,19 @@ class DriverWorkspaceTest extends TestCase
         $this->assertContains($near->id, $actionable);
         $this->assertContains($overdue->id, $actionable);
         $this->assertNotContains($far->id, $actionable);
-        $this->assertSame([$far->id], $data['upcoming_pickups']->pluck('id')->all());
+        // Tomorrow 07:00 Dubai is < 24h away but on a future calendar date — not actionable yet.
+        $this->assertNotContains($tomorrow->id, $actionable);
+        $this->assertSame([$tomorrow->id, $far->id], $data['upcoming_pickups']->pluck('id')->all());
 
         $this->actingAs($driver)->get(route('gh.driver.dashboard', ['tab' => 'pickup']))
             ->assertOk()
             ->assertSee('data-order-id="'.$near->id.'"', false)
+            ->assertDontSee('data-order-id="'.$tomorrow->id.'"', false)
             ->assertDontSee('data-order-id="'.$far->id.'"', false);
 
         $this->actingAs($driver)->get(route('gh.driver.dashboard', ['tab' => 'later']))
             ->assertOk()
+            ->assertSee('data-order-id="'.$tomorrow->id.'"', false)
             ->assertSee('data-order-id="'.$far->id.'"', false)
             ->assertSee($far->reference, false);
     }
@@ -303,7 +316,10 @@ class DriverWorkspaceTest extends TestCase
 
         $this->actingAs($driver)->get(route('gh.driver.pickup', $order))
             ->assertOk()
-            ->assertSee(e(trans('gh.orders.pickup_not_eligible', ['hours' => 24, 'time' => $order->pickup_starts_at->timezone($order->timezone)->translatedFormat('Y-m-d H:i')])), false)
+            ->assertSee(e(trans('gh.orders.pickup_not_eligible', [
+                'date' => $order->pickup_starts_at->timezone($order->timezone)->translatedFormat('Y-m-d'),
+                'time' => $order->pickup_starts_at->timezone($order->timezone)->translatedFormat('Y-m-d H:i'),
+            ])), false)
             ->assertDontSee('gh-driver-pickup-form', false);
 
         $this->assertSame(GhOrderStatus::LATER, $order->fresh()->status);
@@ -319,7 +335,7 @@ class DriverWorkspaceTest extends TestCase
             'pickup_driver_id' => $driver->id,
             'customer_id' => $customer->id,
             'address_id' => $address->id,
-        ] + $this->windowIn(23));
+        ] + $this->windowIn(10));
         $offering = GhProductOffering::factory()->create(['standard_price' => '12.00']);
 
         $this->actingAs($driver)->get(route('gh.driver.pickup', $order))

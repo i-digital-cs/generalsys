@@ -66,37 +66,34 @@ class TimezoneIntegrityTest extends TestCase
         $this->assertStringContainsString(__('gh.orders.scheduled_pickup'), $html);
     }
 
-    public function test_eligibility_exact_24h_and_one_second_edges(): void
+    public function test_eligibility_dubai_midnight_and_one_second_edges(): void
     {
         $elig = app(GhPickupEligibilityService::class);
         $tz = 'Asia/Dubai';
         $pickup = Carbon::parse('2026-11-01 14:00:00', $tz);
-        $exact = $pickup->copy()->subHours(24);
-        $before = $exact->copy()->subSecond();
-        $after = $exact->copy()->addSecond();
+        // Dubai 2026-11-01 00:00 = 2026-10-31 20:00 UTC.
+        $midnight = Carbon::parse('2026-10-31 20:00:00', 'UTC');
 
-        $this->assertFalse($elig->isEligibleForPickup($pickup, $before));
-        $this->assertTrue($elig->isEligibleForPickup($pickup, $exact));
-        $this->assertTrue($elig->isEligibleForPickup($pickup, $after));
+        $this->assertFalse($elig->isEligibleForPickup($pickup, $midnight->copy()->subSecond()));
+        $this->assertTrue($elig->isEligibleForPickup($pickup, $midnight));
+        $this->assertTrue($elig->isEligibleForPickup($pickup, $midnight->copy()->addSecond()));
     }
 
     public function test_scheduler_uses_utc_sql_cutoff_and_promotes_correctly(): void
     {
-        // Create while still outside the 24h window.
         Carbon::setTestNow(Carbon::parse('2026-10-30 09:00:00', 'UTC'));
         $order = $this->createViaService('14:00', '15:00', '2026-11-01');
         $this->assertSame(GhOrderStatus::LATER, $order->status);
 
-        // Exactly 24h before Dubai 14:00 = 2026-10-31 10:00 UTC.
-        Carbon::setTestNow(Carbon::parse('2026-10-31 10:00:00', 'UTC'));
-        $n = app(GhOrderStateService::class)->promoteEligibleLaterOrders();
-        $this->assertSame(1, $n);
-        $this->assertSame(GhOrderStatus::PICKUP, $order->fresh()->status);
+        // 18h before pickup but still 2026-10-31 in Dubai — must stay LATER.
+        Carbon::setTestNow(Carbon::parse('2026-10-31 19:59:59', 'UTC'));
+        $this->assertSame(0, app(GhOrderStateService::class)->promoteEligibleLaterOrders());
+        $this->assertSame(GhOrderStatus::LATER, $order->fresh()->status);
 
-        // One second earlier would not promote (re-create edge via eligibility service).
-        $elig = app(GhPickupEligibilityService::class);
-        $pickup = Carbon::parse('2026-11-01 14:00:00', 'Asia/Dubai');
-        $this->assertFalse($elig->isEligibleForPickup($pickup, Carbon::parse('2026-10-31 09:59:59', 'UTC')));
+        // Dubai midnight of the pickup date = 2026-10-31 20:00 UTC.
+        Carbon::setTestNow(Carbon::parse('2026-10-31 20:00:00', 'UTC'));
+        $this->assertSame(1, app(GhOrderStateService::class)->promoteEligibleLaterOrders());
+        $this->assertSame(GhOrderStatus::PICKUP, $order->fresh()->status);
         Carbon::setTestNow();
     }
 

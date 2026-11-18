@@ -602,13 +602,12 @@ final class GhOrderBoardService
     /** @return Builder<GhOrder> */
     private function driverLaterQuery(User $driver): Builder
     {
-        $now = Carbon::now($this->eligibility->timezone());
-        $cutoff = $this->eligibility->toUtcSql($now->copy()->addHours($this->eligibility->leadHours()));
+        $cutoff = $this->eligibility->eligibleCutoffUtcSql();
 
         return GhOrder::query()
             ->where('pickup_driver_id', (int) $driver->id)
             ->where('status', GhOrderStatus::LATER)
-            ->where('pickup_starts_at', '>', $cutoff)
+            ->where('pickup_starts_at', '>=', $cutoff)
             ->orderBy('pickup_starts_at');
     }
 
