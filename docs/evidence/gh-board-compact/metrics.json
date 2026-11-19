@@ -1,0 +1,58 @@
+[
+  {
+    "locale": "ar",
+    "warnings": 0,
+    "height": 176,
+    "overlaps": 0,
+    "shot": "ar-w0-card.png"
+  },
+  {
+    "locale": "ar",
+    "warnings": 1,
+    "height": 176,
+    "overlaps": 0,
+    "shot": "ar-w1-card.png"
+  },
+  {
+    "locale": "ar",
+    "warnings": 3,
+    "height": 194,
+    "overlaps": 0,
+    "shot": "ar-w3-card.png"
+  },
+  {
+    "locale": "ar",
+    "warnings": 5,
+    "height": 214,
+    "overlaps": 0,
+    "shot": "ar-w5-card.png"
+  },
+  {
+    "locale": "en",
+    "warnings": 0,
+    "height": 176,
+    "overlaps": 0,
+    "shot": "en-w0-card.png"
+  },
+  {
+    "locale": "en",
+    "warnings": 1,
+    "height": 176,
+    "overlaps": 0,
+    "shot": "en-w1-card.png"
+  },
+  {
+    "locale": "en",
+    "warnings": 3,
+    "height": 194,
+    "overlaps": 0,
+    "shot": "en-w3-card.png"
+  },
+  {
+    "locale": "en",
+    "warnings": 5,
+    "height": 216,
+    "overlaps": 0,
+    "shot": "en-w5-card.png"
+  }
+]

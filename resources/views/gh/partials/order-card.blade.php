@@ -83,16 +83,14 @@
                     <span class="gh-order-card__appointment-when">{{ __('gh.orders.delivery_not_scheduled') }}</span>
                 @else
                     <span class="gh-order-card__appointment-when num-ltr">{{ $appointmentWhen ?: '—' }}</span>
+                    @if (($card['scheduled_time'] ?? '—') !== '—')
+                        <span class="gh-uae-badge gh-uae-badge--board">
+                            <span class="gh-uae-flag" aria-hidden="true">{{ __('gh.time.uae_flag') }}</span>
+                            <span>{{ __('gh.time.uae_time_label') }}</span>
+                        </span>
+                    @endif
                 @endif
             </div>
-            @if (! $notScheduled && ($card['scheduled_time'] ?? '—') !== '—')
-                <div class="gh-order-card__appointment-tz">
-                    <span class="gh-uae-badge gh-uae-badge--board">
-                        <span class="gh-uae-flag" aria-hidden="true">{{ __('gh.time.uae_flag') }}</span>
-                        <span>{{ __('gh.time.uae_time_label') }}</span>
-                    </span>
-                </div>
-            @endif
         </div>
         <div class="gh-order-card__meta gh-order-card__meta--2" role="group">
             <div class="gh-order-card__cell gh-order-card__cell--created">
