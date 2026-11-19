@@ -33,6 +33,7 @@ return [
         ['key' => 'nav.gh_invoices', 'route' => 'gh.invoices.index', 'icon' => 'bi-receipt'],
         ['key' => 'nav.gh_payments', 'route' => 'gh.payments.index', 'icon' => 'bi-cash-coin'],
         ['key' => 'nav.gh_driver_cash', 'route' => 'gh.driver-cash.index', 'icon' => 'bi-wallet2'],
+        ['key' => 'nav.gh_driver_settlements', 'route' => 'gh.driver-cash.settlements.index', 'icon' => 'bi-arrow-left-right'],
         ['key' => 'nav.gh_credit_notes', 'route' => 'gh.credit-notes.index', 'icon' => 'bi-journal-minus'],
         ['key' => 'nav.gh_debit_adjustments', 'route' => 'gh.debit-adjustments.index', 'icon' => 'bi-journal-plus'],
         ['key' => 'nav.gh_refunds', 'route' => 'gh.refunds.index', 'icon' => 'bi-arrow-counterclockwise'],
@@ -41,6 +42,7 @@ return [
         ['type' => 'heading', 'key' => 'nav.gh_section_reports'],
         ['key' => 'nav.gh_reports', 'route' => 'gh.reports.index', 'icon' => 'bi-file-earmark-bar-graph'],
         ['key' => 'nav.gh_reports_outstanding', 'route' => 'gh.reports.outstanding', 'icon' => 'bi-exclamation-circle'],
+        ['key' => 'nav.gh_reports_driver_cash', 'route' => 'gh.reports.driver-cash', 'icon' => 'bi-wallet2'],
     ],
     'product' => [
         ['key' => 'nav.dashboard', 'route' => 'portal.product', 'icon' => 'bi-speedometer2'],

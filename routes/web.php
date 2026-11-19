@@ -36,6 +36,8 @@ use App\Http\Controllers\GeneralHouse\CustomerController as GhCustomerController
 use App\Http\Controllers\GeneralHouse\DashboardController as GhDashboardController;
 use App\Http\Controllers\GeneralHouse\DebitAdjustmentController as GhDebitAdjustmentController;
 use App\Http\Controllers\GeneralHouse\DriverCashCustodyController;
+use App\Http\Controllers\GeneralHouse\DriverCashReportController;
+use App\Http\Controllers\GeneralHouse\DriverCashSettlementController;
 use App\Http\Controllers\GeneralHouse\DriverWorkspaceController as GhDriverWorkspaceController;
 use App\Http\Controllers\GeneralHouse\FinancialCorrectionController as GhFinancialCorrectionController;
 use App\Http\Controllers\GeneralHouse\ImportController as GhImportController;
@@ -166,6 +168,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/orders', [GhReportController::class, 'orders'])->name('reports.orders');
         Route::get('/reports/pickup-performance', [GhReportController::class, 'pickupPerformance'])->name('reports.pickup-performance');
         Route::get('/reports/delivery-performance', [GhReportController::class, 'deliveryPerformance'])->name('reports.delivery-performance');
+        Route::get('/reports/driver-cash', DriverCashReportController::class)->name('reports.driver-cash');
 
         // Excel import — master data only (never orders, invoices, payments, refunds or credit notes)
         Route::prefix('import/{entity}')->name('import.')
@@ -270,7 +273,18 @@ Route::middleware('auth')->group(function () {
         // Phase GH-6 — payments (Manager-only; no Gross treasury; no driver finance)
         Route::get('/driver-cash', [DriverCashCustodyController::class, 'index'])->name('driver-cash.index');
         Route::get('/driver-cash/{driver}', [DriverCashCustodyController::class, 'show'])->name('driver-cash.show');
-        Route::post('/driver-cash/{driver}/settle', [DriverCashCustodyController::class, 'settle'])->name('driver-cash.settle');
+        Route::get('/driver-cash/{driver}/settlements/create', [DriverCashSettlementController::class, 'create'])->name('driver-cash.settlements.create');
+        Route::post('/driver-cash/{driver}/settle', [DriverCashSettlementController::class, 'store'])
+            ->middleware('throttle:30,1')
+            ->name('driver-cash.settle');
+        Route::get('/driver-settlements', [DriverCashSettlementController::class, 'index'])->name('driver-cash.settlements.index');
+        Route::get('/driver-settlements/{settlement}', [DriverCashSettlementController::class, 'show'])->name('driver-cash.settlements.show');
+        Route::post('/driver-settlements/{settlement}/reverse', [DriverCashSettlementController::class, 'reverse'])
+            ->middleware('throttle:30,1')
+            ->name('driver-cash.settlements.reverse');
+        Route::post('/driver-settlements/{settlement}/allocate', [DriverCashSettlementController::class, 'allocate'])
+            ->middleware('throttle:30,1')
+            ->name('driver-cash.settlements.allocate');
 
         Route::get('/payments', [GhPaymentController::class, 'index'])->name('payments.index');
         Route::post('/invoices/{invoice}/payments/cash', [GhPaymentController::class, 'storeCash'])

@@ -8,6 +8,7 @@ use App\Support\GeneralHouse\GhOrderBoardTab;
 use App\Support\GeneralHouse\GhOrderEventType;
 use App\Support\GeneralHouse\GhOrderStatus;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -143,10 +144,12 @@ final class GhOrderBoardService
         $tab = GhOrderBoardTab::normalize($tab);
         $page = max(1, $page);
         $perPage = self::DRIVER_PER_PAGE;
-        $with = ['customer', 'address.zone', 'zone', 'invoice'];
+        $with = ['customer', 'address.zone', 'zone', 'pickupDriver', 'deliveryDriver', 'invoice'];
 
         if ($tab === GhOrderBoardTab::ACTIONS) {
-            $all = $this->driverActionsOrders($driver)->loadMissing($with);
+            // driverActionsOrders returns Support\Collection — wrap so loadMissing works.
+            $all = $this->driverActionsOrders($driver);
+            (new EloquentCollection($all->all()))->loadMissing($with);
             $total = $all->count();
             $pager = $this->pagerMeta($page, $perPage, $total);
             $orders = $all->slice(($pager['page'] - 1) * $perPage, $perPage)->values();
@@ -649,7 +652,7 @@ final class GhOrderBoardService
             ->filter();
 
         $overdue = $this->workspace->actionablePickupsQuery($driver)
-            ->with(['customer', 'address.zone', 'zone', 'invoice'])
+            ->with(['customer', 'address.zone', 'zone', 'pickupDriver', 'deliveryDriver', 'invoice'])
             ->get()
             ->filter(function (GhOrder $order) {
                 return $order->status === GhOrderStatus::PICKUP

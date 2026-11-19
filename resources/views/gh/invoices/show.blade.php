@@ -126,5 +126,11 @@
             </div>
         </div>
     </div>
+    @include('gh.driver-cash.partials.financial-summary', [
+        'financial' => $financial,
+        'displayTz' => $displayTz,
+        'showInvoice' => false,
+        'title' => __('gh.invoices.custody_panel'),
+    ])
 </div>
 @endsection

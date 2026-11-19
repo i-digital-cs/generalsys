@@ -99,35 +99,31 @@ class DriverCashCustodyTest extends TestCase
 
         $custody = app(GhDriverCashCustodyService::class);
         $this->assertSame('100.00', $custody->outstandingFor($driver));
+        $collectionId = GhDriverCashCollection::query()->where('order_id', $order->id)->value('id');
+        $settle = fn (string $amount, string $key) => [
+            'received_amount' => $amount,
+            'idempotency_key' => $key,
+            'allocations' => [$collectionId => ['selected' => '1', 'amount' => $amount]],
+        ];
 
         $key1 = (string) Str::uuid();
-        $this->actingAs($manager)->post(route('gh.driver-cash.settle', $driver), [
-            'amount' => '40.00',
-            'idempotency_key' => $key1,
+        $this->actingAs($manager)->post(route('gh.driver-cash.settle', $driver), $settle('40.00', $key1) + [
             'receipt_reference' => 'R-1',
-        ])->assertRedirect(route('gh.driver-cash.show', $driver));
+        ])->assertRedirect();
 
         $this->assertSame('60.00', $custody->outstandingFor($driver));
         $this->assertSame(1, GhDriverCashSettlement::query()->where('driver_id', $driver->id)->count());
 
         // Duplicate settlement key is idempotent.
-        $this->actingAs($manager)->post(route('gh.driver-cash.settle', $driver), [
-            'amount' => '40.00',
-            'idempotency_key' => $key1,
-        ])->assertRedirect();
+        $this->actingAs($manager)->post(route('gh.driver-cash.settle', $driver), $settle('40.00', $key1))->assertRedirect();
         $this->assertSame(1, GhDriverCashSettlement::query()->where('driver_id', $driver->id)->count());
         $this->assertSame('60.00', $custody->outstandingFor($driver));
 
-        $this->actingAs($manager)->post(route('gh.driver-cash.settle', $driver), [
-            'amount' => '70.00',
-            'idempotency_key' => (string) Str::uuid(),
-        ])->assertSessionHasErrors('amount');
+        $this->actingAs($manager)->post(route('gh.driver-cash.settle', $driver), $settle('70.00', (string) Str::uuid()))
+            ->assertSessionHasErrors('received_amount');
         $this->assertSame('60.00', $custody->outstandingFor($driver));
 
-        $this->actingAs($manager)->post(route('gh.driver-cash.settle', $driver), [
-            'amount' => '60.00',
-            'idempotency_key' => (string) Str::uuid(),
-        ])->assertRedirect();
+        $this->actingAs($manager)->post(route('gh.driver-cash.settle', $driver), $settle('60.00', (string) Str::uuid()))->assertRedirect();
         $this->assertSame('0.00', $custody->outstandingFor($driver));
         $this->assertSame(0, GhPayment::query()->count());
     }
@@ -143,9 +139,11 @@ class DriverCashCustodyTest extends TestCase
 
         $this->actingAs($driver)->get(route('gh.driver-cash.index'))->assertForbidden();
         $this->actingAs($driver)->post(route('gh.driver-cash.settle', $driver), [
-            'amount' => '20.00',
+            'received_amount' => '20.00',
             'idempotency_key' => (string) Str::uuid(),
+            'allocations' => [GhDriverCashCollection::query()->value('id') => ['selected' => '1', 'amount' => '20.00']],
         ])->assertForbidden();
+        $this->assertSame(0, GhDriverCashSettlement::query()->count());
     }
 
     public function test_manager_index_shows_outstanding(): void

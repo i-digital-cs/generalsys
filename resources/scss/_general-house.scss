@@ -61,18 +61,47 @@
         }
     }
 
+    // Flex/grid ancestors default to min-width:auto, so a wide table's
+    // min-content width expands the page even when wrapped in
+    // .table-responsive. Zero the floor so horizontal scroll stays inside
+    // the table container (mobile catalog / report lists).
+    main.flex-grow-1,
+    .card,
+    .card-body,
     .table-responsive {
-        -webkit-overflow-scrolling: touch;
+        min-width: 0;
     }
 
-    // Never set direction:ltr on the <td> itself — in RTL that flips
-    // text-align:start to the left edge and numbers drift into the next column
-    // (e.g. ترتيب العرض values sitting beside Arabic names).
-    // Keep digits LTR via an inner <span class="num-ltr"> only.
+    // position:relative so absolute .visually-hidden labels inside action
+    // cells use this box as their containing block. Without it they escape
+    // overflow:auto and inflate page scrollWidth on narrow viewports.
+    .table-responsive {
+        position: relative;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+    }
+
+    // Never leave direction:ltr on the <td>/<th> itself. Global .num-ltr sets
+    // direction:ltr; on a table cell in RTL that flips text-align:start to the
+    // physical left while headers stay on the right, so body values look
+    // horizontally shifted under the wrong column. Inherit the table direction
+    // so start/end match the header; keep unicode-bidi:isolate so references
+    // and amounts still paint LTR. Prefer an inner <span class="num-ltr"> for
+    // new markup; this restores existing td.num-ltr / th.num-ltr safely.
     .table td.num-ltr,
     .table th.num-ltr,
     .table td.hp-value.num-ltr {
         display: table-cell;
+        direction: inherit;
+        unicode-bidi: isolate;
+        white-space: nowrap;
+    }
+
+    // Reference links that omit td.num-ltr still must not wrap mid-token
+    // (e.g. GH-PAY-000007 / contract references).
+    .table a.num-ltr,
+    .table a.hp-value {
+        white-space: nowrap;
     }
 }
 

@@ -112,6 +112,11 @@ class GhOrder extends Model
         return $this->hasOne(GhInvoice::class, 'order_id');
     }
 
+    public function cashCollections(): HasMany
+    {
+        return $this->hasMany(GhDriverCashCollection::class, 'order_id')->orderBy('collected_at')->orderBy('id');
+    }
+
     public function assignments(): HasMany
     {
         return $this->hasMany(GhOrderAssignment::class, 'order_id');

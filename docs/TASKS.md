@@ -1365,6 +1365,7 @@ T-0.1 → T-0.2 → T-0.3
 
 ## Progress log
 
+- [x] 2026-11-18 GH Driver cash custody, invoice settlement & reconciliation PASS — TEST only. Manager-chosen settlement allocations per collection/invoice (no FIFO; Σ = received; ≤ remaining; same-driver composite FKs), partial/multi settlements, controlled one-step reversal (any GH manager incl. the settling manager, never the driver; reason; no second approval; `GH-DCR-######`), legacy lump-sum settlements left unchanged as unallocated with manual allocation (no balance change). Derived statuses NOT_APPLICABLE/NOT_SETTLED/PARTIAL/SETTLED via `GhCashSettlementQueryService` (SSOT). UI: custody dashboard (KPIs, reconciliation, period vs as-of, 5 tabs incl. ledger), settlement create/show/index, invoice list columns + filters, order/invoice financial section, driver cash report + CSV; Asia/Dubai display, UTC storage. Migration `2026_11_18_190000` (additive; TEST backup `~/backups/gh_driver_cash_pre_alloc_20261118T184040Z.sql`, migrated, existing rows unchanged). Tests: full suite 1589 passed / 5 skipped (default env); SQLite fork concurrency 4 passed; **MySQL/MariaDB concurrency 4 passed** (×4 runs) on isolated scratch DB `d14098_ghconc` (D-GH-027); cross-surface reconciliation test PASS; final simple manager workflow (D-GH-026) verified. UI verified headless AR/RTL + EN/LTR at 375/768/1280. Decisions D-GH-024…027. Report `docs/GH_DRIVER_CASH_RECONCILIATION_REPORT.md`. No commit/push/deploy; LIVE untouched.
 - [x] 2026-11-18 GH Admin order soft deletion PASS — TEST only. Manager-only; LATER/PICKUP without confirmed pickup; blocked by any linked invoice/payment/refund/credit note/correction/debit adjustment/driver cash/override (bilingual message); mandatory reason; `ORDER_DELETED` audit event; excluded from boards, drivers, scheduler. Migration `2026_11_18_160000` (3 nullable columns on `gh_orders`, applied on TEST with backup of `gh_orders`/`gh_order_events`). Tests: `AdminOrderDeletionTest` (22: dedicated debit-adjustment / driver-cash / min-order-override guards, stale-copy double delete, recheck under lock, atomic rollback, every `{order}` endpoint 404), `AdminOrderDeletionConcurrencyTest` (4 forked workers → exactly 1 deletion + 1 audit event), `OrderSoftDeleteMigrationSafetyTest` (5: per-column idempotent re-run after partial MySQL DDL failure). UI verified headless AR/RTL + EN/LTR at 375/768/1280. Owner-approved one-time exception: the uncommitted migration was hardened after its TEST run (identical final schema) — see `docs/GH_ADMIN_ORDER_DELETION_RELEASE_CHECKLIST.md` §0, which also holds the LIVE release checklist. Local commit only; LIVE untouched; no push/deploy.
 
 - [x] 2026-11-18 GH pickup calendar-day eligibility + pre-pickup invoice warning PASS — TEST only. LATER→PICKUP at 00:00 Asia/Dubai of pickup date (D-GH-022 supersedes 24h D-GH-017; `GH_PICKUP_LEAD_HOURS` removed); `missing_invoice` hidden in LATER/PICKUP. No DB changes. Owner confirmed invoice behaviour unchanged (WORKING→DELIVERY stays invoice-independent). Report `docs/GH_PICKUP_PROMOTION_AND_INVOICE_WARNING_FIX_REPORT.md`. Tests: 381 GeneralHouse PASS. Local TEST commit only; LIVE untouched; no push/deploy.
@@ -1758,6 +1759,20 @@ Example:
   SCHEMA MIGRATIONS CREATED: NOT APPLICABLE
   DATA MIGRATION OR BACKFILL: NOT APPLICABLE
   PRODUCTION DEPLOYMENT PROCEDURE: VERIFIED
+  HARDCODED ID SAFETY: NOT APPLICABLE
+  DATABASE MIGRATION POLICY: PASS
+  ```
+- [x] 2026-11-18 GH GLOBAL TABLE ALIGNMENT & RTL/LTR UI AUDIT PASS — Root cause: `direction:ltr` on `td.num-ltr` flipped `text-align:start` to the physical left in RTL while headers stayed right (936 anchor + 368 refwrap before; cell boxes were already aligned). Reusable GH-scoped fix in `_general-house.scss` (`direction:inherit` + nowrap + `.table-responsive` containment). Print + order-history payload polish. Driver board eager-load fix (local 500). Playwright 588 loads AFTER: **0** issues / **0** overflow / **12/12** width×locale PASS. Report: `docs/GH_TABLE_ALIGNMENT_AUDIT_REPORT.md`. **Not committed / not deployed.**
+  ```text
+  Task ID: GH GLOBAL TABLE ALIGNMENT & RTL/LTR UI AUDIT
+  Commands: npm run build; node /tmp/gh-table-audit/audit.js before|after; measure.js; php artisan test --filter=GeneralHouse; vendor/bin/pint --dirty; php -l
+  Automated tests: PASS for this change (driver board + OrderBoardV2); GH pack 448 pass / 1 pre-existing DriverMovementLogTest fail
+  UI/UX (AR+EN, RTL+LTR, 375/430/768/1024/1280/1440): PASS
+  Next task allowed: yes (owner) — commit/deploy only on request
+  DATABASE CHANGES: NO
+  SCHEMA MIGRATIONS CREATED: NOT APPLICABLE
+  DATA MIGRATION OR BACKFILL: NOT APPLICABLE
+  PRODUCTION DEPLOYMENT PROCEDURE: BLOCKED (TEST only; not committed)
   HARDCODED ID SAFETY: NOT APPLICABLE
   DATABASE MIGRATION POLICY: PASS
   ```

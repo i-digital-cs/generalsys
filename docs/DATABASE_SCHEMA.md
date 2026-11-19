@@ -1879,6 +1879,61 @@ Custody is **not** customer AR and settlements are **not** revenue. Customer inv
 
 Sequences: `driver_cash_collections`, `driver_cash_settlements`.
 
+#### Manual settlement allocations & reversals
+
+Migration: `2026_11_18_190000_add_gh_driver_cash_settlement_allocations_and_reversals.php` — additive only; existing collections / settlements / balances / events are not changed. Settlements recorded before this migration have no allocations and show as **unallocated** until a manager allocates them manually (audited, no balance change).
+
+The manager chooses which collections a settlement covers and how much of each (no FIFO, no auto-distribution). `Σ allocations = settlement.amount` at posting; an allocation never exceeds the collection's remaining (`collection.amount − Σ effective allocations`). Allocations of a reversed settlement stop counting ("effective" = settlement has no reversal row). Reversal is a compensating row — the settlement and its allocations are never edited or deleted.
+
+```sql
+-- Composite keys that let the FKs below enforce "same driver" in the database
+ALTER TABLE gh_driver_cash_collections ADD UNIQUE KEY uq_gh_dcc_id_driver (id, driver_id);
+ALTER TABLE gh_driver_cash_settlements ADD UNIQUE KEY uq_gh_dcs_id_driver (id, driver_id);
+
+CREATE TABLE gh_driver_cash_settlement_allocations (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    settlement_id BIGINT UNSIGNED NOT NULL,
+    collection_id BIGINT UNSIGNED NOT NULL,
+    driver_id BIGINT UNSIGNED NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,              -- CHECK chk_gh_dcsa_amount_positive (amount > 0)
+    currency CHAR(3) NOT NULL DEFAULT 'AED',
+    batch_key VARCHAR(64) NOT NULL,             -- settlement idempotency key, or the later manual-allocation key
+    allocated_by BIGINT UNSIGNED NOT NULL,      -- FK users.id (restrict)
+    allocated_at TIMESTAMP NOT NULL,            -- UTC
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    KEY idx_gh_dcsa_collection (collection_id),
+    KEY idx_gh_dcsa_batch (batch_key),
+    KEY idx_gh_dcsa_driver_allocated (driver_id, allocated_at),
+    CONSTRAINT fk_gh_dcsa_settlement_driver FOREIGN KEY (settlement_id, driver_id)
+        REFERENCES gh_driver_cash_settlements (id, driver_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_dcsa_collection_driver FOREIGN KEY (collection_id, driver_id)
+        REFERENCES gh_driver_cash_collections (id, driver_id) ON DELETE RESTRICT
+);
+
+CREATE TABLE gh_driver_cash_settlement_reversals (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    reference VARCHAR(32) NOT NULL,             -- GH-DCR-######, UNIQUE uq_gh_dcsr_reference
+    settlement_id BIGINT UNSIGNED NOT NULL,     -- UNIQUE uq_gh_dcsr_settlement (one reversal per settlement)
+    driver_id BIGINT UNSIGNED NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,              -- = settlement.amount; CHECK chk_gh_dcsr_amount_positive
+    currency CHAR(3) NOT NULL DEFAULT 'AED',
+    reason VARCHAR(500) NOT NULL,               -- mandatory
+    reversed_by BIGINT UNSIGNED NOT NULL,       -- FK users.id (restrict); any GH manager incl. the one who settled (not the driver); one step, no approval
+    reversed_at TIMESTAMP NOT NULL,             -- UTC
+    idempotency_key VARCHAR(64) NOT NULL,       -- UNIQUE uq_gh_dcsr_idempotency
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    KEY idx_gh_dcsr_driver_reversed (driver_id, reversed_at),
+    CONSTRAINT fk_gh_dcsr_settlement_driver FOREIGN KEY (settlement_id, driver_id)
+        REFERENCES gh_driver_cash_settlements (id, driver_id) ON DELETE RESTRICT
+);
+```
+
+Sequence: `driver_cash_settlement_reversals` (seeded by the migration). CHECK constraints are MySQL/MariaDB only; services validate amounts on every engine. Lock order for every write: driver balance row → settlement → collections.
+
+Settlement status per collection / order / invoice (derived, never stored — `GhCashSettlementQueryService`): `NOT_APPLICABLE` (no driver cash collected, e.g. paid directly to the company), `NOT_SETTLED`, `PARTIAL`, `SETTLED`.
+
 ## 29. General House UAT additions — contract sequence & driver list order
 
 Migration: `2026_11_04_120000_*` — forward-only, idempotent.

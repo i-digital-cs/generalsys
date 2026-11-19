@@ -17,6 +17,7 @@ use App\Services\GeneralHouse\Orders\GhOrderManualTransitionService;
 use App\Services\GeneralHouse\Orders\GhOrderService;
 use App\Services\GeneralHouse\Orders\GhOrderWarningService;
 use App\Services\GeneralHouse\Orders\GhPickupEligibilityService;
+use App\Services\GeneralHouse\Payments\GhOrderFinancialSummaryService;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use App\Support\GeneralHouse\GhCustomerType;
 use App\Support\GeneralHouse\GhOrderAccess;
@@ -38,6 +39,7 @@ class OrderController extends Controller
         private readonly GhOrderWarningService $orderWarnings,
         private readonly GhOrderManualTransitionService $manualTransitions,
         private readonly GhOrderDeletionService $deletions,
+        private readonly GhOrderFinancialSummaryService $financialSummary,
     ) {}
 
     public function index(Request $request): View
@@ -165,6 +167,7 @@ class OrderController extends Controller
                     ->all()
                 : [],
             'autoPromoteHeld' => (bool) $order->auto_promote_held,
+            'financial' => GhOrderAccess::mayManage($user) ? $this->financialSummary->forOrder($order) : null,
         ]);
     }
 

@@ -8,21 +8,7 @@
         <a href="{{ route('gh.orders.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('gh.orders.title') }}</a>
     </div>
 
-    <form method="get" class="row g-2 align-items-end mb-3">
-        <div class="col-md-4">
-            <label class="form-label" for="q">{{ __('gh.invoices.search') }}</label>
-            <input id="q" name="q" class="form-control form-control-sm" value="{{ request('q') }}">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" for="status">{{ __('gh.invoices.status') }}</label>
-            <select id="status" name="status" class="form-select form-select-sm">
-                <option value="">{{ __('general.all') }}</option>
-                <option value="DRAFT" @selected(request('status')==='DRAFT')>{{ __('gh.invoice_status.DRAFT') }}</option>
-                <option value="ISSUED" @selected(request('status')==='ISSUED')>{{ __('gh.invoice_status.ISSUED') }}</option>
-            </select>
-        </div>
-        <div class="col-md-2"><button class="btn btn-primary btn-sm w-100">{{ __('general.filter') }}</button></div>
-    </form>
+    <div class="mb-3">@include('gh.invoices.partials.list-filters')</div>
 
     <div class="card border-0 shadow-sm">
         <div class="table-responsive">
@@ -30,22 +16,50 @@
                 <thead>
                 <tr>
                     <th>{{ __('gh.invoices.number') }}</th>
-                    <th>{{ __('gh.orders.reference') }}</th>
-                    <th>{{ __('gh.fields.customer') ?? __('gh.customers.title') }}</th>
+                    <th>{{ __('gh.invoices.order_number') }}</th>
+                    <th>{{ __('gh.fields.customer') }}</th>
+                    <th>{{ __('gh.invoices.invoice_date') }}</th>
                     <th>{{ __('gh.invoices.status') }}</th>
                     <th class="text-end">{{ __('gh.invoices.total') }}</th>
+                    <th class="text-end">{{ __('gh.invoices.amount_paid') }}</th>
+                    <th>{{ __('gh.invoices.payment_method_label') }}</th>
+                    <th>{{ __('gh.invoices.payment_status') }}</th>
+                    <th class="text-end">{{ __('gh.invoices.driver_collected') }}</th>
+                    <th class="text-end">{{ __('gh.invoices.driver_settled') }}</th>
+                    <th class="text-end">{{ __('gh.invoices.driver_outstanding') }}</th>
+                    <th>{{ __('gh.invoices.settlement_status') }}</th>
                     <th></th>
                 </tr>
                 </thead>
                 <tbody>
                 @forelse ($rows as $row)
                     <tr>
-                        <td class="hp-value num-ltr">{{ $row->number ?? '—' }}</td>
-                        <td class="num-ltr">{{ $row->order_reference }}</td>
+                        <td class="hp-value num-ltr text-nowrap">{{ $row->number ?? '—' }}</td>
+                        <td class="num-ltr text-nowrap">
+                            @if ($row->order_id)
+                                <a href="{{ route('gh.orders.show', $row->order_id) }}">{{ $row->order_reference }}</a>
+                            @else
+                                {{ $row->order_reference }}
+                            @endif
+                        </td>
                         <td>{{ app()->getLocale()==='ar' ? $row->customer_name_ar : ($row->customer_name_en ?: $row->customer_name_ar) }}</td>
+                        <td class="num-ltr small text-nowrap">{{ ($row->issued_at ?? $row->created_at)?->timezone($displayTz)->translatedFormat('Y-m-d') }}</td>
                         <td><span class="badge text-bg-{{ $row->status==='ISSUED' ? 'success' : 'secondary' }}">{{ __('gh.invoice_status.'.$row->status) }}</span></td>
                         <td class="text-end"><x-money :amount="$row->total_payable" currency="AED" /></td>
-                        <td class="text-end">
+                        <td class="text-end"><x-money :amount="$row->payments_sum_amount ?? 0" currency="AED" /></td>
+                        <td class="small">{{ $row->payments->pluck('method')->unique()->map(fn ($m) => __('gh.payment_method.'.$m))->implode(', ') ?: '—' }}</td>
+                        <td>
+                            @if ($row->isIssued() && $row->payment_status)
+                                <span class="badge text-bg-{{ ['PAID' => 'success', 'PARTIAL' => 'warning'][$row->payment_status] ?? 'danger' }}">{{ __('gh.payment_status.'.$row->payment_status) }}</span>
+                            @else
+                                —
+                            @endif
+                        </td>
+                        <td class="text-end"><x-money :amount="$row->driver_cash_collected" currency="AED" /></td>
+                        <td class="text-end"><x-money :amount="$row->driver_cash_settled" currency="AED" /></td>
+                        <td class="text-end fw-semibold"><x-money :amount="$row->driver_cash_outstanding" currency="AED" /></td>
+                        <td>@include('gh.driver-cash.partials.status-badge', ['status' => $row->cash_settlement_status])</td>
+                        <td class="text-end text-nowrap">
                             @if ($row->isDraft())
                                 <a href="{{ route('gh.invoices.builder', $row) }}" class="btn btn-sm btn-primary">{{ __('gh.invoices.builder') }}</a>
                             @else
@@ -54,7 +68,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="text-center text-body-secondary py-4">{{ __('gh.invoices.empty') }}</td></tr>
+                    <tr><td colspan="14" class="text-center text-body-secondary py-4">{{ __('gh.invoices.empty') }}</td></tr>
                 @endforelse
                 </tbody>
             </table>

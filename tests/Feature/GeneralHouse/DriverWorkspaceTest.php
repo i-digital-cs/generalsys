@@ -26,6 +26,7 @@ use App\Support\GeneralHouse\GhDriverMovementType;
 use App\Support\GeneralHouse\GhMinOrderPolicy;
 use App\Support\GeneralHouse\GhOrderStatus;
 use App\Support\GeneralHouse\GhReceivedDiscrepancy;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -223,6 +224,29 @@ class DriverWorkspaceTest extends TestCase
             ->get(route('gh.driver.dashboard'))
             ->assertOk()
             ->assertSee(__('gh.driver.dashboard', [], 'ar'), false);
+    }
+
+    public function test_driver_dashboard_tabs_eager_load_drivers_under_lazy_guard(): void
+    {
+        Model::preventLazyLoading();
+
+        try {
+            $pickup = User::factory()->driver()->create();
+            $delivery = User::factory()->driver()->create();
+            $this->makeOrder([
+                'status' => GhOrderStatus::PICKUP,
+                'pickup_driver_id' => $pickup->id,
+                'delivery_driver_id' => $delivery->id,
+            ]);
+
+            foreach (['all', 'later', 'actions', 'pickup', 'working', 'delivery', 'complete'] as $tab) {
+                $this->actingAs($pickup)
+                    ->get(route('gh.driver.dashboard', ['tab' => $tab]))
+                    ->assertOk();
+            }
+        } finally {
+            Model::preventLazyLoading(false);
+        }
     }
 
     /**

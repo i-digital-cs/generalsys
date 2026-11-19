@@ -3,67 +3,62 @@
 namespace App\Http\Controllers\GeneralHouse;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\GeneralHouse\SettleGhDriverCashRequest;
+use App\Http\Requests\GeneralHouse\GhDriverCashFilterRequest;
 use App\Models\User;
-use App\Services\GeneralHouse\Payments\GhDriverCashCustodyService;
-use App\Support\GeneralHouse\GhCatalogAccess;
+use App\Services\GeneralHouse\Payments\GhDriverCashActivityService;
+use App\Services\GeneralHouse\Payments\GhDriverCashDashboardService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DriverCashCustodyController extends Controller
 {
     public function __construct(
-        private readonly GhDriverCashCustodyService $custody,
+        private readonly GhDriverCashDashboardService $dashboard,
+        private readonly GhDriverCashActivityService $activity,
     ) {}
 
-    public function index(Request $request): View
+    public function index(GhDriverCashFilterRequest $request): View|RedirectResponse
     {
-        abort_unless(GhCatalogAccess::mayManage($request->user()), 403);
-
-        $driverId = $request->integer('driver_id') ?: null;
-        $drivers = $this->custody->outstandingDriversReport();
-        $collections = $this->custody->paginateCollections($driverId);
-        $settlements = $this->custody->paginateSettlements($driverId);
-
-        $selectedDriver = $driverId
-            ? User::query()->find($driverId)
-            : null;
-        $snapshot = $selectedDriver
-            ? $this->custody->snapshotFor($selectedDriver)
-            : null;
+        $driverId = $request->validated('driver_id');
+        if ($driverId !== null && User::query()->whereKey($driverId)->where('role', User::ROLE_DRIVER)->exists()) {
+            return redirect()->route('gh.driver-cash.show', (int) $driverId);
+        }
 
         return view('gh.driver-cash.index', [
-            'outstandingDrivers' => $drivers,
-            'collections' => $collections,
-            'settlements' => $settlements,
-            'selectedDriver' => $selectedDriver,
-            'snapshot' => $snapshot,
-            'driverId' => $driverId,
+            'drivers' => $this->dashboard->driversOverview($request->validated('q')),
+            'driverOptions' => $this->dashboard->driverOptions(),
+            'q' => (string) $request->validated('q'),
         ]);
     }
 
-    public function show(Request $request, User $driver): View
+    public function show(GhDriverCashFilterRequest $request, User $driver): View
     {
-        abort_unless(GhCatalogAccess::mayManage($request->user()), 403);
         abort_unless($driver->isDriver(), 404);
+        $tab = $request->tab();
+        $period = $request->period();
+        $asOf = $request->validated('as_of');
 
         return view('gh.driver-cash.show', [
             'driver' => $driver,
-            'snapshot' => $this->custody->snapshotFor($driver),
-            'collections' => $this->custody->paginateCollections($driver->id),
-            'settlements' => $this->custody->paginateSettlements($driver->id),
+            'driverOptions' => $this->dashboard->driverOptions(),
+            'summary' => $this->dashboard->summary($driver),
+            'activity' => $this->dashboard->periodActivity($driver, $period),
+            'asOf' => $asOf === null ? null : ['date' => $asOf, 'outstanding' => $this->activity->outstandingAsOf($driver, $asOf)],
+            'period' => $period,
+            'tab' => $tab,
+            'tabData' => $this->tabData($tab, $driver, $period),
+            'displayTz' => $period->timezone,
         ]);
     }
 
-    public function settle(SettleGhDriverCashRequest $request, User $driver): RedirectResponse
+    private function tabData(string $tab, User $driver, $period): mixed
     {
-        abort_unless($driver->isDriver(), 404);
-
-        $this->custody->recordSettlement($driver, $request->user(), $request->validated());
-
-        return redirect()
-            ->route('gh.driver-cash.show', $driver)
-            ->with('success', __('gh.flash.cash_settlement_recorded'));
+        return match ($tab) {
+            'outstanding' => $this->activity->outstandingCollections($driver),
+            'settlements' => $this->activity->settlements(['driver_id' => $driver->id], $period),
+            'adjustments' => $this->activity->adjustments($driver, $period),
+            'ledger' => $this->activity->ledger($driver, $period),
+            default => $this->activity->collections($driver, $period),
+        };
     }
 }

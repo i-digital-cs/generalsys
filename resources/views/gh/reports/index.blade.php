@@ -20,6 +20,7 @@
             ['route' => 'gh.reports.orders', 'key' => 'orders', 'icon' => 'bi-clipboard-check'],
             ['route' => 'gh.reports.pickup-performance', 'key' => 'pickup_performance', 'icon' => 'bi-box-seam'],
             ['route' => 'gh.reports.delivery-performance', 'key' => 'delivery_performance', 'icon' => 'bi-truck'],
+            ['route' => 'gh.reports.driver-cash', 'key' => 'driver_cash', 'icon' => 'bi-wallet2'],
         ] as $item)
             <div class="col-md-6 col-xl-4">
                 <a href="{{ route($item['route']) }}" class="card border-0 shadow-sm text-decoration-none text-body h-100">

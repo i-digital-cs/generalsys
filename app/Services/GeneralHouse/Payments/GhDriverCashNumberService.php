@@ -16,6 +16,11 @@ final class GhDriverCashNumberService
         return $this->next('driver_cash_settlements', 'GH-DCS-');
     }
 
+    public function nextReversalReference(): string
+    {
+        return $this->next('driver_cash_settlement_reversals', 'GH-DCR-');
+    }
+
     private function next(string $sequence, string $prefix): string
     {
         return DB::transaction(function () use ($sequence, $prefix) {

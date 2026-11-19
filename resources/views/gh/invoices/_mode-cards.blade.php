@@ -11,21 +11,7 @@
     <div class="gh-card-ui" data-gh-card-ui="invoices">
         <div class="card gh-board-filters border-0">
             <div class="card-body">
-                <form method="get" class="row g-2 align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label" for="q">{{ __('gh.invoices.search') }}</label>
-                        <input id="q" name="q" class="form-control form-control-sm" value="{{ request('q') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="status">{{ __('gh.invoices.status') }}</label>
-                        <select id="status" name="status" class="form-select form-select-sm">
-                            <option value="">{{ __('general.all') }}</option>
-                            <option value="DRAFT" @selected(request('status')==='DRAFT')>{{ __('gh.invoice_status.DRAFT') }}</option>
-                            <option value="ISSUED" @selected(request('status')==='ISSUED')>{{ __('gh.invoice_status.ISSUED') }}</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2"><button class="btn btn-primary btn-sm w-100">{{ __('general.filter') }}</button></div>
-                </form>
+                @include('gh.invoices.partials.list-filters')
             </div>
         </div>
 
@@ -43,14 +29,35 @@
                     <x-gh.record-card :title="$title" :title-ltr="true">
                         <x-slot:badges>
                             <span class="gh-record-card__badge {{ $row->status==='ISSUED' ? 'gh-record-card__badge--status' : 'gh-record-card__badge--muted' }}">{{ __('gh.invoice_status.'.$row->status) }}</span>
+                            @if ($row->isIssued() && $row->payment_status)
+                                <span class="gh-record-card__badge gh-record-card__badge--muted">{{ __('gh.payment_status.'.$row->payment_status) }}</span>
+                            @endif
+                            @include('gh.driver-cash.partials.status-badge', ['status' => $row->cash_settlement_status])
                         </x-slot:badges>
                         <x-slot:meta>
                             <x-gh.meta-cell icon="bi-receipt" :value="$row->order_reference" :ltr="true" />
                             <x-gh.meta-cell icon="bi-person" :value="$customer" />
+                            <x-gh.meta-cell icon="bi-calendar3" :value="($row->issued_at ?? $row->created_at)?->timezone($displayTz)->translatedFormat('Y-m-d')" :ltr="true" />
                             <div class="gh-record-card__cell">
                                 <span class="gh-record-card__icon" aria-hidden="true"><i class="bi bi-cash-coin"></i></span>
                                 <span class="gh-record-card__value"><x-money :amount="$row->total_payable" currency="AED" /></span>
                             </div>
+                            <div class="gh-record-card__cell" title="{{ __('gh.invoices.amount_paid') }}">
+                                <span class="gh-record-card__icon" aria-hidden="true"><i class="bi bi-credit-card"></i></span>
+                                <span class="gh-record-card__value">
+                                    <x-money :amount="$row->payments_sum_amount ?? 0" currency="AED" />
+                                    <span class="small text-body-secondary">{{ $row->payments->pluck('method')->unique()->map(fn ($m) => __('gh.payment_method.'.$m))->implode(', ') }}</span>
+                                </span>
+                            </div>
+                            @if (bccomp($row->driver_cash_collected, '0', 2) > 0)
+                                <div class="gh-record-card__cell" title="{{ __('gh.invoices.driver_outstanding') }}">
+                                    <span class="gh-record-card__icon" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
+                                    <span class="gh-record-card__value small">
+                                        {{ __('gh.invoices.driver_collected') }}: <x-money :amount="$row->driver_cash_collected" currency="AED" /> ·
+                                        {{ __('gh.invoices.driver_outstanding') }}: <x-money :amount="$row->driver_cash_outstanding" currency="AED" />
+                                    </span>
+                                </div>
+                            @endif
                         </x-slot:meta>
                         <x-slot:actions>
                             @if ($row->isDraft())

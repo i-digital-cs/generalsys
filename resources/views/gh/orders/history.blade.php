@@ -39,7 +39,7 @@
                             <td class="num-ltr small">{{ $event->occurred_at?->timezone($order->timezone)->toDateTimeString() }}</td>
                             <td class="num-ltr small">{{ $event->recorded_at?->timezone($order->timezone)->toDateTimeString() }}</td>
                             <td>{{ $event->actor?->localizedName() ?? '—' }}</td>
-                            <td class="small"><code class="text-break">{{ $event->payload ? json_encode($event->payload, JSON_UNESCAPED_UNICODE) : '—' }}</code></td>
+                            <td class="small"><div class="overflow-auto" style="max-width: 18rem"><code class="text-nowrap">{{ $event->payload ? json_encode($event->payload, JSON_UNESCAPED_UNICODE) : '—' }}</code></div></td>
                         </tr>
                     @empty
                         <tr><td colspan="5" class="text-body-secondary">—</td></tr>

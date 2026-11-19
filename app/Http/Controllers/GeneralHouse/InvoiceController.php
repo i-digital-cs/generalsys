@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\GeneralHouse;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\GeneralHouse\GhInvoiceIndexRequest;
 use App\Http\Requests\GeneralHouse\UpdateGhInvoiceDraftRequest;
 use App\Models\GeneralHouse\GhInvoice;
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\GeneralHouse\GhServiceCategory;
 use App\Services\GeneralHouse\Catalog\GhPricingResolver;
 use App\Services\GeneralHouse\Invoices\GhInvoiceIssuanceService;
+use App\Services\GeneralHouse\Invoices\GhInvoiceListService;
 use App\Services\GeneralHouse\Invoices\GhInvoiceService;
+use App\Services\GeneralHouse\Payments\GhDriverCashDashboardService;
+use App\Services\GeneralHouse\Payments\GhOrderFinancialSummaryService;
 use App\Services\GeneralHouse\Payments\GhPaymentBalanceService;
 use App\Services\GeneralHouse\Settings\GhVatConfigService;
 use App\Support\GeneralHouse\GhMoney;
@@ -25,28 +29,21 @@ class InvoiceController extends Controller
         private readonly GhPricingResolver $pricing,
         private readonly GhPaymentBalanceService $paymentBalances,
         private readonly GhVatConfigService $vatConfig,
+        private readonly GhInvoiceListService $invoiceList,
+        private readonly GhDriverCashDashboardService $custodyDashboard,
+        private readonly GhOrderFinancialSummaryService $financialSummary,
     ) {}
 
-    public function index(Request $request): View
+    public function index(GhInvoiceIndexRequest $request): View
     {
         $this->authorize('viewAny', GhInvoice::class);
 
-        $rows = GhInvoice::query()
-            ->with(['order'])
-            ->when($request->string('status')->toString(), fn ($q, $s) => $q->where('status', $s))
-            ->when($request->string('q')->toString(), function ($q, $term) {
-                $q->where(function ($inner) use ($term) {
-                    $inner->where('number', 'like', "%{$term}%")
-                        ->orWhere('order_reference', 'like', "%{$term}%")
-                        ->orWhere('customer_name_en', 'like', "%{$term}%")
-                        ->orWhere('customer_name_ar', 'like', "%{$term}%");
-                });
-            })
-            ->orderByDesc('id')
-            ->paginate(25)
-            ->withQueryString();
-
-        return view('gh.invoices.index', compact('rows'));
+        return view('gh.invoices.index', [
+            'rows' => $this->invoiceList->paginate($request->validated()),
+            'filters' => $request->validated(),
+            'driverOptions' => $this->custodyDashboard->driverOptions(),
+            'displayTz' => (string) config('general_house.timezone', 'Asia/Dubai'),
+        ]);
     }
 
     public function createFromOrder(GhOrder $order): RedirectResponse
@@ -141,8 +138,10 @@ class InvoiceController extends Controller
             'debitAdjustments',
         ]);
         $balance = $this->paymentBalances->forInvoice($invoice);
+        $financial = $this->financialSummary->forInvoice($invoice);
+        $displayTz = (string) config('general_house.timezone', 'Asia/Dubai');
 
-        return view('gh.invoices.show', compact('invoice', 'balance'));
+        return view('gh.invoices.show', compact('invoice', 'balance', 'financial', 'displayTz'));
     }
 
     public function print(GhInvoice $invoice): View

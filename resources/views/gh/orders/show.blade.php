@@ -201,6 +201,10 @@
 
     @include('gh.orders.partials.logistics')
 
+    @if (($financial ?? null) !== null)
+        @include('gh.driver-cash.partials.financial-summary', ['financial' => $financial, 'displayTz' => $displayTz])
+    @endif
+
     @if ($canDeleteOrder ?? false)
         <div class="modal fade" id="gh-delete-order-modal" tabindex="-1" aria-labelledby="gh-delete-order-title" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">

@@ -6,6 +6,8 @@ use App\Casts\GhUtcDateTime;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class GhDriverCashSettlement extends Model
 {
@@ -32,5 +34,15 @@ class GhDriverCashSettlement extends Model
     public function settler(): BelongsTo
     {
         return $this->belongsTo(User::class, 'settled_by');
+    }
+
+    public function allocations(): HasMany
+    {
+        return $this->hasMany(GhDriverCashSettlementAllocation::class, 'settlement_id')->orderBy('id');
+    }
+
+    public function reversal(): HasOne
+    {
+        return $this->hasOne(GhDriverCashSettlementReversal::class, 'settlement_id');
     }
 }
