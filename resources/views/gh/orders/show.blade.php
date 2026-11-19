@@ -79,27 +79,25 @@
                 <div class="card-body small">
                     <div class="mb-2">
                         <span class="form-label d-block mb-0">{{ __('gh.orders.created_at') }}</span>
-                        <span class="num-ltr hp-value">{{ $order->created_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</span>
+                        <span class="num-ltr hp-value"><x-gh.dubai-time :at="$order->created_at" :badge="false" /></span>
                     </div>
                     <div class="mb-2">
                         <span class="form-label d-block mb-0">{{ __('gh.orders.scheduled_pickup') }}</span>
                         <span class="num-ltr hp-value">
-                            {{ $order->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}
-                            ({{ $displayTz }})
+                            <x-gh.dubai-time :at="$order->pickup_starts_at" />
                         </span>
                     </div>
                     <div class="mb-2">
                         <span class="form-label d-block mb-0">{{ __('gh.orders.actual_pickup') }}</span>
                         <span class="num-ltr hp-value">
-                            {{ $order->picked_up_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') ?? '—' }}
+                            <x-gh.dubai-time :at="$order->picked_up_at" :badge="true" />
                         </span>
                     </div>
                     <div class="mb-2">
                         <span class="form-label d-block mb-0">{{ __('gh.orders.scheduled_delivery') }}</span>
                         <span class="num-ltr hp-value">
                             @if ($order->scheduled_delivery_at)
-                                {{ $order->scheduled_delivery_at->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}
-                                ({{ $displayTz }})
+                                <x-gh.dubai-time :at="$order->scheduled_delivery_at" />
                             @else
                                 {{ __('gh.orders.delivery_not_scheduled') }}
                             @endif
@@ -275,7 +273,7 @@
                     @foreach ($order->events->take(10) as $event)
                         <li class="border-bottom py-2">
                             <span class="badge text-bg-light">{{ $event->event_type }}</span>
-                            <span class="num-ltr text-body-secondary">{{ $event->occurred_at?->timezone($order->timezone)->translatedFormat('Y-m-d H:i') }}</span>
+                            <span class="num-ltr text-body-secondary"><x-gh.dubai-time :at="$event->occurred_at" :badge="true" /></span>
                             @if ($event->actor)
                                 · {{ $event->actor->localizedName() }}
                             @endif

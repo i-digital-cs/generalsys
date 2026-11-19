@@ -54,10 +54,12 @@ final class GhOrderWarningService
             return [];
         }
 
-        if ($audience === self::AUDIENCE_ADMIN && $this->needsDeliveryDriver($order)) {
+        // Visible to admin (assignment work) and drivers (All-tab historical pickup
+        // visibility must not look like an executable delivery task).
+        if ($this->needsDeliveryDriver($order)) {
             $warnings[] = $this->warning(
                 self::CODE_NEEDS_DELIVERY_DRIVER,
-                'orange',
+                'warning',
                 __('gh.warnings.needs_delivery_driver'),
             );
         }

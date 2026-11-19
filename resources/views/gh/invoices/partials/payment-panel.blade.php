@@ -46,7 +46,7 @@
                 @if ($latestPaymentAt)
                     <dt class="col-sm-4">{{ __('gh.invoices.payment_date_label') }}</dt>
                     <dd class="col-sm-8 hp-value num-ltr">
-                        {{ $latestPaymentAt->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}
+                        <x-gh.dubai-time :at="$latestPaymentAt" :badge="true" />
                     </dd>
                 @endif
                 @if ($status === 'PARTIAL')

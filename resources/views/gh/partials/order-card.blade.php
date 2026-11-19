@@ -12,9 +12,9 @@
         default => 'unknown',
     };
     $kindLabel = match ($card['schedule_kind'] ?? 'pickup') {
-        'delivery' => __('gh.board.kind_delivery_window'),
-        'working' => __('gh.board.kind_working_schedule'),
-        default => __('gh.board.kind_pickup_window'),
+        'delivery' => __('gh.board.appointment_delivery'),
+        'working' => __('gh.board.appointment_working'),
+        default => __('gh.board.appointment_pickup'),
     };
     $kindIcon = match ($card['schedule_kind'] ?? 'pickup') {
         'delivery' => 'bi-truck',
@@ -43,9 +43,6 @@
             @if (! empty($card['delivery_transition_label']))
                 <span class="gh-order-card__badge" title="{{ __('gh.board.delivery_transition_hint') }}">{{ $card['delivery_transition_label'] }}</span>
             @endif
-            @if ($role === 'admin' && ! empty($card['needs_delivery_driver']))
-                <span class="gh-order-card__badge text-bg-warning" title="{{ __('gh.orders.delivery_unassigned_hint') }}">{{ __('gh.warnings.needs_delivery_driver') }}</span>
-            @endif
         </div>
     </header>
 
@@ -65,29 +62,47 @@
         </div>
     </div>
 
-    {{-- Lower: schedule + creation stamps --}}
-    <div class="gh-order-card__meta gh-order-card__meta--4" data-gh-card-lower role="group">
-        <div class="gh-order-card__cell gh-order-card__cell--date">
-            <span class="gh-order-card__icon" aria-hidden="true"><i class="bi bi-calendar3"></i></span>
-            <span class="gh-order-card__value num-ltr" title="{{ __('gh.orders.created_at') }}: {{ $card['created_at_full'] ?? '—' }}">{{ $card['created_at_short'] ?? $card['scheduled_date'] }}</span>
-        </div>
-        <div class="gh-order-card__cell gh-order-card__cell--time">
-            <span class="gh-order-card__icon" aria-hidden="true"><i class="bi bi-clock"></i></span>
-            <span class="gh-order-card__value num-ltr" title="{{ __('gh.orders.scheduled_pickup') }}: {{ $card['pickup_scheduled_full'] ?? ($card['scheduled_date_full'] ?? '') }} {{ $card['scheduled_time'] ?? '' }}">{{ $card['scheduled_time'] }}</span>
-        </div>
-        <div class="gh-order-card__cell gh-order-card__cell--kind">
-            <span class="gh-order-card__icon" aria-hidden="true"><i class="bi {{ $kindIcon }}"></i></span>
-            <span class="gh-order-card__value" title="{{ __('gh.orders.scheduled_delivery') }}: {{ $card['delivery_scheduled_full'] ?? __('gh.orders.delivery_not_scheduled') }}">
-                @if (in_array($card['schedule_kind'] ?? '', ['delivery', 'working'], true) && ! empty($card['delivery_not_scheduled']))
-                    {{ __('gh.orders.delivery_not_scheduled') }}
+    {{-- Lower: dedicated appointment row (date+time grouped) + quiet secondary meta --}}
+    @php
+        $notScheduled = in_array($card['schedule_kind'] ?? '', ['delivery', 'working'], true)
+            && ! empty($card['delivery_not_scheduled']);
+        $appointmentWhen = $notScheduled
+            ? null
+            : trim(($card['scheduled_date'] ?? '').' — '.($card['scheduled_time'] ?? ''));
+        $appointmentTitle = match ($card['schedule_kind'] ?? 'pickup') {
+            'delivery', 'working' => ($card['delivery_scheduled_full'] ?? __('gh.orders.delivery_not_scheduled')),
+            default => ($card['pickup_scheduled_full'] ?? ($card['scheduled_date_full'] ?? '')),
+        };
+    @endphp
+    <div class="gh-order-card__lower" data-gh-card-lower>
+        <div class="gh-order-card__appointment" data-gh-card-appointment title="{{ $appointmentTitle }}">
+            <div class="gh-order-card__appointment-main">
+                <span class="gh-order-card__icon" aria-hidden="true"><i class="bi {{ $kindIcon }}"></i></span>
+                <span class="gh-order-card__appointment-label">{{ $kindLabel }}:</span>
+                @if ($notScheduled)
+                    <span class="gh-order-card__appointment-when">{{ __('gh.orders.delivery_not_scheduled') }}</span>
                 @else
-                    {{ $kindLabel }}
+                    <span class="gh-order-card__appointment-when num-ltr">{{ $appointmentWhen ?: '—' }}</span>
                 @endif
-            </span>
+            </div>
+            @if (! $notScheduled && ($card['scheduled_time'] ?? '—') !== '—')
+                <div class="gh-order-card__appointment-tz">
+                    <span class="gh-uae-badge gh-uae-badge--board">
+                        <span class="gh-uae-flag" aria-hidden="true">{{ __('gh.time.uae_flag') }}</span>
+                        <span>{{ __('gh.time.uae_time_label') }}</span>
+                    </span>
+                </div>
+            @endif
         </div>
-        <div class="gh-order-card__cell gh-order-card__cell--type">
-            <span class="gh-order-card__icon" aria-hidden="true"><i class="bi bi-tag"></i></span>
-            <span class="gh-order-card__value" title="{{ __('gh.orders.actual_pickup') }}: {{ $card['pickup_actual_full'] ?? '—' }}">{{ $card['order_type_label'] }}</span>
+        <div class="gh-order-card__meta gh-order-card__meta--2" role="group">
+            <div class="gh-order-card__cell gh-order-card__cell--created">
+                <span class="gh-order-card__icon" aria-hidden="true"><i class="bi bi-calendar3"></i></span>
+                <span class="gh-order-card__value num-ltr" title="{{ __('gh.orders.created_at') }}: {{ $card['created_at_full'] ?? '—' }}">{{ $card['created_at_short'] ?? '—' }}</span>
+            </div>
+            <div class="gh-order-card__cell gh-order-card__cell--type">
+                <span class="gh-order-card__icon" aria-hidden="true"><i class="bi bi-tag"></i></span>
+                <span class="gh-order-card__value" title="{{ __('gh.orders.actual_pickup') }}: {{ $card['pickup_actual_full'] ?? '—' }}">{{ $card['order_type_label'] }}</span>
+            </div>
         </div>
     </div>
 
@@ -121,9 +136,10 @@
                 </a>
             @endif
         </div>
-        @if ($role === 'admin' && (! empty($card['pickup_driver']) || ! empty($card['delivery_driver']) || ! empty($card['needs_delivery_driver'])))
+        @if ((! empty($card['pickup_driver']) || ! empty($card['delivery_driver']) || ! empty($card['needs_delivery_driver']))
+            && ($role === 'admin' || ($role === 'driver' && ! empty($card['needs_delivery_driver']))))
             <div class="gh-order-card__drivers">
-                @if (! empty($card['pickup_driver']))
+                @if ($role === 'admin' && ! empty($card['pickup_driver']))
                     <span title="{{ __('gh.orders.pickup_driver') }}">
                         <i class="bi bi-person-up" aria-hidden="true"></i>
                         <span class="gh-order-card__driver-name">{{ $card['pickup_driver'] }}</span>

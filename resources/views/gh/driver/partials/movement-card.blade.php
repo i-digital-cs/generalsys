@@ -8,12 +8,9 @@
     $addr = $order->address;
     $addrLine = collect([$addr?->building, $addr?->street, $addr?->area])->filter()->implode(', ');
     $name = $order->customer?->localizedName();
-    $scheduled = $movement->scheduledAt
-        ? $movement->scheduledAt->timezone($displayTz)->translatedFormat('Y-m-d H:i')
-        : '—';
-    $completed = $movement->completedAt
-        ? $movement->completedAt->timezone($displayTz)->translatedFormat('Y-m-d H:i')
-        : null;
+    $scheduled = \App\Support\GeneralHouse\GhDateTimePresenter::format($movement->scheduledAt) ?? '—';
+    $completed = \App\Support\GeneralHouse\GhDateTimePresenter::format($movement->completedAt);
+    $uaeBadge = \App\Support\GeneralHouse\GhDateTimePresenter::uaeBadge();
     $statusBadge = match ($movement->status) {
         'COMPLETED' => 'success',
         'FAILED' => 'danger',
@@ -40,12 +37,12 @@
             <div class="small mb-1">{{ $addrLine !== '' ? $addrLine : ($addr?->label ?? '—') }}</div>
             <div class="small text-body-secondary">
                 {{ $taskType === 'delivery' ? __('gh.driver.delivery_time') : __('gh.driver.pickup_time') }}:
-                <span class="num-ltr">{{ $scheduled }}</span>
+                <span class="gh-dubai-time"><span class="num-ltr">{{ $scheduled }}</span>@if ($scheduled !== '—')<span class="gh-uae-badge">{{ $uaeBadge }}</span>@endif</span>
             </div>
             @if ($completed)
                 <div class="small text-body-secondary">
                     {{ __('gh.driver.completed_at') }}:
-                    <span class="num-ltr">{{ $completed }}</span>
+                    <span class="gh-dubai-time"><span class="num-ltr">{{ $completed }}</span><span class="gh-uae-badge">{{ $uaeBadge }}</span></span>
                 </div>
             @endif
             @if ($movement->attempts->isNotEmpty())

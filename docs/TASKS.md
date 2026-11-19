@@ -1776,3 +1776,12 @@ Example:
   HARDCODED ID SAFETY: NOT APPLICABLE
   DATABASE MIGRATION POLICY: PASS
   ```
+- [x] 2026-11-19 GH UAE TIMEZONE & 12-HOUR UI ONLY PASS (owner review) — TEST only. Verified GH ops times → Asia/Dubai 12h (AM/PM | ص/م) + 🇦🇪 UAE/الإمارات via `GhDateTimePresenter` + `<x-gh.dubai-time>`; selection notice on pickup/delivery/reschedule/occurred_at; UTC storage & `app.timezone` untouched; no UAE badge on unverified stamps; date-only unchanged. Report: `docs/GH_UAE_TIMEZONE_12H_AUDIT_REPORT.md`. **Not committed / not deployed.**
+  ```text
+  Task ID: GH UAE TIMEZONE & 12-HOUR UI ONLY
+  Commands: npm run build; vendor/bin/pint --dirty; php artisan test --filter='GhDateTimePresenterTest|GhUaeTimezonePresentationTest|OrderBoardV2Test|ScheduledPickupTest|DriverCashSettlementHttpTest|TimezoneIntegrityTest'
+  Automated tests: PASS (39 passed / 363 assertions)
+  UI/UX (AR+EN): PASS (keys + notice/badge)
+  Next task allowed: yes (owner review) — no commit/push/deploy until requested
+  DATABASE CHANGES: NO
+  ```

@@ -4,6 +4,7 @@ namespace App\Services\GeneralHouse\Orders;
 
 use App\Models\GeneralHouse\GhOrder;
 use App\Models\User;
+use App\Support\GeneralHouse\GhDateTimePresenter;
 use App\Support\GeneralHouse\GhOrderBoardTab;
 use App\Support\GeneralHouse\GhOrderEventType;
 use App\Support\GeneralHouse\GhOrderStatus;
@@ -22,9 +23,12 @@ use Illuminate\Support\Collection;
  * | Later    | status = LATER                                     | pickup_driver = me AND status = LATER               |
  * | Actions  | attention filter (not a status)                    | attention filter for my assignments                 |
  * | Pickup   | status = PICKUP                                    | actionable pickups (PICKUP + LATER in lead window)  |
+ * | All      | non-cancelled                                     | pickup OR delivery driver = me (may include         |
+ * |          |                                                    | DELIVERY with null delivery_driver after my pickup) |
  * | Working  | status = WORKING                                   | WORKING where I am pickup or delivery driver (RO)   |
  * | Delivery | status = DELIVERY                                  | delivery_driver = me AND status = DELIVERY          |
  * | Complete | status = COMPLETED                                 | COMPLETED where I was pickup or delivery driver     |
+ * Driver CTAs / hrefs require the matching stage assignment (assertCanOpenTask). |
  *
  * Actions (filtered view): overdue PICKUP windows, missing stage driver, or
  * open failed attempts on PICKUP/DELIVERY. Never invents a new status.
@@ -187,6 +191,7 @@ final class GhOrderBoardService
                 $tab,
                 role: 'driver',
                 preserveInputOrder: in_array($tab, [GhOrderBoardTab::PICKUP, GhOrderBoardTab::DELIVERY], true),
+                viewer: $driver,
             ),
             'total' => $total,
             'role' => 'driver',
@@ -221,8 +226,13 @@ final class GhOrderBoardService
      * @param  Collection<int, GhOrder>  $orders
      * @return list<array{key: string, name: string, sort_order: int, count: int, orders: list<array<string, mixed>>}>
      */
-    public function groupByArea(Collection $orders, string $tab, string $role, bool $preserveInputOrder = false): array
-    {
+    public function groupByArea(
+        Collection $orders,
+        string $tab,
+        string $role,
+        bool $preserveInputOrder = false,
+        ?User $viewer = null,
+    ): array {
         // Driver pickup/delivery lists are ordered by gh_driver_list_positions — do not
         // re-sort by schedule or drag persistence will appear to "not stick" after reload.
         $sorted = $preserveInputOrder ? $orders->values() : $this->sortOrdersForTab($orders, $tab);
@@ -258,7 +268,7 @@ final class GhOrderBoardService
             $cards = [];
             $seq = 1;
             foreach ($bucket['orders'] as $order) {
-                $cards[] = $this->presentCard($order, $tab, $role, $seq);
+                $cards[] = $this->presentCard($order, $tab, $role, $seq, $viewer);
                 $seq++;
             }
             $groups[] = [
@@ -276,9 +286,13 @@ final class GhOrderBoardService
     /**
      * @return array<string, mixed>
      */
-    public function presentCard(GhOrder $order, string $tab, string $role, int $sequence): array
-    {
-        $tz = $this->eligibility->displayTimezone($order->timezone);
+    public function presentCard(
+        GhOrder $order,
+        string $tab,
+        string $role,
+        int $sequence,
+        ?User $viewer = null,
+    ): array {
         $addr = $order->address;
         $addressLine = collect([$addr?->building, $addr?->street, $addr?->area, $addr?->city])
             ->filter()
@@ -333,11 +347,9 @@ final class GhOrderBoardService
             ? 'delivery'
             : 'pickup';
 
-        $href = match (true) {
-            $role === 'driver' && $taskType === 'delivery' => route('gh.driver.delivery', $order),
-            $role === 'driver' => route('gh.driver.pickup', $order),
-            default => route('gh.orders.show', $order),
-        };
+        $viewerId = $viewer !== null ? (int) $viewer->id : null;
+        $isPickupAssignee = $viewerId !== null && (int) $order->pickup_driver_id === $viewerId;
+        $isDeliveryAssignee = $viewerId !== null && (int) $order->delivery_driver_id === $viewerId;
 
         $readOnly = $role === 'driver' && in_array($tab, [
             GhOrderBoardTab::WORKING,
@@ -345,13 +357,27 @@ final class GhOrderBoardService
             GhOrderBoardTab::LATER,
         ], true);
 
-        // Restore original GH-7 driver movement path: board CTA opens pickup/delivery
-        // workspace where confirm/fail transitions run (same backend as before V2 board).
-        $canExecuteTask = $role === 'driver' && ! $readOnly && in_array($order->status, [
-            GhOrderStatus::PICKUP,
-            GhOrderStatus::LATER,
-            GhOrderStatus::DELIVERY,
-        ], true);
+        // Action CTAs must match assertCanOpenTask assignment gates — never offer a
+        // delivery link when delivery_driver_id is null or belongs to someone else.
+        $canExecuteTask = false;
+        if ($role === 'driver' && ! $readOnly && $viewerId !== null) {
+            $canExecuteTask = match (true) {
+                in_array($order->status, [GhOrderStatus::PICKUP, GhOrderStatus::LATER], true) => $isPickupAssignee,
+                $order->status === GhOrderStatus::DELIVERY => $isDeliveryAssignee,
+                default => false,
+            };
+        }
+
+        $href = match (true) {
+            $role !== 'driver' => route('gh.orders.show', $order),
+            $canExecuteTask && $taskType === 'delivery' => route('gh.driver.delivery', $order),
+            $canExecuteTask && $taskType === 'pickup' => route('gh.driver.pickup', $order),
+            // View-only: pickup assignees may open pickup workspace; delivery assignees
+            // open delivery. Never point at a route that assertCanOpenTask would 403.
+            $isPickupAssignee => route('gh.driver.pickup', $order),
+            $isDeliveryAssignee => route('gh.driver.delivery', $order),
+            default => route('gh.driver.dashboard'),
+        };
 
         $taskActionLabel = match (true) {
             ! $canExecuteTask => null,
@@ -359,19 +385,12 @@ final class GhOrderBoardService
             default => __('gh.board.execute_pickup'),
         };
 
-        $notScheduledLabel = __('gh.orders.delivery_not_scheduled');
-        $fmt = static function (?Carbon $at, string $empty = '—') use ($tz): array {
-            if ($at === null) {
-                return ['short' => $empty, 'full' => $empty, 'time' => $empty];
-            }
-            $local = $at->timezone($tz);
+        $needsDeliveryDriver = $order->status === GhOrderStatus::DELIVERY
+            && $order->delivery_driver_id === null;
 
-            return [
-                'short' => $local->format('d/m'),
-                'full' => $local->translatedFormat('d M Y H:i'),
-                'time' => $local->format('H:i'),
-            ];
-        };
+        $notScheduledLabel = __('gh.orders.delivery_not_scheduled');
+        // Dubai 12h strings. UAE badge is applied in Blade only for verified ops fields.
+        $fmt = static fn (?Carbon $at, string $empty = '—'): array => GhDateTimePresenter::parts($at, $empty);
         $created = $fmt($order->created_at ? Carbon::parse($order->created_at, 'UTC') : null);
         $pickupSched = $fmt($order->pickup_starts_at);
         $pickupActual = $fmt($order->picked_up_at);
@@ -417,9 +436,7 @@ final class GhOrderBoardService
             'maps_url' => $this->mapsUrl($addressLine, $addr?->latitude, $addr?->longitude),
             'pickup_driver' => $order->pickupDriver?->localizedName(),
             'delivery_driver' => $order->deliveryDriver?->localizedName(),
-            'needs_delivery_driver' => $role === 'admin'
-                && $order->status === GhOrderStatus::DELIVERY
-                && $order->delivery_driver_id === null,
+            'needs_delivery_driver' => $needsDeliveryDriver,
             'can_edit' => $role === 'admin' && (
                 $order->isEditableOperationally()
                 || ($order->invoice_issued_at === null && ! GhOrderStatus::isPrePickup($order->status))

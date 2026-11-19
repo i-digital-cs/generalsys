@@ -66,6 +66,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="delivery_occurred_at">{{ __('gh.driver.delivery_time') }}</label>
                         <input id="delivery_occurred_at" type="datetime-local" name="occurred_at" class="form-control" value="{{ old('occurred_at') }}">
+                        <x-gh.uae-tz-notice compact />
                     </div>
 
                     @if ($showCashControls)
@@ -150,7 +151,7 @@
                 @foreach ($order->attempts as $attempt)
                     <li class="list-group-item">
                         <span class="badge text-bg-warning">{{ $attempt->attempt_type }}</span>
-                        <span class="num-ltr">{{ $attempt->occurred_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</span>
+                        <span class="num-ltr"><x-gh.dubai-time :at="$attempt->occurred_at" :badge="true" /></span>
                         @if (!empty($attempt->payload['reason_code']))
                             · {{ __('gh.attempt_reason.'.$attempt->payload['reason_code']) }}
                         @endif

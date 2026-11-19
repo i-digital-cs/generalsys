@@ -30,7 +30,7 @@
                         <td>{{ __('gh.payment_method.'.$p->method) }}</td>
                         <td class="num-ltr"><x-money :amount="$p->amount" currency="AED" /></td>
                         <td>{{ $p->collector?->name_en ?: $p->collector?->name_ar ?: '—' }}</td>
-                        <td class="num-ltr small">{{ $p->confirmed_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</td>
+                        <td class="num-ltr small"><x-gh.dubai-time :at="$p->confirmed_at" :badge="true" /></td>
                     </tr>
                 @empty
                     <tr><td colspan="7" class="text-body-secondary">{{ __('gh.reports.empty') }}</td></tr>

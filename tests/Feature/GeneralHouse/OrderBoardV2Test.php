@@ -62,7 +62,8 @@ class OrderBoardV2Test extends TestCase
         $this->assertStringContainsString('gh-order-board', $html);
         $this->assertStringContainsString('gh-board-btn', $html);
         $this->assertStringContainsString('gh-order-card__meta--3', $html);
-        $this->assertStringContainsString('gh-order-card__meta--4', $html);
+        $this->assertStringContainsString('gh-order-card__appointment', $html);
+        $this->assertStringContainsString('gh-order-card__meta--2', $html);
         $this->assertStringContainsString('gh-order-card__cell--seq', $html);
         $this->assertStringContainsString('gh-order-card__cell--customer', $html);
         $this->assertStringContainsString('gh-order-card__cell--address', $html);
@@ -178,16 +179,21 @@ class OrderBoardV2Test extends TestCase
 
         $this->assertSame(1, preg_match_all('/data-gh-card-upper/', $html));
         $this->assertSame(1, preg_match_all('/data-gh-card-lower/', $html));
-        preg_match('/data-gh-card-upper[^>]*>(.*?)<\/div>\s*<div class="gh-order-card__meta gh-order-card__meta--4"/s', $html, $upper);
+        $this->assertSame(1, preg_match_all('/data-gh-card-appointment/', $html));
+        preg_match('/data-gh-card-upper[^>]*>(.*?)<\/div>\s*<div class="gh-order-card__lower"/s', $html, $upper);
         preg_match('/data-gh-card-lower[^>]*>(.*?)<\/div>\s*<footer class="gh-order-card__actions"/s', $html, $lower);
         $this->assertNotEmpty($upper[1] ?? null);
         $this->assertNotEmpty($lower[1] ?? null);
         $this->assertSame(3, preg_match_all('/class="gh-order-card__cell /', $upper[1]));
-        $this->assertSame(4, preg_match_all('/class="gh-order-card__cell /', $lower[1]));
+        $this->assertSame(2, preg_match_all('/class="gh-order-card__cell /', $lower[1]));
         $this->assertStringContainsString('gh-order-card__cell--seq', $upper[1]);
         $this->assertStringContainsString('gh-order-card__cell--customer', $upper[1]);
         $this->assertStringContainsString('gh-order-card__cell--address', $upper[1]);
-        $this->assertStringContainsString('gh-order-card__cell--date', $lower[1]);
+        $this->assertStringContainsString('gh-order-card__appointment', $lower[1]);
+        $this->assertStringContainsString('gh-order-card__cell--created', $lower[1]);
+        // One UAE timezone marker per appointment (not duplicated beside every meta cell).
+        $this->assertSame(1, preg_match_all('/gh-uae-badge--board/', $html));
+        $this->assertStringContainsString(__('gh.time.uae_time_label'), $html);
         // Smart warnings (not legacy gh-order-card__badge--danger): red overdue_pickup + card is-overdue.
         $this->assertStringContainsString('gh-warning-badge--red', $html);
         $this->assertStringContainsString('data-warning-code="overdue_pickup"', $html);
@@ -204,7 +210,7 @@ class OrderBoardV2Test extends TestCase
             ->assertSee(__('gh.board.execute_pickup'), false)
             ->getContent();
         $this->assertStringContainsString('gh-order-card__meta--3', $driverHtml);
-        $this->assertStringContainsString('gh-order-card__meta--4', $driverHtml);
+        $this->assertStringContainsString('gh-order-card__appointment', $driverHtml);
         $this->assertStringContainsString('data-gh-task-action', $driverHtml);
         $this->assertStringContainsString('gh-board-area-list', $driverHtml);
 
@@ -230,7 +236,9 @@ class OrderBoardV2Test extends TestCase
             ->assertSee('عادي', false)
             ->getContent();
         $this->assertStringContainsString('gh-order-card__meta--3', $ar);
-        $this->assertStringContainsString('gh-order-card__meta--4', $ar);
+        $this->assertStringContainsString('gh-order-card__appointment', $ar);
+        $this->assertStringContainsString(__('gh.time.uae_time_label', [], 'ar'), $ar);
+        $this->assertSame(1, preg_match_all('/gh-uae-badge--board/', $ar));
 
         app()->setLocale('en');
         $en = $this->actingAs($manager)
@@ -240,7 +248,8 @@ class OrderBoardV2Test extends TestCase
             ->assertSee('Normal', false)
             ->getContent();
         $this->assertStringContainsString('gh-order-card__meta--3', $en);
-        $this->assertStringContainsString('gh-order-card__meta--4', $en);
+        $this->assertStringContainsString('gh-order-card__appointment', $en);
+        $this->assertSame(1, preg_match_all('/gh-uae-badge--board/', $en));
     }
 
     public function test_driver_sortable_binds_to_area_list_and_reorder_persists_on_board(): void

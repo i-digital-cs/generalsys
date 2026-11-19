@@ -11,9 +11,8 @@
     $addrLine = collect([$addr?->building, $addr?->street, $addr?->area])->filter()->implode(', ');
     $name = $order->customer?->localizedName();
     $customerType = $order->customer?->type;
-    $window = $order->pickup_starts_at
-        ? $order->pickup_starts_at->timezone($displayTz)->translatedFormat('Y-m-d H:i')
-        : '—';
+    $window = \App\Support\GeneralHouse\GhDateTimePresenter::format($order->pickup_starts_at) ?? '—';
+    $windowBadge = $order->pickup_starts_at ? \App\Support\GeneralHouse\GhDateTimePresenter::uaeBadge() : null;
     $overdue = $taskType === 'pickup'
         && $order->status === \App\Support\GeneralHouse\GhOrderStatus::PICKUP
         && ($order->pickup_ends_at?->isPast() || $order->pickup_starts_at?->isPast());
@@ -62,7 +61,7 @@
             <div class="small mb-1">{{ $addrLine !== '' ? $addrLine : ($addr?->label ?? '—') }}</div>
             <div class="small text-body-secondary">
                 {{ $taskType === 'delivery' ? __('gh.driver.delivery_time') : __('gh.driver.pickup_time') }}:
-                <span class="num-ltr">{{ $window }}</span>
+                <span class="gh-dubai-time"><span class="num-ltr">{{ $window }}</span>@if ($windowBadge)<span class="gh-uae-badge">{{ $windowBadge }}</span>@endif</span>
             </div>
         </div>
     </a>

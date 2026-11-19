@@ -119,7 +119,7 @@
                     @if ($invoice->issued_at)
                         <p class="small text-body-secondary mb-0 mt-2">
                             {{ __('gh.invoices.issued_at') }}:
-                            <span class="num-ltr">{{ $invoice->issued_at->timezone(config('general_house.timezone'))->translatedFormat('Y-m-d H:i') }}</span>
+                            <span class="num-ltr"><x-gh.dubai-time :at="$invoice->issued_at" :badge="true" /></span>
                         </p>
                     @endif
                 </div>

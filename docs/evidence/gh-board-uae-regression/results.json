@@ -1,0 +1,626 @@
+[
+  {
+    "locale": "ar",
+    "width": 375,
+    "shot": "ar-375-board-pickup.png",
+    "dir": "rtl",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-313824",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 268
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-884071",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 268
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 268
+      }
+    ]
+  },
+  {
+    "locale": "ar",
+    "width": 430,
+    "shot": "ar-430-board-pickup.png",
+    "dir": "rtl",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-313824",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 268
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-884071",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 268
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 268
+      }
+    ]
+  },
+  {
+    "locale": "ar",
+    "width": 768,
+    "shot": "ar-768-board-pickup.png",
+    "dir": "rtl",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-313824",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-884071",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      }
+    ]
+  },
+  {
+    "locale": "ar",
+    "width": 1024,
+    "shot": "ar-1024-board-pickup.png",
+    "dir": "rtl",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-313824",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-884071",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      }
+    ]
+  },
+  {
+    "locale": "ar",
+    "width": 1280,
+    "shot": "ar-1280-board-pickup.png",
+    "dir": "rtl",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-313824",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-884071",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      }
+    ]
+  },
+  {
+    "locale": "ar",
+    "width": 1440,
+    "shot": "ar-1440-board-pickup.png",
+    "dir": "rtl",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-313824",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-884071",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 م",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        توقيت الإمارات"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      }
+    ]
+  },
+  {
+    "locale": "en",
+    "width": 375,
+    "shot": "en-375-board-pickup.png",
+    "dir": "ltr",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 PM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 268
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-828273",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 221
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-858518",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 221
+      }
+    ]
+  },
+  {
+    "locale": "en",
+    "width": 430,
+    "shot": "en-430-board-pickup.png",
+    "dir": "ltr",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 PM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 268
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-828273",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 221
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-858518",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 221
+      }
+    ]
+  },
+  {
+    "locale": "en",
+    "width": 768,
+    "shot": "en-768-board-pickup.png",
+    "dir": "ltr",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 PM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-828273",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 198
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-858518",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 198
+      }
+    ]
+  },
+  {
+    "locale": "en",
+    "width": 1024,
+    "shot": "en-1024-board-pickup.png",
+    "dir": "ltr",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 PM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-828273",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 198
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-858518",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 198
+      }
+    ]
+  },
+  {
+    "locale": "en",
+    "width": 1280,
+    "shot": "en-1280-board-pickup.png",
+    "dir": "ltr",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 PM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-828273",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 198
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-858518",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 198
+      }
+    ]
+  },
+  {
+    "locale": "en",
+    "width": 1440,
+    "shot": "en-1440-board-pickup.png",
+    "dir": "ltr",
+    "cardCount": 13,
+    "pageOverflow": 0,
+    "cardStats": [
+      {
+        "idx": 0,
+        "ref": "GH-ORD-149133",
+        "appointmentText": "18/11 — 7:07 PM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 1,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 244
+      },
+      {
+        "idx": 1,
+        "ref": "GH-ORD-828273",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 198
+      },
+      {
+        "idx": 2,
+        "ref": "GH-ORD-858518",
+        "appointmentText": "20/11 — 10:00 AM",
+        "uaeBadgeCount": 1,
+        "boardBadgeCount": 1,
+        "boardBadgeText": [
+          "🇦🇪\n                        UAE Time"
+        ],
+        "actionCount": 2,
+        "overlaps": [],
+        "clippedBadges": 0,
+        "cardHeight": 198
+      }
+    ]
+  }
+]

@@ -36,7 +36,7 @@
                     @if ($adjustment->issued_at)
                         <p class="small text-body-secondary mt-2 mb-0">
                             {{ __('gh.debit_adjustments.issued_at') }}:
-                            <span class="num-ltr">{{ $adjustment->issued_at->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</span>
+                            <span class="num-ltr"><x-gh.dubai-time :at="$adjustment->issued_at" :badge="true" /></span>
                         </p>
                     @endif
                 </div>
@@ -103,7 +103,7 @@
                         <li class="list-group-item">
                             <div class="d-flex justify-content-between gap-2">
                                 <span>{{ $event->event_type }}</span>
-                                <span class="num-ltr text-body-secondary">{{ $event->occurred_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</span>
+                                <span class="num-ltr text-body-secondary"><x-gh.dubai-time :at="$event->occurred_at" :badge="true" /></span>
                             </div>
                             @if ($event->actor)
                                 <div class="text-body-secondary">{{ $event->actor->name }}</div>

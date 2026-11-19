@@ -16,7 +16,7 @@
         <tbody>
         @forelse ($data['entries'] as $e)
             <tr>
-                <td class="num-ltr small text-nowrap">{{ $e->occurred_at->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</td>
+                <td class="num-ltr small text-nowrap"><x-gh.dubai-time :at="$e->occurred_at" :badge="true" /></td>
                 <td>{{ __('gh.driver_cash.ledger_kind.'.$e->kind) }}</td>
                 <td class="num-ltr text-nowrap">
                     @if ($e->kind === 'COLLECTION' && $e->order_id)

@@ -168,8 +168,12 @@ class DriverCashSettlementHttpTest extends TestCase
             $a = $this->collectCash($this->driver, '100.00');
             $s = app(GhDriverCashSettlementService::class)->settle($this->driver, $this->manager, $this->settlePayload('100.00', [$a->id => '100.00']));
 
-            $this->actingAs($this->manager)->get(route('gh.driver-cash.settlements.show', $s))
-                ->assertOk()->assertSee('2026-11-19 01:30');
+            $this->withSession(['locale' => 'en'])
+                ->actingAs($this->manager)
+                ->get(route('gh.driver-cash.settlements.show', $s))
+                ->assertOk()
+                ->assertSee('1:30 AM')
+                ->assertSee('🇦🇪 UAE');
         } finally {
             Carbon::setTestNow();
         }

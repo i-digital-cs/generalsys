@@ -11,7 +11,7 @@
 | Service parse | `GhOrderService::parsePickupWindow` builds timezone-aware Carbon in GH zone |
 | Eloquent | `App\Casts\GhUtcDateTime` — **set** writes `Y-m-d H:i:s` in **UTC**; **get** hydrates Carbon in **UTC** |
 | MySQL | `TIMESTAMP` columns; connection `SYSTEM`/`UTC` on TEST — stored string is UTC |
-| Display | `->timezone($order->timezone \|\| GH zone)` in Blade (create/edit/show/index) |
+| Display | Verified ops instants via `GhDateTimePresenter` / `<x-gh.dubai-time>` → **Asia/Dubai**, **12-hour** (AM/PM or ص/م) + `🇦🇪 UAE` / `🇦🇪 الإمارات` badge. Date-only values stay `Y-m-d`. Unverified stamps (e.g. some `created_at`, app-audit rows) must **not** carry the UAE badge. Form `datetime-local` values are naive strings parsed as GH zone wall-clock (`GhOrderService::parsePickupWindow`, `parseOccurredAt`). |
 | Scheduler SQL | Bind UTC strings via `GhPickupEligibilityService::toUtcSql()` |
 | Instant math | Absolute Carbon comparisons (eligibility lead hours) |
 

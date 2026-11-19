@@ -147,7 +147,7 @@
                             <tr>
                                 <td><a class="num-ltr" href="{{ route('gh.orders.show', $o) }}">{{ $o->reference }}</a></td>
                                 <td>{{ $o->customer?->localizedName() }}</td>
-                                <td class="num-ltr small">{{ $o->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</td>
+                                <td class="num-ltr small"><x-gh.dubai-time :at="$o->pickup_starts_at" :badge="true" /></td>
                             </tr>
                         @empty
                             <tr><td class="text-body-secondary">{{ __('gh.reports.empty') }}</td></tr>

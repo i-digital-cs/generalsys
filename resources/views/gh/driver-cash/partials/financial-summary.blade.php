@@ -1,6 +1,10 @@
 @php
     /** @var array<string, mixed> $financial */
-    $fmt = fn ($at) => $at?->timezone($displayTz)->translatedFormat('Y-m-d H:i');
+    $fmt = static function ($at) {
+        $text = \App\Support\GeneralHouse\GhDateTimePresenter::format($at);
+
+        return $text === null ? null : $text.' '.\App\Support\GeneralHouse\GhDateTimePresenter::uaeBadge();
+    };
     $invoice = $financial['invoice'];
     $balance = $financial['balance'];
     $custody = $financial['custody'];

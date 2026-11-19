@@ -32,12 +32,12 @@
                         <td>{{ $o->zone?->localizedName() }}</td>
                         <td>{{ __('gh.order_status.'.$o->status) }}</td>
                         <td class="num-ltr small">
-                            {{ $o->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}
-                            – {{ $o->pickup_ends_at?->timezone($displayTz)->translatedFormat('H:i') }}
+                            <x-gh.dubai-time :at="$o->pickup_starts_at" :badge="true" />
+                            – <x-gh.dubai-time :at="$o->pickup_ends_at" mode="time" />
                         </td>
                         <td>{{ $o->pickupDriver?->name_en ?: $o->pickupDriver?->name_ar ?: '—' }}</td>
                         <td>{{ $o->deliveryDriver?->name_en ?: $o->deliveryDriver?->name_ar ?: '—' }}</td>
-                        <td class="num-ltr small">{{ $o->created_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</td>
+                        <td class="num-ltr small"><x-gh.dubai-time :at="$o->created_at" :badge="false" /></td>
                     </tr>
                 @empty
                     <tr><td colspan="9" class="text-body-secondary">{{ __('gh.reports.empty') }}</td></tr>

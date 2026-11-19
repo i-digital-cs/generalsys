@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'time' => [
+        'uae_flag' => '🇦🇪',
+        'uae_badge' => '🇦🇪 الإمارات',
+        'uae_time_label' => 'توقيت الإمارات',
+        'uae_badge_title' => 'يُعرض بتوقيت :tz (الإمارات). التخزين UTC.',
+        'selection_notice' => 'الأوقات التي تدخلها هي بتوقيت الإمارات (دبي، :tz) — وليست حسب منطقة متصفحك. التخزين UTC.',
+        'list_note' => 'الأوقات التشغيلية تُعرض بتوقيت الإمارات (:tz) بنظام 12 ساعة. التخزين UTC.',
+    ],
     'status' => [
         'ACTIVE' => 'نشط',
         'INACTIVE' => 'غير نشط',
@@ -76,6 +84,9 @@ return [
         'kind_pickup_window' => 'نافذة الاستلام',
         'kind_delivery_window' => 'نافذة التوصيل',
         'kind_working_schedule' => 'قيد الغسيل',
+        'appointment_pickup' => 'موعد الاستلام',
+        'appointment_delivery' => 'موعد التوصيل',
+        'appointment_working' => 'قيد الغسيل',
         'order_type' => [
             'NORMAL' => 'عادي',
             'EXPRESS' => 'سريع',
@@ -649,7 +660,7 @@ return [
         'as_of' => 'الرصيد حتى تاريخ',
         'as_of_outstanding' => 'القائم بنهاية :date',
         'apply' => 'تطبيق',
-        'timezone_note' => 'الأوقات معروضة بتوقيت :tz. التخزين بتوقيت UTC.',
+        'timezone_note' => 'الأوقات التشغيلية تُعرض بتوقيت الإمارات (:tz) بنظام 12 ساعة. التخزين UTC.',
         'tab_collections' => 'التحصيلات',
         'tab_outstanding' => 'غير المسوّى',
         'tab_settlements' => 'سجل التسويات',
@@ -854,7 +865,7 @@ return [
         'pickup_date' => 'تاريخ الاستلام',
         'window_start' => 'بداية النافذة',
         'window_end' => 'نهاية النافذة',
-        'timezone_hint' => 'تُفسَّر الأوقات حسب :tz وتُخزَّن بشكل متسق.',
+        'timezone_hint' => 'الأوقات التي تدخلها هي بتوقيت الإمارات (دبي، :tz) — وليست حسب منطقة متصفحك. التخزين UTC.',
         'scheduling_notes' => 'ملاحظات الجدولة',
         'operational_notes' => 'ملاحظات تشغيلية',
         'assign_pickup' => 'سائق الاستلام',

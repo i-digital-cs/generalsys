@@ -166,7 +166,7 @@
                                         —
                                     @endif
                                 </td>
-                                <td class="num-ltr small text-nowrap">{{ $c->collected_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</td>
+                                <td class="num-ltr small text-nowrap"><x-gh.dubai-time :at="$c->collected_at" :badge="true" /></td>
                                 <td class="text-end"><x-money :amount="$c->amount" currency="AED" /></td>
                                 <td class="text-end"><x-money :amount="$c->settled_amount" currency="AED" /></td>
                                 <td class="text-end fw-semibold"><x-money :amount="$c->remaining_amount" currency="AED" /></td>

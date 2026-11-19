@@ -22,7 +22,7 @@
         <div class="card-header bg-transparent"><h2 class="h6 card-title mb-0">{{ __('gh.driver.pickup_time') }}</h2></div>
         <div class="card-body small">
             <span class="hp-value num-ltr">
-                {{ $order->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}
+                <x-gh.dubai-time :at="$order->pickup_starts_at" :badge="true" />
             </span>
             @if ($order->scheduling_notes)
                 <p class="mt-2 mb-0">{{ $order->scheduling_notes }}</p>
@@ -53,6 +53,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="pickup_occurred_at">{{ __('gh.driver.pickup_time') }}</label>
                         <input id="pickup_occurred_at" type="datetime-local" name="occurred_at" class="form-control">
+                        <x-gh.uae-tz-notice compact />
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="pickup_notes">{{ __('gh.orders.pickup_notes') }}</label>
@@ -69,7 +70,7 @@
             <p class="mb-1">{{ $notYetEligible }}</p>
             <p class="small mb-0">
                 {{ __('gh.driver.pickup_time') }}:
-                <span class="num-ltr">{{ $order->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</span>
+                <span class="num-ltr"><x-gh.dubai-time :at="$order->pickup_starts_at" :badge="true" /></span>
             </p>
         </div>
     @endif
@@ -106,7 +107,7 @@
                 @foreach ($order->attempts as $attempt)
                     <li class="list-group-item">
                         <span class="badge text-bg-warning">{{ $attempt->attempt_type }}</span>
-                        <span class="num-ltr">{{ $attempt->occurred_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</span>
+                        <span class="num-ltr"><x-gh.dubai-time :at="$attempt->occurred_at" :badge="true" /></span>
                         @if (!empty($attempt->payload['reason_code']))
                             · {{ __('gh.attempt_reason.'.$attempt->payload['reason_code']) }}
                         @endif

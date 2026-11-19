@@ -32,7 +32,7 @@
                         <td><a class="num-ltr" href="{{ route('gh.invoices.show', $inv) }}">{{ $inv->number }}</a></td>
                         <td class="num-ltr">{{ $inv->order_reference }}</td>
                         <td>{{ app()->getLocale()==='ar' ? $inv->customer_name_ar : ($inv->customer_name_en ?: $inv->customer_name_ar) }}</td>
-                        <td class="num-ltr small">{{ $inv->issued_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</td>
+                        <td class="num-ltr small"><x-gh.dubai-time :at="$inv->issued_at" :badge="true" /></td>
                         <td class="num-ltr"><x-money :amount="$inv->total_payable" currency="AED" /></td>
                         <td class="num-ltr"><x-money :amount="$confirmed" currency="AED" /></td>
                         <td class="num-ltr"><x-money :amount="$remaining" currency="AED" /></td>

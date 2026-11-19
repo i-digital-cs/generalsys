@@ -19,7 +19,7 @@
             <tr>
                 <td class="num-ltr text-nowrap">{{ $s->reference }}</td>
                 @if ($showDriver)<td>{{ $s->driver?->localizedName() }}</td>@endif
-                <td class="num-ltr small text-nowrap">{{ $s->settled_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</td>
+                <td class="num-ltr small text-nowrap"><x-gh.dubai-time :at="$s->settled_at" :badge="true" /></td>
                 <td>{{ $s->settler?->localizedName() ?? '—' }}</td>
                 <td class="text-end"><x-money :amount="$s->amount" currency="AED" /></td>
                 <td class="text-end"><x-money :amount="$s->allocations_sum_amount ?? 0" currency="AED" /></td>

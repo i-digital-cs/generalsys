@@ -36,8 +36,8 @@
                                     <div class="small text-body-secondary">{{ $event->from_status ?? '—' }} → {{ $event->to_status ?? '—' }}</div>
                                 @endif
                             </td>
-                            <td class="num-ltr small">{{ $event->occurred_at?->timezone($order->timezone)->toDateTimeString() }}</td>
-                            <td class="num-ltr small">{{ $event->recorded_at?->timezone($order->timezone)->toDateTimeString() }}</td>
+                            <td class="num-ltr small"><x-gh.dubai-time :at="$event->occurred_at" /></td>
+                            <td class="num-ltr small"><x-gh.dubai-time :at="$event->recorded_at" /></td>
                             <td>{{ $event->actor?->localizedName() ?? '—' }}</td>
                             <td class="small"><div class="overflow-auto" style="max-width: 18rem"><code class="text-nowrap">{{ $event->payload ? json_encode($event->payload, JSON_UNESCAPED_UNICODE) : '—' }}</code></div></td>
                         </tr>

@@ -103,6 +103,47 @@
     .table a.hp-value {
         white-space: nowrap;
     }
+
+    // UAE / Dubai 12-hour presentation (GH-only).
+    .gh-dubai-time {
+        display: inline-flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: .35rem;
+        max-width: 100%;
+    }
+
+    .gh-uae-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        font-size: .7rem;
+        font-weight: 600;
+        line-height: 1.2;
+        color: var(--hp-label-color);
+        white-space: nowrap;
+        max-width: 100%;
+    }
+
+    // Flag only — never put emoji font on the Arabic/English label text.
+    .gh-uae-flag {
+        flex: 0 0 auto;
+        font-family: "Segoe UI Emoji", "Noto Color Emoji", "Apple Color Emoji", emoji, sans-serif;
+        font-style: normal;
+        line-height: 1;
+    }
+
+    .gh-uae-badge--board {
+        font-size: .65rem;
+        font-weight: 650;
+        letter-spacing: .01em;
+    }
+
+    .gh-uae-tz-notice {
+        i {
+            color: var(--bs-primary);
+        }
+    }
 }
 
 [data-bs-theme='dark'] [data-app-module='service'] {
@@ -542,6 +583,7 @@ body.hp-driver-sorting {
 .gh-order-card__head {
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: .45rem;
@@ -552,12 +594,13 @@ body.hp-driver-sorting {
 .gh-order-card__ref {
     flex: 0 1 auto;
     min-width: 0;
+    max-width: 100%;
     font-weight: 750;
     font-size: .875rem;
     line-height: 1.25;
     color: var(--gh-board-navy, #101044);
     text-decoration: none;
-    // Never truncate order references.
+    // Never truncate order references mid-token.
     overflow: visible;
     white-space: nowrap;
     text-align: start;
@@ -695,21 +738,17 @@ body.hp-driver-sorting {
 }
 
 @media (max-width: 430px) {
-    .gh-order-card__meta--4 {
-        grid-template-columns: auto auto minmax(0, 1fr);
-        row-gap: .25rem;
-    }
-
-    .gh-order-card__meta--4 .gh-order-card__cell--type {
-        grid-column: 1 / -1;
-    }
-
     .gh-order-card__meta--3 {
         grid-template-columns: auto minmax(0, 1fr);
     }
 
     .gh-order-card__meta--3 .gh-order-card__cell--address {
         grid-column: 1 / -1;
+    }
+
+    .gh-order-card__appointment-main {
+        flex-wrap: wrap;
+        row-gap: .15rem;
     }
 
     .hp-driver-task .card-body,
@@ -735,11 +774,69 @@ body.hp-driver-sorting {
     border-bottom: 1px solid color-mix(in srgb, var(--gh-board-line, #e4e1d6) 80%, transparent);
 }
 
-// Date | time | kind | type — short values stay readable; kind can flex.
-.gh-order-card__meta--4 {
+// Created | type — quiet secondary row under the appointment block.
+.gh-order-card__meta--2 {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1.1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
+    margin-bottom: 0;
+    column-gap: .75rem;
+}
+
+.gh-order-card__lower {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    min-width: 0;
     margin-bottom: .15rem;
+}
+
+// One appointment: "Kind: dd/mm — h:mm AM/PM" + single UAE line underneath.
+.gh-order-card__appointment {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .15rem;
+    min-width: 0;
+    padding: .35rem .45rem;
+    border-radius: .45rem;
+    background: color-mix(in srgb, var(--gh-board-line, #e4e1d6) 55%, transparent);
+}
+
+.gh-order-card__appointment-main {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: start;
+    gap: .35rem;
+    min-width: 0;
+}
+
+.gh-order-card__appointment-label {
+    flex: 0 1 auto;
+    color: var(--gh-board-muted, #7a7785);
+    font-size: .75rem;
+    font-weight: 650;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+
+.gh-order-card__appointment-when {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--gh-board-navy, #101044);
+    font-size: .8125rem;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: start;
+}
+
+.gh-order-card__appointment-tz {
+    padding-inline-start: 1.35rem; // align under the when-text (past icon)
+    line-height: 1.2;
 }
 
 // Direction-aware [icon][value]: DOM order is icon then value.
@@ -789,12 +886,17 @@ body.hp-driver-sorting {
 
 // Short / critical values must remain fully visible.
 .gh-order-card__cell--seq .gh-order-card__value,
-.gh-order-card__cell--date .gh-order-card__value,
-.gh-order-card__cell--time .gh-order-card__value,
+.gh-order-card__cell--created .gh-order-card__value,
 .gh-order-card__cell--type .gh-order-card__value {
     flex: 0 0 auto;
     overflow: visible;
     text-overflow: clip;
+}
+
+.gh-order-card__meta--2 .gh-order-card__value {
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--gh-board-muted, #7a7785);
 }
 
 .gh-order-card__meta--3 .gh-order-card__value {

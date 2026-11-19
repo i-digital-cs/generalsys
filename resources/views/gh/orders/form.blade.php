@@ -205,7 +205,7 @@
                         @error('scheduled_pickup_at')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         @error('pickup_date')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         @error('pickup_window_start')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        <p class="small text-body-secondary mt-1 mb-0">{{ __('gh.orders.timezone_hint', ['tz' => $tz]) }}</p>
+                        <x-gh.uae-tz-notice compact />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="scheduled_delivery_at">{{ __('gh.orders.scheduled_delivery') }} <span class="text-danger" aria-hidden="true">*</span></label>
@@ -215,6 +215,7 @@
                         @error('scheduled_delivery_date')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         @error('scheduled_delivery_time')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         <p class="small text-body-secondary mt-1 mb-0">{{ __('gh.orders.scheduled_delivery_required_hint') }}</p>
+                        <x-gh.uae-tz-notice compact />
                     </div>
                 @else
                     <div class="col-md-6">
@@ -234,6 +235,7 @@
                                 {{ __('gh.orders.scheduled_delivery_required_hint') }}
                             @endif
                         </p>
+                        <x-gh.uae-tz-notice compact />
                     </div>
                 @endif
 

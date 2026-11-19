@@ -1,5 +1,9 @@
 @php
-    $fmt = fn ($at) => $at?->timezone($displayTz)->translatedFormat('Y-m-d H:i');
+    $fmt = static function ($at) {
+        $text = \App\Support\GeneralHouse\GhDateTimePresenter::format($at);
+
+        return $text === null ? '—' : $text.' '.\App\Support\GeneralHouse\GhDateTimePresenter::uaeBadge();
+    };
     $empty = collect($data)->every(fn ($rows) => $rows->isEmpty());
 @endphp
 <div class="card-body">

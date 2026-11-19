@@ -111,7 +111,7 @@
                     @foreach ($creditNote->events as $event)
                         <li class="list-group-item d-flex justify-content-between gap-2">
                             <span>{{ $event->event_type }} → {{ $event->to_status }}</span>
-                            <span class="text-body-secondary num-ltr">{{ $event->actor?->name_en ?? $event->actor?->name_ar }} · {{ optional($event->occurred_at)->timezone(config('general_house.timezone'))->format('Y-m-d H:i') }}</span>
+                            <span class="text-body-secondary num-ltr">{{ $event->actor?->name_en ?? $event->actor?->name_ar }} · <x-gh.dubai-time :at="$event->occurred_at" /></span>
                         </li>
                     @endforeach
                 </ul>

@@ -64,9 +64,9 @@
                     </div>
                     <dl class="row small mb-0">
                         <dt class="col-6 form-label mb-1">{{ __('gh.driver_cash.last_collected_at') }}</dt>
-                        <dd class="col-6 hp-value mb-1"><span class="num-ltr">{{ $summary['last_collected_at']?->timezone($displayTz)->translatedFormat('Y-m-d H:i') ?? '—' }}</span></dd>
+                        <dd class="col-6 hp-value mb-1"><span class="num-ltr"><x-gh.dubai-time :at="$summary['last_collected_at']" :badge="true" /></span></dd>
                         <dt class="col-6 form-label mb-1">{{ __('gh.driver_cash.last_settled_at') }}</dt>
-                        <dd class="col-6 hp-value mb-1"><span class="num-ltr">{{ $summary['last_settled_at']?->timezone($displayTz)->translatedFormat('Y-m-d H:i') ?? '—' }}</span></dd>
+                        <dd class="col-6 hp-value mb-1"><span class="num-ltr"><x-gh.dubai-time :at="$summary['last_settled_at']" :badge="true" /></span></dd>
                         @if (bccomp($summary['unallocated'], '0', 2) > 0)
                             <dt class="col-6 form-label mb-1">{{ __('gh.driver_cash.unallocated') }}</dt>
                             <dd class="col-6 mb-1"><x-money :amount="$summary['unallocated']" currency="AED" /></dd>

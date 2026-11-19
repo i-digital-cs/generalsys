@@ -4,7 +4,11 @@
 
 @section('content')
 @php
-    $fmt = fn ($at) => $at?->timezone($displayTz)->translatedFormat('Y-m-d H:i');
+    $fmt = static function ($at) {
+        $text = \App\Support\GeneralHouse\GhDateTimePresenter::format($at);
+
+        return $text === null ? '—' : $text.' '.\App\Support\GeneralHouse\GhDateTimePresenter::uaeBadge();
+    };
 @endphp
 <div class="container-fluid py-3">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">

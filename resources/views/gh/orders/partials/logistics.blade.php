@@ -16,6 +16,7 @@
                         <div class="col-md-4">
                             <label class="form-label" for="pickup_occurred_at">{{ __('gh.orders.actual_pickup_at') }}</label>
                             <input id="pickup_occurred_at" type="datetime-local" name="occurred_at" class="form-control form-control-sm">
+                            <x-gh.uae-tz-notice compact />
                         </div>
                         <div class="col-md-5">
                             <label class="form-label" for="pickup_notes">{{ __('gh.orders.pickup_notes') }}</label>
@@ -52,6 +53,7 @@
                         <div class="col-12">
                             <label class="form-label" for="delivery_occurred_at">{{ __('gh.orders.actual_delivery_at') }}</label>
                             <input id="delivery_occurred_at" type="datetime-local" name="occurred_at" class="form-control form-control-sm">
+                            <x-gh.uae-tz-notice compact />
                         </div>
                         <div class="col-12">
                             <label class="form-label" for="delivery_notes">{{ __('gh.orders.delivery_notes') }}</label>
@@ -213,6 +215,7 @@
                             <label class="form-label" for="rs_scheduled">{{ __('gh.orders.scheduled_pickup') }}</label>
                             <input id="rs_scheduled" type="datetime-local" name="scheduled_pickup_at" class="form-control form-control-sm" required
                                    value="{{ old('scheduled_pickup_at', $order->pickup_starts_at?->timezone($displayTz)->format('Y-m-d\\TH:i')) }}">
+                            <x-gh.uae-tz-notice compact />
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
                             <button type="submit" class="btn btn-outline-primary btn-sm w-100">{{ __('gh.orders.reschedule') }}</button>
@@ -287,7 +290,7 @@
                         @foreach ($order->attempts as $attempt)
                             <li class="border-bottom py-1">
                                 <span class="badge text-bg-warning">{{ $attempt->attempt_type }} / {{ $attempt->outcome }}</span>
-                                <span class="num-ltr">{{ $attempt->occurred_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') }}</span>
+                                <span class="num-ltr"><x-gh.dubai-time :at="$attempt->occurred_at" :badge="true" /></span>
                                 @if ($attempt->actor) · {{ $attempt->actor->localizedName() }} @endif
                                 @if ($attempt->notes) — {{ $attempt->notes }} @endif
                             </li>

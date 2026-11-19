@@ -156,7 +156,7 @@
                                             <x-gh.meta-cell icon="bi-person" :value="$o->customer?->localizedName() ?? '—'" />
                                             <x-gh.meta-cell
                                                 icon="bi-calendar3"
-                                                :value="$o->pickup_starts_at?->timezone($displayTz)->translatedFormat('Y-m-d H:i') ?? '—'"
+                                                :value="$o->pickup_starts_at ? (\App\Support\GeneralHouse\GhDateTimePresenter::format($o->pickup_starts_at).' '.\App\Support\GeneralHouse\GhDateTimePresenter::uaeBadge()) : '—'"
                                                 :ltr="true"
                                             />
                                         </x-slot:meta>

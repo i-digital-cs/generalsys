@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'time' => [
+        'uae_flag' => '🇦🇪',
+        'uae_badge' => '🇦🇪 UAE',
+        'uae_time_label' => 'UAE Time',
+        'uae_badge_title' => 'Shown in :tz (UAE). Stored in UTC.',
+        'selection_notice' => 'Times you enter are UAE (Dubai, :tz) wall-clock — not your browser timezone. Stored in UTC.',
+        'list_note' => 'Operational times shown in UAE (:tz), 12-hour clock. Stored in UTC.',
+    ],
     'status' => [
         'ACTIVE' => 'Active',
         'INACTIVE' => 'Inactive',
@@ -76,6 +84,9 @@ return [
         'kind_pickup_window' => 'Pickup window',
         'kind_delivery_window' => 'Delivery window',
         'kind_working_schedule' => 'In laundry',
+        'appointment_pickup' => 'Pickup',
+        'appointment_delivery' => 'Delivery',
+        'appointment_working' => 'In laundry',
         'order_type' => [
             'NORMAL' => 'Normal',
             'EXPRESS' => 'Express',
@@ -649,7 +660,7 @@ return [
         'as_of' => 'Balance as of',
         'as_of_outstanding' => 'Outstanding at end of :date',
         'apply' => 'Apply',
-        'timezone_note' => 'Times shown in :tz. Stored in UTC.',
+        'timezone_note' => 'Operational times shown in UAE (:tz), 12-hour clock. Stored in UTC.',
         'tab_collections' => 'Collections',
         'tab_outstanding' => 'Outstanding',
         'tab_settlements' => 'Settlement history',
@@ -854,7 +865,7 @@ return [
         'pickup_date' => 'Pickup date',
         'window_start' => 'Window start',
         'window_end' => 'Window end',
-        'timezone_hint' => 'Times are interpreted in :tz and stored consistently.',
+        'timezone_hint' => 'Times you enter are UAE (Dubai, :tz) wall-clock — not your browser timezone. Stored in UTC.',
         'scheduling_notes' => 'Scheduling notes',
         'operational_notes' => 'Operational notes',
         'assign_pickup' => 'Pickup driver',
