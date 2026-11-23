@@ -1536,3 +1536,168 @@ a.gh-record-card__title:focus-visible {
     font-size: 1.1rem;
     font-weight: 700;
 }
+
+/* Compact product form — category-scoped service cards */
+[data-app-module='service'] .gh-product-services {
+    margin-top: 0.35rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+[data-app-module='service'] .gh-product-services__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem 0.75rem;
+    margin-bottom: 0.45rem;
+}
+
+[data-app-module='service'] .gh-product-services__title {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--hp-title-color, #0f172a);
+}
+
+[data-app-module='service'] .gh-product-services__hint {
+    margin: 0.1rem 0 0;
+    font-size: 0.75rem;
+    color: var(--hp-label-color, #64748b);
+}
+
+[data-app-module='service'] .gh-product-services__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--hp-label-color, #64748b);
+}
+
+[data-app-module='service'] .gh-product-services__count {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 0.35rem;
+    background: #f8fafc;
+    color: #0f172a;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+[data-app-module='service'] .gh-product-services__toolbar {
+    margin-bottom: 0.45rem;
+}
+
+[data-app-module='service'] .gh-product-services__search {
+    max-width: 18rem;
+}
+
+[data-app-module='service'] .gh-svc-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: flex-start;
+}
+
+[data-app-module='service'] .gh-svc-card-wrap {
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    [data-app-module='service'] .gh-svc-card-wrap {
+        width: calc(50% - 0.225rem);
+        max-width: 15.5rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    [data-app-module='service'] .gh-svc-card-wrap {
+        width: calc(25% - 0.3375rem);
+        max-width: 14.25rem;
+    }
+}
+
+[data-app-module='service'] .gh-svc-card {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 0.45rem;
+    background: #ffffff;
+    box-shadow: none;
+    color: #0f172a;
+}
+
+[data-app-module='service'] .gh-svc-card.is-enabled {
+    border-color: #38bdf8;
+    background: #f0f9ff;
+}
+
+[data-app-module='service'] .gh-svc-card__row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+[data-app-module='service'] .gh-svc-card__check {
+    flex: 0 0 auto;
+    margin: 0;
+    float: none;
+}
+
+[data-app-module='service'] .gh-svc-card__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+[data-app-module='service'] .gh-svc-card__badge {
+    flex: 0 0 auto;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #334155;
+    background: #e2e8f0;
+    border: 0;
+}
+
+[data-app-module='service'] .gh-svc-card__price {
+    margin-top: 0.35rem;
+}
+
+[data-app-module='service'] .gh-svc-card__price .input-group-text {
+    color: #334155;
+    background: #f1f5f9;
+    border-color: rgba(15, 23, 42, 0.12);
+    font-size: 0.75rem;
+    padding: 0.2rem 0.4rem;
+}
+
+[data-app-module='service'] .gh-svc-card__price .form-control {
+    color: var(--hp-input-value-color, #0284c7);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    min-height: calc(1.5em + 0.4rem + 2px);
+}
+
+[data-app-module='service'] .gh-svc-card__price .form-control::placeholder {
+    color: var(--hp-input-placeholder-color, #94a3b8);
+    font-weight: 400;
+    opacity: 1;
+}
+
+[data-app-module='service'] .gh-product-services .alert {
+    margin-bottom: 0;
+    padding: 0.4rem 0.65rem;
+}

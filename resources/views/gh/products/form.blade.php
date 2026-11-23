@@ -60,7 +60,7 @@
                   id="gh-product-form"
                   action="{{ $isEdit ? route('gh.products.update', $product) : route('gh.products.store') }}"
                   enctype="multipart/form-data"
-                  class="row g-3"
+                  class="row g-2 g-md-3"
                   data-is-edit="{{ $isEdit ? '1' : '0' }}"
                   data-page-size="{{ $pageSize }}"
                   data-initial-category="{{ $initialCategoryId }}"
@@ -129,31 +129,30 @@
                     @endif
                 </div>
 
-                <div class="col-12">
-                    <hr class="my-1">
-                    <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2">
+                <div class="col-12 gh-product-services">
+                    <div class="gh-product-services__head">
                         <div>
-                            <h2 class="h6 mb-0">{{ __('gh.products.services_heading') }}</h2>
-                            <p class="text-body-secondary small mb-0">{{ __('gh.products.services_hint') }}</p>
+                            <h2 class="gh-product-services__title">{{ __('gh.products.services_heading') }}</h2>
+                            <p class="gh-product-services__hint">{{ __('gh.products.services_hint') }}</p>
                         </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2">
-                            <span class="badge text-bg-primary-subtle border" id="gh-svc-selected-count">
+                        <div class="gh-product-services__meta">
+                            <span class="gh-product-services__count" id="gh-svc-selected-count">
                                 {{ __('gh.products.selected_count', ['count' => 0]) }}
                             </span>
-                            <span class="badge text-bg-light border">{{ __('gh.fields.currency') }}: AED</span>
+                            <span>{{ __('gh.fields.currency') }}: AED</span>
                         </div>
                     </div>
 
-                    <div class="row g-2 align-items-end mb-2" id="gh-svc-toolbar" hidden>
-                        <div class="col-md-6">
-                            <label class="form-label" for="gh-svc-search">{{ __('gh.products.services_search') }}</label>
-                            <input type="search" id="gh-svc-search" class="form-control form-control-sm"
-                                   placeholder="{{ __('gh.products.services_search_placeholder') }}" autocomplete="off">
-                        </div>
+                    <div class="gh-product-services__toolbar" id="gh-svc-toolbar" hidden>
+                        <label class="visually-hidden" for="gh-svc-search">{{ __('gh.products.services_search') }}</label>
+                        <input type="search" id="gh-svc-search"
+                               class="form-control form-control-sm gh-product-services__search"
+                               placeholder="{{ __('gh.products.services_search_placeholder') }}"
+                               autocomplete="off">
                     </div>
 
-                    <div id="gh-svc-empty" class="alert alert-warning py-2 small mb-0" hidden>
-                        <div class="mb-1" id="gh-svc-empty-text">{{ __('gh.products.services_empty_category') }}</div>
+                    <div id="gh-svc-empty" class="alert alert-warning small" hidden>
+                        <div class="mb-0" id="gh-svc-empty-text">{{ __('gh.products.services_empty_category') }}</div>
                         @if ($canManageCategories)
                             <a href="#" id="gh-svc-manage-link" class="alert-link small" hidden>
                                 {{ __('gh.products.manage_category_services') }}
@@ -161,11 +160,11 @@
                         @endif
                     </div>
 
-                    <div id="gh-svc-no-category" class="alert alert-light border py-2 small mb-0">
+                    <div id="gh-svc-no-category" class="alert alert-light border small">
                         {{ __('gh.products.services_pick_category') }}
                     </div>
 
-                    <div id="gh-svc-grid" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-2" hidden></div>
+                    <div id="gh-svc-grid" class="gh-svc-grid" hidden></div>
 
                     <div class="d-flex flex-wrap gap-2 mt-2" id="gh-svc-more-wrap" hidden>
                         <button type="button" class="btn btn-outline-secondary btn-sm" id="gh-svc-more">
@@ -179,7 +178,7 @@
                     <div id="gh-svc-inputs" class="d-none" aria-hidden="true"></div>
                 </div>
 
-                <div class="col-12 d-flex flex-wrap gap-2">
+                <div class="col-12 d-flex flex-wrap gap-2 mt-1">
                     <button type="submit" class="btn btn-primary">{{ __('general.save') }}</button>
                     <a href="{{ route('gh.products.index') }}" class="btn btn-outline-secondary">{{ __('general.cancel') }}</a>
                 </div>
@@ -204,7 +203,6 @@
         inactive: @json(__('gh.status.INACTIVE')),
         selected: @json(__('gh.products.selected_count')),
         emptyCategory: @json(__('gh.products.services_empty_category')),
-        pickCategory: @json(__('gh.products.services_pick_category')),
     };
 
     const categorySelect = document.getElementById('category_id');
@@ -253,6 +251,10 @@
     function updateSelectedBadge() {
         const count = selectedEnabledCountForCategory(categorySelect.value);
         selectedCount.textContent = labels.selected.replace(':count', String(count)).replace('%count%', String(count));
+    }
+
+    function cardClassName(enabled) {
+        return 'gh-svc-card' + (enabled ? ' is-enabled' : '');
     }
 
     function writeHiddenInputs() {
@@ -334,62 +336,44 @@
         const slice = filtered.slice(0, visibleLimit);
         slice.forEach(function (t) {
             const s = ensureSelection(t.id);
-            const col = document.createElement('div');
-            col.className = 'col';
+            const wrap = document.createElement('div');
+            wrap.className = 'gh-svc-card-wrap';
+
             const card = document.createElement('div');
-            card.className = 'card h-100 border gh-svc-card ' + (s.enabled ? 'border-primary bg-primary-subtle' : 'bg-body');
+            card.className = cardClassName(!!s.enabled);
             card.dataset.treatmentId = String(t.id);
 
-            const body = document.createElement('div');
-            body.className = 'card-body p-2 d-flex flex-column gap-2';
+            const row = document.createElement('div');
+            row.className = 'gh-svc-card__row';
 
-            const top = document.createElement('div');
-            top.className = 'd-flex justify-content-between align-items-start gap-2';
-
-            const titleWrap = document.createElement('div');
-            const title = document.createElement('div');
-            title.className = 'fw-semibold small';
-            title.textContent = treatmentName(t);
-            titleWrap.appendChild(title);
-            if (t.status !== 'ACTIVE') {
-                const badge = document.createElement('span');
-                badge.className = 'badge text-bg-secondary';
-                badge.textContent = labels.inactive;
-                titleWrap.appendChild(badge);
-            }
-
-            const checkWrap = document.createElement('div');
-            checkWrap.className = 'form-check m-0';
             const check = document.createElement('input');
             check.type = 'checkbox';
-            check.className = 'form-check-input';
+            check.className = 'form-check-input gh-svc-card__check';
             check.id = 'gh_svc_en_' + t.id;
             check.checked = !!s.enabled;
-            check.addEventListener('change', function () {
-                ensureSelection(t.id).enabled = check.checked;
-                priceWrap.hidden = !check.checked;
-                card.className = 'card h-100 border gh-svc-card ' + (check.checked ? 'border-primary bg-primary-subtle' : 'bg-body');
-                writeHiddenInputs();
-                updateSelectedBadge();
-            });
-            const checkLabel = document.createElement('label');
-            checkLabel.className = 'form-check-label visually-hidden';
-            checkLabel.setAttribute('for', check.id);
-            checkLabel.textContent = labels.enabled + ' — ' + treatmentName(t);
-            checkWrap.appendChild(check);
-            checkWrap.appendChild(checkLabel);
 
-            top.appendChild(titleWrap);
-            top.appendChild(checkWrap);
+            const name = document.createElement('label');
+            name.className = 'gh-svc-card__name';
+            name.setAttribute('for', check.id);
+            name.textContent = treatmentName(t);
+
+            row.appendChild(check);
+            row.appendChild(name);
+
+            if (t.status !== 'ACTIVE') {
+                const badge = document.createElement('span');
+                badge.className = 'badge gh-svc-card__badge';
+                badge.textContent = labels.inactive;
+                row.appendChild(badge);
+            }
 
             const priceWrap = document.createElement('div');
+            priceWrap.className = 'gh-svc-card__price';
             priceWrap.hidden = !s.enabled;
-            const priceLabel = document.createElement('label');
-            priceLabel.className = 'form-label small mb-1';
-            priceLabel.setAttribute('for', 'gh_svc_price_' + t.id);
-            priceLabel.textContent = labels.price;
+
             const group = document.createElement('div');
             group.className = 'input-group input-group-sm';
+
             const price = document.createElement('input');
             price.type = 'number';
             price.min = '0';
@@ -399,23 +383,32 @@
             price.id = 'gh_svc_price_' + t.id;
             price.placeholder = '0.00';
             price.value = s.standard_price || '';
+            price.setAttribute('aria-label', labels.price + ' — ' + treatmentName(t));
+
+            const addon = document.createElement('span');
+            addon.className = 'input-group-text';
+            addon.textContent = 'AED';
+
+            group.appendChild(price);
+            group.appendChild(addon);
+            priceWrap.appendChild(group);
+
+            check.addEventListener('change', function () {
+                ensureSelection(t.id).enabled = check.checked;
+                priceWrap.hidden = !check.checked;
+                card.className = cardClassName(check.checked);
+                writeHiddenInputs();
+                updateSelectedBadge();
+            });
             price.addEventListener('input', function () {
                 ensureSelection(t.id).standard_price = price.value;
                 writeHiddenInputs();
             });
-            const addon = document.createElement('span');
-            addon.className = 'input-group-text';
-            addon.textContent = 'AED';
-            group.appendChild(price);
-            group.appendChild(addon);
-            priceWrap.appendChild(priceLabel);
-            priceWrap.appendChild(group);
 
-            body.appendChild(top);
-            body.appendChild(priceWrap);
-            card.appendChild(body);
-            col.appendChild(card);
-            grid.appendChild(col);
+            card.appendChild(row);
+            card.appendChild(priceWrap);
+            wrap.appendChild(card);
+            grid.appendChild(wrap);
         });
 
         const needsMore = filtered.length > pageSize;
