@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\GeneralHouse\StoreGhProductRequest;
 use App\Http\Requests\GeneralHouse\UpdateGhProductRequest;
 use App\Models\GeneralHouse\GhProduct;
+use App\Models\GeneralHouse\GhServiceCategory;
 use App\Services\GeneralHouse\Catalog\GhCategoryService;
+use App\Services\GeneralHouse\Catalog\GhCategoryTreatmentService;
 use App\Services\GeneralHouse\Catalog\GhProductService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -19,6 +22,7 @@ class ProductController extends Controller
     public function __construct(
         private readonly GhProductService $products,
         private readonly GhCategoryService $categories,
+        private readonly GhCategoryTreatmentService $categoryTreatments,
     ) {}
 
     public function index(Request $request): View
@@ -45,6 +49,9 @@ class ProductController extends Controller
         return view('gh.products.form', [
             'product' => null,
             'categories' => $this->categories->activeOrdered(),
+            'treatmentsByCategory' => $this->categoryTreatments->catalogPayload(),
+            'offeringsByTreatment' => collect(),
+            'canManageCategories' => Gate::allows('viewAny', GhServiceCategory::class),
         ]);
     }
 
@@ -63,14 +70,18 @@ class ProductController extends Controller
     public function edit(GhProduct $product): View
     {
         $this->authorize('update', $product);
+        $product->load(['category', 'offerings.treatment']);
 
         return view('gh.products.form', [
-            'product' => $product->load('category'),
+            'product' => $product,
             'categories' => $this->categories->activeOrdered()
                 ->push($product->category)
                 ->filter()
                 ->unique('id')
                 ->values(),
+            'treatmentsByCategory' => $this->categoryTreatments->catalogPayload(),
+            'offeringsByTreatment' => $product->offerings->keyBy('treatment_id'),
+            'canManageCategories' => Gate::allows('viewAny', GhServiceCategory::class),
         ]);
     }
 

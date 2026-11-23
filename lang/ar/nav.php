@@ -55,7 +55,7 @@ return [
     'gh_section_catalog' => 'كتالوج الخدمات',
     'gh_categories' => 'فئات الخدمة',
     'gh_products' => 'المنتجات',
-    'gh_treatments' => 'طرق المعالجة',
+    'gh_treatments' => 'الخدمات',
     'gh_offerings' => 'العروض والأسعار',
     'gh_section_customers' => 'العملاء والمناطق',
     'gh_customers' => 'العملاء',

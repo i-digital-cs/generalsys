@@ -20,11 +20,13 @@
 |---|---|
 | `gh_service_categories` | AR/EN, description, status, sort, image |
 | `gh_products` | AR/EN, **primary** `category_id`, `code`, status, sort, image |
-| `gh_treatments` | AR/EN, status, sort |
+| `gh_treatments` | AR/EN, status, sort (global service definitions) |
+| `gh_category_treatment` | Many-to-many: which treatments may be used under a category; `UNIQUE(category_id, treatment_id)` |
 | `gh_product_offerings` | `UNIQUE(product_id, treatment_id)`; `standard_price`; `tax_class`; status; sort |
 
-**APPROVED:** Offering = unique product×treatment sellable unit.  
+**APPROVED:** Offering = unique product×treatment sellable unit; pricing stays per offering.  
 **APPROVED:** Orders may include offerings from **multiple categories** (via order/invoice lines).  
+**APPROVED:** Category × treatment is many-to-many (`gh_category_treatment`); a product may only select treatments mapped to its category.  
 **PROPOSED:** Product keeps one primary category for admin navigation (not a hard limit on order composition).
 
 ## 3. Customers, zones, B2B

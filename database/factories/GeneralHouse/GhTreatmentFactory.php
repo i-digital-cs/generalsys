@@ -14,7 +14,7 @@ class GhTreatmentFactory extends Factory
     public function definition(): array
     {
         return [
-            'name_ar' => 'معالجة '.fake()->unique()->numerify('###'),
+            'name_ar' => 'خدمة '.fake()->unique()->numerify('###'),
             'name_en' => 'Treatment '.fake()->unique()->numerify('###'),
             'status' => GhCatalogStatus::ACTIVE,
             'sort_order' => 0,

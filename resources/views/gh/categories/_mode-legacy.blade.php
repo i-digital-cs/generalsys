@@ -97,6 +97,12 @@
                                     <td>@include('gh.partials.status-badge', ['status' => $row->status])</td>
                                     <td class="text-end text-nowrap">
                                         @can('update', $row)
+                                            <a href="{{ route('gh.categories.treatments', $row) }}"
+                                               class="btn btn-link btn-sm text-body-secondary p-0 me-2"
+                                               title="{{ __('gh.categories.manage_services') }}">
+                                                <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>
+                                                <span class="visually-hidden">{{ __('gh.categories.manage_services') }}</span>
+                                            </a>
                                             <button type="button" class="btn btn-link btn-sm text-body-secondary p-0 me-2"
                                                     title="{{ __('general.edit') }}"
                                                     data-bs-toggle="modal" data-bs-target="#gh-cat-edit-modal"

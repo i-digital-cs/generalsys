@@ -185,6 +185,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/categories', [GhCategoryController::class, 'store'])->name('categories.store');
         Route::put('/categories/{category}', [GhCategoryController::class, 'update'])->name('categories.update');
         Route::delete('/categories/{category}', [GhCategoryController::class, 'destroy'])->name('categories.destroy');
+        Route::get('/categories/{category}/services', [GhCategoryController::class, 'treatments'])->name('categories.treatments');
+        Route::put('/categories/{category}/services', [GhCategoryController::class, 'syncTreatments'])->name('categories.treatments.sync');
 
         Route::get('/treatments', [GhTreatmentController::class, 'index'])->name('treatments.index');
         Route::post('/treatments', [GhTreatmentController::class, 'store'])->name('treatments.store');

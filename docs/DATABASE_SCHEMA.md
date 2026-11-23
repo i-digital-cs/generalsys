@@ -1279,6 +1279,22 @@ CREATE TABLE gh_treatments (
     INDEX idx_gh_treat_status_sort (status, sort_order)
 );
 
+-- Many-to-many: which treatments (services) may be offered under a service category.
+-- Empty until owner-approved mappings. Product offerings remain product × treatment;
+-- sellable selection must also satisfy this pivot for the product's category.
+CREATE TABLE gh_category_treatment (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    category_id BIGINT UNSIGNED NOT NULL,
+    treatment_id BIGINT UNSIGNED NOT NULL,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_gh_category_treatment (category_id, treatment_id),
+    INDEX idx_gh_cat_treat_treatment (treatment_id, category_id),
+    CONSTRAINT fk_gh_cat_treat_category FOREIGN KEY (category_id) REFERENCES gh_service_categories(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gh_cat_treat_treatment FOREIGN KEY (treatment_id) REFERENCES gh_treatments(id) ON DELETE RESTRICT
+);
+
 CREATE TABLE gh_products (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     category_id BIGINT UNSIGNED NOT NULL,

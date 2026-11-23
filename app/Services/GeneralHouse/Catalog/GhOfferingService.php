@@ -14,6 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class GhOfferingService
 {
+    public function __construct(
+        private readonly GhCategoryTreatmentService $categoryTreatments,
+    ) {}
+
     /**
      * @param  array{q?: string, status?: string, product_id?: int|string, treatment_id?: int|string}  $filters
      * @return LengthAwarePaginator<int, GhProductOffering>
@@ -63,6 +67,12 @@ class GhOfferingService
     {
         $this->assertProductExists((int) $data['product_id']);
         $this->assertTreatmentExists((int) $data['treatment_id']);
+        $product = GhProduct::query()->findOrFail((int) $data['product_id']);
+        $this->categoryTreatments->assertCompatible(
+            (int) $product->category_id,
+            (int) $data['treatment_id'],
+            'treatment_id'
+        );
         $price = $this->normalizePrice($data['standard_price'] ?? null);
         $taxClass = $this->normalizeTaxClass($data['tax_class'] ?? GhTaxClass::STANDARD_RATED);
         $currency = $this->normalizeCurrency($data['currency'] ?? 'AED');
@@ -94,6 +104,12 @@ class GhOfferingService
     {
         $this->assertProductExists((int) $data['product_id']);
         $this->assertTreatmentExists((int) $data['treatment_id']);
+        $product = GhProduct::query()->findOrFail((int) $data['product_id']);
+        $this->categoryTreatments->assertCompatible(
+            (int) $product->category_id,
+            (int) $data['treatment_id'],
+            'treatment_id'
+        );
         $price = $this->normalizePrice($data['standard_price'] ?? null);
         $taxClass = $this->normalizeTaxClass($data['tax_class'] ?? $offering->tax_class);
         $currency = $this->normalizeCurrency($data['currency'] ?? $offering->currency);
@@ -136,6 +152,83 @@ class GhOfferingService
     public function delete(GhProductOffering $offering): void
     {
         $offering->delete();
+    }
+
+    /**
+     * Sync product×treatment offerings from the unified product form.
+     * Enabled rows create/update ACTIVE offerings; unchecked existing rows become INACTIVE
+     * (never deleted — preserves order/invoice FKs).
+     *
+     * @param  list<array{treatment_id: int|string, enabled?: bool|string|int|null, standard_price?: mixed}>  $rows
+     */
+    public function syncForProduct(GhProduct $product, array $rows): void
+    {
+        $existing = GhProductOffering::query()
+            ->where('product_id', $product->id)
+            ->get()
+            ->keyBy(fn (GhProductOffering $o) => (int) $o->treatment_id);
+
+        $seen = [];
+        foreach (array_values($rows) as $index => $row) {
+            $treatmentId = (int) ($row['treatment_id'] ?? 0);
+            if ($treatmentId <= 0) {
+                throw ValidationException::withMessages([
+                    "offerings.{$index}.treatment_id" => [__('gh.errors.treatment_missing')],
+                ]);
+            }
+            if (isset($seen[$treatmentId])) {
+                throw ValidationException::withMessages([
+                    "offerings.{$index}.treatment_id" => [__('gh.errors.offering_duplicate')],
+                ]);
+            }
+            $seen[$treatmentId] = true;
+            $this->assertTreatmentExists($treatmentId);
+            $this->categoryTreatments->assertCompatible(
+                (int) $product->category_id,
+                $treatmentId,
+                "offerings.{$index}.treatment_id"
+            );
+
+            $enabled = $this->isEnabledFlag($row['enabled'] ?? false);
+            /** @var GhProductOffering|null $offering */
+            $offering = $existing->get($treatmentId);
+
+            if ($enabled) {
+                $price = $this->normalizePrice($row['standard_price'] ?? null);
+                if ($offering === null) {
+                    $this->create([
+                        'product_id' => (int) $product->id,
+                        'treatment_id' => $treatmentId,
+                        'standard_price' => $price,
+                        'currency' => 'AED',
+                        'tax_class' => GhTaxClass::STANDARD_RATED,
+                        'status' => GhCatalogStatus::ACTIVE,
+                        'sort_order' => (int) ($row['sort_order'] ?? 0),
+                    ]);
+                } else {
+                    $this->update($offering, [
+                        'product_id' => (int) $product->id,
+                        'treatment_id' => $treatmentId,
+                        'standard_price' => $price,
+                        'currency' => $offering->currency ?: 'AED',
+                        'tax_class' => $offering->tax_class ?: GhTaxClass::STANDARD_RATED,
+                        'status' => GhCatalogStatus::ACTIVE,
+                        'sort_order' => (int) ($row['sort_order'] ?? $offering->sort_order),
+                    ]);
+                }
+
+                continue;
+            }
+
+            if ($offering !== null && $offering->status !== GhCatalogStatus::INACTIVE) {
+                $this->setStatus($offering, GhCatalogStatus::INACTIVE);
+            }
+        }
+    }
+
+    private function isEnabledFlag(mixed $raw): bool
+    {
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN) || $raw === 1 || $raw === '1';
     }
 
     private function assertProductExists(int $productId): void

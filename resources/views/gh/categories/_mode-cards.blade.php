@@ -99,6 +99,10 @@
                         </x-slot:meta>
                         <x-slot:actions>
                             @can('update', $row)
+                                <a href="{{ route('gh.categories.treatments', $row) }}" class="gh-board-btn gh-board-btn--ghost">
+                                    <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>
+                                    <span>{{ __('gh.categories.manage_services') }}</span>
+                                </a>
                                 <button type="button" class="gh-board-btn gh-board-btn--ghost"
                                         data-bs-toggle="modal" data-bs-target="#gh-cat-edit-modal"
                                         data-action="{{ route('gh.categories.update', $row) }}"

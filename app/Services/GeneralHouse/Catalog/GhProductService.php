@@ -3,6 +3,7 @@
 namespace App\Services\GeneralHouse\Catalog;
 
 use App\Models\GeneralHouse\GhProduct;
+use App\Models\GeneralHouse\GhProductOffering;
 use App\Models\GeneralHouse\GhServiceCategory;
 use App\Support\GeneralHouse\GhCatalogStatus;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -19,6 +20,11 @@ class GhProductService
 
     /** @var list<string> */
     public const IMAGE_MIMES = ['jpg', 'jpeg', 'png', 'webp'];
+
+    public function __construct(
+        private readonly GhOfferingService $offerings,
+        private readonly GhCategoryTreatmentService $categoryTreatments,
+    ) {}
 
     /**
      * @param  array{q?: string, status?: string, category_id?: int|string}  $filters
@@ -56,14 +62,15 @@ class GhProductService
     }
 
     /**
-     * @param  array{category_id: int, code: string, name_ar: string, name_en: string, status?: string, sort_order?: int}  $data
+     * @param  array{category_id: int, code: string, name_ar: string, name_en: string, status?: string, sort_order?: int, offerings?: list<array<string, mixed>>}  $data
      */
     public function create(array $data, ?UploadedFile $image = null): GhProduct
     {
         $this->assertCategoryExists((int) $data['category_id']);
         $this->assertUniqueCode((string) $data['code']);
+        $offerings = array_values($data['offerings'] ?? []);
 
-        return DB::transaction(function () use ($data, $image) {
+        return DB::transaction(function () use ($data, $image, $offerings) {
             $product = GhProduct::query()->create([
                 'category_id' => (int) $data['category_id'],
                 'code' => strtoupper(trim((string) $data['code'])),
@@ -78,19 +85,27 @@ class GhProductService
                 $product->update(['image_path' => $this->storeImage($product, $image)]);
             }
 
-            return $product->refresh();
+            if ($offerings !== []) {
+                $this->offerings->syncForProduct($product, $offerings);
+            }
+
+            return $product->refresh()->load('offerings');
         });
     }
 
     /**
-     * @param  array{category_id: int, code: string, name_ar: string, name_en: string, status?: string, sort_order?: int, remove_image?: bool}  $data
+     * @param  array{category_id: int, code: string, name_ar: string, name_en: string, status?: string, sort_order?: int, remove_image?: bool, offerings?: list<array<string, mixed>>}  $data
      */
     public function update(GhProduct $product, array $data, ?UploadedFile $image = null): GhProduct
     {
         $this->assertCategoryExists((int) $data['category_id']);
         $this->assertUniqueCode((string) $data['code'], $product->id);
+        $this->assertCategoryChangeAllowed($product, (int) $data['category_id']);
+        $offerings = array_key_exists('offerings', $data)
+            ? array_values($data['offerings'] ?? [])
+            : null;
 
-        return DB::transaction(function () use ($product, $data, $image) {
+        return DB::transaction(function () use ($product, $data, $image, $offerings) {
             $path = $product->image_path;
             if (! empty($data['remove_image'])) {
                 $this->deleteStoredImage($path);
@@ -111,8 +126,32 @@ class GhProductService
                 'sort_order' => (int) ($data['sort_order'] ?? $product->sort_order),
             ]);
 
-            return $product->refresh();
+            if ($offerings !== null) {
+                $this->offerings->syncForProduct($product->fresh(), $offerings);
+            }
+
+            return $product->refresh()->load('offerings');
         });
+    }
+
+    private function assertCategoryChangeAllowed(GhProduct $product, int $newCategoryId): void
+    {
+        if ((int) $product->category_id === $newCategoryId) {
+            return;
+        }
+
+        $active = GhProductOffering::query()
+            ->where('product_id', $product->id)
+            ->where('status', GhCatalogStatus::ACTIVE)
+            ->get(['treatment_id']);
+
+        foreach ($active as $offering) {
+            if (! $this->categoryTreatments->isMapped($newCategoryId, (int) $offering->treatment_id)) {
+                throw ValidationException::withMessages([
+                    'category_id' => [__('gh.errors.category_change_active_offerings')],
+                ]);
+            }
+        }
     }
 
     public function setStatus(GhProduct $product, string $status): GhProduct

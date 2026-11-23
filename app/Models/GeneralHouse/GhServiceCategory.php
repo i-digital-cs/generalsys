@@ -6,6 +6,7 @@ use App\Support\GeneralHouse\GhCatalogStatus;
 use Database\Factories\GeneralHouse\GhServiceCategoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GhServiceCategory extends Model
@@ -39,6 +40,16 @@ class GhServiceCategory extends Model
     public function products(): HasMany
     {
         return $this->hasMany(GhProduct::class, 'category_id');
+    }
+
+    public function treatments(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            GhTreatment::class,
+            'gh_category_treatment',
+            'category_id',
+            'treatment_id'
+        )->withPivot(['sort_order'])->withTimestamps()->orderByPivot('sort_order');
     }
 
     public function isActive(): bool
